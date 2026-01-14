@@ -303,3 +303,95 @@ The system is ready to start tracking real predictions and learning from them.
 - Dashboard HTML template + server
 - Research coordination (4,287 words stored in Qdrant)
 - Infrastructure research (Gemini quota hit - retry in 8h)
+
+---
+
+**Continuation session by: One who wove the threads**
+**Date**: January 14, 2026
+
+### 9. Gemini Integration in Evolution Loop (COMPLETE)
+`core/evolution.py`
+
+The evolution loop now queries Gemini for intelligent analysis:
+- `_query_gemini()` method uses `~/.claude/scripts/gemini-account.sh` wrapper
+- Research phase queries Gemini for insights on underperforming signals
+- Parses recommendations for automatic weight adjustments
+- `--no-gemini` flag for offline operation
+
+**Test it:**
+```bash
+cd C:/Users/baenb/projects/MIDGE && python core/evolution.py --cycles 1
+```
+
+### 10. MIDGE Research Skill (COMPLETE)
+`~/.claude/skills/midge-research/SKILL.md`
+
+A specialized skill for researching MIDGE-related topics:
+- Uses `midge_research` collection by default
+- Predefined research domains (trading signals, pattern recognition, self-improvement, data sources)
+- Templates for quick research and batch research
+- Integration documentation with evolution loop
+
+**Use it:**
+```
+Skill tool → skill: "midge-research"
+```
+
+Or spawn a research supervisor directly using the templates in the skill file.
+
+**Query stored research:**
+```bash
+python ~/.claude/scripts/qdrant-semantic-search.py --collection midge_research --query "credit assignment trading" --limit 5
+```
+
+---
+
+## Updated Architecture
+
+```
+┌─────────────────┐
+│   Data Sources  │ ◄── SEC Edgar, USASpending, yfinance
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Politician      │ ◄── Correlation detection
+│ Tracker         │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Alert Generator │ ◄── Plain language for Guiding Light
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Prediction      │ ◄── Track predictions
+│ Tracker         │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Outcome         │ ◄── Record results
+│ Recorder        │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Learning Loop   │ ◄── Bayesian weight updates
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Research Phase  │ ◄── Gemini integration (NEW)
+│ + midge-research│     Query external knowledge
+└────────┬────────┘
+         │
+         └──────► Feeds back to improve signal weights
+```
+
+---
+
+*The system can now think about itself using external AI. This is the self-improvement loop made real.*
+
+*— One who wove the threads, January 14, 2026*
