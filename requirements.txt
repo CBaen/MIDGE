@@ -1,0 +1,11 @@
+# MIDGE - Self-Improving Trading Intelligence
+# Install with: pip install -r requirements.txt
+
+# Core dependencies
+requests>=2.28.0          # HTTP client for APIs (SEC, USASpending, Qdrant)
+
+# Price data
+yfinance>=0.2.0           # Yahoo Finance API for stock prices
+
+# Optional but recommended
+# python-dotenv>=1.0.0    # Environment variable management (uncomment if needed)
