@@ -53,6 +53,52 @@ SOURCE_RELIABILITY = {
 
 
 @dataclass
+class PredictionPayload:
+    """Schema for tracking predictions and their outcomes."""
+    # Identity
+    prediction_id: str = ""
+    symbol: str = ""
+    direction: str = ""  # "bullish" or "bearish"
+
+    # Prediction details
+    confidence: float = 0.5  # 0.0 - 1.0
+    entry_price: float = 0.0  # Price when predicted
+    target_price: float = 0.0  # Optional target
+    stop_loss: float = 0.0  # Optional stop
+
+    # Reasoning
+    reasoning: str = ""  # Why this prediction
+    contributing_signals: list = None  # Signal IDs that informed this
+
+    # Timing
+    predicted_at: str = ""
+    outcome_due: str = ""  # When to check result
+    timeframe: str = "1d"  # 1h, 4h, 1d, 1w
+
+    # Outcome (filled later)
+    outcome_recorded: bool = False
+    outcome_price: float = 0.0
+    outcome_date: str = ""
+    was_correct: bool = False
+    return_pct: float = 0.0
+
+    # Source tracking
+    prediction_source: str = "midge"  # midge | manual | technical | fundamental
+
+    def __post_init__(self):
+        if not self.prediction_id:
+            self.prediction_id = str(uuid.uuid4())
+        if not self.predicted_at:
+            self.predicted_at = datetime.now().isoformat()
+        if self.contributing_signals is None:
+            self.contributing_signals = []
+        if not self.outcome_due:
+            # Default: check outcome in 1 day
+            outcome_date = datetime.now() + timedelta(days=1)
+            self.outcome_due = outcome_date.isoformat()
+
+
+@dataclass
 class SignalPayload:
     """Enhanced payload schema for trading signals."""
     # Identity

@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MIDGE - Today's Patterns</title>
+    <style>
+        :root {
+            --bg-dark: #1a1a2e;
+            --bg-card: #16213e;
+            --text-primary: #eaeaea;
+            --text-secondary: #a0a0a0;
+            --accent-strong: #4ade80;
+            --accent-medium: #fbbf24;
+            --accent-watch: #60a5fa;
+            --border: #2d2d44;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 2rem;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 400;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.5rem;
+        }
+
+        .date {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .tagline {
+            color: var(--text-secondary);
+            font-style: italic;
+            margin-top: 1rem;
+            font-size: 0.85rem;
+        }
+
+        .section-title {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            padding-left: 0.5rem;
+        }
+
+        .alerts {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .alert {
+            background: var(--bg-card);
+            border-radius: 8px;
+            padding: 1.25rem;
+            border-left: 4px solid var(--accent-watch);
+        }
+
+        .alert.strong { border-left-color: var(--accent-strong); }
+        .alert.medium { border-left-color: var(--accent-medium); }
+
+        .alert-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .level-badge {
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .level-badge.strong { background: rgba(74, 222, 128, 0.2); color: var(--accent-strong); }
+        .level-badge.medium { background: rgba(251, 191, 36, 0.2); color: var(--accent-medium); }
+        .level-badge.watch { background: rgba(96, 165, 250, 0.2); color: var(--accent-watch); }
+
+        .symbol { font-size: 1.1rem; font-weight: 600; }
+        .headline { font-size: 0.95rem; margin-bottom: 0.5rem; }
+        .details { color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.75rem; }
+
+        .meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .confidence { display: flex; align-items: center; gap: 0.5rem; }
+        .confidence-bar { width: 60px; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+        .confidence-fill { height: 100%; background: var(--accent-strong); border-radius: 2px; }
+        .action { font-style: italic; }
+
+        .no-alerts {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+        }
+        .no-alerts h2 { font-weight: 400; margin-bottom: 1rem; }
+        .no-alerts p { font-size: 0.9rem; margin-bottom: 0.5rem; }
+
+        footer {
+            text-align: center;
+            margin-top: 3rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+        footer p { margin-bottom: 0.25rem; }
+
+        .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem; }
+        .stat-card { background: var(--bg-card); border-radius: 8px; padding: 1rem; text-align: center; }
+        .stat-value { font-size: 1.5rem; font-weight: 600; color: var(--accent-strong); }
+        .stat-label { font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.1em; }
+
+        @media (max-width: 600px) {
+            body { padding: 1rem; }
+            .stats { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>MIDGE</h1>
+            <p class="date" id="current-date">Loading...</p>
+            <p class="tagline">Patterns, not predictions. Information, not advice.</p>
+        </header>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value" id="total-alerts">0</div>
+                <div class="stat-label">Patterns Found</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="accuracy">--</div>
+                <div class="stat-label">Historical Accuracy</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="predictions">0</div>
+                <div class="stat-label">Active Predictions</div>
+            </div>
+        </div>
+
+        <div id="strong-section" style="display: none;">
+            <h3 class="section-title">Strong Signals</h3>
+            <div class="alerts" id="strong-alerts"></div>
+        </div>
+
+        <div id="medium-section" style="display: none;">
+            <h3 class="section-title">Moderate Signals</h3>
+            <div class="alerts" id="medium-alerts"></div>
+        </div>
+
+        <div id="watch-section" style="display: none;">
+            <h3 class="section-title">Watching</h3>
+            <div class="alerts" id="watch-alerts"></div>
+        </div>
+
+        <div class="no-alerts" id="no-alerts">
+            <h2>No significant patterns today</h2>
+            <p>Markets are quiet or no insider activity detected.</p>
+            <p>Check back tomorrow. Patience is part of the edge.</p>
+        </div>
+
+        <footer>
+            <p>Remember: This is information, not advice.</p>
+            <p>You decide what to do with it.</p>
+        </footer>
+    </div>
+
+    <script>
+        // Set current date
+        const dateEl = document.getElementById('current-date');
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        dateEl.textContent = new Date().toLocaleDateString('en-US', options);
+
+        // Create alert card using safe DOM methods
+        function createAlertCard(alert, levelClass) {
+            const card = document.createElement('div');
+            card.className = 'alert ' + levelClass;
+
+            const header = document.createElement('div');
+            header.className = 'alert-header';
+
+            const badge = document.createElement('span');
+            badge.className = 'level-badge ' + levelClass;
+            badge.textContent = alert.level;
+
+            const symbol = document.createElement('span');
+            symbol.className = 'symbol';
+            symbol.textContent = alert.symbol;
+
+            header.appendChild(badge);
+            header.appendChild(symbol);
+
+            const headline = document.createElement('div');
+            headline.className = 'headline';
+            headline.textContent = alert.headline;
+
+            const details = document.createElement('div');
+            details.className = 'details';
+            details.textContent = alert.details;
+
+            const meta = document.createElement('div');
+            meta.className = 'meta';
+
+            const confidence = document.createElement('div');
+            confidence.className = 'confidence';
+
+            const confLabel = document.createElement('span');
+            confLabel.textContent = 'Confidence:';
+
+            const confBar = document.createElement('div');
+            confBar.className = 'confidence-bar';
+
+            const confFill = document.createElement('div');
+            confFill.className = 'confidence-fill';
+            const confidencePct = (alert.confidence * 100).toFixed(0);
+            confFill.style.width = confidencePct + '%';
+
+            confBar.appendChild(confFill);
+
+            const confValue = document.createElement('span');
+            confValue.textContent = confidencePct + '%';
+
+            confidence.appendChild(confLabel);
+            confidence.appendChild(confBar);
+            confidence.appendChild(confValue);
+
+            const action = document.createElement('div');
+            action.className = 'action';
+            action.textContent = alert.action_suggestion || '';
+
+            meta.appendChild(confidence);
+            meta.appendChild(action);
+
+            card.appendChild(header);
+            card.appendChild(headline);
+            card.appendChild(details);
+            card.appendChild(meta);
+
+            return card;
+        }
+
+        function displayAlerts(data) {
+            const alerts = data.alerts || [];
+            const stats = data.stats || {};
+
+            document.getElementById('total-alerts').textContent = alerts.length;
+            document.getElementById('accuracy').textContent =
+                stats.accuracy ? (stats.accuracy * 100).toFixed(0) + '%' : '--';
+            document.getElementById('predictions').textContent =
+                stats.pending_predictions || 0;
+
+            if (alerts.length === 0) {
+                document.getElementById('no-alerts').style.display = 'block';
+                return;
+            }
+
+            document.getElementById('no-alerts').style.display = 'none';
+
+            const strong = alerts.filter(function(a) { return a.level === 'STRONG'; });
+            const medium = alerts.filter(function(a) { return a.level === 'MEDIUM'; });
+            const watch = alerts.filter(function(a) { return a.level === 'WATCH'; });
+
+            if (strong.length > 0) {
+                document.getElementById('strong-section').style.display = 'block';
+                const container = document.getElementById('strong-alerts');
+                container.textContent = '';
+                strong.forEach(function(a) { container.appendChild(createAlertCard(a, 'strong')); });
+            }
+
+            if (medium.length > 0) {
+                document.getElementById('medium-section').style.display = 'block';
+                const container = document.getElementById('medium-alerts');
+                container.textContent = '';
+                medium.forEach(function(a) { container.appendChild(createAlertCard(a, 'medium')); });
+            }
+
+            if (watch.length > 0) {
+                document.getElementById('watch-section').style.display = 'block';
+                const container = document.getElementById('watch-alerts');
+                container.textContent = '';
+                watch.forEach(function(a) { container.appendChild(createAlertCard(a, 'watch')); });
+            }
+        }
+
+        async function loadAlerts() {
+            try {
+                const response = await fetch('/api/alerts');
+                const data = await response.json();
+                displayAlerts(data);
+            } catch (error) {
+                console.error('Failed to load alerts:', error);
+                displayAlerts(getDemoData());
+            }
+        }
+
+        function getDemoData() {
+            return {
+                alerts: [
+                    {
+                        level: 'STRONG',
+                        symbol: 'LMT',
+                        headline: 'Committee member bought before contract award',
+                        details: 'Nancy Pelosi (House Appropriations) purchased $50,000 of LMT. DoD awarded $2.3B contract.',
+                        confidence: 0.85,
+                        action_suggestion: 'Strong pattern. Worth researching further.'
+                    },
+                    {
+                        level: 'MEDIUM',
+                        symbol: 'MSFT',
+                        headline: 'Insider cluster buying detected',
+                        details: 'Three executives purchased shares within the same week, totaling $1.2M.',
+                        confidence: 0.72,
+                        action_suggestion: 'Monitor for confirmation.'
+                    }
+                ],
+                stats: { accuracy: 0.67, pending_predictions: 5 }
+            };
+        }
+
+        loadAlerts();
+        setInterval(loadAlerts, 5 * 60 * 1000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,408 @@
+#!/usr/bin/env python3
+"""
+outcome_tracker.py - Record and evaluate prediction outcomes
+
+The feedback loop that enables learning:
+1. Record predictions when made
+2. Check outcomes when due
+3. Calculate accuracy
+4. Feed results to learning loop
+"""
+
+import json
+import requests
+from pathlib import Path
+from datetime import datetime, timedelta
+from dataclasses import dataclass, asdict
+from typing import List, Dict, Optional, Tuple
+
+from trading.storage import PredictionPayload, QDRANT_URL
+
+
+# Local storage for predictions (JSON file backup)
+PREDICTIONS_FILE = Path("C:/Users/baenb/projects/MIDGE/data/predictions.jsonl")
+OUTCOMES_FILE = Path("C:/Users/baenb/projects/MIDGE/data/outcomes.jsonl")
+
+
+@dataclass
+class PredictionOutcome:
+    """Result of evaluating a prediction."""
+    prediction_id: str
+    symbol: str
+    direction: str  # bullish or bearish
+    predicted_confidence: float
+    entry_price: float
+    outcome_price: float
+    was_correct: bool
+    return_pct: float
+    contributing_signals: List[str]
+    predicted_at: str
+    outcome_at: str
+    timeframe: str
+
+
+class OutcomeTracker:
+    """
+    Tracks predictions and their outcomes.
+
+    Flow:
+    1. record_prediction() - Store a new prediction
+    2. check_outcomes() - Periodically check if predictions are due
+    3. record_outcome() - Store the outcome
+    4. get_signal_performance() - Calculate signal reliability
+    """
+
+    def __init__(self, storage_dir: str = None):
+        if storage_dir:
+            self.storage_dir = Path(storage_dir)
+        else:
+            self.storage_dir = Path("C:/Users/baenb/projects/MIDGE/data")
+
+        self.storage_dir.mkdir(parents=True, exist_ok=True)
+        self.predictions_file = self.storage_dir / "predictions.jsonl"
+        self.outcomes_file = self.storage_dir / "outcomes.jsonl"
+
+        # In-memory caches
+        self._predictions: Dict[str, PredictionPayload] = {}
+        self._outcomes: Dict[str, PredictionOutcome] = {}
+
+        # Load existing data
+        self._load_predictions()
+
+    def _load_predictions(self):
+        """Load predictions from disk."""
+        if self.predictions_file.exists():
+            try:
+                for line in self.predictions_file.read_text().strip().split("\n"):
+                    if line:
+                        data = json.loads(line)
+                        pred = PredictionPayload(**data)
+                        self._predictions[pred.prediction_id] = pred
+            except Exception as e:
+                print(f"Error loading predictions: {e}")
+
+        if self.outcomes_file.exists():
+            try:
+                for line in self.outcomes_file.read_text().strip().split("\n"):
+                    if line:
+                        data = json.loads(line)
+                        outcome = PredictionOutcome(**data)
+                        self._outcomes[outcome.prediction_id] = outcome
+            except Exception as e:
+                print(f"Error loading outcomes: {e}")
+
+    def record_prediction(self, prediction: PredictionPayload) -> str:
+        """
+        Record a new prediction.
+
+        Returns prediction_id for tracking.
+        """
+        # Store in memory
+        self._predictions[prediction.prediction_id] = prediction
+
+        # Persist to disk
+        with open(self.predictions_file, "a") as f:
+            f.write(json.dumps(asdict(prediction)) + "\n")
+
+        return prediction.prediction_id
+
+    def get_pending_predictions(self) -> List[PredictionPayload]:
+        """Get predictions that haven't had outcomes recorded yet."""
+        pending = []
+        for pred in self._predictions.values():
+            if not pred.outcome_recorded:
+                pending.append(pred)
+        return pending
+
+    def get_due_predictions(self) -> List[PredictionPayload]:
+        """Get predictions that are due for outcome checking."""
+        now = datetime.now()
+        due = []
+
+        for pred in self._predictions.values():
+            if pred.outcome_recorded:
+                continue
+
+            try:
+                outcome_due = datetime.fromisoformat(pred.outcome_due)
+                if now >= outcome_due:
+                    due.append(pred)
+            except:
+                continue
+
+        return due
+
+    def record_outcome(self,
+                      prediction_id: str,
+                      outcome_price: float,
+                      outcome_date: str = None) -> Optional[PredictionOutcome]:
+        """
+        Record the outcome for a prediction.
+
+        Args:
+            prediction_id: ID of the prediction
+            outcome_price: Actual price at outcome time
+            outcome_date: When the outcome was recorded
+
+        Returns:
+            PredictionOutcome with accuracy calculation
+        """
+        if prediction_id not in self._predictions:
+            print(f"Prediction not found: {prediction_id}")
+            return None
+
+        pred = self._predictions[prediction_id]
+
+        if outcome_date is None:
+            outcome_date = datetime.now().isoformat()
+
+        # Calculate result
+        if pred.entry_price > 0:
+            return_pct = (outcome_price - pred.entry_price) / pred.entry_price * 100
+        else:
+            return_pct = 0.0
+
+        # Determine if prediction was correct
+        if pred.direction == "bullish":
+            was_correct = outcome_price > pred.entry_price
+        elif pred.direction == "bearish":
+            was_correct = outcome_price < pred.entry_price
+        else:
+            was_correct = False
+
+        # Update prediction record
+        pred.outcome_recorded = True
+        pred.outcome_price = outcome_price
+        pred.outcome_date = outcome_date
+        pred.was_correct = was_correct
+        pred.return_pct = return_pct
+
+        # Create outcome record
+        outcome = PredictionOutcome(
+            prediction_id=prediction_id,
+            symbol=pred.symbol,
+            direction=pred.direction,
+            predicted_confidence=pred.confidence,
+            entry_price=pred.entry_price,
+            outcome_price=outcome_price,
+            was_correct=was_correct,
+            return_pct=return_pct,
+            contributing_signals=pred.contributing_signals,
+            predicted_at=pred.predicted_at,
+            outcome_at=outcome_date,
+            timeframe=pred.timeframe
+        )
+
+        self._outcomes[prediction_id] = outcome
+
+        # Persist outcome
+        with open(self.outcomes_file, "a") as f:
+            f.write(json.dumps(asdict(outcome)) + "\n")
+
+        return outcome
+
+    def check_and_record_outcomes(self, price_fetcher=None) -> List[PredictionOutcome]:
+        """
+        Check all due predictions and record outcomes.
+
+        Args:
+            price_fetcher: Function(symbol) -> current_price
+                          If None, outcomes must be recorded manually
+
+        Returns:
+            List of newly recorded outcomes
+        """
+        due = self.get_due_predictions()
+        recorded = []
+
+        for pred in due:
+            if price_fetcher:
+                try:
+                    current_price = price_fetcher(pred.symbol)
+                    outcome = self.record_outcome(pred.prediction_id, current_price)
+                    if outcome:
+                        recorded.append(outcome)
+                except Exception as e:
+                    print(f"Could not fetch price for {pred.symbol}: {e}")
+            else:
+                print(f"Due: {pred.prediction_id} ({pred.symbol}) - needs manual outcome recording")
+
+        return recorded
+
+    def get_signal_performance(self) -> Dict[str, Dict]:
+        """
+        Calculate performance by signal source.
+
+        Returns dict mapping signal_id -> {
+            predictions: int,
+            correct: int,
+            accuracy: float,
+            avg_confidence: float,
+            avg_return: float
+        }
+        """
+        signal_stats: Dict[str, Dict] = {}
+
+        for outcome in self._outcomes.values():
+            for signal_id in outcome.contributing_signals:
+                if signal_id not in signal_stats:
+                    signal_stats[signal_id] = {
+                        "predictions": 0,
+                        "correct": 0,
+                        "total_confidence": 0.0,
+                        "total_return": 0.0
+                    }
+
+                stats = signal_stats[signal_id]
+                stats["predictions"] += 1
+                if outcome.was_correct:
+                    stats["correct"] += 1
+                stats["total_confidence"] += outcome.predicted_confidence
+                stats["total_return"] += outcome.return_pct
+
+        # Calculate averages
+        for signal_id, stats in signal_stats.items():
+            n = stats["predictions"]
+            stats["accuracy"] = stats["correct"] / n if n > 0 else 0
+            stats["avg_confidence"] = stats["total_confidence"] / n if n > 0 else 0
+            stats["avg_return"] = stats["total_return"] / n if n > 0 else 0
+
+        return signal_stats
+
+    def get_overall_stats(self) -> Dict:
+        """Get overall prediction statistics."""
+        total = len(self._outcomes)
+        correct = sum(1 for o in self._outcomes.values() if o.was_correct)
+
+        return {
+            "total_predictions": total,
+            "correct_predictions": correct,
+            "accuracy": correct / total if total > 0 else 0,
+            "pending_predictions": len(self.get_pending_predictions()),
+            "avg_return": (
+                sum(o.return_pct for o in self._outcomes.values()) / total
+                if total > 0 else 0
+            )
+        }
+
+    def get_performance_by_timeframe(self) -> Dict[str, Dict]:
+        """Get accuracy by timeframe."""
+        by_tf: Dict[str, Dict] = {}
+
+        for outcome in self._outcomes.values():
+            tf = outcome.timeframe
+            if tf not in by_tf:
+                by_tf[tf] = {"total": 0, "correct": 0}
+
+            by_tf[tf]["total"] += 1
+            if outcome.was_correct:
+                by_tf[tf]["correct"] += 1
+
+        for tf, stats in by_tf.items():
+            stats["accuracy"] = stats["correct"] / stats["total"] if stats["total"] > 0 else 0
+
+        return by_tf
+
+    def get_performance_by_direction(self) -> Dict[str, Dict]:
+        """Get accuracy by prediction direction (bullish vs bearish)."""
+        by_dir: Dict[str, Dict] = {}
+
+        for outcome in self._outcomes.values():
+            direction = outcome.direction
+            if direction not in by_dir:
+                by_dir[direction] = {"total": 0, "correct": 0, "total_return": 0}
+
+            by_dir[direction]["total"] += 1
+            if outcome.was_correct:
+                by_dir[direction]["correct"] += 1
+            by_dir[direction]["total_return"] += outcome.return_pct
+
+        for d, stats in by_dir.items():
+            stats["accuracy"] = stats["correct"] / stats["total"] if stats["total"] > 0 else 0
+            stats["avg_return"] = stats["total_return"] / stats["total"] if stats["total"] > 0 else 0
+
+        return by_dir
+
+
+def create_prediction(symbol: str,
+                     direction: str,
+                     confidence: float,
+                     entry_price: float,
+                     reasoning: str,
+                     contributing_signals: List[str] = None,
+                     timeframe: str = "1d") -> PredictionPayload:
+    """
+    Convenience function to create a prediction.
+
+    Args:
+        symbol: Stock/crypto symbol
+        direction: "bullish" or "bearish"
+        confidence: 0.0 - 1.0
+        entry_price: Current price
+        reasoning: Why this prediction
+        contributing_signals: List of signal IDs that informed this
+        timeframe: "1h", "4h", "1d", "1w"
+
+    Returns:
+        PredictionPayload ready for tracking
+    """
+    # Calculate outcome_due based on timeframe
+    tf_hours = {"1h": 1, "4h": 4, "1d": 24, "1w": 168}
+    hours = tf_hours.get(timeframe, 24)
+    outcome_due = datetime.now() + timedelta(hours=hours)
+
+    return PredictionPayload(
+        symbol=symbol,
+        direction=direction,
+        confidence=confidence,
+        entry_price=entry_price,
+        reasoning=reasoning,
+        contributing_signals=contributing_signals or [],
+        timeframe=timeframe,
+        outcome_due=outcome_due.isoformat()
+    )
+
+
+if __name__ == "__main__":
+    print("Outcome Tracker - Prediction Feedback System")
+    print("=" * 50)
+
+    tracker = OutcomeTracker()
+
+    # Show current stats
+    stats = tracker.get_overall_stats()
+    print(f"\nCurrent Statistics:")
+    print(f"  Total predictions: {stats['total_predictions']}")
+    print(f"  Correct: {stats['correct_predictions']}")
+    print(f"  Accuracy: {stats['accuracy']:.1%}")
+    print(f"  Pending: {stats['pending_predictions']}")
+
+    # Show due predictions
+    due = tracker.get_due_predictions()
+    if due:
+        print(f"\n{len(due)} predictions due for outcome recording:")
+        for pred in due[:5]:
+            print(f"  - {pred.symbol} ({pred.direction}) - Entry: ${pred.entry_price:.2f}")
+
+    # Example: Create and record a prediction
+    print("\n" + "=" * 50)
+    print("Example: Creating a test prediction")
+
+    pred = create_prediction(
+        symbol="TEST",
+        direction="bullish",
+        confidence=0.75,
+        entry_price=100.0,
+        reasoning="Test prediction for system validation",
+        contributing_signals=["signal_1", "signal_2"],
+        timeframe="1d"
+    )
+
+    pred_id = tracker.record_prediction(pred)
+    print(f"Recorded prediction: {pred_id}")
+
+    # Simulate outcome
+    outcome = tracker.record_outcome(pred_id, outcome_price=105.0)
+    if outcome:
+        print(f"Outcome recorded: {'Correct' if outcome.was_correct else 'Wrong'}")
+        print(f"  Return: {outcome.return_pct:.1f}%")
