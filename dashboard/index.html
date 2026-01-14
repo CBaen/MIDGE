@@ -1,0 +1,1455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultrathink Observatory</title>
+    <style>
+        :root {
+            --bg-deep: #1a1a2e;
+            --bg-card: #242438;
+            --bg-hover: #2d2d44;
+            --bg-darker: #16162a;
+            --text-primary: #e8e8f0;
+            --text-muted: #8888a0;
+            --text-dim: #5a5a70;
+            --swift: #4a9f4a;
+            --council: #4a7f9f;
+            --parliament: #7f4a9f;
+            --success: #4a9f6a;
+            --warning: #9f8f4a;
+            --danger: #c44;
+            --builder: #4a9f4a;
+            --critic: #c44;
+            --seeker: #4a7f9f;
+            --guardian: #7f4a9f;
+            --pragmatist: #9f8f4a;
+            --synthesizer: #fff;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        .observatory {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+
+        /* === Header === */
+        header {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        header h1 {
+            font-size: 1.3rem;
+            font-weight: 300;
+            letter-spacing: 0.2em;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .status-line {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            margin-top: 0.5rem;
+        }
+
+        .pulse {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            background: var(--success);
+            border-radius: 50%;
+            margin-right: 0.5rem;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
+
+        /* === Tab Navigation === */
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .tab {
+            padding: 0.6rem 1.2rem;
+            background: var(--bg-card);
+            border: none;
+            border-radius: 8px;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tab:hover { background: var(--bg-hover); color: var(--text-primary); }
+        .tab.active { background: var(--bg-hover); color: var(--text-primary); border-bottom: 2px solid var(--success); }
+
+        /* === Government Cards === */
+        .governments {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+            gap: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .gov-card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .gov-header {
+            padding: 1rem 1.25rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .gov-name {
+            font-size: 0.85rem;
+            font-weight: 500;
+            letter-spacing: 0.1em;
+        }
+
+        .gov-name.swift { color: var(--swift); }
+        .gov-name.council { color: var(--council); }
+        .gov-name.parliament { color: var(--parliament); }
+
+        .gov-cycles {
+            font-size: 1.6rem;
+            font-weight: 200;
+        }
+
+        .gov-metrics {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.5rem;
+            padding: 1rem 1.25rem;
+        }
+
+        .metric {
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 1.1rem;
+            font-weight: 300;
+        }
+
+        .metric-label {
+            font-size: 0.6rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* === Agent Roster in Cards === */
+        .gov-roster {
+            padding: 0 1.25rem 1rem;
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .agent-chip {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.35rem 0.6rem;
+            background: var(--bg-hover);
+            border-radius: 20px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .agent-chip:hover {
+            border-color: rgba(255,255,255,0.2);
+        }
+
+        .agent-chip .emoji { font-size: 0.8rem; }
+        .agent-chip.builder { border-left: 2px solid var(--builder); }
+        .agent-chip.critic { border-left: 2px solid var(--critic); }
+        .agent-chip.seeker { border-left: 2px solid var(--seeker); }
+        .agent-chip.guardian { border-left: 2px solid var(--guardian); }
+        .agent-chip.pragmatist { border-left: 2px solid var(--pragmatist); }
+        .agent-chip.synthesizer { border-left: 2px solid var(--synthesizer); }
+
+        /* === Agent Profiles Panel === */
+        .agents-panel {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .agents-panel h2 {
+            font-size: 0.75rem;
+            font-weight: 400;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            margin-bottom: 1rem;
+        }
+
+        .agents-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .agent-profile {
+            background: var(--bg-darker);
+            border-radius: 10px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .agent-profile:hover {
+            border-color: rgba(255,255,255,0.1);
+            transform: translateY(-2px);
+        }
+
+        .agent-profile.expanded {
+            grid-column: span 2;
+        }
+
+        .agent-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .agent-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .agent-avatar.builder { background: rgba(74,159,74,0.2); }
+        .agent-avatar.critic { background: rgba(204,68,68,0.2); }
+        .agent-avatar.seeker { background: rgba(74,127,159,0.2); }
+        .agent-avatar.guardian { background: rgba(127,74,159,0.2); }
+        .agent-avatar.pragmatist { background: rgba(159,143,74,0.2); }
+        .agent-avatar.synthesizer { background: rgba(255,255,255,0.1); }
+
+        .agent-name {
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
+        .agent-role {
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .agent-quote {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-style: italic;
+            margin-bottom: 0.75rem;
+            padding-left: 0.5rem;
+            border-left: 2px solid rgba(255,255,255,0.1);
+        }
+
+        .agent-stats {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.7rem;
+        }
+
+        .agent-stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .agent-stat-value {
+            font-size: 1rem;
+            font-weight: 300;
+        }
+
+        .agent-stat-label {
+            color: var(--text-dim);
+            font-size: 0.6rem;
+            text-transform: uppercase;
+        }
+
+        .agent-stat.approve .agent-stat-value { color: var(--success); }
+        .agent-stat.object .agent-stat-value { color: var(--warning); }
+
+        /* === Timeline === */
+        .timeline-panel {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .timeline-panel h2 {
+            font-size: 0.75rem;
+            font-weight: 400;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .timeline-filter {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .filter-btn {
+            padding: 0.25rem 0.5rem;
+            background: var(--bg-hover);
+            border: none;
+            border-radius: 4px;
+            color: var(--text-dim);
+            font-size: 0.6rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover, .filter-btn.active {
+            color: var(--text-primary);
+        }
+
+        .filter-btn.swift.active { border-bottom: 2px solid var(--swift); }
+        .filter-btn.council.active { border-bottom: 2px solid var(--council); }
+        .filter-btn.parliament.active { border-bottom: 2px solid var(--parliament); }
+
+        .timeline {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .timeline::-webkit-scrollbar { width: 4px; }
+        .timeline::-webkit-scrollbar-track { background: transparent; }
+        .timeline::-webkit-scrollbar-thumb { background: var(--text-dim); border-radius: 2px; }
+
+        .cycle-entry {
+            background: var(--bg-darker);
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+            overflow: hidden;
+        }
+
+        .cycle-header {
+            padding: 0.75rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .cycle-header:hover {
+            background: var(--bg-hover);
+        }
+
+        .cycle-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .cycle-num {
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .cycle-variant {
+            font-size: 0.6rem;
+            padding: 0.15rem 0.4rem;
+            border-radius: 3px;
+        }
+
+        .cycle-variant.swift { background: rgba(74,159,74,0.2); color: var(--swift); }
+        .cycle-variant.council { background: rgba(74,127,159,0.2); color: var(--council); }
+        .cycle-variant.parliament { background: rgba(127,74,159,0.2); color: var(--parliament); }
+
+        .cycle-summary {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            flex: 1;
+            margin-left: 1rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .cycle-outcome {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .cycle-outcome .success { color: var(--success); }
+        .cycle-outcome .failed { color: var(--danger); }
+        .cycle-outcome .override { color: var(--danger); font-weight: 600; }
+
+        .expand-arrow {
+            color: var(--text-dim);
+            transition: transform 0.2s;
+        }
+
+        .cycle-entry.open .expand-arrow {
+            transform: rotate(180deg);
+        }
+
+        .cycle-detail {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .cycle-entry.open .cycle-detail {
+            max-height: 600px;
+        }
+
+        .cycle-detail-inner {
+            padding: 1rem;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .cycle-question {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+            padding: 0.5rem;
+            background: rgba(0,0,0,0.2);
+            border-radius: 4px;
+        }
+
+        .cycle-question strong {
+            color: var(--text-dim);
+            font-weight: 400;
+            text-transform: uppercase;
+            font-size: 0.6rem;
+            letter-spacing: 0.1em;
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+
+        .cycle-agents {
+            margin-bottom: 1rem;
+        }
+
+        .cycle-agents h4 {
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.5rem;
+        }
+
+        .agent-speech {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+            background: rgba(0,0,0,0.15);
+        }
+
+        .agent-speech .speaker {
+            font-size: 0.7rem;
+            font-weight: 500;
+            min-width: 60px;
+        }
+
+        .agent-speech .speech {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            flex: 1;
+        }
+
+        .agent-speech .vote-badge {
+            font-size: 0.6rem;
+            padding: 0.15rem 0.4rem;
+            border-radius: 3px;
+            text-transform: uppercase;
+        }
+
+        .vote-badge.approve { background: rgba(74,159,106,0.2); color: var(--success); }
+        .vote-badge.object { background: rgba(159,143,74,0.2); color: var(--warning); }
+
+        .cycle-proposal {
+            padding: 0.75rem;
+            background: rgba(0,0,0,0.2);
+            border-radius: 6px;
+            margin-bottom: 1rem;
+        }
+
+        .cycle-proposal h4 {
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.5rem;
+        }
+
+        .cycle-proposal .decision {
+            font-size: 0.8rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .cycle-proposal .target {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        .cycle-votes {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        .vote-chip {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.3rem 0.5rem;
+            background: var(--bg-card);
+            border-radius: 4px;
+            font-size: 0.7rem;
+        }
+
+        .vote-chip .icon { font-size: 0.8rem; }
+
+        /* === Relationships Matrix === */
+        .relationships-panel {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .relationships-panel h2 {
+            font-size: 0.75rem;
+            font-weight: 400;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            margin-bottom: 1rem;
+        }
+
+        .matrix-container {
+            overflow-x: auto;
+        }
+
+        .matrix {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 0.7rem;
+        }
+
+        .matrix th, .matrix td {
+            padding: 0.5rem;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .matrix th {
+            background: var(--bg-darker);
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        .matrix td {
+            background: var(--bg-darker);
+        }
+
+        .matrix .self {
+            background: rgba(255,255,255,0.05);
+            color: var(--text-dim);
+        }
+
+        .matrix .high { background: rgba(74,159,106,0.3); color: var(--success); }
+        .matrix .medium { background: rgba(159,143,74,0.2); color: var(--text-muted); }
+        .matrix .low { background: rgba(204,68,68,0.2); color: var(--danger); }
+
+        /* === Cost Tracker === */
+        .cost-tracker {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .cost-tracker h2 {
+            font-size: 0.75rem;
+            font-weight: 400;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            margin-bottom: 1rem;
+        }
+
+        .cost-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .cost-card {
+            background: var(--bg-darker);
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .cost-card.total {
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .cost-label {
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.5rem;
+        }
+
+        .cost-value {
+            font-size: 1.4rem;
+            font-weight: 300;
+            color: var(--success);
+        }
+
+        .cost-value.total {
+            font-size: 1.8rem;
+            color: var(--text-primary);
+        }
+
+        .cost-detail {
+            font-size: 0.6rem;
+            color: var(--text-dim);
+            margin-top: 0.3rem;
+        }
+
+        .cost-card.swift .cost-value { color: var(--swift); }
+        .cost-card.council .cost-value { color: var(--council); }
+        .cost-card.parliament .cost-value { color: var(--parliament); }
+
+        /* === Stories Panel === */
+        .stories-panel {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1.25rem;
+        }
+
+        .stories-panel h2 {
+            font-size: 0.75rem;
+            font-weight: 400;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .episode-summary {
+            background: var(--bg-darker);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.8rem;
+            line-height: 1.6;
+            color: var(--text-muted);
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .episode-summary:empty {
+            display: none;
+        }
+
+        .stories-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .story-card {
+            background: var(--bg-darker);
+            border-radius: 10px;
+            overflow: hidden;
+            border-left: 3px solid var(--text-dim);
+        }
+
+        .story-card.swift { border-left-color: var(--swift); }
+        .story-card.council { border-left-color: var(--council); }
+        .story-card.parliament { border-left-color: var(--parliament); }
+
+        .story-header {
+            padding: 0.75rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0,0,0,0.2);
+            cursor: pointer;
+        }
+
+        .story-header:hover {
+            background: rgba(0,0,0,0.3);
+        }
+
+        .story-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .story-cycle {
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .story-variant {
+            font-size: 0.6rem;
+            padding: 0.15rem 0.4rem;
+            border-radius: 3px;
+        }
+
+        .story-variant.swift { background: rgba(74,159,74,0.2); color: var(--swift); }
+        .story-variant.council { background: rgba(74,127,159,0.2); color: var(--council); }
+        .story-variant.parliament { background: rgba(127,74,159,0.2); color: var(--parliament); }
+
+        .story-brief {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .story-expand {
+            color: var(--text-dim);
+            transition: transform 0.2s;
+        }
+
+        .story-card.open .story-expand {
+            transform: rotate(180deg);
+        }
+
+        .story-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .story-card.open .story-content {
+            max-height: 800px;
+        }
+
+        .story-narrative {
+            padding: 1rem;
+            font-size: 0.85rem;
+            line-height: 1.7;
+            color: var(--text-primary);
+        }
+
+        .story-vote-drama {
+            padding: 0 1rem 1rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        .story-moments {
+            padding: 0 1rem 1rem;
+        }
+
+        .story-moments h4 {
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.5rem;
+        }
+
+        .agent-moment {
+            padding: 0.5rem 0.75rem;
+            background: rgba(0,0,0,0.15);
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            border-left: 2px solid var(--text-dim);
+        }
+
+        .agent-moment.builder { border-left-color: var(--builder); }
+        .agent-moment.critic { border-left-color: var(--critic); }
+        .agent-moment.seeker { border-left-color: var(--seeker); }
+        .agent-moment.guardian { border-left-color: var(--guardian); }
+        .agent-moment.pragmatist { border-left-color: var(--pragmatist); }
+        .agent-moment.synthesizer { border-left-color: var(--synthesizer); }
+
+        /* === Loading & Empty States === */
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-dim);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-dim);
+            font-size: 0.8rem;
+        }
+
+        .hidden { display: none; }
+
+        /* === Responsive === */
+        @media (max-width: 768px) {
+            .observatory { padding: 1rem; }
+            .governments { grid-template-columns: 1fr; }
+            .agents-grid { grid-template-columns: 1fr; }
+            .agent-profile.expanded { grid-column: span 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="observatory">
+        <header>
+            <h1>Ultrathink Observatory</h1>
+            <div class="status-line">
+                <span class="pulse"></span>
+                <span id="update-status">Connecting...</span>
+            </div>
+        </header>
+
+        <div class="tabs">
+            <button class="tab active" data-tab="overview">Overview</button>
+            <button class="tab" data-tab="agents">Agents</button>
+            <button class="tab" data-tab="timeline">Timeline</button>
+            <button class="tab" data-tab="stories">Stories</button>
+            <button class="tab" data-tab="relationships">Relationships</button>
+        </div>
+
+        <div id="loading" class="loading">Observing the evolution...</div>
+
+        <div id="content" class="hidden">
+            <!-- Overview Tab -->
+            <div id="tab-overview" class="tab-content">
+                <div class="governments" id="governments-container"></div>
+
+                <!-- Cost Tracker -->
+                <div class="cost-tracker">
+                    <h2>Cost Tracker (DeepSeek API)</h2>
+                    <div class="cost-grid" id="cost-grid"></div>
+                </div>
+            </div>
+
+            <!-- Agents Tab -->
+            <div id="tab-agents" class="tab-content hidden">
+                <div class="agents-panel">
+                    <h2>The Cast</h2>
+                    <div class="agents-grid" id="agents-grid"></div>
+                </div>
+            </div>
+
+            <!-- Timeline Tab -->
+            <div id="tab-timeline" class="tab-content hidden">
+                <div class="timeline-panel">
+                    <h2>
+                        <span>Chronicles</span>
+                        <div class="timeline-filter">
+                            <button class="filter-btn active" data-filter="all">All</button>
+                            <button class="filter-btn swift" data-filter="simple">Swift</button>
+                            <button class="filter-btn council" data-filter="review">Council</button>
+                            <button class="filter-btn parliament" data-filter="consensus">Parliament</button>
+                        </div>
+                    </h2>
+                    <div class="timeline" id="timeline"></div>
+                </div>
+            </div>
+
+            <!-- Stories Tab -->
+            <div id="tab-stories" class="tab-content hidden">
+                <div class="stories-panel">
+                    <h2>
+                        <span>The Documentary</span>
+                        <div class="timeline-filter">
+                            <button class="filter-btn story-filter active" data-filter="all">All</button>
+                            <button class="filter-btn story-filter swift" data-filter="simple">Swift</button>
+                            <button class="filter-btn story-filter council" data-filter="review">Council</button>
+                            <button class="filter-btn story-filter parliament" data-filter="consensus">Parliament</button>
+                        </div>
+                    </h2>
+                    <div class="episode-summary" id="episode-summary"></div>
+                    <div class="stories-container" id="stories-container"></div>
+                </div>
+            </div>
+
+            <!-- Relationships Tab -->
+            <div id="tab-relationships" class="tab-content hidden">
+                <div class="relationships-panel">
+                    <h2>Agreement Matrix</h2>
+                    <p style="font-size: 0.7rem; color: var(--text-dim); margin-bottom: 1rem;">
+                        How often do agents vote the same way? (Parliament data only)
+                    </p>
+                    <div class="matrix-container" id="matrix-container"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // === State ===
+        let metricsData = {};
+        let agentsData = {};
+        let cyclesData = [];
+        let relationshipsData = {};
+        let storiesData = [];
+        let episodeSummary = '';
+        let currentTab = 'overview';
+        let timelineFilter = 'all';
+        let storiesFilter = 'all';
+        let openCycles = {};
+        let expandedAgents = {};
+        let openStories = {};
+
+        // === Agent Config ===
+        const agentConfig = {
+            builder: { name: 'Marcus', role: 'The Builder', emoji: '🔨', color: 'builder', quote: 'How do we actually build this?' },
+            critic: { name: 'Elena', role: 'The Critic', emoji: '🔍', color: 'critic', quote: 'What could go wrong?' },
+            seeker: { name: 'Quinn', role: 'The Seeker', emoji: '🧭', color: 'seeker', quote: 'What else is possible?' },
+            guardian: { name: 'Gideon', role: 'The Guardian', emoji: '🛡️', color: 'guardian', quote: 'Is this safe and ethical?' },
+            pragmatist: { name: 'Petra', role: 'The Pragmatist', emoji: '⚖️', color: 'pragmatist', quote: 'Is this worth doing?' },
+            synthesizer: { name: 'Sophia', role: 'The Synthesizer', emoji: '✨', color: 'synthesizer', quote: 'Let me weigh all perspectives.' }
+        };
+
+        const variantConfig = {
+            simple: { name: 'THE SWIFT PATH', class: 'swift', agents: ['builder', 'critic', 'seeker', 'synthesizer'] },
+            review: { name: 'THE COUNCIL', class: 'council', agents: ['builder', 'critic', 'seeker', 'synthesizer'] },
+            consensus: { name: 'THE PARLIAMENT', class: 'parliament', agents: ['builder', 'critic', 'seeker', 'guardian', 'pragmatist', 'synthesizer'] }
+        };
+
+        // === API Functions ===
+        async function fetchMetrics() {
+            try {
+                const res = await fetch('/api/metrics');
+                metricsData = await res.json();
+                return true;
+            } catch (e) {
+                console.error('Metrics fetch failed:', e);
+                return false;
+            }
+        }
+
+        async function fetchAgents() {
+            try {
+                const res = await fetch('/api/agents');
+                agentsData = await res.json();
+            } catch (e) {
+                console.error('Agents fetch failed:', e);
+            }
+        }
+
+        async function fetchCycles(variant = null, limit = 50) {
+            try {
+                let url = `/api/cycles?limit=${limit}`;
+                if (variant && variant !== 'all') url += `&variant=${variant}`;
+                const res = await fetch(url);
+                const data = await res.json();
+                cyclesData = data.cycles || [];
+            } catch (e) {
+                console.error('Cycles fetch failed:', e);
+            }
+        }
+
+        async function fetchRelationships() {
+            try {
+                const res = await fetch('/api/relationships?variant=consensus');
+                relationshipsData = await res.json();
+            } catch (e) {
+                console.error('Relationships fetch failed:', e);
+            }
+        }
+
+        async function fetchStories(variant = null, limit = 20) {
+            try {
+                let url = `/api/stories?limit=${limit}`;
+                if (variant && variant !== 'all') url += `&variant=${variant}`;
+                const res = await fetch(url);
+                const data = await res.json();
+                storiesData = data.stories || [];
+                episodeSummary = data.episode_summary || '';
+            } catch (e) {
+                console.error('Stories fetch failed:', e);
+            }
+        }
+
+        // === Render Functions ===
+        function renderGovernments() {
+            const container = document.getElementById('governments-container');
+            let html = '';
+
+            for (const [key, config] of Object.entries(variantConfig)) {
+                const data = metricsData[key] || {};
+                const cycles = data.cycles_completed || 0;
+                const modified = data.files_modified || 0;
+                const created = data.files_created || 0;
+                const passes = data.verification_passes || 0;
+                const fails = data.verification_fails || 0;
+                const passRate = passes + fails > 0 ? Math.round(passes / (passes + fails) * 100) : 100;
+
+                // Parliament extras
+                const approves = data.votes_approve_total || 0;
+                const objects = data.votes_object_total || 0;
+                const overrides = data.overrides_total || 0;
+
+                html += `
+                    <div class="gov-card">
+                        <div class="gov-header">
+                            <span class="gov-name ${config.class}">${config.name}</span>
+                            <span class="gov-cycles">${cycles}</span>
+                        </div>
+                        <div class="gov-metrics">
+                            <div class="metric">
+                                <div class="metric-value">${modified}</div>
+                                <div class="metric-label">Modified</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-value">${created}</div>
+                                <div class="metric-label">Created</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-value">${passRate}%</div>
+                                <div class="metric-label">Pass Rate</div>
+                            </div>
+                            ${key === 'consensus' ? `
+                            <div class="metric">
+                                <div class="metric-value" style="color: ${overrides > 0 ? 'var(--danger)' : 'var(--text-muted)'}">${overrides}</div>
+                                <div class="metric-label">Overrides</div>
+                            </div>
+                            ` : `
+                            <div class="metric">
+                                <div class="metric-value">${data.total_api_calls || 0}</div>
+                                <div class="metric-label">API Calls</div>
+                            </div>
+                            `}
+                        </div>
+                        <div class="gov-roster">
+                            ${config.agents.map(a => {
+                                const agent = agentConfig[a];
+                                return `<span class="agent-chip ${a}" onclick="showAgentDetail('${a}')">
+                                    <span class="emoji">${agent.emoji}</span>
+                                    <span>${agent.name}</span>
+                                </span>`;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = html;
+        }
+
+        function renderCosts() {
+            const container = document.getElementById('cost-grid');
+
+            // DeepSeek pricing: ~$0.00035 per API call (average estimate)
+            const COST_PER_CALL = 0.00035;
+
+            const costs = {};
+            let totalCalls = 0;
+            let totalCost = 0;
+
+            // Calculate per-government costs
+            for (const [key, config] of Object.entries(variantConfig)) {
+                const data = metricsData[key] || {};
+                const calls = data.total_api_calls || 0;
+                const cycles = data.cycles_completed || 0;
+                const cost = calls * COST_PER_CALL;
+
+                costs[key] = {
+                    name: config.name,
+                    class: config.class,
+                    calls: calls,
+                    cycles: cycles,
+                    cost: cost,
+                    costPerCycle: cycles > 0 ? cost / cycles : 0
+                };
+
+                totalCalls += calls;
+                totalCost += cost;
+            }
+
+            let html = '';
+
+            // Per-government cards
+            for (const [key, data] of Object.entries(costs)) {
+                html += `
+                    <div class="cost-card ${data.class}">
+                        <div class="cost-label">${data.name}</div>
+                        <div class="cost-value">$${data.cost.toFixed(2)}</div>
+                        <div class="cost-detail">${data.calls.toLocaleString()} calls | $${(data.costPerCycle * 100).toFixed(2)}¢/cycle</div>
+                    </div>
+                `;
+            }
+
+            // Total card
+            html += `
+                <div class="cost-card total">
+                    <div class="cost-label">Total All Governments</div>
+                    <div class="cost-value total">$${totalCost.toFixed(2)}</div>
+                    <div class="cost-detail">${totalCalls.toLocaleString()} total API calls</div>
+                </div>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        function renderAgents() {
+            const grid = document.getElementById('agents-grid');
+            let html = '';
+
+            for (const [key, config] of Object.entries(agentConfig)) {
+                const expanded = expandedAgents[key];
+                const stats = agentsData.agents?.find(a => a.key === key) || {};
+
+                html += `
+                    <div class="agent-profile ${expanded ? 'expanded' : ''}" onclick="toggleAgentExpand('${key}')">
+                        <div class="agent-header">
+                            <div class="agent-avatar ${key}">${config.emoji}</div>
+                            <div>
+                                <div class="agent-name">${config.name}</div>
+                                <div class="agent-role">${config.role}</div>
+                            </div>
+                        </div>
+                        <div class="agent-quote">"${config.quote}"</div>
+                        <div class="agent-stats">
+                            <div class="agent-stat">
+                                <div class="agent-stat-value">${stats.total_cycles || 0}</div>
+                                <div class="agent-stat-label">Cycles</div>
+                            </div>
+                            <div class="agent-stat approve">
+                                <div class="agent-stat-value">${stats.approve_rate ? Math.round(stats.approve_rate * 100) : '-'}%</div>
+                                <div class="agent-stat-label">Approve</div>
+                            </div>
+                            <div class="agent-stat object">
+                                <div class="agent-stat-value">${stats.object_rate ? Math.round(stats.object_rate * 100) : '-'}%</div>
+                                <div class="agent-stat-label">Object</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            grid.innerHTML = html;
+        }
+
+        function renderTimeline() {
+            const container = document.getElementById('timeline');
+
+            if (cyclesData.length === 0) {
+                container.innerHTML = '<div class="empty-state">No cycles recorded yet. The governments are still deliberating...</div>';
+                return;
+            }
+
+            let html = '';
+            for (const cycle of cyclesData) {
+                const isOpen = openCycles[cycle.cycle_id];
+                const variantClass = cycle.variant === 'simple' ? 'swift' : cycle.variant === 'review' ? 'council' : 'parliament';
+
+                html += `
+                    <div class="cycle-entry ${isOpen ? 'open' : ''}" data-cycle="${cycle.cycle_id}">
+                        <div class="cycle-header" onclick="toggleCycle('${cycle.cycle_id}')">
+                            <div class="cycle-title">
+                                <span class="cycle-num">Cycle ${cycle.cycle_num}</span>
+                                <span class="cycle-variant ${variantClass}">${variantConfig[cycle.variant]?.name || cycle.variant}</span>
+                            </div>
+                            <div class="cycle-summary">${escapeHtml(cycle.proposal || 'Deliberating...')}</div>
+                            <div class="cycle-outcome">
+                                ${cycle.override ? '<span class="override">OVERRIDE</span>' : ''}
+                                ${cycle.success ? '<span class="success">✓</span>' : '<span class="failed">✗</span>'}
+                                <span class="expand-arrow">▼</span>
+                            </div>
+                        </div>
+                        <div class="cycle-detail">
+                            <div class="cycle-detail-inner" id="cycle-detail-${cycle.cycle_id}">
+                                ${isOpen ? renderCycleDetail(cycle) : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = html;
+        }
+
+        function renderCycleDetail(cycle) {
+            let html = '';
+
+            // Question
+            if (cycle.question) {
+                html += `
+                    <div class="cycle-question">
+                        <strong>Question</strong>
+                        ${escapeHtml(cycle.question)}
+                    </div>
+                `;
+            }
+
+            // Proposal
+            if (cycle.proposal) {
+                html += `
+                    <div class="cycle-proposal">
+                        <h4>Sophia's Proposal</h4>
+                        <div class="decision">${escapeHtml(cycle.proposal)}</div>
+                        ${cycle.target_file ? `<div class="target">Target: ${escapeHtml(cycle.target_file)} (${cycle.action || 'MODIFY'})</div>` : ''}
+                    </div>
+                `;
+            }
+
+            // Tally
+            if (cycle.tally && (cycle.tally.approve > 0 || cycle.tally.object > 0)) {
+                html += `
+                    <div class="cycle-votes">
+                        <span style="font-size: 0.7rem; color: var(--text-dim);">Votes:</span>
+                        <span class="vote-chip" style="color: var(--success);">${cycle.tally.approve || 0} Approve</span>
+                        <span class="vote-chip" style="color: var(--warning);">${cycle.tally.object || 0} Object</span>
+                        ${cycle.override ? '<span class="vote-chip" style="color: var(--danger); font-weight: 600;">SYNTHESIZER OVERRIDE</span>' : ''}
+                    </div>
+                `;
+            }
+
+            return html || '<div class="empty-state">Loading details...</div>';
+        }
+
+        function renderRelationships() {
+            const container = document.getElementById('matrix-container');
+
+            if (!relationshipsData.matrix || Object.keys(relationshipsData.matrix).length === 0) {
+                container.innerHTML = '<div class="empty-state">Not enough voting data yet. Run more Parliament cycles to see relationships emerge.</div>';
+                return;
+            }
+
+            const agents = ['builder', 'critic', 'seeker', 'guardian', 'pragmatist'];
+            let html = '<table class="matrix"><thead><tr><th></th>';
+
+            // Header row
+            for (const a of agents) {
+                html += `<th>${agentConfig[a].name}</th>`;
+            }
+            html += '</tr></thead><tbody>';
+
+            // Data rows
+            for (const a of agents) {
+                html += `<tr><th>${agentConfig[a].name}</th>`;
+                for (const b of agents) {
+                    if (a === b) {
+                        html += '<td class="self">-</td>';
+                    } else {
+                        const agreement = relationshipsData.matrix[a]?.[b]?.agreement || 0.5;
+                        const percent = Math.round(agreement * 100);
+                        const cls = percent >= 70 ? 'high' : percent >= 40 ? 'medium' : 'low';
+                        html += `<td class="${cls}">${percent}%</td>`;
+                    }
+                }
+                html += '</tr>';
+            }
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        function renderStories() {
+            const container = document.getElementById('stories-container');
+            const summaryEl = document.getElementById('episode-summary');
+
+            // Episode summary
+            if (episodeSummary) {
+                summaryEl.textContent = episodeSummary;
+            } else {
+                summaryEl.textContent = '';
+            }
+
+            if (storiesData.length === 0) {
+                container.innerHTML = '<div class="empty-state">No stories yet. The governments are still writing their history...</div>';
+                return;
+            }
+
+            let html = '';
+            for (const story of storiesData) {
+                const isOpen = openStories[story.cycle_id];
+                const variantClass = story.variant === 'simple' ? 'swift' : story.variant === 'review' ? 'council' : 'parliament';
+
+                html += `
+                    <div class="story-card ${variantClass} ${isOpen ? 'open' : ''}" data-story="${story.cycle_id}">
+                        <div class="story-header" onclick="toggleStory('${story.cycle_id}')">
+                            <div class="story-meta">
+                                <span class="story-cycle">Cycle ${story.cycle_num}</span>
+                                <span class="story-variant ${variantClass}">${variantConfig[story.variant]?.name || story.variant}</span>
+                            </div>
+                            <div class="story-brief">${escapeHtml(story.brief || '')}</div>
+                            <span class="story-expand">▼</span>
+                        </div>
+                        <div class="story-content">
+                            <div class="story-narrative">${escapeHtml(story.narrative || '')}</div>
+                            ${story.vote_drama ? `<div class="story-vote-drama">${escapeHtml(story.vote_drama)}</div>` : ''}
+                            ${story.agent_moments && story.agent_moments.length > 0 ? `
+                                <div class="story-moments">
+                                    <h4>Agent Perspectives</h4>
+                                    ${story.agent_moments.map(m => `
+                                        <div class="agent-moment ${m.agent}">${escapeHtml(m.moment)}</div>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = html;
+        }
+
+        // === Event Handlers ===
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`.tab[data-tab="${tab}"]`).classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+            document.getElementById(`tab-${tab}`).classList.remove('hidden');
+
+            // Load data for specific tabs
+            if (tab === 'timeline' && cyclesData.length === 0) {
+                fetchCycles().then(renderTimeline);
+            }
+            if (tab === 'stories' && storiesData.length === 0) {
+                fetchStories().then(renderStories);
+            }
+            if (tab === 'relationships' && Object.keys(relationshipsData).length === 0) {
+                fetchRelationships().then(renderRelationships);
+            }
+        }
+
+        function toggleCycle(cycleId) {
+            openCycles[cycleId] = !openCycles[cycleId];
+            renderTimeline();
+        }
+
+        function toggleAgentExpand(key) {
+            expandedAgents[key] = !expandedAgents[key];
+            renderAgents();
+        }
+
+        function setTimelineFilter(filter) {
+            timelineFilter = filter;
+            document.querySelectorAll('.timeline-filter .filter-btn:not(.story-filter)').forEach(b => b.classList.remove('active'));
+            document.querySelector(`.timeline-filter .filter-btn[data-filter="${filter}"]:not(.story-filter)`).classList.add('active');
+            fetchCycles(filter === 'all' ? null : filter).then(renderTimeline);
+        }
+
+        function toggleStory(storyId) {
+            openStories[storyId] = !openStories[storyId];
+            renderStories();
+        }
+
+        function setStoriesFilter(filter) {
+            storiesFilter = filter;
+            document.querySelectorAll('.story-filter').forEach(b => b.classList.remove('active'));
+            document.querySelector(`.story-filter[data-filter="${filter}"]`).classList.add('active');
+            fetchStories(filter === 'all' ? null : filter).then(renderStories);
+        }
+
+        function showAgentDetail(key) {
+            switchTab('agents');
+            expandedAgents[key] = true;
+            renderAgents();
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // === Render All ===
+        function render() {
+            renderGovernments();
+            renderCosts();
+            renderAgents();
+            if (currentTab === 'timeline') renderTimeline();
+            if (currentTab === 'stories') renderStories();
+            if (currentTab === 'relationships') renderRelationships();
+        }
+
+        // === Update Cycle ===
+        async function update() {
+            const success = await fetchMetrics();
+            await fetchAgents();
+
+            if (success) {
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('content').classList.remove('hidden');
+                render();
+
+                const now = new Date().toLocaleTimeString();
+                document.getElementById('update-status').textContent = `Last update: ${now}`;
+            }
+        }
+
+        // === Init ===
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+        });
+
+        document.querySelectorAll('.filter-btn:not(.story-filter)').forEach(btn => {
+            btn.addEventListener('click', () => setTimelineFilter(btn.dataset.filter));
+        });
+
+        document.querySelectorAll('.story-filter').forEach(btn => {
+            btn.addEventListener('click', () => setStoriesFilter(btn.dataset.filter));
+        });
+
+        update();
+        setInterval(update, 5000);
+    </script>
+</body>
+</html>
