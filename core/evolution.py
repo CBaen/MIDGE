@@ -20,6 +20,7 @@ This is the brain that learns from itself.
 import json
 import sys
 import time
+import subprocess
 from pathlib import Path
 from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict
@@ -28,6 +29,9 @@ from typing import List, Dict, Optional
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
+
+# Gemini script location
+GEMINI_SCRIPT = Path.home() / ".claude" / "scripts" / "gemini-account.sh"
 
 # MIDGE components
 from trading.edge.politician_tracker import PoliticianTracker
@@ -115,6 +119,43 @@ class MIDGEEvolution:
         """Log with timestamp."""
         timestamp = datetime.now().strftime("%H:%M:%S")
         print(f"[{timestamp}] [{level}] {message}")
+
+    def _query_gemini(self, prompt: str, account: int = 1) -> Optional[str]:
+        """
+        Query Gemini using the lineage wrapper script.
+
+        Args:
+            prompt: The question/prompt to send
+            account: Which Gemini account to use (1 or 2)
+
+        Returns:
+            Gemini's response or None if failed
+        """
+        if not GEMINI_SCRIPT.exists():
+            self._log("Gemini script not found", "WARN")
+            return None
+
+        try:
+            result = subprocess.run(
+                ["bash", str(GEMINI_SCRIPT), str(account), prompt],
+                capture_output=True,
+                text=True,
+                timeout=120,
+                cwd=str(Path.home())
+            )
+
+            if result.returncode == 0:
+                return result.stdout.strip()
+            else:
+                self._log(f"Gemini error: {result.stderr[:200]}", "WARN")
+                return None
+
+        except subprocess.TimeoutExpired:
+            self._log("Gemini query timed out", "WARN")
+            return None
+        except Exception as e:
+            self._log(f"Gemini query failed: {e}", "WARN")
+            return None
 
     # =========================================================================
     # PHASE 1: GATHER
@@ -323,12 +364,15 @@ class MIDGEEvolution:
     # PHASE 6: RESEARCH (Emergence pattern)
     # =========================================================================
 
-    def research_improvements(self) -> Dict:
+    def research_improvements(self, use_gemini: bool = True) -> Dict:
         """
         Analyze what's working and what's not.
-        Generate research questions for improvement.
+        Generate research questions and optionally query Gemini for answers.
 
         This is the Emergence "introspect + research" pattern.
+
+        Args:
+            use_gemini: Whether to query Gemini for answers (default True)
         """
         self._log("RESEARCH: Analyzing performance...")
 
@@ -343,6 +387,7 @@ class MIDGEEvolution:
             "best_signals": [],
             "worst_signals": [],
             "questions": [],
+            "answers": [],
             "recommendations": []
         }
 
@@ -388,7 +433,47 @@ class MIDGEEvolution:
                     f"Strong {bias} bias detected. Are we missing signals for the other direction?"
                 )
 
-        # Generate recommendations
+        self._log(f"  Generated {len(research['questions'])} research questions")
+
+        # Query Gemini for answers if enabled
+        if use_gemini and research["questions"]:
+            self._log("  Querying Gemini for insights...")
+
+            # Build context prompt
+            context = f"""You are a trading strategy analyst for MIDGE, a self-improving pattern recognition system.
+
+Current performance:
+- Overall accuracy: {stats.get('accuracy', 0):.1%}
+- Total predictions: {stats.get('total_predictions', 0)}
+- Best signals: {', '.join(s['signal'] for s in research['best_signals']) or 'None yet'}
+- Worst signals: {', '.join(s['signal'] for s in research['worst_signals']) or 'None yet'}
+
+Questions to analyze:
+{chr(10).join(f'- {q}' for q in research['questions'])}
+
+Provide concise, actionable recommendations (2-3 sentences each). Focus on:
+1. What patterns might explain the performance
+2. Specific weight adjustments to consider
+3. New signals that might help"""
+
+            answer = self._query_gemini(context, account=1)
+            if answer:
+                research["answers"].append(answer)
+                self._log(f"  Gemini provided insights ({len(answer)} chars)")
+
+                # Parse recommendations from Gemini's answer
+                if "reduce" in answer.lower() or "decrease" in answer.lower():
+                    research["recommendations"].append(
+                        "Gemini suggests reducing weight of underperforming signals"
+                    )
+                if "add" in answer.lower() or "include" in answer.lower():
+                    research["recommendations"].append(
+                        "Gemini suggests adding new signal types"
+                    )
+            else:
+                self._log("  Gemini unavailable, using heuristics only")
+
+        # Generate heuristic recommendations
         if research["worst_signals"]:
             research["recommendations"].append(
                 f"Consider reducing weight of {research['worst_signals'][0]['signal']}"
@@ -399,13 +484,13 @@ class MIDGEEvolution:
                 "Need more predictions for reliable learning. Expand symbol coverage."
             )
 
-        self._log(f"  Generated {len(research['questions'])} research questions")
         self._log(f"  Generated {len(research['recommendations'])} recommendations")
 
         # Store in memory
         self.memory["last_research"] = {
             "timestamp": datetime.now().isoformat(),
             "questions": research["questions"],
+            "answers": research["answers"],
             "recommendations": research["recommendations"]
         }
 
@@ -586,10 +671,12 @@ def main():
     parser.add_argument("--delay", type=int, default=3600, help="Seconds between cycles")
     parser.add_argument("--symbols", nargs="+", help="Symbols to track")
     parser.add_argument("--continuous", action="store_true", help="Run continuously")
+    parser.add_argument("--no-gemini", action="store_true", help="Disable Gemini research")
 
     args = parser.parse_args()
 
     evolution = MIDGEEvolution()
+    evolution.use_gemini = not args.no_gemini
 
     if args.continuous:
         evolution.run_continuously(cycle_delay=args.delay)
