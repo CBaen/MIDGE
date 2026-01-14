@@ -15,6 +15,22 @@ import requests
 from datetime import datetime
 from dataclasses import dataclass
 from typing import Optional, Literal
+from pathlib import Path
+
+# Load .env file if it exists
+def _load_env():
+    """Load environment variables from .env file."""
+    env_path = Path(__file__).parent / ".env"
+    if env_path.exists():
+        with open(env_path) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    key, value = line.split("=", 1)
+                    if key and value and value != "your-deepseek-key-here" and value != "your-google-api-key-here":
+                        os.environ.setdefault(key, value)
+
+_load_env()
 
 from .storage import TradingVectorStore, SignalPayload, DECAY_RATES, SOURCE_RELIABILITY
 
