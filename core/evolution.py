@@ -18,9 +18,11 @@ This is the brain that learns from itself.
 """
 
 import json
+import os
 import sys
 import time
 import subprocess
+import requests
 from pathlib import Path
 from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict
@@ -30,7 +32,9 @@ from typing import List, Dict, Optional
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-# Gemini script location
+# LLM Configuration
+DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
+DEEPSEEK_MODEL = "deepseek-chat"
 GEMINI_SCRIPT = Path.home() / ".claude" / "scripts" / "gemini-account.sh"
 
 # MIDGE components
@@ -120,9 +124,51 @@ class MIDGEEvolution:
         timestamp = datetime.now().strftime("%H:%M:%S")
         print(f"[{timestamp}] [{level}] {message}")
 
+    def _query_deepseek(self, prompt: str, max_tokens: int = 4096) -> Optional[str]:
+        """
+        Query DeepSeek API (cheap, designed for 24/7 operation).
+
+        Args:
+            prompt: The question/prompt to send
+            max_tokens: Maximum response length
+
+        Returns:
+            DeepSeek's response or None if failed
+        """
+        api_key = os.environ.get("DEEPSEEK_API_KEY")
+        if not api_key:
+            self._log("DEEPSEEK_API_KEY not set", "WARN")
+            return None
+
+        try:
+            response = requests.post(
+                DEEPSEEK_API_URL,
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": DEEPSEEK_MODEL,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": max_tokens,
+                    "temperature": 0.7
+                },
+                timeout=180
+            )
+
+            if response.status_code == 200:
+                return response.json()["choices"][0]["message"]["content"]
+            else:
+                self._log(f"DeepSeek API error: {response.status_code}", "WARN")
+                return None
+
+        except Exception as e:
+            self._log(f"DeepSeek error: {e}", "WARN")
+            return None
+
     def _query_gemini(self, prompt: str, account: int = 1) -> Optional[str]:
         """
-        Query Gemini using the lineage wrapper script.
+        Query Gemini using the lineage wrapper script (fallback).
 
         Args:
             prompt: The question/prompt to send
@@ -156,6 +202,34 @@ class MIDGEEvolution:
         except Exception as e:
             self._log(f"Gemini query failed: {e}", "WARN")
             return None
+
+    def _query_llm(self, prompt: str, prefer: str = "deepseek") -> Optional[str]:
+        """
+        Query an LLM with fallback.
+
+        Args:
+            prompt: The question/prompt to send
+            prefer: Preferred LLM ("deepseek" or "gemini")
+
+        Returns:
+            LLM response or None if all failed
+        """
+        if prefer == "deepseek":
+            # Try DeepSeek first (cheap, 24/7)
+            result = self._query_deepseek(prompt)
+            if result:
+                return result
+            # Fall back to Gemini
+            self._log("  DeepSeek unavailable, trying Gemini...", "INFO")
+            return self._query_gemini(prompt)
+        else:
+            # Try Gemini first
+            result = self._query_gemini(prompt)
+            if result:
+                return result
+            # Fall back to DeepSeek
+            self._log("  Gemini unavailable, trying DeepSeek...", "INFO")
+            return self._query_deepseek(prompt)
 
     # =========================================================================
     # PHASE 1: GATHER
@@ -364,15 +438,16 @@ class MIDGEEvolution:
     # PHASE 6: RESEARCH (Emergence pattern)
     # =========================================================================
 
-    def research_improvements(self, use_gemini: bool = True) -> Dict:
+    def research_improvements(self, use_llm: bool = True, prefer_llm: str = "deepseek") -> Dict:
         """
         Analyze what's working and what's not.
-        Generate research questions and optionally query Gemini for answers.
+        Generate research questions and optionally query LLM for answers.
 
         This is the Emergence "introspect + research" pattern.
 
         Args:
-            use_gemini: Whether to query Gemini for answers (default True)
+            use_llm: Whether to query LLM for answers (default True)
+            prefer_llm: Which LLM to prefer ("deepseek" or "gemini")
         """
         self._log("RESEARCH: Analyzing performance...")
 
@@ -435,9 +510,10 @@ class MIDGEEvolution:
 
         self._log(f"  Generated {len(research['questions'])} research questions")
 
-        # Query Gemini for answers if enabled
-        if use_gemini and research["questions"]:
-            self._log("  Querying Gemini for insights...")
+        # Query LLM for answers if enabled
+        if use_llm and research["questions"]:
+            llm_name = "DeepSeek" if prefer_llm == "deepseek" else "Gemini"
+            self._log(f"  Querying {llm_name} for insights...")
 
             # Build context prompt
             context = f"""You are a trading strategy analyst for MIDGE, a self-improving pattern recognition system.
@@ -456,22 +532,22 @@ Provide concise, actionable recommendations (2-3 sentences each). Focus on:
 2. Specific weight adjustments to consider
 3. New signals that might help"""
 
-            answer = self._query_gemini(context, account=1)
+            answer = self._query_llm(context, prefer=prefer_llm)
             if answer:
                 research["answers"].append(answer)
-                self._log(f"  Gemini provided insights ({len(answer)} chars)")
+                self._log(f"  LLM provided insights ({len(answer)} chars)")
 
-                # Parse recommendations from Gemini's answer
+                # Parse recommendations from LLM's answer
                 if "reduce" in answer.lower() or "decrease" in answer.lower():
                     research["recommendations"].append(
-                        "Gemini suggests reducing weight of underperforming signals"
+                        "LLM suggests reducing weight of underperforming signals"
                     )
                 if "add" in answer.lower() or "include" in answer.lower():
                     research["recommendations"].append(
-                        "Gemini suggests adding new signal types"
+                        "LLM suggests adding new signal types"
                     )
             else:
-                self._log("  Gemini unavailable, using heuristics only")
+                self._log("  LLM unavailable, using heuristics only")
 
         # Generate heuristic recommendations
         if research["worst_signals"]:
@@ -597,7 +673,9 @@ Provide concise, actionable recommendations (2-3 sentences each). Focus on:
 
             # Phase 6: Research
             phase = "research"
-            research = self.research_improvements()
+            use_llm = getattr(self, 'use_llm', True)
+            prefer_llm = getattr(self, 'prefer_llm', 'deepseek')
+            research = self.research_improvements(use_llm=use_llm, prefer_llm=prefer_llm)
             findings["research"] = {
                 "questions": len(research.get("questions", [])),
                 "recommendations": len(research.get("recommendations", []))
@@ -671,12 +749,14 @@ def main():
     parser.add_argument("--delay", type=int, default=3600, help="Seconds between cycles")
     parser.add_argument("--symbols", nargs="+", help="Symbols to track")
     parser.add_argument("--continuous", action="store_true", help="Run continuously")
-    parser.add_argument("--no-gemini", action="store_true", help="Disable Gemini research")
+    parser.add_argument("--llm", choices=["deepseek", "gemini", "none"], default="deepseek",
+                       help="LLM for research phase (default: deepseek)")
 
     args = parser.parse_args()
 
     evolution = MIDGEEvolution()
-    evolution.use_gemini = not args.no_gemini
+    evolution.prefer_llm = args.llm if args.llm != "none" else None
+    evolution.use_llm = args.llm != "none"
 
     if args.continuous:
         evolution.run_continuously(cycle_delay=args.delay)
