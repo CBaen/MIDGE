@@ -1,8 +1,13 @@
 {
-  "cycle_count": 1,
+  "cycle_count": 2,
   "lessons": [
     {
       "timestamp": "2026-01-14T17:34:41.036885",
+      "type": "research_question",
+      "content": "Strong bullish bias detected. Are we missing signals for the other direction?"
+    },
+    {
+      "timestamp": "2026-01-14T17:46:56.285822",
       "type": "research_question",
       "content": "Strong bullish bias detected. Are we missing signals for the other direction?"
     }
@@ -11,7 +16,7 @@
   "failed_patterns": [],
   "signal_history": {},
   "last_research": {
-    "timestamp": "2026-01-14T17:34:41.036871",
+    "timestamp": "2026-01-14T17:46:56.285805",
     "questions": [
       "Strong bullish bias detected. Are we missing signals for the other direction?"
     ],

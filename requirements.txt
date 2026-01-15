@@ -3,6 +3,7 @@
 
 # Core dependencies
 requests>=2.28.0          # HTTP client for APIs (SEC, USASpending, Qdrant)
+qdrant-client>=1.7.0      # Vector database client for signal storage
 
 # Price data
 yfinance>=0.2.0           # Yahoo Finance API for stock prices

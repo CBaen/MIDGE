@@ -275,7 +275,12 @@ class MIDGEEvolution:
 
     def detect_patterns(self, symbols: List[str] = None) -> List[Dict]:
         """
-        Detect trading patterns from gathered data.
+        Detect trading patterns from ALL signal sources.
+
+        Queries:
+        - midge_signals collection for technical indicators, insider trades, contracts
+        - Politician tracker for direct correlations
+        - Aggregates multiple aligned signals into stronger patterns
 
         Returns list of detected patterns with confidence scores.
         """
@@ -286,7 +291,110 @@ class MIDGEEvolution:
 
         patterns = []
 
-        # Politician/contract correlations
+        # =====================================================================
+        # 1. Query ALL signals from Qdrant (midge_signals collection)
+        # =====================================================================
+        signal_counts = {"technical": 0, "insider": 0, "contract": 0, "politician": 0}
+
+        try:
+            from qdrant_client import QdrantClient
+            client = QdrantClient(host="localhost", port=6333)
+
+            # Get recent signals (last 24 hours) for our symbols
+            from qdrant_client.models import Filter, FieldCondition, MatchAny, Range
+            from datetime import datetime, timedelta
+
+            cutoff = (datetime.now() - timedelta(hours=24)).isoformat()
+
+            # Group signals by symbol for pattern aggregation
+            symbol_signals = {s: [] for s in symbols}
+
+            # Query for each symbol
+            for symbol in symbols:
+                try:
+                    results = client.scroll(
+                        collection_name="midge_signals",
+                        scroll_filter=Filter(
+                            must=[
+                                FieldCondition(key="symbol", match=MatchAny(any=[symbol])),
+                            ]
+                        ),
+                        limit=100,
+                        with_payload=True
+                    )
+
+                    for point in results[0]:
+                        payload = point.payload
+                        signal_counts[payload.get("signal_source", "unknown")] = \
+                            signal_counts.get(payload.get("signal_source", "unknown"), 0) + 1
+                        symbol_signals[symbol].append(payload)
+
+                except Exception as e:
+                    self._log(f"  Query for {symbol} failed: {e}", "WARN")
+
+            self._log(f"  Retrieved signals: {dict(signal_counts)}")
+
+            # =====================================================================
+            # 2. Aggregate signals into patterns
+            # =====================================================================
+            for symbol, signals in symbol_signals.items():
+                if not signals:
+                    continue
+
+                # Count bullish vs bearish signals
+                bullish_signals = [s for s in signals if s.get("direction") == "bullish"]
+                bearish_signals = [s for s in signals if s.get("direction") == "bearish"]
+
+                # Calculate weighted confidence (more signals = higher confidence)
+                if len(bullish_signals) >= 2:
+                    # Multiple bullish signals align
+                    avg_confidence = sum(s.get("confidence", 0.5) for s in bullish_signals) / len(bullish_signals)
+                    # Boost for signal alignment (more signals = stronger pattern)
+                    alignment_boost = min(0.2, 0.05 * len(bullish_signals))
+                    final_confidence = min(0.95, avg_confidence + alignment_boost)
+
+                    signal_types = list(set(s.get("indicator_type", s.get("signal_source", "unknown"))
+                                           for s in bullish_signals))
+
+                    patterns.append({
+                        "type": "multi_signal_alignment",
+                        "symbol": symbol,
+                        "direction": "bullish",
+                        "confidence": final_confidence,
+                        "signals": signal_types,
+                        "description": f"{symbol}: {len(bullish_signals)} bullish signals align ({', '.join(signal_types[:3])})",
+                        "signal_count": len(bullish_signals)
+                    })
+
+                if len(bearish_signals) >= 2:
+                    # Multiple bearish signals align
+                    avg_confidence = sum(s.get("confidence", 0.5) for s in bearish_signals) / len(bearish_signals)
+                    alignment_boost = min(0.2, 0.05 * len(bearish_signals))
+                    final_confidence = min(0.95, avg_confidence + alignment_boost)
+
+                    signal_types = list(set(s.get("indicator_type", s.get("signal_source", "unknown"))
+                                           for s in bearish_signals))
+
+                    patterns.append({
+                        "type": "multi_signal_alignment",
+                        "symbol": symbol,
+                        "direction": "bearish",
+                        "confidence": final_confidence,
+                        "signals": signal_types,
+                        "description": f"{symbol}: {len(bearish_signals)} bearish signals align ({', '.join(signal_types[:3])})",
+                        "signal_count": len(bearish_signals)
+                    })
+
+            self._log(f"  Found {len(patterns)} multi-signal patterns from Qdrant")
+
+        except ImportError:
+            self._log("  Qdrant client not installed, skipping signal aggregation", "WARN")
+        except Exception as e:
+            self._log(f"  Signal aggregation failed: {e}", "WARN")
+
+        # =====================================================================
+        # 3. Politician/contract correlations (legacy pattern type)
+        # =====================================================================
         try:
             correlations = self.politician_tracker.find_correlations(
                 symbols=symbols,
@@ -310,6 +418,7 @@ class MIDGEEvolution:
         except Exception as e:
             self._log(f"  Correlation detection failed: {e}", "WARN")
 
+        self._log(f"  TOTAL PATTERNS: {len(patterns)}")
         return patterns
 
     # =========================================================================
