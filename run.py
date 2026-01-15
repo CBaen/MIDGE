@@ -35,6 +35,11 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 # Service configurations
 SERVICES = {
+    "technical_analysis": {
+        "script": "scripts/ingest_technicals.py",
+        "args": ["--continuous", "--interval", "600"],
+        "description": "Technical indicators (every 10 min)"
+    },
     "sec_ingestion": {
         "script": "scripts/ingest_sec_filings.py",
         "args": ["--continuous", "--interval", "3600"],
@@ -47,8 +52,8 @@ SERVICES = {
     },
     "evolution": {
         "script": "core/evolution.py",
-        "args": ["--continuous", "--delay", "3600"],
-        "description": "Evolution loop (hourly cycles)"
+        "args": ["--continuous", "--delay", "600"],
+        "description": "Evolution loop (every 10 min)"
     },
     "dashboard": {
         "script": "dashboard/midge_server.py",

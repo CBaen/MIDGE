@@ -87,10 +87,10 @@ def create_collection(name: str, config: dict, reset: bool = False) -> bool:
     )
 
     if response.status_code in (200, 201):
-        print(f"    ✓ Created successfully")
+        print(f"    [OK] Created successfully")
         return True
     else:
-        print(f"    ✗ Failed: {response.text}")
+        print(f"    [FAIL] Failed: {response.text}")
         return False
 
 
@@ -140,7 +140,7 @@ def setup_all_collections(reset: bool = False):
         print("  docker start qdrant")
         return False
 
-    print("  ✓ Qdrant is running")
+    print("  [OK] Qdrant is running")
 
     # Create collections
     print("\nCreating collections...")
