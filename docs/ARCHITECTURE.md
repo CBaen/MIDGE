@@ -56,30 +56,30 @@ def introspect():
 
 **Purpose**: Three perspectives analyze the limitation, then synthesize into action.
 
-**Agents**:
+**Agents** (Trading-Focused):
 
 | Agent | Name | Focus | Question |
 |-------|------|-------|----------|
-| `builder` | The Builder | Practical implementation | "How do we actually build this?" |
-| `critic` | The Critic | Risks and failure modes | "What could go wrong?" |
-| `seeker` | The Seeker | Unexplored possibilities | "What else is possible?" |
+| `hunter` | The Pattern Hunter | Signal discovery, unusual activity, leading indicators | "What patterns are emerging that others might miss?" |
+| `skeptic` | The Skeptic | Signal reliability, false positives, confidence calibration | "Is this signal reliable? What's the actual confidence?" |
+| `strategist` | The Strategist | Signal combination, position sizing, learning from history | "How do we act on this? What does past performance suggest?" |
 
 **Execution**: Parallel API calls to DeepSeek
 ```python
 with ThreadPoolExecutor(max_workers=3) as executor:
     futures = {
-        executor.submit(call_deepseek, builder_prompt): "builder",
-        executor.submit(call_deepseek, critic_prompt): "critic",
-        executor.submit(call_deepseek, seeker_prompt): "seeker"
+        executor.submit(call_deepseek, hunter_prompt): "hunter",
+        executor.submit(call_deepseek, skeptic_prompt): "skeptic",
+        executor.submit(call_deepseek, strategist_prompt): "strategist"
     }
 ```
 
 **Synthesis**: Fourth API call combines all three perspectives
 ```
 THE SYNTHESIZER reviews:
-├── Builder's concrete steps
-├── Critic's risk assessment
-└── Seeker's alternatives
+├── Pattern Hunter's signal discoveries
+├── Skeptic's reliability assessment
+└── Strategist's action recommendations
           │
           ▼
     ACTION_SPEC (single atomic action)
@@ -366,9 +366,9 @@ Cycles are stored in Qdrant with this structure:
     "question": "How can I understand X?",  # The limitation addressed
 
     "agent_research": {
-        "builder": {"spoke": True, "summary": "..."},
-        "critic": {"spoke": True, "summary": "..."},
-        "seeker": {"spoke": True, "summary": "..."}
+        "hunter": {"spoke": True, "summary": "..."},
+        "skeptic": {"spoke": True, "summary": "..."},
+        "strategist": {"spoke": True, "summary": "..."}
     },
 
     "proposal": {
@@ -503,13 +503,14 @@ In `research.py`, add to `TRIAD_ROLES`:
 
 ```python
 TRIAD_ROLES = {
-    "builder": {...},
-    "critic": {...},
-    "seeker": {...},
+    "hunter": {...},      # Pattern discovery
+    "skeptic": {...},     # Signal reliability
+    "strategist": {...},  # Action planning
     "your_agent": {
         "name": "The Your Agent",
-        "focus": "specific focus area",
-        "question": "What question drives this agent?"
+        "focus": "specific trading focus area",
+        "question": "What trading question drives this agent?",
+        "trading_context": "What specific trading aspects this agent evaluates"
     }
 }
 ```

@@ -363,6 +363,274 @@ def create_prediction(symbol: str,
     )
 
 
+class PaperTradingSession:
+    """
+    Simulates trading with fake capital for paper trading.
+
+    Tracks positions, calculates PnL, and provides portfolio metrics.
+    Integrates with OutcomeTracker for prediction-based position management.
+    """
+
+    def __init__(self, starting_capital: float = 10000.0, storage_dir: str = None):
+        self.starting_capital = starting_capital
+        self.cash = starting_capital
+        self.positions: Dict[str, Dict] = {}  # symbol -> {shares, entry_price, prediction_id, direction}
+        self.trades: List[Dict] = []  # History of all trades
+        self.portfolio_history: List[Dict] = []  # Portfolio value over time
+
+        # Storage
+        if storage_dir:
+            self.storage_dir = Path(storage_dir)
+        else:
+            self.storage_dir = Path("C:/Users/baenb/projects/midge/data")
+        self.storage_dir.mkdir(parents=True, exist_ok=True)
+        self.paper_trading_file = self.storage_dir / "paper_trading.jsonl"
+
+        # Load existing state
+        self._load_state()
+
+    def _load_state(self):
+        """Load trading state from disk."""
+        if self.paper_trading_file.exists():
+            try:
+                lines = self.paper_trading_file.read_text().strip().split("\n")
+                if lines and lines[0]:
+                    # Last line contains current state
+                    for line in lines:
+                        if line:
+                            data = json.loads(line)
+                            if data.get("type") == "state":
+                                self.cash = data.get("cash", self.starting_capital)
+                                self.positions = data.get("positions", {})
+                            elif data.get("type") == "trade":
+                                self.trades.append(data)
+            except Exception as e:
+                print(f"Error loading paper trading state: {e}")
+
+    def _save_state(self):
+        """Save current state to disk."""
+        state = {
+            "type": "state",
+            "timestamp": datetime.now().isoformat(),
+            "cash": self.cash,
+            "positions": self.positions,
+            "starting_capital": self.starting_capital
+        }
+        with open(self.paper_trading_file, "a") as f:
+            f.write(json.dumps(state) + "\n")
+
+    def open_position(self,
+                     prediction_id: str,
+                     symbol: str,
+                     direction: str,
+                     confidence: float,
+                     current_price: float,
+                     max_position_pct: float = 0.1) -> Optional[Dict]:
+        """
+        Open a position based on a prediction.
+
+        Position size is based on confidence (simplified Kelly criterion).
+        Max 10% of portfolio per position by default.
+
+        Args:
+            prediction_id: ID of the prediction driving this trade
+            symbol: Stock ticker
+            direction: "bullish" (long) or "bearish" (short)
+            confidence: 0.0 - 1.0
+            current_price: Current market price
+            max_position_pct: Maximum position size as % of portfolio
+
+        Returns:
+            Trade record or None if position couldn't be opened
+        """
+        # Don't open if already have position in this symbol
+        if symbol in self.positions:
+            print(f"Already have position in {symbol}")
+            return None
+
+        # Calculate position size (confidence-weighted, capped at max_position_pct)
+        position_pct = min(confidence * 0.15, max_position_pct)  # e.g., 0.75 confidence = 11.25%, capped at 10%
+        position_value = self.cash * position_pct
+
+        if position_value < 1:
+            print(f"Insufficient cash for position")
+            return None
+
+        # Calculate shares (round down)
+        shares = int(position_value / current_price)
+        if shares < 1:
+            shares = 1
+
+        actual_cost = shares * current_price
+
+        if actual_cost > self.cash:
+            print(f"Insufficient cash: need ${actual_cost:.2f}, have ${self.cash:.2f}")
+            return None
+
+        # Open position
+        self.cash -= actual_cost
+        self.positions[symbol] = {
+            "shares": shares,
+            "entry_price": current_price,
+            "prediction_id": prediction_id,
+            "direction": direction,
+            "opened_at": datetime.now().isoformat()
+        }
+
+        # Record trade
+        trade = {
+            "type": "trade",
+            "action": "OPEN",
+            "symbol": symbol,
+            "direction": direction,
+            "shares": shares,
+            "price": current_price,
+            "value": actual_cost,
+            "prediction_id": prediction_id,
+            "confidence": confidence,
+            "timestamp": datetime.now().isoformat()
+        }
+        self.trades.append(trade)
+
+        with open(self.paper_trading_file, "a") as f:
+            f.write(json.dumps(trade) + "\n")
+
+        self._save_state()
+
+        print(f"Opened {direction.upper()} position: {shares} {symbol} @ ${current_price:.2f} = ${actual_cost:.2f}")
+        return trade
+
+    def close_position(self, symbol: str, current_price: float, reason: str = "manual") -> Optional[Dict]:
+        """
+        Close an existing position.
+
+        Args:
+            symbol: Stock ticker
+            current_price: Current market price
+            reason: Why closing (manual, stop_loss, take_profit, prediction_due)
+
+        Returns:
+            Trade record with PnL or None if no position
+        """
+        if symbol not in self.positions:
+            print(f"No position in {symbol}")
+            return None
+
+        position = self.positions[symbol]
+        shares = position["shares"]
+        entry_price = position["entry_price"]
+        direction = position["direction"]
+
+        # Calculate PnL
+        if direction == "bullish":
+            pnl = (current_price - entry_price) * shares
+            pnl_pct = (current_price - entry_price) / entry_price * 100
+        else:  # bearish (short)
+            pnl = (entry_price - current_price) * shares
+            pnl_pct = (entry_price - current_price) / entry_price * 100
+
+        # Update cash
+        exit_value = shares * current_price
+        self.cash += exit_value
+
+        # Record trade
+        trade = {
+            "type": "trade",
+            "action": "CLOSE",
+            "symbol": symbol,
+            "direction": direction,
+            "shares": shares,
+            "entry_price": entry_price,
+            "exit_price": current_price,
+            "pnl": pnl,
+            "pnl_pct": pnl_pct,
+            "prediction_id": position["prediction_id"],
+            "reason": reason,
+            "timestamp": datetime.now().isoformat()
+        }
+        self.trades.append(trade)
+
+        with open(self.paper_trading_file, "a") as f:
+            f.write(json.dumps(trade) + "\n")
+
+        # Remove position
+        del self.positions[symbol]
+        self._save_state()
+
+        result_str = "PROFIT" if pnl > 0 else "LOSS"
+        print(f"Closed {symbol}: {result_str} ${abs(pnl):.2f} ({pnl_pct:+.2f}%)")
+        return trade
+
+    def get_portfolio_value(self, current_prices: Dict[str, float]) -> float:
+        """
+        Calculate total portfolio value (cash + positions).
+
+        Args:
+            current_prices: Dict mapping symbol -> current price
+
+        Returns:
+            Total portfolio value
+        """
+        total = self.cash
+
+        for symbol, position in self.positions.items():
+            if symbol in current_prices:
+                total += position["shares"] * current_prices[symbol]
+            else:
+                # Use entry price if current price not available
+                total += position["shares"] * position["entry_price"]
+
+        return total
+
+    def get_stats(self, current_prices: Dict[str, float] = None) -> Dict:
+        """Get portfolio statistics."""
+        if current_prices is None:
+            current_prices = {}
+
+        portfolio_value = self.get_portfolio_value(current_prices)
+        total_pnl = portfolio_value - self.starting_capital
+        total_return = (total_pnl / self.starting_capital) * 100
+
+        # Trade statistics
+        winning_trades = [t for t in self.trades if t.get("action") == "CLOSE" and t.get("pnl", 0) > 0]
+        losing_trades = [t for t in self.trades if t.get("action") == "CLOSE" and t.get("pnl", 0) < 0]
+        closed_trades = [t for t in self.trades if t.get("action") == "CLOSE"]
+
+        win_rate = len(winning_trades) / len(closed_trades) if closed_trades else 0
+
+        return {
+            "starting_capital": self.starting_capital,
+            "current_cash": self.cash,
+            "portfolio_value": portfolio_value,
+            "total_pnl": total_pnl,
+            "total_return_pct": total_return,
+            "open_positions": len(self.positions),
+            "total_trades": len(closed_trades),
+            "winning_trades": len(winning_trades),
+            "losing_trades": len(losing_trades),
+            "win_rate": win_rate,
+            "positions": self.positions
+        }
+
+    def print_status(self, current_prices: Dict[str, float] = None):
+        """Print current portfolio status."""
+        stats = self.get_stats(current_prices)
+
+        print("\n" + "=" * 50)
+        print("PAPER TRADING STATUS")
+        print("=" * 50)
+        print(f"Starting Capital: ${stats['starting_capital']:.2f}")
+        print(f"Current Cash: ${stats['current_cash']:.2f}")
+        print(f"Portfolio Value: ${stats['portfolio_value']:.2f}")
+        print(f"Total P&L: ${stats['total_pnl']:+.2f} ({stats['total_return_pct']:+.2f}%)")
+        print(f"Win Rate: {stats['win_rate']:.1%} ({stats['winning_trades']}/{stats['total_trades']})")
+
+        if self.positions:
+            print(f"\nOpen Positions ({len(self.positions)}):")
+            for symbol, pos in self.positions.items():
+                print(f"  {symbol}: {pos['shares']} shares @ ${pos['entry_price']:.2f} ({pos['direction']})")
+
+
 if __name__ == "__main__":
     print("Outcome Tracker - Prediction Feedback System")
     print("=" * 50)
