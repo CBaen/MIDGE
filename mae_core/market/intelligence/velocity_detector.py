@@ -321,6 +321,13 @@ class VelocityDetector:
         leaders.sort(key=lambda x: abs(x[1].velocity_zscore), reverse=True)
         return leaders
 
+    def get_statistics(self) -> dict:
+        """For HolonProxy.sense() delegation."""
+        return {
+            "signal_count": len(self.states),
+            "anomalous_count": sum(1 for s in self.states.values() if s.is_anomalous),
+        }
+
     def to_dict(self) -> dict:
         """Export state for persistence or API."""
         return {

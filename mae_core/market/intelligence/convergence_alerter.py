@@ -155,6 +155,12 @@ class ConvergenceAlerter:
             timestamp: When observed
             metadata: Additional context
         """
+        # Input validation — clamp to valid ranges
+        strength = max(0.0, min(1.0, strength))
+        confidence = max(0.0, min(1.0, confidence))
+        if direction not in ("bullish", "bearish", "neutral"):
+            direction = "neutral"
+
         timestamp = timestamp or datetime.now()
         metadata = metadata or {}
 
@@ -213,8 +219,10 @@ class ConvergenceAlerter:
             if alert:
                 alerts.append(alert)
 
-        # Store alerts
+        # Store alerts (capped to prevent unbounded growth)
         self.alerts.extend(alerts)
+        if len(self.alerts) > 500:
+            self.alerts = self.alerts[-500:]
 
         return alerts
 
@@ -400,6 +408,22 @@ class ConvergenceAlerter:
             "bearish_domains": bearish_domains,
             "total_signals": sum(s["signal_count"] for s in status.values())
         }
+
+    def get_statistics(self) -> dict:
+        """For HolonProxy.sense() delegation."""
+        return {
+            "domain_count": len(self.signals),
+            "alert_count": len(self.alerts),
+            "recent_alerts": [a.to_dict() for a in list(self.alerts)[-3:]],
+        }
+
+    def step(self) -> None:
+        """Step hook for HolonProxy.act() delegation.
+
+        Does not publish — bootstrap hook handles EventBus publishing
+        with deduplication logic.
+        """
+        self.check_convergence()
 
     def to_dict(self) -> dict:
         """Export state for API/persistence."""

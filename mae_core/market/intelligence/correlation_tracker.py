@@ -366,6 +366,14 @@ class CorrelationTracker:
         leading.sort(key=lambda x: abs(x[0].correlation_zscore), reverse=True)
         return leading
 
+    def get_statistics(self) -> dict:
+        """For HolonProxy.sense() delegation."""
+        return {
+            "tracked_signals": len(self.history),
+            "correlation_pairs": len(self.correlations),
+            "anomalous_pairs": sum(1 for p in self.correlations.values() if p.is_anomalous),
+        }
+
     def to_dict(self) -> dict:
         """Export state for API/persistence."""
         return {

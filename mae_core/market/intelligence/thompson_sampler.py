@@ -358,6 +358,10 @@ class ThompsonSampler:
             "bottom_signals": rankings[-5:] if len(rankings) >= 5 else rankings
         }
 
+    def get_statistics(self) -> Dict:
+        """Alias for HolonProxy.sense() delegation."""
+        return self.get_stats()
+
 
 def main():
     """Demo and test the Thompson Sampler."""
