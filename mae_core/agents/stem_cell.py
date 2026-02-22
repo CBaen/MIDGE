@@ -189,6 +189,43 @@ ROLE_PROFILES: dict[str, dict[str, Any]] = {
         "consolidation_enabled": True,
         "replay_enabled": True,
     },
+    # --- MIDGE market roles (Law 5: same genome, market-specialized epigenome) ---
+    "SEC_WATCHER": {
+        "api_call_enabled": True,
+        "llm_prompt_quality": 0.6,
+        "replay_enabled": True,
+        "consolidation_enabled": True,
+        "semantic_search_enabled": True,
+        "sensing_radius": 10.0,
+        "exploration_bonus": 0.15,
+        "world_model_enabled": True,
+        "planning_horizon": 7,
+        "capabilities": frozenset({"market_sense", "insider_track", "sec_watch"}),
+    },
+    "CONTRACT_TRACKER": {
+        "api_call_enabled": True,
+        "llm_prompt_quality": 0.6,
+        "quorum_sensing_enabled": True,
+        "world_model_enabled": True,
+        "planning_horizon": 14,
+        "replay_enabled": True,
+        "transfer_enabled": True,
+        "capabilities": frozenset({"market_sense", "contract_track", "govt_monitor"}),
+    },
+    "MARKET_ANALYST": {
+        "api_call_enabled": True,
+        "llm_prompt_quality": 0.85,
+        "world_model_enabled": True,
+        "planning_horizon": 10,
+        "replay_enabled": True,
+        "consolidation_enabled": True,
+        "semantic_search_enabled": True,
+        "generative_memory_enabled": True,
+        "transfer_enabled": True,
+        "maml_enabled": True,
+        "quorum_sensing_enabled": True,
+        "capabilities": frozenset({"market_analyze", "convergence_detect", "signal_synthesize"}),
+    },
 }
 
 
