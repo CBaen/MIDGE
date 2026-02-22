@@ -93,14 +93,9 @@ mae_core/market/
 
 ### Integration Status
 
-Market modules are currently **standalone** — they import from each other but are NOT yet wired into Mae's bootstrap, EventBus, ConnectionRegistry, or agent lifecycle. Wiring them in is the next major task.
+Market modules are **fully bootstrapped as Layer 33** — wired into EventBus, ConnectionRegistry, HolonRegistry, fractal hierarchy, endocrine coupling, and step hooks. 15 systems, 23 triadic connections, 19 holons.
 
-**What needs wiring:**
-- Thompson Sampler -> Mae's learning loop (replace/augment FRL reliability scores)
-- Edge detectors -> EventBus channels (publish signals as market events)
-- API clients -> BoundaryMembrane + ApiGateway (rate limiting, trust scoring)
-- Convergence Alerter -> Agent decision cascade (market consensus as decision input)
-- Market-specific stem cell role profiles (sec_watcher, contract_tracker, etc.)
+**Phase 2 (deferred):** Full ApiGateway routing for API clients, TickerResolver service, regime-aware Thompson Sampling, CorrelationTracker deque persistence. See `research/market-integration-architecture/implementation-plan.md` Section 9.
 
 ---
 
@@ -111,9 +106,9 @@ Market modules are currently **standalone** — they import from each other but 
 After any structural change, grep for stale references:
 ```bash
 # Key numbers to check (update these values as they change):
-# Systems: 92 | Tests: 2425 | Bootstrap layers: 32 | Mixins: 14
-# Connections: 313 (211 core + 47 fractal + 55 bootstrap) | Holons: 107 | Fractal depth: 4
-# Market modules: 16 files (7 API + 4 edge + 5 intelligence)
+# Systems: 107 (92 core + 15 market) | Tests: 2426 | Bootstrap layers: 33 | Mixins: 14
+# Connections: 336 (211 core + 47 fractal + 55 bootstrap + 23 market) | Holons: 126 | Fractal depth: 4
+# Market modules: 19 files (7 API + 4 edge + 5 intelligence + 3 integration)
 
 grep -rn "PREVIOUS_COUNT" --include="*.md" --include="*.py"
 ```
@@ -137,9 +132,9 @@ grep -rn "PREVIOUS_COUNT" --include="*.md" --include="*.py"
 ## Architecture Quick Reference
 
 - **Mesa 3.4** foundation, pure Python infrastructure
-- **32-layer bootstrap** in `mae_core/bootstrap/` (orchestrated by `main.py`)
-- **92 systems**, **2425 tests**, **107 holons**, **313 connections**
-- **16 market intelligence modules** in `mae_core/market/` (standalone, not yet bootstrapped)
+- **33-layer bootstrap** in `mae_core/bootstrap/` (orchestrated by `main.py`)
+- **107 systems** (92 core + 15 market), **2426 tests**, **126 holons**, **336 connections**
+- **19 market intelligence files** in `mae_core/market/` (bootstrapped as Layer 33)
 - **14 mixins** on MycelialAgent (10 capability + 4 lifecycle, HolonMixin is 10th capability)
 - **Fractal architecture:** All 5 steps complete (Holon Protocol, Triadic Connections, Bidirectional Awareness, Fractal Generator, Stem Cell)
 - **Advisory enforcement:** Triads and connections observe/report, never block
@@ -163,12 +158,12 @@ All existing tests must keep passing. Zero regressions policy.
 
 | File | Purpose |
 |------|---------|
-| `main.py` | 32-layer bootstrap — creates and wires the entire organism |
+| `main.py` | 33-layer bootstrap — creates and wires the entire organism |
 | `mae_core/backbone/holon_protocol.py` | Fractal self-awareness: HolonRegistry, HolonMixin, HolonProxy, AwarenessPulse |
 | `mae_core/backbone/connection_registry.py` | Triadic witnessing — no bare dyads |
 | `mae_core/backbone/fractal_generator.py` | Recursive K3 structure — 5 organs, 18 subsystems |
 | `mae_core/agents/mycelial_agent.py` | 10-mixin agent + nervous system lifecycle |
-| `mae_core/agents/stem_cell.py` | AgentGenome, epigenome, 9 role profiles |
+| `mae_core/agents/stem_cell.py` | AgentGenome, epigenome, 12 role profiles |
 | `mae_core/external/api_gateway.py` | External API access — BoundaryMembrane + InputValidator immune system |
 | `mae_core/emergent/somatic_map.py` | Dependency graph / body awareness |
 | `mae_core/backbone/triad_enforcer.py` | Rule of 3/5 voting enforcement |

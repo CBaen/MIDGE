@@ -1,7 +1,7 @@
 """Integration Tests - Mae as a living organism.
 
 Tests the whole system working together, not individual parts.
-Verifies 32-layer bootstrap, agent lifecycle, cross-system communication,
+Verifies 33-layer bootstrap, agent lifecycle, cross-system communication,
 persistence round-trips, and circadian cycle transitions.
 """
 
@@ -36,7 +36,7 @@ def persist_dir(tmp_path):
 
 
 class TestBootstrap:
-    """Verify the 32-layer bootstrap creates a complete organism."""
+    """Verify the 33-layer bootstrap creates a complete organism."""
 
     def test_model_created(self, mae_organism):
         model, systems = mae_organism

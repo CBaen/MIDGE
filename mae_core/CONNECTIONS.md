@@ -45,7 +45,7 @@ Last updated: 2026-02-22
 | 5.8 Temporal | TemporalMemory, WorldlinePlanner | 6 | 6 (EventBus) | 4 (cross-system stubs) |
 | 5.8+ Enforcement | TriadEnforcer, Watchdog, Auditor, Registry | 10 | 10 (EventBus) | 0 |
 | 5.8++ Holon | HolonRegistry, HolonMixin, HolonProxy, AwarenessPulse | 2 | 36 (proxy injection) + 1 (bootstrap) | 0 |
-| 5.8+++ Connection | ConnectionRegistry | 4 | 313 (211 core + 47 fractal + 55 bootstrap, all witnessed, 0 bare dyads) | 0 |
+| 5.8+++ Connection | ConnectionRegistry | 4 | 336 (211 core + 47 fractal + 55 bootstrap + 23 market, all witnessed, 0 bare dyads) | 0 |
 | **5.9 Integration** | **API, Dashboard, Domain Config** | **0** | **0** | **20+ (all stubs need wiring)** |
 
 ---

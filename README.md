@@ -10,7 +10,7 @@ MIDGE is a fork of [mae-core](https://github.com/CBaen/mae-core), the Mycelial A
 
 Same genome. Different epigenome. Law 5 at the project level.
 
-**Current state:** 92 systems, 2425 passing tests, 313 triadic connections, 107 holons. 16 market intelligence modules (7 API clients, 4 edge detectors, 5 intelligence/learning). Mae's full biological architecture + MIDGE's market senses. Market modules are standalone — bootstrap integration is the next step.
+**Current state:** 107 systems (92 core + 15 market), 2426 passing tests, 336 triadic connections, 126 holons. 19 market intelligence files (7 API clients, 4 edge detectors, 5 intelligence/learning, 3 integration). Mae's full biological architecture + MIDGE's market senses, fully bootstrapped as Layer 33.
 
 ---
 
@@ -44,7 +44,7 @@ MIDGE brings **market-specific senses** that Mae doesn't have:
 Everything MIDGE inherits from mae-core:
 
 - **Biologically-inspired multi-agent system** on Mesa 3.4
-- **32-layer bootstrap** — organism assembly from atoms to organs
+- **33-layer bootstrap** — organism assembly from atoms to organs
 - **8 Mathematical Laws** governing all structure (triads, holons, fractals, autopoiesis)
 - **13-step agent lifecycle** — PREDICT, SENSE, DECIDE, ACT, LEARN, etc.
 - **Pure Python infrastructure** — EventBus, StateStore, VectorStore (no external servers required)

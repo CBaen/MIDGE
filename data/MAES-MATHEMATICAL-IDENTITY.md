@@ -254,7 +254,7 @@ The original analogy — "fractal cortical columns internally, long-range axons 
 
 ### Current State
 
-Mae has 92 systems, all wired, 2425 tests passing. 107 holons, 313 triadic connections (211 core + 47 fractal + 55 bootstrap layers, 0 bare dyads). Complete autopoietic loop with FEP-compliant prediction and TaskPool environment. Progress:
+Mae has 107 systems (92 core + 15 market), all wired, 2426 tests passing. 126 holons, 336 triadic connections (211 core + 47 fractal + 55 bootstrap + 23 market, 0 bare dyads). Complete autopoietic loop with FEP-compliant prediction and TaskPool environment. Progress:
 - ~~Connections are dyadic~~ — DONE: 262+ triadic connections, 0 bare dyads (209 registered + fractal K3 + auto_healer self-healing + bidirectional awareness)
 - ~~Each system has its own interface~~ — DONE: Universal Holon Protocol (10 capabilities on every agent)
 - ~~Self-awareness exists at the top (SomaticMap) but not yet at every level~~ — DONE: HolonProxy on all 36 systems, AwarenessPulse active
@@ -270,7 +270,7 @@ Mae has 92 systems, all wired, 2425 tests passing. 107 holons, 313 triadic conne
 
 4. ~~**Make the Fractal Explicit**~~ — DONE. FractalGenerator backbone system. 5 organs, 18 subsystems. K3 wiring with natural witnesses. ~49 fractal connections. Max depth 4. Layer 20 in bootstrap.
 
-5. ~~**Stem Cell Architecture**~~ — DONE (AgentGenome 22 genes, AgentEpigenome, 9 ROLE_PROFILES, redifferentiate(), StemCellRegistry Layer 21). Any agent can become any role.
+5. ~~**Stem Cell Architecture**~~ — DONE (AgentGenome 22 genes, AgentEpigenome, 12 ROLE_PROFILES, redifferentiate(), StemCellRegistry Layer 21). Any agent can become any role.
 
 ### Implementation Priority
 
@@ -290,7 +290,7 @@ The meta-review's central finding: Mae's architecture is structurally sound but 
 | Phi measurement | IntegrationMeter computes phi at 3 scales | Operational — phi modulates arousal (ArousalRegulator), endocrine state, and GWT threshold offset |
 | Markov blankets | Topological blankets identified per subsystem | Blanket effectiveness now drives BoundaryMembrane permeability |
 | Euler invariant | get_euler_statistics() computes V-E+C | Included in verify_all() advisory report |
-| Stem cell redifferentiation | AgentGenome, 9 role profiles, redifferentiate() | Automatic — RedifferentiationMonitor triggers on low health (<0.3) and role imbalance (Fibonacci 21 cadence) |
+| Stem cell redifferentiation | AgentGenome, 12 role profiles, redifferentiate() | Automatic — RedifferentiationMonitor triggers on low health (<0.3) and role imbalance (Fibonacci 21 cadence) |
 | Autopoietic closure | Maintenance loops (heal/repair) operational | Production loops also operational — mitosis (agent spawning) + auto-redifferentiation (role switching) |
 | 10 capabilities at every scale | All implemented and tested | Genuine; strongest claim in the codebase |
 | Fibonacci cadences | All 6 intervals verified | Genuine; operationally active |
@@ -302,7 +302,7 @@ The meta-review's central finding: Mae's architecture is structurally sound but 
 - The biological metaphors are correct and validated
 - The EventBus/substrate architecture IS the transfractal resolution
 - The existing systems work — this is about connecting them geometrically, not replacing them
-- 2425 tests must keep passing throughout
+- 2426 tests must keep passing throughout
 
 ---
 
