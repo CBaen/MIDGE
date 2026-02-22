@@ -426,7 +426,9 @@ class CorrelationTracker:
                     is_anomalous=corr_data.get("is_anomalous", False),
                     observation_count=corr_data.get("observation_count", 0)
                 )
-                self.correlation_history[pair_key] = deque(maxlen=self.window_size)
+                history_values = corr_data.get("history", [])
+                self.correlation_history[pair_key] = deque(
+                    history_values, maxlen=self.window_size)
         except Exception as e:
             logger.warning(f"Could not load correlation state: {e}")
 

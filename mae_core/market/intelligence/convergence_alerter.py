@@ -20,11 +20,18 @@ Usage:
 """
 
 import json
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 from collections import defaultdict
+
+logger = logging.getLogger(__name__)
+
+# Discovery log path — same resolution as thompson_sampler.py
+_DATA_DIR = Path(__file__).resolve().parents[3] / "data" / "market"
+_DISCOVERY_LOG = _DATA_DIR / "discovery_log.jsonl"
 
 
 @dataclass
@@ -244,6 +251,11 @@ class ConvergenceAlerter:
         if len(self.alerts) > 500:
             self.alerts = self.alerts[-500:]
 
+        # Log novel cross-domain discoveries
+        for alert in alerts:
+            if alert.cross_domain_count >= 3:
+                self._log_discovery(alert)
+
         return alerts
 
     def _check_direction_convergence(self, direction: str) -> Optional[ConvergenceAlert]:
@@ -460,12 +472,79 @@ class ConvergenceAlerter:
             "recent_alerts": [a.to_dict() for a in self.alerts[-10:]]
         }
 
+    def _log_discovery(self, alert: ConvergenceAlert) -> None:
+        """Log a novel cross-domain convergence pattern to discovery_log.jsonl."""
+        record = {
+            "timestamp": alert.timestamp.isoformat(),
+            "alert_id": alert.alert_id,
+            "direction": alert.direction,
+            "strength": round(alert.strength, 3),
+            "confidence": round(alert.confidence, 3),
+            "domains": alert.domains_converging,
+            "cross_domain_count": alert.cross_domain_count,
+            "signal_sources": [s.signal_id for s in alert.signals],
+            "summary": alert.summary,
+        }
+        try:
+            _DATA_DIR.mkdir(parents=True, exist_ok=True)
+            with open(_DISCOVERY_LOG, "a") as f:
+                f.write(json.dumps(record) + "\n")
+        except Exception as e:
+            logger.debug("Failed to write discovery log: %s", e)
+
     def save(self):
         """Persist state to disk."""
         if self.persistence_path:
             self.persistence_path.parent.mkdir(parents=True, exist_ok=True)
             with open(self.persistence_path, 'w') as f:
                 json.dump(self.to_dict(), f, indent=2)
+
+
+def read_discoveries(
+    max_entries: int = 100,
+    min_strength: float = 0.0,
+    direction: str = None,
+) -> List[dict]:
+    """
+    Read recent discoveries from discovery_log.jsonl.
+
+    Useful for:
+    - Surfacing novel patterns to a dashboard
+    - Seeding Thompson distributions with discovered signal combinations
+    - Auditing what convergence patterns MIDGE has detected
+
+    Args:
+        max_entries: Maximum entries to return (most recent first)
+        min_strength: Only return discoveries above this strength
+        direction: Filter by "bullish" or "bearish" (None = all)
+
+    Returns:
+        List of discovery dicts, most recent first
+    """
+    if not _DISCOVERY_LOG.exists():
+        return []
+
+    entries = []
+    try:
+        with open(_DISCOVERY_LOG, "r") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                    if entry.get("strength", 0) < min_strength:
+                        continue
+                    if direction and entry.get("direction") != direction:
+                        continue
+                    entries.append(entry)
+                except json.JSONDecodeError:
+                    continue
+    except Exception as e:
+        logger.debug("Failed to read discovery log: %s", e)
+
+    # Most recent first, capped
+    return entries[-max_entries:][::-1]
 
 
 if __name__ == "__main__":
