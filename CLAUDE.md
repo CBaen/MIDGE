@@ -111,7 +111,7 @@ Market modules are currently **standalone** — they import from each other but 
 After any structural change, grep for stale references:
 ```bash
 # Key numbers to check (update these values as they change):
-# Systems: 85 | Tests: 2425 | Bootstrap layers: 32 | Mixins: 14
+# Systems: 92 | Tests: 2425 | Bootstrap layers: 32 | Mixins: 14
 # Connections: 313 (211 core + 47 fractal + 55 bootstrap) | Holons: 107 | Fractal depth: 4
 # Market modules: 16 files (7 API + 4 edge + 5 intelligence)
 
@@ -138,9 +138,9 @@ grep -rn "PREVIOUS_COUNT" --include="*.md" --include="*.py"
 
 - **Mesa 3.4** foundation, pure Python infrastructure
 - **32-layer bootstrap** in `mae_core/bootstrap/` (orchestrated by `main.py`)
-- **85 systems**, **2425 tests**, **107 holons**, **313 connections**
+- **92 systems**, **2425 tests**, **107 holons**, **313 connections**
 - **16 market intelligence modules** in `mae_core/market/` (standalone, not yet bootstrapped)
-- **10 composable mixins** on MycelialAgent (HolonMixin is 10th)
+- **14 mixins** on MycelialAgent (10 capability + 4 lifecycle, HolonMixin is 10th capability)
 - **Fractal architecture:** All 5 steps complete (Holon Protocol, Triadic Connections, Bidirectional Awareness, Fractal Generator, Stem Cell)
 - **Advisory enforcement:** Triads and connections observe/report, never block
 - **No monoliths.** One job per file. Flag files over 500 lines. Split docs by module.

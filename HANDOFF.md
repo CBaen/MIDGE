@@ -9,7 +9,7 @@
 > **Divergence point:** mae-core commit `2d1ed7d` ("Fix 3 runtime bugs: closure connections, reproductive spam, Groq quarantine", 2026-02-22). This is the last mae-core state before MIDGE became its own organism. All mae-core work prior to this commit is inherited by MIDGE.
 
 1. **Backed up original MIDGE** (24 files) to `_midge_staging/` for reference
-2. **Copied mae-core** into MIDGE directory — all 85 systems, 2425 tests, full bootstrap
+2. **Copied mae-core** into MIDGE directory — all 92 systems, 2425 tests, full bootstrap
 3. **Verified tests pass** — 2425 passed, 0 failures in MIDGE directory
 4. **Created `mae_core/market/` package** — MIDGE's unique organ for financial markets
 5. **Ported 16 market intelligence files** from original MIDGE into Mae's package structure
@@ -26,11 +26,11 @@
 ## Current State
 
 - **2425 tests pass, 0 failures**
-- **85 systems**, **107 holons**, **313 connections** (inherited from mae-core)
+- **92 systems**, **107 holons**, **313 connections** (inherited from mae-core)
 - **16 market modules** in `mae_core/market/` (standalone, not yet bootstrapped)
 - **6 learned data files** in `data/market/` (Thompson distributions, predictions, outcomes)
 - **32-layer bootstrap** runs cleanly
-- **Git:** Fresh repo, no commits yet. Remote exists at `github.com/CBaen/MIDGE`
+- **Git:** Remote at `github.com/CBaen/MIDGE`, force-pushed 2026-02-22 with full mae-core fork + market modules
 
 ### Market Package (MIDGE-specific)
 
@@ -88,11 +88,8 @@ Wire market API clients through Mae's BoundaryMembrane:
 - RapidAPI (key required) -> register with appropriate trust level
 - yfinance (free) -> register as data source
 
-### Priority 4: Git Setup
-
-- `git remote add origin https://github.com/CBaen/MIDGE.git`
-- Initial commit with full mae-core + market modules
-- Clean up `_midge_staging/` (all code has been ported)
+### Priority 4: Cleanup
+- Clean up `_midge_staging/` (all code has been ported, directory is gitignored)
 
 ---
 
@@ -100,7 +97,7 @@ Wire market API clients through Mae's BoundaryMembrane:
 
 Welcome. MIDGE is Mae differentiated for financial markets. Here is what you need to know:
 
-1. **MIDGE = mae-core + market intelligence.** Same 85 systems, same 8 laws, same bootstrap. Plus 16 market modules in `mae_core/market/`.
+1. **MIDGE = mae-core + market intelligence.** Same 92 systems, same 8 laws, same bootstrap. Plus 16 market modules in `mae_core/market/`.
 2. **Mae-core is upstream.** Changes to Mae's genome should be made in `C:\Users\baenb\projects\mae-core` and pulled here. Changes to market intelligence stay here.
 3. **Market modules are standalone.** They import each other but aren't wired into bootstrap/EventBus/ConnectionRegistry yet. That's the main integration task.
 4. **The crown jewel is `convergence_alerter.py`** — it synthesizes signals across ALL domains (insider + congressional + contract + hiring + velocity) into actionable alerts.

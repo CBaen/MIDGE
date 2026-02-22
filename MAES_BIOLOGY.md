@@ -74,7 +74,7 @@ The substrate publishes lifecycle events on the EventBus (agent registered, topo
 
 ### The Base Organism (Agents) -- 1,757 lines across 11 files
 
-Covered above in "The First Miracle." Base class (136 lines) + 9 mixins (1,470 lines) + composed agent (150 lines). The DNA that makes every agent a Mae agent, now properly decomposed into one capability per file.
+Covered above in "The First Miracle." Base class (136 lines) + 10 capability mixins + 4 lifecycle mixins + composed agent (150 lines). The DNA that makes every agent a Mae agent, now properly decomposed into one capability per file.
 
 **Status:** Complete. The monolith is dead. Long live the mixins.
 
@@ -295,7 +295,7 @@ Like an octopus where each arm thinks independently. The colony coordinates semi
 - **WorldModel:** OctopusAgent accepts WorldModel for central prediction when arm confidence is low -- **WIRED**
 - **SignalBus:** OctopusAgent accepts SignalBus for electrical signaling participation -- **WIRED**
 
-**Remaining gaps:** Substrate registration, memory systems integration, and morphogenesis coordination are not yet wired (these connections require cross-system integration work).
+**Remaining gaps:** Substrate registration and morphogenesis coordination are not yet wired. Memory integration IS wired -- OctopusAgent accepts a memory_coordinator for replay batches. Substrate registration and morphogenesis handoff remain as cross-system integration work.
 
 **Status:** Core system complete. Three major cross-system connections wired. Colony provides P2P networking, auto-scaling, and self-healing.
 
@@ -430,17 +430,17 @@ The following connections are live in production code:
 
 ### What's Not Yet Wired
 
-These systems are built but not yet connected to each other:
-- Memory system <-> Learning engines (training data pipeline)
-- Substrate <-> Communication channels (topology-aware routing)
-- Morphogenesis <-> Colony (spawn/dissolve commands)
-- Endocrine <-> Agents (hormone modulation of behavior)
-- Circadian <-> Memory consolidation (sleep-cycle learning)
-- CausalEngine <-> WorldModel (causal validation of predictions)
-- TemporalMemory <-> EpisodicMemory (temporal bridge)
-- Emergent systems <-> Learning engines (capability deployment)
+The major integration gaps from Mae's early development have been closed. All core organ systems are now connected:
+- Memory ↔ Learning pipeline — WIRED (FRL has memory_coordinator for replay batches)
+- Substrate ↔ Communication — WIRED (GNNCommunicator receives substrate, subscribes to topology events)
+- Morphogenesis ↔ Colony — WIRED (EventBus spawn_request + capability_found)
+- Endocrine ↔ Agents — WIRED (8 hormone consumers)
+- Circadian ↔ Memory consolidation — WIRED (circadian→endocrine callback)
+- Causal ↔ WorldModel — WIRED (CausalEngine subscribes to temporal events)
+- Temporal ↔ Episodic — WIRED
+- Emergent ↔ Learning — WIRED (CapabilityDiscovery observation pipeline)
 
-These are integration wiring tasks -- the systems themselves are complete. The wiring is where Mae grows next.
+**Remaining integration gap:** MIDGE's 16 market intelligence modules (`mae_core/market/`) are standalone -- they import from each other but are not yet wired into the bootstrap, EventBus, ConnectionRegistry, or agent lifecycle. This is the next major integration task.
 
 ---
 
@@ -484,35 +484,33 @@ Things that make Mae special -- the biology that drives the architecture, not th
 
 Honest accounting of what remains to complete the organism.
 
-### 1. Integration Wiring
+### 1. MIDGE Market Module Integration
 
-The systems are built. The connections between them are not all wired. The biggest gaps:
-- Memory <-> Learning pipeline (agents need to train from stored experiences)
-- Substrate <-> Communication (signals should follow network topology)
-- Endocrine <-> Agent behavior (hormones should modulate exploration, trust, urgency)
-- Circadian <-> Memory consolidation (sleep-cycle offline learning)
-- Morphogenesis <-> Colony (spawn/dissolve commands flowing between growth and network systems)
-- Causal <-> WorldModel (causal validation of imagination)
+The 16 market intelligence modules in `mae_core/market/` are fully functional but isolated. They sense the financial world -- insider trades, congressional stock activity, government contracts, hiring blitzes, SEC filing behavior -- but none of their signals flow into Mae's decision cascade yet. Wiring them in means:
+- Layer 33 in the bootstrap (Market Intelligence organ)
+- Edge detectors publishing to EventBus channels
+- Convergence Alerter subscribing and synthesizing cross-domain signals
+- Thompson Sampler replacing or augmenting FRL reliability scores
+- API clients routed through BoundaryMembrane for rate limiting and trust scoring
+- Market-specific stem cell roles (sec_watcher, contract_tracker, market_analyst)
+
+This is MIDGE's defining next step. Mae can already think. MIDGE needs to be able to trade.
 
 ### 2. Integration Tests
 
-Unit tests cover individual systems well. Cross-system integration tests cover roughly 20-30%. Mae needs tests that verify the wiring: "when agent A sends a signal, does agent B receive it through the substrate and respond correctly?"
+Unit tests cover individual systems well. Cross-system integration tests cover roughly 20-30%. Mae needs tests that verify the wiring: "when agent A sends a signal, does agent B receive it through the substrate and respond correctly?" Market module integration will need its own integration tests from the start.
 
-### 3. Bootstrap / Startup Example
+### 3. External API (FastAPI Wiring)
 
-There is no single entry point that creates a working Mae system. A `bootstrap.py` or example script that wires EventBus + StateStore + VectorStore + Model + Agents + Substrate + Learning engines together would make the system usable.
+Mae has no external-facing API. FastAPI wiring would expose her to the outside world -- submitting tasks, querying state, observing signals and alerts. For MIDGE specifically, this is the surface through which trading alerts would eventually flow out.
 
-### 4. External API (FastAPI Wiring)
+### 4. End-to-End Examples
 
-Mae has no external-facing API. FastAPI wiring would expose her to the outside world -- submitting tasks, querying state, observing behavior.
+No example exists that demonstrates MIDGE generating a market signal from raw data and carrying it through to an agent decision. An end-to-end trace -- SEC filing -> cluster detector -> convergence alerter -> EventBus -> agent decision cascade -- would prove the biology works as a market intelligence system.
 
-### 5. End-to-End Examples
+### 5. Persistence Wiring
 
-No example exists that demonstrates Mae solving a real problem. A toy domain (even a simple grid world) where agents learn, communicate, and coordinate would prove the biology works as a system.
-
-### 6. Persistence Wiring
-
-Save/load methods exist on StateStore and VectorStore. The model calls `state_store.load()` on startup and `_save_model_state()` periodically. But agent-level persistence (saving and restoring individual agent state, memory contents, learned policies) is not wired end-to-end. Mae still loses most of her memory when she restarts.
+Save/load methods exist on StateStore and VectorStore. The model calls `state_store.load()` on startup and `_save_model_state()` periodically. Tier 2 persistence covers 10 subsystems. But agent-level persistence (saving and restoring individual agent state, memory contents, learned policies) is not wired end-to-end. Mae still loses most of her memory when she restarts. The Thompson Sampler's Beta distributions in `data/market/` are already persisted -- that pattern should extend to the rest of the learning layer.
 
 ---
 

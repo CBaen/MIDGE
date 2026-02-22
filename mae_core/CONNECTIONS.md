@@ -4,7 +4,7 @@
 
 Each module owns its own connection docs. This file is the index + cross-cutting summaries.
 
-Last updated: 2026-02-12
+Last updated: 2026-02-22
 
 ---
 

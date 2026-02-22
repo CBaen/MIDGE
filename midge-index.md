@@ -27,7 +27,7 @@ Query with: `python C:/Users/baenb/.claude/scripts/qdrant-peek.py peek -c univer
 | README.md | MIDGE overview — mae-core foundation + market intelligence |
 | CLAUDE.md | Project rules, market package structure, key files |
 | HANDOFF.md | Session context — what happened, what's next, integration status |
-| SYSTEMS.md | System classification — 85 systems across 14 modules |
+| SYSTEMS.md | System classification — 92 systems across 14 modules |
 | MAES_BIOLOGY.md | Anatomist's map — every organ system, status, connections |
 | mae_core/CONNECTIONS.md | Connection index (per-module maps in `mae_core/*/CONNECTIONS.md`) |
 | midge-queue.md | Active tasks and their blocking relationships |
@@ -63,6 +63,7 @@ Query with: `python C:/Users/baenb/.claude/scripts/qdrant-peek.py peek -c univer
 | File | What It Contains |
 |------|-----------------|
 | `thompson_distributions.json` | 30+ signal Beta(alpha, beta) parameters |
+| `thompson_history.jsonl` | Every Bayesian update event |
 | `predictions.jsonl` | Historical predictions made |
 | `outcomes.jsonl` | Ground truth outcomes |
 | `discovery_log.jsonl` | Novel pattern discoveries |

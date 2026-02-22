@@ -4,7 +4,7 @@
 
 ---
 
-## Existing Systems (85)
+## Existing Systems (92)
 
 Built, tested, works independently. Grouped by module.
 
@@ -319,4 +319,4 @@ Agents now have real sense-think-act-learn loops instead of stub lifecycle metho
 
 ---
 
-**Last updated:** 2026-02-12
+**Last updated:** 2026-02-22
