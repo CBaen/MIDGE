@@ -84,7 +84,7 @@ Welcome. MIDGE is Mae differentiated for financial markets. Here is what you nee
 5. **Thompson Sampling** uses Bayesian explore/exploit. Learned distributions in `data/market/thompson_distributions.json`. Bayesian forgetting prevents stale evidence.
 6. **OutcomeTracker** closes the feedback loop: `record_prediction()` → price check after window → `update()` Thompson Sampler.
 7. **All 8 Mathematical Laws are satisfied.** See implementation plan Section 12 for compliance map.
-8. **2426 tests must keep passing.** Zero regressions.
+8. **2457 tests must keep passing.** Zero regressions.
 9. **Deep memory runs on Qdrant** container (port 6333). Start with `docker compose up -d`.
 10. **API keys** needed: RAPIDAPI_KEY (job tracker, congressional trades), ALPHA_VANTAGE_KEY (price fallback), SAM_GOV_API_KEY. SEC EDGAR and yfinance are free.
 
@@ -93,7 +93,7 @@ Welcome. MIDGE is Mae differentiated for financial markets. Here is what you nee
 ## Previous Sessions
 
 ### Market Integration (2026-02-22 — multi-session)
-Built full market intelligence integration (Tiers 0-5). Created Layer 33 bootstrap with 15 systems, 23 triadic connections, fractal K3 hierarchy, endocrine coupling, step hooks, Bayesian forgetting. All verified: 2426 tests pass, 0 alert storms.
+Built full market intelligence integration (Tiers 0-5). Created Layer 33 bootstrap with 15 systems, 23 triadic connections, fractal K3 hierarchy, endocrine coupling, step hooks, Bayesian forgetting. Phase 2 completed: CorrelationTracker persistence, discovery_log reader, 437 Congress members, TickerResolver, MarketDataProvider, ContractPredictor evaluation. All verified: 2457 tests pass, 0 alert storms.
 
 ### MIDGE Fork (2026-02-22)
 Forked mae-core into MIDGE. Ported 16 market intelligence files. Fixed imports and paths. Verified tests pass. Wrote identity docs.
