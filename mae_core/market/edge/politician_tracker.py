@@ -268,7 +268,7 @@ class PoliticianTracker:
                             symbol=symbol,
                             trade_date=trade.transaction_date,
                             trade_type="buy" if trade.transaction_type.lower() in ["p", "buy", "purchase"] else "sell",
-                            shares=trade.shares_traded,
+                            shares=trade.shares,
                             value=trade.total_value,
                             contract=contract,
                             contract_value=contract.award_amount,
@@ -307,7 +307,7 @@ class PoliticianTracker:
                 symbol=symbol,
                 trade_date=trade.transaction_date,
                 trade_type="buy",
-                shares=trade.shares_traded,
+                shares=trade.shares,
                 value=trade.total_value,
                 correlation_type="insider_preannouncement",
                 confidence=confidence

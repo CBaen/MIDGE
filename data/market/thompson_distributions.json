@@ -1,152 +1,74 @@
 {
   "sec_edgar": {
     "default": {
-      "alpha": 15.5,
-      "beta": 1.5000000000000004
+      "alpha": 1.9,
+      "beta": 0.10000000000000009
     }
   },
   "13f_filing": {
     "default": {
-      "alpha": 9.0,
-      "beta": 0.9999999999999998
+      "alpha": 1.8,
+      "beta": 0.19999999999999996
     }
   },
   "form_4": {
     "default": {
-      "alpha": 9.0,
-      "beta": 0.9999999999999998
+      "alpha": 1.8,
+      "beta": 0.19999999999999996
     }
   },
   "capitol_trades": {
     "default": {
-      "alpha": 8.5,
-      "beta": 1.5000000000000002
+      "alpha": 1.7,
+      "beta": 0.30000000000000004
     }
   },
   "unusual_whales": {
     "default": {
-      "alpha": 8.0,
-      "beta": 1.9999999999999996
+      "alpha": 1.6,
+      "beta": 0.3999999999999999
     }
   },
   "polygon": {
     "default": {
-      "alpha": 9.5,
-      "beta": 0.5000000000000004
+      "alpha": 1.9,
+      "beta": 0.10000000000000009
     }
   },
   "twitter_verified": {
     "default": {
-      "alpha": 6.0,
-      "beta": 4.0
+      "alpha": 1.2,
+      "beta": 0.8
     }
   },
   "reddit": {
     "default": {
-      "alpha": 3.0,
-      "beta": 13.0
+      "alpha": 0.6,
+      "beta": 1.4
     }
   },
   "stocktwits": {
     "default": {
-      "alpha": 5.0,
-      "beta": 5.0
+      "alpha": 1.0,
+      "beta": 1.0
     }
   },
   "gemini": {
     "default": {
-      "alpha": 7.5,
-      "beta": 2.5
+      "alpha": 1.5,
+      "beta": 0.5
     }
   },
   "deepseek": {
     "default": {
-      "alpha": 7.0,
-      "beta": 3.0000000000000004
+      "alpha": 1.4,
+      "beta": 0.5999999999999996
     }
   },
   "unknown": {
     "default": {
-      "alpha": 6.0,
-      "beta": 5.0
-    }
-  },
-  "insider_cluster": {
-    "default": {
       "alpha": 1.0,
       "beta": 1.0
-    }
-  },
-  "options_flow": {
-    "default": {
-      "alpha": 1.0,
-      "beta": 1.0
-    }
-  },
-  "congress_trade": {
-    "default": {
-      "alpha": 1.0,
-      "beta": 1.0
-    }
-  },
-  "contract_award": {
-    "default": {
-      "alpha": 1.0,
-      "beta": 1.0
-    }
-  },
-  "technical_macd": {
-    "default": {
-      "alpha": 5.0,
-      "beta": 1.0
-    }
-  },
-  "insider_form4": {
-    "default": {
-      "alpha": 5.0,
-      "beta": 1.0
-    }
-  },
-  "technical_rsi": {
-    "default": {
-      "alpha": 6.0,
-      "beta": 1.0
-    }
-  },
-  "politician_sell": {
-    "default": {
-      "alpha": 5.0,
-      "beta": 1.0
-    }
-  },
-  "rsi": {
-    "default": {
-      "alpha": 1.0,
-      "beta": 5.0
-    }
-  },
-  "stochastic": {
-    "default": {
-      "alpha": 5.0,
-      "beta": 5.0
-    }
-  },
-  "bollinger": {
-    "default": {
-      "alpha": 1.0,
-      "beta": 5.0
-    }
-  },
-  "williams_r": {
-    "default": {
-      "alpha": 5.0,
-      "beta": 5.0
-    }
-  },
-  "cci": {
-    "default": {
-      "alpha": 5.0,
-      "beta": 5.0
     }
   }
 }

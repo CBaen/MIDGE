@@ -29,7 +29,7 @@ DISTRIBUTIONS_FILE = DATA_DIR / "thompson_distributions.json"
 HISTORY_FILE = DATA_DIR / "thompson_history.jsonl"
 
 # Default prior scale (higher = more confident in prior)
-DEFAULT_PRIOR_SCALE = 10
+DEFAULT_PRIOR_SCALE = 2
 
 
 @dataclass
@@ -307,7 +307,7 @@ class ThompsonSampler:
     def get_uncertain_signals(
         self,
         regime: str = "default",
-        min_variance: float = 0.01
+        min_variance: float = 0.001
     ) -> List[Tuple[str, float]]:
         """
         Get signals with high uncertainty (worth exploring).
