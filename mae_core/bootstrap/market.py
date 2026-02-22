@@ -65,7 +65,8 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
         "            NOTE: OutcomeTracker active (Bayesian feedback from real market outcomes)."
     )
     logger.info(
-        "            NOTE: Full ApiGateway routing deferred to Phase 2."
+        "            NOTE: MarketDataProvider registered with ApiGateway. "
+        "Client migration to gateway routing is incremental."
     )
 
 
@@ -221,6 +222,20 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
                     ctx.boundary_membrane.register_source(source_name, trust=trust)
             except Exception:
                 logger.debug("Could not register %s with BoundaryMembrane", source_name)
+
+    # --- Register MarketDataProvider with ApiGateway ---
+    gateway = getattr(ctx, "api_gateway", None)
+    if gateway is not None:
+        try:
+            from mae_core.market.apis.market_data_provider import MarketDataProvider
+            provider = MarketDataProvider()
+            gateway.register_provider("market_data", provider)
+            ctx.market_data_provider = provider
+        except Exception:
+            logger.debug("Could not register MarketDataProvider with ApiGateway", exc_info=True)
+            ctx.market_data_provider = None
+    else:
+        ctx.market_data_provider = None
 
     logger.info(
         "Layer 33a - Market systems instantiated: %d systems (construction failures: %d)",

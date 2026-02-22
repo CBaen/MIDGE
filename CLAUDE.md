@@ -106,7 +106,7 @@ Market modules are **fully bootstrapped as Layer 33** — wired into EventBus, C
 After any structural change, grep for stale references:
 ```bash
 # Key numbers to check (update these values as they change):
-# Systems: 107 (92 core + 15 market) | Tests: 2426 | Bootstrap layers: 33 | Mixins: 14
+# Systems: 107 (92 core + 15 market) | Tests: 2457 | Bootstrap layers: 33 | Mixins: 14
 # Connections: 336 (211 core + 47 fractal + 55 bootstrap + 23 market) | Holons: 126 | Fractal depth: 4
 # Market modules: 19 files (7 API + 4 edge + 5 intelligence + 3 integration)
 
