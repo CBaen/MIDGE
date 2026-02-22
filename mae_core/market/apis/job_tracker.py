@@ -148,11 +148,11 @@ class JobTracker:
                 data = response.json()
                 return data.get("data", [])
             else:
-                print(f"JSearch failed ({response.status_code})")
+                logger.warning(f"JSearch failed ({response.status_code})")
                 return []
 
         except Exception as e:
-            print(f"JSearch error: {str(e)[:50]}")
+            logger.warning(f"JSearch error: {str(e)[:50]}")
             return []
 
     def get_jobs_last_24h(
