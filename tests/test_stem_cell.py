@@ -135,8 +135,12 @@ class TestAgentEpigenome:
 # ---------------------------------------------------------------------------
 
 class TestRoleProfiles:
-    def test_all_nine_roles_defined(self):
-        expected = {"STEM", "EXPLORER", "LEARNER", "COMMUNICATOR", "HEALER", "COORDINATOR", "SPECIALIST", "API_CALLER", "LLM_SPECIALIST"}
+    def test_all_twelve_roles_defined(self):
+        expected = {
+            "STEM", "EXPLORER", "LEARNER", "COMMUNICATOR", "HEALER",
+            "COORDINATOR", "SPECIALIST", "API_CALLER", "LLM_SPECIALIST",
+            "SEC_WATCHER", "CONTRACT_TRACKER", "MARKET_ANALYST",
+        }
         assert set(ROLE_PROFILES.keys()) == expected
 
     def test_stem_uses_defaults(self):
