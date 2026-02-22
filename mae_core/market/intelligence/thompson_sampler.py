@@ -15,11 +15,16 @@ This creates automatic exploration-exploitation balance without tuning.
 """
 
 import json
+import logging
+import os
+import threading
 import numpy as np
 from pathlib import Path
 from datetime import datetime
 from dataclasses import dataclass, asdict, field
 from typing import Dict, List, Tuple, Optional
+
+logger = logging.getLogger(__name__)
 
 
 # Persistence path

@@ -126,9 +126,13 @@ class FilingTimeAnalyzer:
         Returns:
             FilingTimeSignal with pattern analysis
         """
-        filing_time = filing_datetime.time()
-        day_of_week = filing_datetime.strftime("%A")
-        time_str = filing_datetime.strftime("%H:%M")
+        # Normalize to Eastern time (SEC EDGAR may return UTC)
+        if filing_datetime.tzinfo is None:
+            filing_datetime = filing_datetime.replace(tzinfo=timezone.utc)
+        filing_et = filing_datetime.astimezone(ZoneInfo("America/New_York"))
+        filing_time = filing_et.time()
+        day_of_week = filing_et.strftime("%A")
+        time_str = filing_et.strftime("%H:%M")
 
         # Determine market session
         if filing_time < self.MARKET_OPEN:
