@@ -125,7 +125,8 @@ class ConvergenceAlerter:
             "fundamentals": "financial",
             "macro": "financial",
             "government": "institutional",
-            "contracts": "institutional"
+            "contracts": "institutional",
+            "institutional_synthesis": "institutional"
         }
 
         self._alert_counter = 0
