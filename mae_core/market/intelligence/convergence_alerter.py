@@ -86,7 +86,7 @@ class ConvergenceAlerter:
 
     def __init__(
         self,
-        min_domains: int = 2,
+        min_domains: int = 3,
         min_strength: float = 0.6,
         convergence_window_hours: int = 48,
         persistence_path: str = None

@@ -12,11 +12,14 @@ Research backing (from universal_vault_v2 predictions):
 """
 
 import uuid
+import logging
 import requests
 from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict, field
 from typing import List, Dict, Optional
 from collections import defaultdict
+
+logger = logging.getLogger(__name__)
 
 QDRANT_URL = "http://localhost:6333"
 SIGNALS_COLLECTION = "midge_signals"
@@ -207,7 +210,7 @@ class ClusterDetector:
             return trades
 
         except Exception as e:
-            print(f"[ClusterDetector] Error querying Qdrant: {e}")
+            logger.error(f"[ClusterDetector] Error querying Qdrant: {e}")
             return []
 
     def _filter_transactions(self, trades: List[dict]) -> List[dict]:
@@ -505,7 +508,7 @@ class RelationshipTracker:
             return trades
 
         except Exception as e:
-            print(f"[RelationshipTracker] Query error: {e}")
+            logger.error(f"[RelationshipTracker] Query error: {e}")
             return []
 
     def _record_relationship(self, name_a: str, name_b: str, symbol: str, delta_hours: float):
@@ -587,6 +590,7 @@ class RelationshipTracker:
 
 def store_cluster_signal(cluster: ClusterSignal, qdrant_url: str = QDRANT_URL) -> bool:
     """Store a cluster signal to Qdrant."""
+    import hashlib
 
     # Create searchable text
     text = cluster.to_plain_language()
@@ -601,11 +605,11 @@ def store_cluster_signal(cluster: ClusterSignal, qdrant_url: str = QDRANT_URL) -
             timeout=30
         )
         if response.status_code != 200:
-            print(f"[ClusterDetector] Could not get embedding")
+            logger.warning("[ClusterDetector] Could not get embedding")
             return False
         embedding = response.json().get("embedding")
     except Exception as e:
-        print(f"[ClusterDetector] Embedding error: {e}")
+        logger.error(f"[ClusterDetector] Embedding error: {e}")
         return False
 
     # Build payload
@@ -613,13 +617,16 @@ def store_cluster_signal(cluster: ClusterSignal, qdrant_url: str = QDRANT_URL) -
     payload["text"] = text
     payload["direction"] = "bullish"
 
+    # Deterministic ID from cluster_id using MD5 (hash() is process-randomized)
+    deterministic_id = int(hashlib.md5(cluster.cluster_id.encode()).hexdigest(), 16) % (10**18)
+
     # Store to Qdrant
     try:
         response = requests.put(
             f"{qdrant_url}/collections/{SIGNALS_COLLECTION}/points",
             json={
                 "points": [{
-                    "id": abs(hash(cluster.cluster_id)) % (10**18),
+                    "id": deterministic_id,
                     "vector": embedding,
                     "payload": payload
                 }]
@@ -628,10 +635,10 @@ def store_cluster_signal(cluster: ClusterSignal, qdrant_url: str = QDRANT_URL) -
         )
         success = response.status_code in (200, 201)
         if success:
-            print(f"[ClusterDetector] Stored cluster signal: {cluster.to_plain_language()}")
+            logger.info(f"[ClusterDetector] Stored cluster signal: {cluster.to_plain_language()}")
         return success
     except Exception as e:
-        print(f"[ClusterDetector] Storage error: {e}")
+        logger.error(f"[ClusterDetector] Storage error: {e}")
         return False
 
 

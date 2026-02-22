@@ -11,10 +11,13 @@ Filing time patterns often reveal intent:
 This analyzer adds confidence modifiers to insider signals based on WHEN they filed.
 """
 
+import logging
 from dataclasses import dataclass
 from datetime import datetime, time
 from typing import List, Optional, Dict
 import requests
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -98,8 +101,8 @@ class FilingTimeAnalyzer:
         }
     }
 
-    def __init__(self):
-        self.qdrant_url = "http://localhost:6333"
+    def __init__(self, qdrant_url: str = "http://localhost:6333"):
+        self.qdrant_url = qdrant_url
 
     def analyze_filing_time(
         self,

@@ -299,9 +299,9 @@ class JobTracker:
                 signal.contract_related_jobs += 1
 
         # Detect spike
-        # Rule: 24h jobs > 10% of 30d average per day = spike
-        if signal.jobs_30d > 0:
-            daily_avg = signal.jobs_30d / 30
+        # Rule: 24h jobs > 10% of 7d average per day = spike
+        if signal.jobs_7d > 0:
+            daily_avg = signal.jobs_7d / 7
             if daily_avg > 0:
                 signal.spike_ratio = signal.jobs_24h / daily_avg
                 signal.is_spike = signal.spike_ratio >= 2.0  # 2x normal = spike

@@ -129,9 +129,9 @@ class VelocityDetector:
 
         # Compute velocity if we have prior observations
         if state.last_timestamp is not None:
-            dt = (timestamp - state.last_timestamp).total_seconds()
+            dt = (timestamp - state.last_timestamp).total_seconds() / 86400
             if dt > 0:
-                # Velocity = change in value / change in time
+                # Velocity = change in value / change in time (per day)
                 dv = value - state.last_value
                 velocity = dv / dt
 

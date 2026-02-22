@@ -142,10 +142,10 @@ class ContractPredictor:
     We detect these signals and predict winners.
     """
 
-    def __init__(self):
+    def __init__(self, qdrant_url: str = QDRANT_URL):
         self.job_tracker = JobTracker()
         self.sam_client = SAMGovClient()
-        self.qdrant_url = QDRANT_URL
+        self.qdrant_url = qdrant_url
 
     def analyze_contract(
         self,
