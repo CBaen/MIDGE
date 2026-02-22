@@ -85,7 +85,7 @@ class SECEdgarClient:
 
             return None
         except Exception as e:
-            print(f"Error parsing CIK mapping: {e}")
+            logger.error(f"Error parsing CIK mapping: {e}")
             return None
 
     def get_company_filings(self, cik: str, form_type: str = "4") -> List[dict]:
@@ -135,7 +135,7 @@ class SECEdgarClient:
             return results
 
         except Exception as e:
-            print(f"Error parsing filings: {e}")
+            logger.error(f"Error parsing filings: {e}")
             return []
 
     def parse_form4(self, cik: str, accession_number: str, document_url: str = None) -> List[InsiderTrade]:
@@ -264,10 +264,10 @@ class SECEdgarClient:
             return trades
 
         except ET.ParseError as e:
-            print(f"XML parse error for {accession_number}: {e}")
+            logger.error(f"XML parse error for {accession_number}: {e}")
             return []
         except Exception as e:
-            print(f"Error parsing Form 4 {accession_number}: {e}")
+            logger.error(f"Error parsing Form 4 {accession_number}: {e}")
             return []
 
     def _parse_form4_html(self, html_content: str, cik: str, accession_number: str) -> List[InsiderTrade]:
@@ -371,7 +371,7 @@ class SECEdgarClient:
                             continue
 
         except Exception as e:
-            print(f"Error parsing Form 4 HTML {accession_number}: {e}")
+            logger.error(f"Error parsing Form 4 HTML {accession_number}: {e}")
 
         return trades
 
@@ -423,7 +423,7 @@ class SECEdgarClient:
             )
 
         except Exception as e:
-            print(f"Error parsing transaction: {e}")
+            logger.error(f"Error parsing transaction: {e}")
             return None
 
     def parse_form8k(self, cik: str, accession_number: str, filing_date: str,
@@ -501,5 +501,5 @@ class SECEdgarClient:
             return events
 
         except Exception as e:
-            print(f"Error parsing Form 8-K: {e}")
+            logger.error(f"Error parsing Form 8-K: {e}")
             return []

@@ -12,11 +12,14 @@ Usage:
     events = get_recent_form8ks("AAPL", days=30)
 """
 
+import logging
 from datetime import datetime, timedelta
 from typing import List
 
 from .models import Form8KEvent, InsiderTrade
 from .client import SECEdgarClient, SEC_USER_AGENT
+
+logger = logging.getLogger(__name__)
 
 
 def get_recent_form8ks(ticker: str, days: int = 30) -> List[Form8KEvent]:
@@ -37,17 +40,17 @@ def get_recent_form8ks(ticker: str, days: int = 30) -> List[Form8KEvent]:
 
     cik = client.get_company_cik(ticker)
     if not cik:
-        print(f"Could not find CIK for {ticker}")
+        logger.warning(f"Could not find CIK for {ticker}")
         return []
 
-    print(f"Found CIK {cik} for {ticker}")
+    logger.debug(f"Found CIK {cik} for {ticker}")
 
     filings = client.get_company_filings(cik, form_type="8-K")
-    print(f"Found {len(filings)} Form 8-K filings")
+    logger.debug(f"Found {len(filings)} Form 8-K filings")
 
     cutoff_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
     recent_filings = [f for f in filings if f.get("filing_date", "") >= cutoff_date]
-    print(f"Found {len(recent_filings)} filings in last {days} days")
+    logger.debug(f"Found {len(recent_filings)} filings in last {days} days")
 
     all_events = []
     for filing in recent_filings[:15]:
@@ -79,17 +82,17 @@ def get_recent_form4s(ticker: str, days: int = 30) -> List[InsiderTrade]:
 
     cik = client.get_company_cik(ticker)
     if not cik:
-        print(f"Could not find CIK for {ticker}")
+        logger.warning(f"Could not find CIK for {ticker}")
         return []
 
-    print(f"Found CIK {cik} for {ticker}")
+    logger.debug(f"Found CIK {cik} for {ticker}")
 
     filings = client.get_company_filings(cik, form_type="4")
-    print(f"Found {len(filings)} Form 4 filings")
+    logger.debug(f"Found {len(filings)} Form 4 filings")
 
     cutoff_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
     recent_filings = [f for f in filings if f.get("filing_date", "") >= cutoff_date]
-    print(f"Found {len(recent_filings)} filings in last {days} days")
+    logger.debug(f"Found {len(recent_filings)} filings in last {days} days")
 
     all_trades = []
     for filing in recent_filings[:10]:
@@ -112,7 +115,7 @@ def search_politician_trades(politician_name: str = None) -> List[InsiderTrade]:
     Note: This would require cross-referencing SEC data with
     Congress member stock disclosures from other sources.
     """
-    print("Politician trade search requires additional data sources")
+    logger.info("Politician trade search requires additional data sources")
     return []
 
 

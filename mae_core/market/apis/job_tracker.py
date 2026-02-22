@@ -15,10 +15,13 @@ Requires RAPIDAPI_KEY environment variable.
 
 import os
 import time
+import logging
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict
 from datetime import datetime, timedelta
 import requests
+
+logger = logging.getLogger(__name__)
 
 
 # RapidAPI endpoints
@@ -96,7 +99,7 @@ class JobTracker:
         self._last_request_time = 0
 
         if not self.rapidapi_key:
-            print("WARNING: No RAPIDAPI_KEY set. Job tracking will not work.")
+            logger.warning("No RAPIDAPI_KEY set. Job tracking will not work.")
 
     def _rate_limit(self):
         """Enforce rate limiting."""
