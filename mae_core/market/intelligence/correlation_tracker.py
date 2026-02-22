@@ -389,7 +389,9 @@ class CorrelationTracker:
                     "historical_std": p.historical_std,
                     "correlation_zscore": p.correlation_zscore,
                     "is_anomalous": p.is_anomalous,
-                    "observation_count": p.observation_count
+                    "observation_count": p.observation_count,
+                    "history": list(self.correlation_history.get(
+                        (p.signal_a, p.signal_b), []))
                 }
                 for p in self.correlations.values()
             }
