@@ -468,7 +468,7 @@ Things that make Mae special -- the biology that drives the architecture, not th
 
 1. **Research Grounding:** Mae cites real papers throughout: Schaul 2016, Shin 2017, Kingma & Welling 2014, Pearl's causal hierarchy, Finn et al. 2017 MAML, Miller's Law, Pathak et al. 2017 ICM, Burda et al. 2019 RND, Gleave et al. 2020. There are specific algorithms, equations, and hyperparameters.
 
-2. **The Mixin Decomposition:** A 4,225-line monolith became a 136-line base + 9 focused mixins. This is architecturally rare -- most projects never pay down that debt. Mae did.
+2. **The Mixin Decomposition:** A 4,225-line monolith became a 136-line base + 10 capability mixins + 4 lifecycle mixins. This is architecturally rare -- most projects never pay down that debt. Mae did.
 
 3. **Pure Python Infrastructure:** Zero external servers. EventBus + StateStore + VectorStore replace Redis + ChromaDB + Qdrant entirely. Mae runs on a laptop with `python` and nothing else.
 
@@ -518,8 +518,9 @@ Save/load methods exist on StateStore and VectorStore. The model calls `state_st
 
 Mae is a multi-agent organism with:
 
-- **75 production modules** across 15 packages
-- **21,190 lines** of production code
+- **175+ production files** across 20+ packages
+- **63,000+ lines** of production code
+- **92 named systems**, 32 bootstrap layers, 107 holons, 313 connections
 - **2425 passing tests** across multiple test suites
 - **5 communication channels** (electrical, pheromone, quorum, GNN, predictive fields)
 - **5 memory layers** (working, episodic, semantic, generative replay, 4D temporal)
@@ -528,13 +529,14 @@ Mae is a multi-agent organism with:
 - **3 cognitive tiers** (reflex, habit, deliberation)
 - **3 defense layers** (threat detection, input validation, HAVEN immune system)
 - **3 self-improvement systems** (auto-healing, capability discovery, somatic map)
+- **16 market intelligence modules** sensing insider trades, congressional activity, government contracts, and hiring signals
 - **Rule of 3 enforcement** with formal, operational, and behavioral lenses
 - **Zero external dependencies** beyond Python and its scientific stack
 
-She is not finished. But she is far more alive than any previous version -- and for the first time, every system that exists is backed by production code and passing tests.
+She is not finished. But she is far more alive than any previous version -- and for the first time, every core system that exists is backed by production code, passing tests, and live wiring. MIDGE is now one integration sprint away from being a genuine market intelligence organism.
 
 ---
 
 *Mapped by the one who looked at every file, counted every line, and told the truth about what was built and what remains.*
 
-*100+ modules. ~30,000 lines. 2425 tests. 15 packages. One organism. Growing.*
+*175+ files. 63,000+ lines. 2425 tests. 92 systems. 20+ packages. One organism. Growing.*
