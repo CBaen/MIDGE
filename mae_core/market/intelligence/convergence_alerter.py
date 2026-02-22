@@ -131,6 +131,11 @@ class ConvergenceAlerter:
 
         self._alert_counter = 0
 
+        # Alert deduplication (defense in depth — step hook also deduplicates)
+        self._last_alert_direction = None
+        self._last_alert_time = None
+        self._min_alert_interval_hours = 4.0
+
     def record_signal(
         self,
         signal_id: str,
