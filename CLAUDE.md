@@ -95,7 +95,7 @@ mae_core/market/
 
 Market modules are **fully bootstrapped as Layer 33** — wired into EventBus, ConnectionRegistry, HolonRegistry, fractal hierarchy, endocrine coupling, and step hooks. 15 systems, 23 triadic connections, 19 holons.
 
-**Phase 2 (deferred):** Full ApiGateway routing for API clients, TickerResolver service, regime-aware Thompson Sampling, CorrelationTracker deque persistence. See `research/market-integration-architecture/implementation-plan.md` Section 9.
+**Phase 2 complete:** CorrelationTracker deque persistence, discovery_log reader, KNOWN_POLITICIANS expansion (437 members), TickerResolver service, MarketDataProvider registered with ApiGateway, ContractPredictor retained (entity-level, complements ConvergenceAlerter). Remaining: regime-aware Thompson Sampling (all calls use `regime="default"`), incremental client migration to gateway routing.
 
 ---
 
@@ -108,7 +108,7 @@ After any structural change, grep for stale references:
 # Key numbers to check (update these values as they change):
 # Systems: 107 (92 core + 15 market) | Tests: 2457 | Bootstrap layers: 33 | Mixins: 14
 # Connections: 336 (211 core + 47 fractal + 55 bootstrap + 23 market) | Holons: 126 | Fractal depth: 4
-# Market modules: 19 files (7 API + 4 edge + 5 intelligence + 3 integration)
+# Market modules: 21 files (9 API + 4 edge + 5 intelligence + 3 integration)
 
 grep -rn "PREVIOUS_COUNT" --include="*.md" --include="*.py"
 ```
@@ -133,8 +133,8 @@ grep -rn "PREVIOUS_COUNT" --include="*.md" --include="*.py"
 
 - **Mesa 3.4** foundation, pure Python infrastructure
 - **33-layer bootstrap** in `mae_core/bootstrap/` (orchestrated by `main.py`)
-- **107 systems** (92 core + 15 market), **2426 tests**, **126 holons**, **336 connections**
-- **19 market intelligence files** in `mae_core/market/` (bootstrapped as Layer 33)
+- **107 systems** (92 core + 15 market), **2457 tests**, **126 holons**, **336 connections**
+- **21 market intelligence files** in `mae_core/market/` (bootstrapped as Layer 33)
 - **14 mixins** on MycelialAgent (10 capability + 4 lifecycle, HolonMixin is 10th capability)
 - **Fractal architecture:** All 5 steps complete (Holon Protocol, Triadic Connections, Bidirectional Awareness, Fractal Generator, Stem Cell)
 - **Advisory enforcement:** Triads and connections observe/report, never block

@@ -20,9 +20,9 @@ Built and verified the full market intelligence integration into Mae's organism.
 
 ## Current State
 
-- **2426 tests pass, 0 failures**
+- **2457 tests pass, 0 failures**
 - **107 systems** (92 core + 15 market), **126 holons**, **336 connections** (211 core + 47 fractal + 55 bootstrap + 23 market)
-- **19 market files** in `mae_core/market/` (bootstrapped as Layer 33)
+- **21 market files** in `mae_core/market/` (bootstrapped as Layer 33)
 - **33-layer bootstrap** runs cleanly — all 8 Layer 33 stages log successfully
 - **12 stem cell roles** (9 original + SEC_WATCHER, CONTRACT_TRACKER, MARKET_ANALYST)
 - **Git:** Remote at `github.com/CBaen/MIDGE`
@@ -45,7 +45,7 @@ Layer 33  - Market Intelligence organ complete: 15 systems, 19 holons, 23 connec
 | Subpackage | Files | Purpose |
 |------------|-------|---------|
 | `apis/sec_edgar/` | 3 (models, client, __init__) | SEC insider trades + material events |
-| `apis/` | 5 (price_fetcher, house_stock_watcher, job_tracker, usa_spending, sam_gov) | Market data sources |
+| `apis/` | 7 (price_fetcher, house_stock_watcher, job_tracker, usa_spending, sam_gov, ticker_resolver, market_data_provider) | Market data sources + utilities |
 | `edge/` | 4 (cluster_detector, politician_tracker, filing_time_analyzer, contract_predictor) | Pattern recognition |
 | `intelligence/` | 5 (thompson_sampler, velocity_detector, correlation_tracker, convergence_alerter, learning_config) | Bayesian learning |
 | `root` | 3 (signal.py, channels.py, outcome_tracker.py) | Integration layer |
@@ -54,21 +54,22 @@ Layer 33  - Market Intelligence organ complete: 15 systems, 19 holons, 23 connec
 
 ## What's Next
 
-### Phase 2: Deferred Items (from implementation plan Section 9)
+### Phase 2: Complete
 
-1. **Full ApiGateway routing** — Route 6 market API clients through BoundaryMembrane + InputValidator (currently they call HTTP directly)
-2. **TickerResolver service** — Map company names from USASpending/SAM.gov to ticker symbols
-3. **Regime-aware Thompson Sampling** — Separate Beta distributions per market regime (architecture exists, all calls use `regime="default"`)
-4. **CorrelationTracker deque persistence** — Fix false anomalies after restart (stale means vs empty history)
-5. **ContractPredictor decomposition** — Evaluate retiring in favor of routing through ConvergenceAlerter directly
-6. **KNOWN_POLITICIANS expansion** — Currently 4 entries, need 535+ from govtrack.us or ProPublica
-7. **discovery_log.jsonl reader** — ConvergenceAlerter writes discoveries; nothing reads them
+All Phase 2 items from implementation plan Section 9 are done:
+1. ~~CorrelationTracker deque persistence~~ — history saved/restored, no false anomalies
+2. ~~discovery_log.jsonl reader~~ — `read_discoveries()` in convergence_alerter.py
+3. ~~KNOWN_POLITICIANS expansion~~ — 437 Congress members via `data/market/congress_members.json`
+4. ~~TickerResolver service~~ — `mae_core/market/apis/ticker_resolver.py` (100+ curated mappings, fuzzy matching)
+5. ~~ApiGateway routing~~ — MarketDataProvider registered, BoundaryMembrane trust scores wired
+6. ~~ContractPredictor decomposition~~ — Evaluated and retained (entity-level, complements ConvergenceAlerter)
+7. ~~_midge_staging/ cleanup~~ — Deleted
 
-### Other
+### Remaining Work
 
-- Clean up `_midge_staging/` (all code ported, directory is gitignored)
+- **Regime-aware Thompson Sampling** — Separate Beta distributions per market regime (architecture exists, all calls use `regime="default"`)
+- **Incremental client migration** — Migrate 6 market API clients from direct HTTP to MarketDataProvider/ApiGateway routing
 - Replace `midge@wardenclyffe.local` in SEC user agent with real email before live EDGAR queries
-- Update `mae_core/market/apis/sec_edgar/client.py` SEC_USER_AGENT for production
 
 ---
 
