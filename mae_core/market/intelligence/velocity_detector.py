@@ -20,12 +20,15 @@ Usage:
 """
 
 import json
+import logging
 import math
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from collections import deque
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -372,7 +375,7 @@ class VelocityDetector:
                 self.history[signal_id] = deque(maxlen=self.window_size)
                 self.velocity_history[signal_id] = deque(maxlen=self.window_size)
         except Exception as e:
-            print(f"Warning: Could not load velocity state: {e}")
+            logger.warning(f"Could not load velocity state: {e}")
 
 
 if __name__ == "__main__":

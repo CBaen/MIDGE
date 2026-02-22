@@ -19,12 +19,15 @@ Usage:
 """
 
 import json
+import logging
 import math
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Set
 from collections import deque
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -415,7 +418,7 @@ class CorrelationTracker:
                 )
                 self.correlation_history[pair_key] = deque(maxlen=self.window_size)
         except Exception as e:
-            print(f"Warning: Could not load correlation state: {e}")
+            logger.warning(f"Could not load correlation state: {e}")
 
 
 if __name__ == "__main__":

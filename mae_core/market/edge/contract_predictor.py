@@ -32,9 +32,6 @@ from mae_core.market.apis.sam_gov import SAMGovClient, ContractOpportunity
 from mae_core.market.apis.sec_edgar import get_recent_form4s
 
 
-QDRANT_URL = "http://localhost:6333"
-
-
 @dataclass
 class ContractPrediction:
     """
@@ -145,7 +142,7 @@ class ContractPredictor:
     We detect these signals and predict winners.
     """
 
-    def __init__(self, qdrant_url: str = QDRANT_URL):
+    def __init__(self, qdrant_url: str = "http://localhost:6333"):
         self.job_tracker = JobTracker()
         self.sam_client = SAMGovClient()
         self.qdrant_url = qdrant_url

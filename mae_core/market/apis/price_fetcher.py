@@ -10,10 +10,13 @@ Fallback: Alpha Vantage (free tier), Polygon (if configured)
 """
 
 import time
+import logging
 from datetime import datetime, timedelta
 from dataclasses import dataclass
 from typing import Optional, Dict, List, Tuple
 import requests
+
+logger = logging.getLogger(__name__)
 
 # Try to import yfinance, but don't fail if not installed
 try:
@@ -21,7 +24,7 @@ try:
     YFINANCE_AVAILABLE = True
 except ImportError:
     YFINANCE_AVAILABLE = False
-    print("yfinance not installed. Run: pip install yfinance")
+    logger.warning("yfinance not installed. Run: pip install yfinance")
 
 
 @dataclass
@@ -130,7 +133,7 @@ class PriceFetcher:
             )
 
         except Exception as e:
-            print(f"Historical price error for {symbol}: {e}")
+            logger.warning(f"Historical price error for {symbol}: {e}")
             return None
 
     def get_multiple_prices(self, symbols: List[str]) -> Dict[str, Optional[PriceData]]:
@@ -168,7 +171,7 @@ class PriceFetcher:
                     except:
                         results[symbol] = None
             except Exception as e:
-                print(f"Batch price fetch error: {e}")
+                logger.warning(f"Batch price fetch error: {e}")
                 # Fall back to individual fetches
                 for symbol in symbols:
                     results[symbol] = self.get_current_price(symbol)
@@ -205,7 +208,7 @@ class PriceFetcher:
                 )
 
         except Exception as e:
-            print(f"yfinance error for {symbol}: {e}")
+            logger.warning(f"yfinance error for {symbol}: {e}")
 
         return None
 
@@ -240,7 +243,7 @@ class PriceFetcher:
                 )
 
         except Exception as e:
-            print(f"Alpha Vantage error for {symbol}: {e}")
+            logger.warning(f"Alpha Vantage error for {symbol}: {e}")
 
         return None
 

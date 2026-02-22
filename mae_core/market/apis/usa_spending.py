@@ -107,10 +107,10 @@ class USASpendingClient:
             if response.status_code == 200:
                 return response.json()
             else:
-                print(f"USASpending API error: {response.status_code} - {response.text[:200]}")
+                logger.warning(f"USASpending API error: {response.status_code} - {response.text[:200]}")
                 return None
         except Exception as e:
-            print(f"USASpending request failed: {e}")
+            logger.warning(f"USASpending request failed: {e}")
             return None
 
     def search_contracts(self,
@@ -223,7 +223,7 @@ class USASpendingClient:
                 )
                 contracts.append(contract)
             except Exception as e:
-                print(f"Error parsing contract: {e}")
+                logger.warning(f"Error parsing contract: {e}")
                 continue
 
         return contracts
