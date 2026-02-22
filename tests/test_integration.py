@@ -77,6 +77,23 @@ class TestBootstrap:
             assert key in systems, f"Missing system: {key}"
             assert systems[key] is not None, f"System is None: {key}"
 
+    def test_market_systems_present(self, mae_organism):
+        """Market intelligence systems exist in systems dict (Layer 33).
+
+        Market systems tolerate None (graceful degradation) — we only
+        check that the key exists, not that it's non-None.
+        """
+        _, systems = mae_organism
+        market_keys = [
+            "sec_edgar_client", "price_fetcher", "house_stock_watcher",
+            "job_tracker", "usa_spending_client", "sam_gov_client",
+            "cluster_detector", "politician_tracker", "filing_time_analyzer",
+            "contract_predictor", "thompson_sampler", "convergence_alerter",
+            "velocity_detector", "correlation_tracker", "outcome_tracker",
+        ]
+        for key in market_keys:
+            assert key in systems, f"Missing market system: {key}"
+
     def test_agents_created(self, mae_organism):
         model, systems = mae_organism
         assert len(systems["agents"]) == 3

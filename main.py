@@ -21,6 +21,7 @@ from mae_core.bootstrap.wiring import bootstrap_wiring
 from mae_core.bootstrap.patterns import bootstrap_patterns
 from mae_core.bootstrap.organs import bootstrap_organs
 from mae_core.bootstrap.external import bootstrap_external
+from mae_core.bootstrap.market import bootstrap_market
 from mae_core.bootstrap.audit import bootstrap_audit
 
 logging.basicConfig(
@@ -36,7 +37,7 @@ def create_mae(
     cycle_length: int = 100,
     persist_dir: str = "data/mae",
 ) -> tuple:
-    """Create and wire a complete Mae organism (32-layer bootstrap).
+    """Create and wire a complete Mae organism (33-layer bootstrap).
 
     Instantiates ALL systems in biological order, injects subsystems
     into agents, registers step hooks, and wires EventBus channels.
@@ -56,6 +57,7 @@ def create_mae(
     bootstrap_patterns(ctx)      # Layers 22-25: patterns, deep memory, action
     bootstrap_organs(ctx)        # Layers 26-30: organs, organism, lifecycle
     bootstrap_external(ctx)      # Layer 31: external API gateway
+    bootstrap_market(ctx)        # Layer 33: market intelligence organ
     bootstrap_audit(ctx)         # Layer 32: triadic bootstrap audit (self-check)
 
     systems = _build_systems_dict(ctx)
@@ -189,6 +191,22 @@ def _build_systems_dict(ctx) -> dict:
         "arousal_regulator": ctx.arousal_regulator,
         # External API Gateway (Layer 31)
         "api_gateway": ctx.api_gateway,
+        # Market Intelligence (Layer 33) — all tolerate None for graceful degradation
+        "sec_edgar_client":     getattr(ctx, "sec_edgar_client", None),
+        "price_fetcher":        getattr(ctx, "price_fetcher", None),
+        "house_stock_watcher":  getattr(ctx, "house_stock_watcher", None),
+        "job_tracker":          getattr(ctx, "job_tracker", None),
+        "usa_spending_client":  getattr(ctx, "usa_spending_client", None),
+        "sam_gov_client":       getattr(ctx, "sam_gov_client", None),
+        "cluster_detector":     getattr(ctx, "cluster_detector", None),
+        "politician_tracker":   getattr(ctx, "politician_tracker", None),
+        "filing_time_analyzer": getattr(ctx, "filing_time_analyzer", None),
+        "contract_predictor":   getattr(ctx, "contract_predictor", None),
+        "thompson_sampler":     getattr(ctx, "thompson_sampler", None),
+        "convergence_alerter":  getattr(ctx, "convergence_alerter", None),
+        "velocity_detector":    getattr(ctx, "velocity_detector", None),
+        "correlation_tracker":  getattr(ctx, "correlation_tracker", None),
+        "outcome_tracker":      getattr(ctx, "outcome_tracker", None),
     }
 
 

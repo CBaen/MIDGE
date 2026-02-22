@@ -97,8 +97,8 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         failures += 1
 
     try:
-        from mae_core.market.apis.house_stock_watcher import HouseStockWatcher
-        ctx.house_stock_watcher = HouseStockWatcher()
+        from mae_core.market.apis.house_stock_watcher import HouseStockWatcherClient
+        ctx.house_stock_watcher = HouseStockWatcherClient()
     except Exception:
         logger.debug("Market: house_stock_watcher failed to construct", exc_info=True)
         ctx.house_stock_watcher = None
