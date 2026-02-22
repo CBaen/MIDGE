@@ -25,10 +25,13 @@ Note: If you don't have a SAM.gov API key yet:
 
 import os
 import time
+import logging
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict
 from datetime import datetime, timedelta
 import requests
+
+logger = logging.getLogger(__name__)
 
 
 # SAM.gov API
@@ -136,7 +139,7 @@ class SAMGovClient:
         self._last_request_time = 0
 
         if not self.api_key:
-            print("WARNING: No SAM_GOV_API_KEY set. Using public endpoints only.")
+            logger.warning("No SAM_GOV_API_KEY set. Using public endpoints only.")
 
     def _rate_limit(self):
         """Enforce rate limiting."""
@@ -196,11 +199,11 @@ class SAMGovClient:
                 opportunities = data.get("opportunitiesData", [])
                 return [self._parse_opportunity(opp) for opp in opportunities]
             else:
-                print(f"SAM.gov search failed ({response.status_code}): {response.text[:100]}")
+                logger.warning(f"SAM.gov search failed ({response.status_code}): {response.text[:100]}")
                 return []
 
         except Exception as e:
-            print(f"SAM.gov error: {str(e)[:50]}")
+            logger.warning(f"SAM.gov error: {str(e)[:50]}")
             return []
 
     def _parse_opportunity(self, data: dict) -> ContractOpportunity:

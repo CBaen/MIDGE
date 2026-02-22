@@ -192,11 +192,11 @@ class JobTracker:
                 data = response.json()
                 return data if isinstance(data, list) else data.get("data", [])
             else:
-                print(f"Active Jobs DB failed ({response.status_code})")
+                logger.warning(f"Active Jobs DB failed ({response.status_code})")
                 return []
 
         except Exception as e:
-            print(f"Active Jobs DB error: {str(e)[:50]}")
+            logger.warning(f"Active Jobs DB error: {str(e)[:50]}")
             return []
 
     def get_glassdoor_company_jobs(
@@ -232,11 +232,11 @@ class JobTracker:
                 data = response.json()
                 return data.get("jobs", data.get("data", []))
             else:
-                print(f"Glassdoor failed ({response.status_code})")
+                logger.warning(f"Glassdoor failed ({response.status_code})")
                 return []
 
         except Exception as e:
-            print(f"Glassdoor error: {str(e)[:50]}")
+            logger.warning(f"Glassdoor error: {str(e)[:50]}")
             return []
 
     def analyze_hiring_activity(

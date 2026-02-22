@@ -19,10 +19,13 @@ Use Case:
 """
 
 import time
+import logging
 from dataclasses import dataclass, asdict
 from typing import List, Optional, Dict
 from datetime import datetime, timedelta
 import requests
+
+logger = logging.getLogger(__name__)
 
 # USASpending.gov API base URL
 USASPENDING_API = "https://api.usaspending.gov/api/v2"

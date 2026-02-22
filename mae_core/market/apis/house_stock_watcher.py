@@ -16,10 +16,13 @@ Updated daily as new disclosures are filed.
 
 import os
 import time
+import logging
 from dataclasses import dataclass, asdict
 from typing import List, Optional, Dict
 from datetime import datetime, timedelta
 import requests
+
+logger = logging.getLogger(__name__)
 
 
 # API endpoints (in priority order)
@@ -130,9 +133,9 @@ class HouseStockWatcherClient:
         # RapidAPI key from param or env
         self.rapidapi_key = rapidapi_key or os.environ.get("RAPIDAPI_KEY")
         if self.rapidapi_key:
-            print("RapidAPI key configured - using US Congress Insider Trading API")
+            logger.info("RapidAPI key configured - using US Congress Insider Trading API")
         else:
-            print("No RAPIDAPI_KEY - falling back to free sources (may be unreliable)")
+            logger.info("No RAPIDAPI_KEY - falling back to free sources (may be unreliable)")
 
     def _rate_limit(self):
         """Enforce rate limiting."""
@@ -166,14 +169,14 @@ class HouseStockWatcherClient:
             if response.status_code == 200:
                 data = response.json()
                 trades = data if isinstance(data, list) else data.get("trades", data.get("data", []))
-                print(f"Loaded {len(trades)} trades from RapidAPI Congress Trading")
+                logger.debug(f"Loaded {len(trades)} trades from RapidAPI Congress Trading")
                 return trades
             else:
-                print(f"RapidAPI failed ({response.status_code}): {response.text[:100]}")
+                logger.warning(f"RapidAPI failed ({response.status_code}): {response.text[:100]}")
                 return []
 
         except Exception as e:
-            print(f"RapidAPI error: {str(e)[:50]}")
+            logger.warning(f"RapidAPI error: {str(e)[:50]}")
             return []
 
     def _get_all_trades(self, use_cache: bool = True) -> List[dict]:
@@ -214,15 +217,15 @@ class HouseStockWatcherClient:
                     # Cache the result
                     self._cache = data
                     self._cache_time = time.time()
-                    print(f"Loaded {len(data)} trades from {name}")
+                    logger.debug(f"Loaded {len(data)} trades from {name}")
                     return data
                 else:
-                    print(f"{name} failed ({response.status_code}), trying next...")
+                    logger.warning(f"{name} failed ({response.status_code}), trying next...")
 
             except Exception as e:
-                print(f"{name} error: {str(e)[:50]}..., trying next...")
+                logger.warning(f"{name} error: {str(e)[:50]}..., trying next...")
 
-        print("All congressional trade endpoints failed")
+        logger.warning("All congressional trade endpoints failed")
         return []
 
     def _normalize_trade(self, item: dict) -> Optional[dict]:
@@ -423,7 +426,7 @@ class HouseStockWatcherClient:
             List of dicts with politician name, party, trade counts
         """
         if not self.rapidapi_key:
-            print("get_top_politicians requires RAPIDAPI_KEY")
+            logger.warning("get_top_politicians requires RAPIDAPI_KEY")
             return []
 
         self._rate_limit()
@@ -443,11 +446,11 @@ class HouseStockWatcherClient:
                 data = response.json()
                 return data if isinstance(data, list) else data.get("data", [])
             else:
-                print(f"top_politicians failed ({response.status_code})")
+                logger.warning(f"top_politicians failed ({response.status_code})")
                 return []
 
         except Exception as e:
-            print(f"top_politicians error: {str(e)[:50]}")
+            logger.warning(f"top_politicians error: {str(e)[:50]}")
             return []
 
     def get_top_issuers(self, limit: int = 10) -> List[Dict]:
@@ -460,7 +463,7 @@ class HouseStockWatcherClient:
             List of dicts with ticker, company name, trade counts
         """
         if not self.rapidapi_key:
-            print("get_top_issuers requires RAPIDAPI_KEY")
+            logger.warning("get_top_issuers requires RAPIDAPI_KEY")
             return []
 
         self._rate_limit()
@@ -480,11 +483,11 @@ class HouseStockWatcherClient:
                 data = response.json()
                 return data if isinstance(data, list) else data.get("data", [])
             else:
-                print(f"top_issuers failed ({response.status_code})")
+                logger.warning(f"top_issuers failed ({response.status_code})")
                 return []
 
         except Exception as e:
-            print(f"top_issuers error: {str(e)[:50]}")
+            logger.warning(f"top_issuers error: {str(e)[:50]}")
             return []
 
 
