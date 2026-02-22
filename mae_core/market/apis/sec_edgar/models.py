@@ -95,6 +95,10 @@ class InsiderTrade:
     signal_source: str = "insider"
     decay_rate: float = 0.05
 
+    @property
+    def is_purchase(self) -> bool:
+        return self.transaction_type in ("A", "P", "buy", "purchase")
+
     def to_plain_language(self) -> str:
         action = "bought" if self.transaction_type == "A" else "sold"
         return (
