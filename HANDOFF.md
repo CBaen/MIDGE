@@ -20,9 +20,9 @@ Built and verified the full market intelligence integration into Mae's organism.
 
 ## Current State
 
-- **2457 tests pass, 0 failures**
-- **107 systems** (92 core + 15 market), **126 holons**, **336 connections** (211 core + 47 fractal + 55 bootstrap + 23 market)
-- **21 market files** in `mae_core/market/` (bootstrapped as Layer 33)
+- **2466 tests pass, 0 failures**
+- **108 systems** (92 core + 16 market), **127 holons**, **336 connections** (211 core + 47 fractal + 55 bootstrap + 23 market)
+- **22 market files** in `mae_core/market/` (bootstrapped as Layer 33)
 - **33-layer bootstrap** runs cleanly — all 8 Layer 33 stages log successfully
 - **12 stem cell roles** (9 original + SEC_WATCHER, CONTRACT_TRACKER, MARKET_ANALYST)
 - **Git:** Remote at `github.com/CBaen/MIDGE`
@@ -77,14 +77,14 @@ All Phase 2 items from implementation plan Section 9 are done:
 
 Welcome. MIDGE is Mae differentiated for financial markets. Here is what you need to know:
 
-1. **MIDGE = mae-core + market intelligence.** 107 systems, same 8 laws, 33-layer bootstrap. Market organ is Layer 33.
+1. **MIDGE = mae-core + market intelligence.** 108 systems, same 8 laws, 33-layer bootstrap. Market organ is Layer 33.
 2. **Mae-core is upstream.** Changes to Mae's genome should be made in `C:\Users\baenb\projects\mae-core` and pulled here. Market-specific changes stay here.
 3. **Market modules are fully integrated.** Bootstrapped, EventBus-wired, triadic connections, fractal hierarchy, endocrine coupling, step hooks.
 4. **The crown jewel is `convergence_alerter.py`** — synthesizes signals across ALL domains (insider + congressional + contract + hiring + velocity) into actionable alerts.
 5. **Thompson Sampling** uses Bayesian explore/exploit. Learned distributions in `data/market/thompson_distributions.json`. Bayesian forgetting prevents stale evidence.
 6. **OutcomeTracker** closes the feedback loop: `record_prediction()` → price check after window → `update()` Thompson Sampler.
 7. **All 8 Mathematical Laws are satisfied.** See implementation plan Section 12 for compliance map.
-8. **2457 tests must keep passing.** Zero regressions.
+8. **2466 tests must keep passing.** Zero regressions.
 9. **Deep memory runs on Qdrant** container (port 6333). Start with `docker compose up -d`.
 10. **API keys** needed: RAPIDAPI_KEY (job tracker, congressional trades), ALPHA_VANTAGE_KEY (price fallback), SAM_GOV_API_KEY. SEC EDGAR and yfinance are free.
 
@@ -93,7 +93,7 @@ Welcome. MIDGE is Mae differentiated for financial markets. Here is what you nee
 ## Previous Sessions
 
 ### Market Integration (2026-02-22 — multi-session)
-Built full market intelligence integration (Tiers 0-5). Created Layer 33 bootstrap with 15 systems, 23 triadic connections, fractal K3 hierarchy, endocrine coupling, step hooks, Bayesian forgetting. Phase 2 completed: CorrelationTracker persistence, discovery_log reader, 437 Congress members, TickerResolver, MarketDataProvider, ContractPredictor evaluation. All verified: 2457 tests pass, 0 alert storms.
+Built full market intelligence integration (Tiers 0-5). Created Layer 33 bootstrap with 15 systems, 23 triadic connections, fractal K3 hierarchy, endocrine coupling, step hooks, Bayesian forgetting. Phase 2 completed: CorrelationTracker persistence, discovery_log reader, 437 Congress members, TickerResolver, MarketDataProvider, ContractPredictor evaluation. All verified: 2466 tests pass, 0 alert storms.
 
 ### MIDGE Fork (2026-02-22)
 Forked mae-core into MIDGE. Ported 16 market intelligence files. Fixed imports and paths. Verified tests pass. Wrote identity docs.
