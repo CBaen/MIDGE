@@ -224,6 +224,21 @@ class ConvergenceAlerter:
             if alert:
                 alerts.append(alert)
 
+        # Alert deduplication — suppress re-alert within interval
+        now = datetime.now()
+        filtered = []
+        for alert in alerts:
+            direction = alert.direction if hasattr(alert, "direction") else "neutral"
+            if (self._last_alert_direction == direction
+                    and self._last_alert_time is not None
+                    and (now - self._last_alert_time).total_seconds() / 3600
+                    < self._min_alert_interval_hours):
+                continue  # Suppress — same condition, too recent
+            filtered.append(alert)
+            self._last_alert_direction = direction
+            self._last_alert_time = now
+        alerts = filtered
+
         # Store alerts (capped to prevent unbounded growth)
         self.alerts.extend(alerts)
         if len(self.alerts) > 500:
@@ -394,11 +409,13 @@ class ConvergenceAlerter:
 
         if len(bullish_domains) > len(bearish_domains) and len(bullish_categories) >= 2:
             recommendation = "bullish"
-            confidence = min(0.9, 0.5 + 0.1 * len(bullish_categories) + 0.05 * bullish_strength)
+            avg_strength = bullish_strength / max(1, len(bullish_domains))
+            confidence = min(0.9, 0.5 + 0.1 * len(bullish_categories) + 0.1 * avg_strength)
             reasoning = f"{len(bullish_domains)} domains ({len(bullish_categories)} categories) bullish"
         elif len(bearish_domains) > len(bullish_domains) and len(bearish_categories) >= 2:
             recommendation = "bearish"
-            confidence = min(0.9, 0.5 + 0.1 * len(bearish_categories) + 0.05 * bearish_strength)
+            avg_strength = bearish_strength / max(1, len(bearish_domains))
+            confidence = min(0.9, 0.5 + 0.1 * len(bearish_categories) + 0.1 * avg_strength)
             reasoning = f"{len(bearish_domains)} domains ({len(bearish_categories)} categories) bearish"
         else:
             recommendation = "neutral"

@@ -173,7 +173,8 @@ class VelocityDetector:
         state = self.states[signal_id]
         state.velocity_mean = sum(velocities) / len(velocities)
 
-        variance = sum((v - state.velocity_mean) ** 2 for v in velocities) / len(velocities)
+        n = len(velocities)
+        variance = sum((v - state.velocity_mean) ** 2 for v in velocities) / max(1, n - 1)
         state.velocity_std = math.sqrt(variance) if variance > 0 else 1.0
 
     def get_velocity(self, signal_id: str) -> Optional[float]:

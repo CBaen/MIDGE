@@ -59,7 +59,7 @@ class CorrelationTracker:
         self,
         window_size: int = 30,
         anomaly_threshold: float = 2.5,
-        min_observations: int = 10,
+        min_observations: int = 30,
         persistence_path: str = None
     ):
         """

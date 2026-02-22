@@ -13,8 +13,9 @@ This analyzer adds confidence modifiers to insider signals based on WHEN they fi
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, time
+from datetime import datetime, time, timezone
 from typing import List, Optional, Dict
+from zoneinfo import ZoneInfo
 import requests
 
 logger = logging.getLogger(__name__)
