@@ -258,49 +258,86 @@ def clean_committee_name(raw):
     return raw.strip()
 
 
+def make_search_keys(first, last, role_type):
+    """
+    Build a list of tokens that should trigger a match for this person.
+    politician_tracker._identify_politician checks: key in filer_upper (substring).
+    We want: compound last name with space, compound last name no space,
+    individual tokens of compound names, and the primary key form.
+    """
+    keys = set()
+    last_parts = last.split()
+    # Full last name with space (e.g. "CORTEZ MASTO") — matches STOCK Act disclosures
+    keys.add(last.upper())
+    # Full last name with underscore (primary key form)
+    keys.add(last.upper().replace(" ", "_"))
+    # Full last name no space (e.g. "CORTEZMASTO")
+    keys.add(last.upper().replace(" ", ""))
+    # Each word of last name individually (e.g. "MASTO", "CORTEZ")
+    for part in last_parts:
+        keys.add(part.upper())
+    return sorted(keys)
+
+
 def build_members():
     members = {}
 
     # ── Senators ──────────────────────────────────────────────────────────────
     for s in SENATE_DATA:
-        last = s["last"].upper()
-        # Handle compound last names (Cortez Masto, Blunt Rochester, Van Hollen)
-        # Use the full last name joined by underscore for uniqueness
-        key = last.replace(" ", "_")
+        last = s["last"]
+        last_upper = last.upper()
+        # Primary key: underscored compound last name
+        primary_key = last_upper.replace(" ", "_")
         full_name = f"{s['first']} {s['last']}"
-        members[key] = {
+        search_keys = make_search_keys(s["first"], last, "senator")
+        entry = {
             "name": full_name,
             "party": s["party"],
             "state": s["state"],
             "role_type": "senator",
             "committees": s["committees"],
+            "search_keys": search_keys,
         }
+        members[primary_key] = entry
+
+        # Add alias keys for compound last names so substring matching works
+        # e.g. CORTEZ_MASTO also registered as "CORTEZ MASTO" (space) and last token
+        if " " in last:
+            # Alias: no-space version
+            alias_nospace = last_upper.replace(" ", "")
+            if alias_nospace not in members:
+                members[alias_nospace] = entry
+            # Alias: last word only (e.g. MASTO, ROCHESTER, HOLLEN)
+            last_word = last_upper.split()[-1]
+            if last_word not in members:
+                members[last_word] = entry
 
     # ── Representatives ───────────────────────────────────────────────────────
     seen_keys = set(members.keys())
     for (full_name, party, state) in REP_RAW:
         parts = full_name.strip().split()
-        last = parts[-1].upper() if parts else "UNKNOWN"
+        last_raw = parts[-1] if parts else "UNKNOWN"
+        last = last_raw.upper()
 
         # Disambiguate duplicate last names
         if last in seen_keys:
-            # Add state to disambiguate
             key = f"{last}_{state}"
         else:
             key = last
 
-        # If still collides (same last+state), add first initial
         if key in seen_keys:
             first_initial = parts[0][0].upper() if parts else "X"
             key = f"{last}_{state}_{first_initial}"
 
         seen_keys.add(key)
+        search_keys = make_search_keys(parts[0] if parts else "", last_raw, "representative")
         members[key] = {
             "name": full_name,
             "party": party,
             "state": state,
             "role_type": "representative",
             "committees": [],  # House committee data not yet populated
+            "search_keys": search_keys,
         }
 
     return members
