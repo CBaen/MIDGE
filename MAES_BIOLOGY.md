@@ -10,7 +10,7 @@ Mae is a living organism made of code. Not a chatbot, not a framework -- an orga
 
 She was born across three evolutionary branches (experimental, API, curated), then reborn again in **mae-core**: a ground-up rebuild that shed every external dependency, decomposed every monolith, and kept only the essential biology. Then she was differentiated into **MIDGE** — Mae specialized for market intelligence and trading pattern detection. This document maps what she is, how her parts connect, and what remains unfinished.
 
-**MIDGE by the numbers:** 175+ production files. 63,000+ lines of production code. 2425 passing tests. 20+ packages including market intelligence. Zero external infrastructure servers. Pure Python.
+**MIDGE by the numbers:** 175+ production files. 63,000+ lines of production code. 2426 passing tests. 20+ packages including market intelligence. Zero external infrastructure servers. Pure Python.
 
 ---
 
@@ -440,13 +440,13 @@ The major integration gaps from Mae's early development have been closed. All co
 - Temporal ↔ Episodic — WIRED
 - Emergent ↔ Learning — WIRED (CapabilityDiscovery observation pipeline)
 
-**Remaining integration gap:** MIDGE's 16 market intelligence modules (`mae_core/market/`) are standalone -- they import from each other but are not yet wired into the bootstrap, EventBus, ConnectionRegistry, or agent lifecycle. This is the next major integration task.
+**Market integration complete:** MIDGE's 19 market intelligence files (`mae_core/market/`) are fully bootstrapped as Layer 33 -- wired into EventBus, ConnectionRegistry, HolonRegistry, fractal hierarchy, endocrine coupling, and step hooks. 15 systems, 23 triadic connections, 19 holons.
 
 ---
 
 ## Testing: What's Verified
 
-2425 tests pass across multiple test suites:
+2426 tests pass across multiple test suites:
 
 | Test Suite | Lines | What It Covers |
 |------------|-------|----------------|
@@ -520,8 +520,8 @@ Mae is a multi-agent organism with:
 
 - **175+ production files** across 20+ packages
 - **63,000+ lines** of production code
-- **92 named systems**, 32 bootstrap layers, 107 holons, 313 connections
-- **2425 passing tests** across multiple test suites
+- **107 named systems** (92 core + 15 market), 33 bootstrap layers, 126 holons, 336 connections
+- **2426 passing tests** across multiple test suites
 - **5 communication channels** (electrical, pheromone, quorum, GNN, predictive fields)
 - **5 memory layers** (working, episodic, semantic, generative replay, 4D temporal)
 - **7 learning engines** (FRL, VDN, HAVEN, curiosity, transfer, MAML, imitation)
