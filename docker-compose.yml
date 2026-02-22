@@ -1,0 +1,13 @@
+services:
+  mae-qdrant:
+    image: qdrant/qdrant:latest
+    container_name: mae-qdrant
+    ports:
+      - "6335:6333"
+      - "6336:6334"
+    volumes:
+      - mae_qdrant_data:/qdrant/storage
+    restart: unless-stopped
+
+volumes:
+  mae_qdrant_data:
