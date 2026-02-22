@@ -30,6 +30,9 @@ dependencies = [
     "anthropic>=0.40",
     # Environment configuration
     "python-dotenv>=1.0",
+    # Market intelligence (MIDGE-specific)
+    "requests>=2.31",
+    "yfinance>=0.2.31",
 ]
 
 [project.optional-dependencies]

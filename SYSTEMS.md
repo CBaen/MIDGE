@@ -1,4 +1,4 @@
-# Mae-Core Systems
+# MIDGE Systems
 
 **Purpose:** Honest inventory of what exists, what emerges from connection, and what's theoretical.
 

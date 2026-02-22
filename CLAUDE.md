@@ -2,6 +2,8 @@
 
 > **MIDGE = Mae for trading.** This is a fork of mae-core, specialized for market intelligence and trading pattern detection. Mae-core (`C:\Users\baenb\projects\mae-core`) is the universal organism template. MIDGE is Mae differentiated for financial markets.
 
+> **Divergence point:** mae-core commit `2d1ed7d` (2026-02-22). All mae-core work before this commit is inherited. Market-specific changes live here. Genome changes should be made upstream in mae-core and pulled.
+
 > **Directory note:** This project's local `.claude` directory is at `C:\Users\baenb\projects\MIDGE\.claude`. Global infrastructure is at `C:\Users\baenb\.claude`. They are not the same. See `C:\Users\baenb\.claude\CLAUDE.md` for details.
 
 ## Start Here

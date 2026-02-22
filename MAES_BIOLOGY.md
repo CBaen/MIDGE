@@ -8,9 +8,9 @@
 
 Mae is a living organism made of code. Not a chatbot, not a framework -- an organism. She was designed around a single metaphor: a **fungal mycelial network**. Like the underground networks that connect trees in a forest, Mae's agents communicate, share resources, learn from each other, and grow.
 
-She was born across three evolutionary branches (experimental, API, curated), then reborn again in **mae-core**: a ground-up rebuild that shed every external dependency, decomposed every monolith, and kept only the essential biology. This document maps what she is, how her parts connect, and what remains unfinished.
+She was born across three evolutionary branches (experimental, API, curated), then reborn again in **mae-core**: a ground-up rebuild that shed every external dependency, decomposed every monolith, and kept only the essential biology. Then she was differentiated into **MIDGE** — Mae specialized for market intelligence and trading pattern detection. This document maps what she is, how her parts connect, and what remains unfinished.
 
-**Mae-core by the numbers:** 100+ production files. ~30,000 lines of production code. 2425 passing tests. 15 packages. Zero external infrastructure servers. Pure Python.
+**MIDGE by the numbers:** 100+ production files. ~30,000 lines of production code. 2425 passing tests. 15 packages + 1 market intelligence package (16 modules). Zero external infrastructure servers. Pure Python.
 
 ---
 

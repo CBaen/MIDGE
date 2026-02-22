@@ -6,6 +6,8 @@
 
 **Forked mae-core into MIDGE as a trading-specialized organism.**
 
+> **Divergence point:** mae-core commit `2d1ed7d` ("Fix 3 runtime bugs: closure connections, reproductive spam, Groq quarantine", 2026-02-22). This is the last mae-core state before MIDGE became its own organism. All mae-core work prior to this commit is inherited by MIDGE.
+
 1. **Backed up original MIDGE** (24 files) to `_midge_staging/` for reference
 2. **Copied mae-core** into MIDGE directory — all 85 systems, 2425 tests, full bootstrap
 3. **Verified tests pass** — 2425 passed, 0 failures in MIDGE directory
