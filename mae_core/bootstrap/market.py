@@ -252,7 +252,7 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
 
     logger.info(
         "Layer 33a - Market systems instantiated: %d systems (construction failures: %d)",
-        15 - failures, failures,
+        16 - failures, failures,
     )
     logger.info(
         "            Operational dependencies: Qdrant, RAPIDAPI_KEY, ALPHA_VANTAGE_KEY, "
@@ -615,12 +615,14 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
             except Exception:
                 logger.debug("Convergence alerter step failed", exc_info=True)
 
-        # Every 10 steps: Thompson stats
+        # Every 10 steps: Thompson stats (regime-aware)
         if step % 10 == 0:
             sampler = getattr(ctx, "thompson_sampler", None)
             if sampler is not None:
                 try:
-                    stats = sampler.get_stats()
+                    regime = _get_regime()
+                    stats = sampler.get_stats(regime)
+                    stats["regime"] = regime
                     ctx.bus.publish(CH_THOMPSON_STATS, stats)
                 except Exception:
                     logger.debug("Thompson sampler stats step failed", exc_info=True)

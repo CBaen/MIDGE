@@ -50,15 +50,17 @@ class OutcomeTracker:
         thompson_sampler: ThompsonSampler instance
     """
 
-    def __init__(self, price_fetcher, thompson_sampler, data_dir: Path = None):
+    def __init__(self, price_fetcher, thompson_sampler, regime_classifier=None, data_dir: Path = None):
         """
         Args:
             price_fetcher: PriceFetcher instance with get_historical_price() support
             thompson_sampler: ThompsonSampler instance with update() method
+            regime_classifier: Optional RegimeClassifier for regime-aware updates
             data_dir: Override for data directory (default: DATA_DIR)
         """
         self.price_fetcher = price_fetcher
         self.thompson_sampler = thompson_sampler
+        self.regime_classifier = regime_classifier
         self.data_dir = data_dir or DATA_DIR
         self.predictions_path = self.data_dir / "predictions.jsonl"
         self.outcomes_path = self.data_dir / "outcomes.jsonl"
@@ -182,10 +184,16 @@ class OutcomeTracker:
 
                 price_change_pct, success = price_result
 
-                # Update Thompson Sampler
+                # Update Thompson Sampler (regime-aware)
                 source = pred.get("source", "unknown")
+                regime = "default"
+                if self.regime_classifier is not None:
+                    try:
+                        regime = self.regime_classifier.classify()
+                    except Exception:
+                        pass
                 try:
-                    self.thompson_sampler.update(source, success=success, regime="default")
+                    self.thompson_sampler.update(source, success=success, regime=regime)
                 except Exception as e:
                     self._logger.warning(f"Thompson update failed for {source}: {e}")
 
