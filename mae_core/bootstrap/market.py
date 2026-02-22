@@ -45,6 +45,7 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
         "cluster_detector", "politician_tracker", "filing_time_analyzer",
         "contract_predictor", "thompson_sampler", "convergence_alerter",
         "velocity_detector", "correlation_tracker", "outcome_tracker",
+        "regime_classifier",
     ]
     active = sum(1 for a in market_attrs if getattr(ctx, a, None) is not None)
     holon_count = len([
@@ -54,7 +55,8 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
                     "job_tracker", "usa_spending_client", "sam_gov_client",
                     "cluster_detector", "politician_tracker", "filing_time_analyzer",
                     "contract_predictor", "thompson_sampler", "convergence_alerter",
-                    "velocity_detector", "correlation_tracker", "outcome_tracker")
+                    "velocity_detector", "correlation_tracker", "outcome_tracker",
+                    "regime_classifier")
     ])
 
     logger.info(
@@ -197,6 +199,16 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         ctx.correlation_tracker = None
         failures += 1
 
+    # --- Regime classifier (requires price_fetcher) ---
+
+    try:
+        from mae_core.market.intelligence.regime_classifier import RegimeClassifier
+        ctx.regime_classifier = RegimeClassifier(price_fetcher=ctx.price_fetcher)
+    except Exception:
+        logger.debug("Market: regime_classifier failed to construct", exc_info=True)
+        ctx.regime_classifier = None
+        failures += 1
+
     # --- Feedback loop (requires price_fetcher + thompson_sampler) ---
 
     try:
@@ -204,6 +216,7 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         ctx.outcome_tracker = OutcomeTracker(
             price_fetcher=ctx.price_fetcher,
             thompson_sampler=ctx.thompson_sampler,
+            regime_classifier=ctx.regime_classifier,
         )
     except Exception:
         logger.debug("Market: outcome_tracker failed to construct", exc_info=True)
@@ -273,6 +286,7 @@ def _register_market_somatic(ctx: SimpleNamespace) -> None:
         "velocity_detector": ("VelocityDetector", []),
         "correlation_tracker": ("CorrelationTracker", []),
         "outcome_tracker": ("OutcomeTracker", ["price_fetcher", "thompson_sampler"]),
+        "regime_classifier": ("RegimeClassifier", ["price_fetcher"]),
     }
 
     for sys_id, (desc, deps) in market_systems.items():
@@ -301,6 +315,7 @@ def _register_market_holons(ctx: SimpleNamespace) -> None:
         "cluster_detector", "politician_tracker", "filing_time_analyzer",
         "contract_predictor", "thompson_sampler", "convergence_alerter",
         "velocity_detector", "correlation_tracker", "outcome_tracker",
+        "regime_classifier",
     ]
 
     registered = 0
@@ -361,7 +376,7 @@ def _register_market_fractal(ctx: SimpleNamespace) -> None:
     extras = [
         "house_stock_watcher", "filing_time_analyzer",
         "usa_spending_client", "sam_gov_client", "correlation_tracker",
-        "outcome_tracker",
+        "outcome_tracker", "regime_classifier",
     ]
     for sys_id in extras:
         if ctx.holon_registry.get_entry(sys_id) is not None:
@@ -559,6 +574,16 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
 
     _step_counter = [0]
     _last_convergence_state = [None]  # {"direction": str, "strength": float}
+
+    def _get_regime():
+        """Get current market regime (cached daily, essentially free)."""
+        rc = getattr(ctx, "regime_classifier", None)
+        if rc is not None:
+            try:
+                return rc.classify()
+            except Exception:
+                pass
+        return "default"
 
     def _market_sense_hook():
         _step_counter[0] += 1
