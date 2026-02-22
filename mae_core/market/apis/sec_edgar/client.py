@@ -20,7 +20,9 @@ SEC_SUBMISSIONS_URL = f"{SEC_BASE_URL}/submissions"
 SEC_TICKERS_URL = f"{SEC_WWW_URL}/files/company_tickers.json"
 
 # User agent required by SEC (they block default requests user agents)
-SEC_USER_AGENT = "MIDGE Trading Research contact@example.com"
+# SEC compliance: they block IPs with fake contact info
+# Replace with real email before any live EDGAR queries
+SEC_USER_AGENT = "MIDGE Trading Research midge@wardenclyffe.local"
 
 # Rate limiting - SEC allows max 10 req/sec
 REQUEST_DELAY = 0.15  # 150ms between requests

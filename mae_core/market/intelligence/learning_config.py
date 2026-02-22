@@ -6,6 +6,10 @@ All changes are logged to config_history.jsonl.
 """
 
 from datetime import datetime
+from pathlib import Path
+
+_DATA_DIR = Path(__file__).resolve().parents[3] / "data" / "market"
+_HISTORY_PATH = _DATA_DIR / "config_history.jsonl"
 
 LEARNING_CONFIG = {
     # Metadata
@@ -104,7 +108,6 @@ def update_config(key_path: str, new_value, modified_by: str = "meta_learner"):
         dict with old_value, new_value, success
     """
     import json
-    from pathlib import Path
 
     keys = key_path.split(".")
     current = LEARNING_CONFIG
@@ -125,8 +128,8 @@ def update_config(key_path: str, new_value, modified_by: str = "meta_learner"):
     LEARNING_CONFIG["modified_by"] = modified_by
 
     # Log to history
-    history_path = Path(__file__).parent / "config_history.jsonl"
-    with open(history_path, "a") as f:
+    _DATA_DIR.mkdir(parents=True, exist_ok=True)
+    with open(_HISTORY_PATH, "a") as f:
         f.write(json.dumps({
             "timestamp": datetime.now().isoformat(),
             "key_path": key_path,

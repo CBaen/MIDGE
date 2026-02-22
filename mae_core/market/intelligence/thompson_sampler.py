@@ -109,6 +109,7 @@ class ThompsonSampler:
         """
         self.persistence_path = persistence_path or DISTRIBUTIONS_FILE
         self.prior_scale = prior_scale
+        self._lock = threading.Lock()
 
         # Ensure data directory exists
         DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -131,8 +132,16 @@ class ThompsonSampler:
                 self.distributions = {}
 
     def _save_distributions(self) -> None:
-        """Persist distributions to disk."""
-        self.persistence_path.write_text(json.dumps(self.distributions, indent=2))
+        """Atomic write with lock."""
+        with self._lock:
+            tmp = self.persistence_path.with_suffix(".tmp")
+            try:
+                tmp.write_text(json.dumps(self.distributions, indent=2))
+                os.replace(tmp, self.persistence_path)
+            except Exception:
+                logger.warning("Failed to persist Thompson distributions", exc_info=True)
+                if tmp.exists():
+                    tmp.unlink(missing_ok=True)
 
     def _seed_from_reliability(self) -> None:
         """
@@ -366,6 +375,36 @@ class ThompsonSampler:
     def get_statistics(self) -> Dict:
         """Alias for HolonProxy.sense() delegation."""
         return self.get_stats()
+
+    def apply_forgetting(self, decay_factor: float = 0.99) -> int:
+        """
+        Apply Bayesian forgetting to all distributions.
+
+        Shrinks alpha and beta toward the prior, preserving the mean direction
+        while reducing total evidence weight. This prevents stale observations
+        from dominating recent ones.
+
+        Mechanism: alpha *= decay_factor; beta *= decay_factor
+        Floor of 1.0 each (uninformative prior) prevents collapse.
+
+        Args:
+            decay_factor: Multiplicative decay (0.99 = slow, 0.95 = aggressive)
+
+        Returns:
+            Number of distributions decayed
+        """
+        count = 0
+        for signal_id in self.distributions:
+            for regime in self.distributions[signal_id]:
+                params = self.distributions[signal_id][regime]
+                params["alpha"] = max(1.0, params["alpha"] * decay_factor)
+                params["beta"] = max(1.0, params["beta"] * decay_factor)
+                count += 1
+
+        if count > 0:
+            self._save_distributions()
+
+        return count
 
 
 def main():

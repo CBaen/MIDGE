@@ -88,7 +88,7 @@ class ConvergenceAlerter:
         self,
         min_domains: int = 3,
         min_strength: float = 0.6,
-        convergence_window_hours: int = 48,
+        convergence_window_hours: int = 72,
         persistence_path: str = None
     ):
         """

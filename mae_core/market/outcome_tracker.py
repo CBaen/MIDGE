@@ -27,6 +27,7 @@ Prediction record format (from predictions.jsonl):
 
 import json
 import logging
+import uuid
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Optional, Tuple

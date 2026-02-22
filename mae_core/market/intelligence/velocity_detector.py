@@ -195,7 +195,7 @@ class VelocityDetector:
 
     def detect_velocity_anomalies(
         self,
-        min_observations: int = 5
+        min_observations: int = 10
     ) -> List[Tuple[str, VelocityState]]:
         """
         Find all signals with anomalous velocity.
