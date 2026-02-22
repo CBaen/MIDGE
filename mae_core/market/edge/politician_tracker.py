@@ -95,38 +95,58 @@ class CorrelationSignal:
             return f"{self.trader_name}: {self.trade_type} {self.symbol} (${self.value:,.0f})"
 
 
-# Known congressional stock traders (frequently flagged in news)
-# This is a subset - would need to be expanded from congress.gov data
-KNOWN_POLITICIANS = {
-    "PELOSI": PoliticianProfile(
-        name="Nancy Pelosi",
-        committees=["House Financial Services", "House Appropriations"],
-        role="Former Speaker",
-        party="D",
-        state="CA"
-    ),
-    "TUBERVILLE": PoliticianProfile(
-        name="Tommy Tuberville",
-        committees=["Senate Armed Services", "Senate Agriculture"],
-        role="Member",
-        party="R",
-        state="AL"
-    ),
-    "OSSOFF": PoliticianProfile(
-        name="Jon Ossoff",
-        committees=["Senate Judiciary", "Senate Homeland Security"],
-        role="Member",
-        party="D",
-        state="GA"
-    ),
-    "SULLIVAN": PoliticianProfile(
-        name="Dan Sullivan",
-        committees=["Senate Armed Services", "Senate Commerce"],
-        role="Member",
-        party="R",
-        state="AK"
-    ),
-}
+def _load_congress_members() -> Dict[str, PoliticianProfile]:
+    """Load Congress members from data file, falling back to minimal set."""
+    import json
+    from pathlib import Path
+
+    data_path = Path(__file__).resolve().parents[3] / "data" / "market" / "congress_members.json"
+
+    if data_path.exists():
+        try:
+            with open(data_path, "r") as f:
+                data = json.load(f)
+
+            profiles = {}
+            for key, member in data.get("members", {}).items():
+                profiles[key] = PoliticianProfile(
+                    name=member.get("name", key),
+                    committees=member.get("committees", []),
+                    role="Member",
+                    party=member.get("party", ""),
+                    state=member.get("state", ""),
+                )
+            logger.info("Loaded %d Congress members from %s", len(profiles), data_path.name)
+            return profiles
+        except Exception as e:
+            logger.warning("Failed to load congress_members.json: %s", e)
+
+    # Fallback: minimal set of frequently-flagged stock traders
+    return {
+        "PELOSI": PoliticianProfile(
+            name="Nancy Pelosi",
+            committees=["House Financial Services", "House Appropriations"],
+            role="Former Speaker", party="D", state="CA"
+        ),
+        "TUBERVILLE": PoliticianProfile(
+            name="Tommy Tuberville",
+            committees=["Senate Armed Services", "Senate Agriculture"],
+            role="Member", party="R", state="AL"
+        ),
+        "OSSOFF": PoliticianProfile(
+            name="Jon Ossoff",
+            committees=["Senate Judiciary", "Senate Homeland Security"],
+            role="Member", party="D", state="GA"
+        ),
+        "SULLIVAN": PoliticianProfile(
+            name="Dan Sullivan",
+            committees=["Senate Armed Services", "Senate Commerce"],
+            role="Member", party="R", state="AK"
+        ),
+    }
+
+
+KNOWN_POLITICIANS = _load_congress_members()
 
 
 class PoliticianTracker:
