@@ -4,7 +4,7 @@ python main.py              # Run with defaults (5 agents, 100 steps)
 python main.py --agents 10  # More agents
 python main.py --steps 500  # Longer run
 
-32-layer organism bootstrap orchestrator. Each layer group is in
+33-layer organism bootstrap orchestrator. Each layer group is in
 mae_core/bootstrap/. This file is the conductor; the musicians
 are in their own modules.
 """

@@ -68,6 +68,53 @@ class OutcomeTracker:
         # Ensure data directory exists
         self.data_dir.mkdir(parents=True, exist_ok=True)
 
+    def record_prediction(
+        self,
+        source: str,
+        symbol: str,
+        direction: str = "",
+        outcome_window_days: int = 14,
+        metadata: dict = None,
+    ) -> str:
+        """
+        Record a prediction for later outcome evaluation.
+
+        Called when a TradeSignal or convergence alert is generated.
+        The prediction is written to predictions.jsonl and will be
+        evaluated by check_pending_outcomes() once the window elapses.
+
+        Args:
+            source: Signal source (e.g. "sec_edgar", "convergence")
+            symbol: Stock ticker to track
+            direction: "up", "down", or "" (direction-agnostic)
+            outcome_window_days: Days to wait before evaluating
+            metadata: Optional extra context
+
+        Returns:
+            signal_id (UUID) for tracking
+        """
+        signal_id = str(uuid.uuid4())
+        record = {
+            "signal_id": signal_id,
+            "source": source,
+            "symbol": symbol.upper(),
+            "direction": direction,
+            "timestamp": datetime.now().isoformat(),
+            "outcome_window_days": outcome_window_days,
+            "outcome_symbol": symbol.upper(),
+        }
+        if metadata:
+            record["metadata"] = metadata
+
+        self.data_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            with open(self.predictions_path, "a") as f:
+                f.write(json.dumps(record) + "\n")
+        except Exception as e:
+            self._logger.warning(f"Failed to write prediction: {e}")
+
+        return signal_id
+
     def check_pending_outcomes(self) -> int:
         """
         Check all predictions where outcome_window_days has elapsed.

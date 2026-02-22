@@ -597,8 +597,17 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                 except Exception:
                     logger.debug("Velocity detector step failed", exc_info=True)
 
+        # Every 100 steps: Bayesian forgetting (decay old evidence)
+        if step % 100 == 0:
+            sampler = getattr(ctx, "thompson_sampler", None)
+            if sampler is not None:
+                try:
+                    sampler.apply_forgetting(decay_factor=0.99)
+                except Exception:
+                    logger.debug("Thompson forgetting step failed", exc_info=True)
+
     ctx.model.add_step_hook(_market_sense_hook)
     logger.info(
         "Layer 33g - Market step hooks: 1 sense hook registered "
-        "(cadence: convergence/1, stats/10, velocity/50)"
+        "(cadence: convergence/1, stats/10, velocity/50, forgetting/100)"
     )
