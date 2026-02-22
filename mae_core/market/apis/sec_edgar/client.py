@@ -4,11 +4,14 @@
 import re
 import time
 import html
+import logging
 import xml.etree.ElementTree as ET
 from typing import List, Optional
 import requests
 
 from .models import Form8KEvent, InsiderTrade
+
+logger = logging.getLogger(__name__)
 
 # SEC EDGAR API endpoints
 SEC_BASE_URL = "https://data.sec.gov"
@@ -54,10 +57,10 @@ class SECEdgarClient:
             if response.status_code == 200:
                 return response
             else:
-                print(f"SEC EDGAR error: {response.status_code} for {url}")
+                logger.warning(f"SEC EDGAR error: {response.status_code} for {url}")
                 return None
         except Exception as e:
-            print(f"SEC EDGAR request failed: {e}")
+            logger.error(f"SEC EDGAR request failed: {e}")
             return None
 
     def get_company_cik(self, ticker: str) -> Optional[str]:

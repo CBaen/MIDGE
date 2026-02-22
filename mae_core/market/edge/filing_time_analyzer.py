@@ -214,7 +214,7 @@ class FilingTimeAnalyzer:
             )
 
             if response.status_code != 200:
-                print(f"Qdrant query failed: {response.status_code}")
+                logger.warning(f"Qdrant query failed: {response.status_code}")
                 return []
 
             data = response.json()
@@ -251,7 +251,7 @@ class FilingTimeAnalyzer:
             return signals
 
         except Exception as e:
-            print(f"Error querying Qdrant: {e}")
+            logger.error(f"Error querying Qdrant: {e}")
             return []
 
     def get_historical_patterns(self, ticker: str) -> Dict[str, float]:

@@ -11,9 +11,12 @@ This is the "edge" - finding patterns before they become obvious.
 """
 
 import re
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import List, Optional, Dict, Tuple
+
+logger = logging.getLogger(__name__)
 
 # Import our scrapers
 from mae_core.market.apis.sec_edgar import SECEdgarClient, InsiderTrade, get_recent_form4s
@@ -190,7 +193,7 @@ class PoliticianTracker:
                             correlations.append(correlation)
 
             except Exception as e:
-                print(f"Error processing {symbol}: {e}")
+                logger.warning(f"Error processing {symbol}: {e}")
                 continue
 
         # Sort by confidence
@@ -284,7 +287,7 @@ class PoliticianTracker:
             return None
 
         except Exception as e:
-            print(f"Contract correlation error: {e}")
+            logger.error(f"Contract correlation error: {e}")
             return None
 
     def _check_insider_pattern(self, trade: InsiderTrade, symbol: str) -> Optional[CorrelationSignal]:

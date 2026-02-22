@@ -18,10 +18,13 @@ This is MIDGE's most speculative edge - but also potentially the most valuable.
 """
 
 import os
+import logging
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Tuple
 from datetime import datetime, timedelta
 import requests
+
+logger = logging.getLogger(__name__)
 
 # Import our data sources
 from mae_core.market.apis.job_tracker import JobTracker, HiringSignal, DEFENSE_CONTRACTORS
@@ -235,7 +238,7 @@ class ContractPredictor:
             result["has_buying"] = result["buy_count"] > 0
 
         except Exception as e:
-            print(f"Insider check error for {ticker}: {e}")
+            logger.warning(f"Insider check error for {ticker}: {e}")
 
         return result
 
@@ -280,7 +283,7 @@ class ContractPredictor:
         opportunities = self.sam_client.get_defense_opportunities(days_back=14)
 
         if not opportunities:
-            print("No active defense opportunities found")
+            logger.info("No active defense opportunities found")
             return []
 
         # Convert defense contractors to bidder format
@@ -289,7 +292,7 @@ class ContractPredictor:
         all_predictions = []
 
         for contract in opportunities[:5]:  # Limit to top 5 for now
-            print(f"Analyzing: {contract.title[:50]}...")
+            logger.debug(f"Analyzing: {contract.title[:50]}...")
             predictions = self.analyze_contract(contract, bidders)
 
             # Keep top prediction for each contract
