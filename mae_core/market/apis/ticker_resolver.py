@@ -38,7 +38,9 @@ _CORP_SUFFIXES = re.compile(
 def _normalize(name: str) -> str:
     """Normalize a company name for matching."""
     upper = name.upper().strip()
-    # Strip suffixes
+    # Strip leading "THE"
+    upper = re.sub(r"^THE\s+", "", upper)
+    # Strip corporate suffixes
     cleaned = _CORP_SUFFIXES.sub(" ", upper)
     # Collapse whitespace
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
