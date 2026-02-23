@@ -26,6 +26,10 @@ from mae_core.market.edge.contract_predictor import ContractPrediction
 from mae_core.market.edge.politician_tracker import CorrelationSignal
 from mae_core.market.apis import ticker_resolver
 
+# Lazy imports for new sources (avoid circular imports / missing deps)
+# SocialSentiment, ShortInterestData, FilingKeywordHit, NewsSentiment,
+# EarningsEvent, MacroIndicator are imported inside their adapter functions.
+
 logger = logging.getLogger(__name__)
 
 
