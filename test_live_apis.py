@@ -18,11 +18,10 @@ load_dotenv(Path(__file__).parent / ".env")
 
 def test_sec_edgar():
     """SEC EDGAR — free, no key needed."""
-    print("\n[1/6] SEC EDGAR (free, no key)")
+    print("\n[1/8] SEC EDGAR (free, no key)")
     try:
         from mae_core.market.apis.sec_edgar.client import SECEdgarClient
         client = SECEdgarClient()
-        # Look up Apple's CIK
         cik = client.get_company_cik("AAPL")
         if cik:
             print(f"  OK — AAPL CIK: {cik}")
@@ -37,7 +36,7 @@ def test_sec_edgar():
 
 def test_yfinance():
     """Yahoo Finance — free, no key needed."""
-    print("\n[2/6] Yahoo Finance (free, no key)")
+    print("\n[2/8] Yahoo Finance (free, no key)")
     try:
         from mae_core.market.apis.price_fetcher import PriceFetcher, YFINANCE_AVAILABLE
         if not YFINANCE_AVAILABLE:
@@ -58,7 +57,7 @@ def test_yfinance():
 
 def test_alpha_vantage():
     """Alpha Vantage — needs MAE_ALPHAVANTAGE_API_KEY."""
-    print("\n[3/6] Alpha Vantage")
+    print("\n[3/8] Alpha Vantage")
     key = os.environ.get("MAE_ALPHAVANTAGE_API_KEY", "")
     if not key:
         print("  SKIP — MAE_ALPHAVANTAGE_API_KEY not set")
@@ -80,7 +79,7 @@ def test_alpha_vantage():
 
 def test_congressional_trades():
     """Congressional trades — needs RAPIDAPI_KEY."""
-    print("\n[4/6] Congressional Trades (RapidAPI)")
+    print("\n[4/8] Congressional Trades (RapidAPI)")
     key = os.environ.get("RAPIDAPI_KEY", "")
     if not key:
         print("  SKIP — RAPIDAPI_KEY not set")
@@ -104,7 +103,7 @@ def test_congressional_trades():
 
 def test_job_tracker():
     """Job tracker — needs RAPIDAPI_KEY."""
-    print("\n[5/6] Job Tracker (RapidAPI)")
+    print("\n[5/8] Job Tracker (RapidAPI)")
     key = os.environ.get("RAPIDAPI_KEY", "")
     if not key:
         print("  SKIP — RAPIDAPI_KEY not set")
@@ -122,7 +121,7 @@ def test_job_tracker():
 
 def test_usa_spending():
     """USASpending — free, no key needed."""
-    print("\n[6/6] USASpending.gov (free, no key)")
+    print("\n[6/8] USASpending.gov (free, no key)")
     try:
         from mae_core.market.apis.usa_spending import USASpendingClient
         client = USASpendingClient()
@@ -140,6 +139,70 @@ def test_usa_spending():
         return False
 
 
+def test_sam_gov():
+    """SAM.gov — needs SAM_GOV_API_KEY."""
+    print("\n[7/8] SAM.gov (federal contracts)")
+    key = os.environ.get("SAM_GOV_API_KEY", "")
+    if not key:
+        print("  SKIP — SAM_GOV_API_KEY not set")
+        return None
+    try:
+        from mae_core.market.apis.sam_gov import SAMGovClient
+        client = SAMGovClient(api_key=key)
+        opps = client.search_opportunities(keywords="cybersecurity", limit=3)
+        if opps:
+            print(f"  OK — {len(opps)} opportunities found")
+            for o in opps[:2]:
+                print(f"       {o.to_plain_language()}")
+            return True
+        else:
+            print("  WARN — 0 opportunities returned (key may need activation)")
+            return False
+    except Exception as e:
+        print(f"  ERROR — {e}")
+        return False
+
+
+def test_tavily():
+    """Tavily — needs MAE_TAVILY_API_KEY."""
+    print("\n[8/8] Tavily (web search)")
+    key = os.environ.get("MAE_TAVILY_API_KEY", "")
+    if not key:
+        print("  SKIP — MAE_TAVILY_API_KEY not set")
+        return None
+    try:
+        from mae_core.external.tavily_provider import TavilyProvider
+        provider = TavilyProvider(api_key=key)
+        from mae_core.external.api_client import ApiRequest, ApiResponseStatus
+        req = ApiRequest(
+            request_id="test-tavily",
+            provider="tavily",
+            endpoint="search",
+            payload={"query": "defense contractor stock market news"},
+        )
+        resp = provider.execute(req)
+        if resp.status == ApiResponseStatus.SUCCESS:
+            results = resp.payload
+            if isinstance(results, dict):
+                count = len(results.get("results", []))
+                print(f"  OK — {count} search results returned")
+                for r in results.get("results", [])[:2]:
+                    title = r.get("title", "untitled")[:60]
+                    print(f"       {title}")
+            else:
+                print(f"  OK — response received")
+            return True
+        else:
+            print(f"  FAIL — {resp.error_message}")
+            return False
+    except ImportError:
+        print("  SKIP — TavilyProvider not available")
+        return None
+    except Exception as e:
+        print(f"  ERROR — {e}")
+        return False
+
+
 if __name__ == "__main__":
     print("=" * 60)
     print("MIDGE Live API Connectivity Test")
@@ -152,6 +215,8 @@ if __name__ == "__main__":
     results["Congressional Trades"] = test_congressional_trades()
     results["Job Tracker"] = test_job_tracker()
     results["USASpending"] = test_usa_spending()
+    results["SAM.gov"] = test_sam_gov()
+    results["Tavily"] = test_tavily()
 
     print("\n" + "=" * 60)
     print("SUMMARY")
