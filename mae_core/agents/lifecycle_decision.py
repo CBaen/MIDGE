@@ -307,6 +307,11 @@ class DecisionActionLifecycleMixin:
         if state_vec is not None:
             context["state"] = state_vec
 
+        # Enrich with market context for market-role agents
+        from mae_core.market.market_awareness import get_market_context_for_router, is_market_agent
+        if is_market_agent(self):
+            context.update(get_market_context_for_router(self))
+
         # Enrich context with organism body state (interoceptive awareness)
         body = getattr(self, "_body_state", None)
         if body:
@@ -590,10 +595,18 @@ class DecisionActionLifecycleMixin:
             perf = list(getattr(self, "performance_history", []))[-5:]
             avg_perf = sum(perf) / len(perf) if perf else 0.0
 
-            task_id = inject_external_task(
-                task_pool=pool,
-                provider=provider,
-                payload={
+            # Market-role agents get role-specific prompts with live data
+            from mae_core.market.market_awareness import build_market_oracle_prompt, is_market_agent
+            if is_market_agent(self):
+                base_q = (
+                    f"You are advising agent {self.unique_id} (role={role}). "
+                    f"Prediction error: {pred_error:.2f}, risk: {risk:.2f}, "
+                    f"avg performance (last 5): {avg_perf:.3f}. "
+                    f"What strategy should this agent prioritize?"
+                )
+                payload = build_market_oracle_prompt(self, base_q)
+            else:
+                payload = {
                     "question": (
                         f"You are advising agent {self.unique_id} (role={role}). "
                         f"Prediction error: {pred_error:.2f}, risk: {risk:.2f}, "
@@ -606,7 +619,12 @@ class DecisionActionLifecycleMixin:
                         "role": role,
                         "risk": float(risk),
                     },
-                },
+                }
+
+            task_id = inject_external_task(
+                task_pool=pool,
+                provider=provider,
+                payload=payload,
                 agent_id=str(self.unique_id),
                 priority=3,
             )

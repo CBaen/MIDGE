@@ -295,9 +295,16 @@ class SensingLifecycleMixin:
             self._prediction_error = 0.0
 
     def _build_state_vector(self) -> np.ndarray:
-        """Build observation vector from internal state (8 dimensions)."""
+        """Build observation vector from internal state (12 dimensions).
+
+        Dims 0-7: core agent state (generic, all agents).
+        Dims 8-11: market perception (via market_awareness module).
+        Non-market agents get neutral defaults [0.5, 0.0, 0.0, 0.0].
+        """
+        from mae_core.market.market_awareness import get_market_state_dims
+
         sensed = getattr(self, "_sensed_markers", {})
-        return np.array([
+        base = [
             self.step_count / 1000.0,
             self.cumulative_reward,
             self.last_reward,
@@ -306,4 +313,6 @@ class SensingLifecycleMixin:
             self.satisfaction_score,
             float(len(sensed.get("SUCCESS", []))),
             float(len(sensed.get("DANGER", []))),
-        ], dtype=np.float32)
+        ]
+        base.extend(get_market_state_dims(self))
+        return np.array(base, dtype=np.float32)

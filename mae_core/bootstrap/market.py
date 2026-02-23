@@ -880,6 +880,9 @@ def _differentiate_market_agents(ctx: SimpleNamespace) -> None:
             redifferentiate(agent, role, registry=registry, step=0)
             if market_advisory is not None:
                 agent._market_advisory_ref = market_advisory
+            # Attach live market system refs for market_awareness.py functions
+            agent._convergence_alerter_ref = getattr(ctx, "convergence_alerter", None)
+            agent._regime_classifier_ref = getattr(ctx, "regime_classifier", None)
             differentiated += 1
             logger.info(
                 "Market differentiation: agent %s → %s",
@@ -901,6 +904,8 @@ def _differentiate_market_agents(ctx: SimpleNamespace) -> None:
                 redifferentiate(agent, role, registry=registry, step=0)
                 if market_advisory is not None:
                     agent._market_advisory_ref = market_advisory
+                agent._convergence_alerter_ref = getattr(ctx, "convergence_alerter", None)
+                agent._regime_classifier_ref = getattr(ctx, "regime_classifier", None)
                 differentiated += 1
                 logger.info(
                     "Intelligence differentiation: agent %s → %s",
