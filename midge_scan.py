@@ -262,8 +262,15 @@ def store_and_feed(
     alerter: ConvergenceAlerter,
     memory: SignalMemory,
     dry_run: bool,
+    velocity_detector: VelocityDetector = None,
+    filing_analyzer: FilingTimeAnalyzer = None,
 ):
-    """Store signals to Qdrant + JSONL, feed into convergence engine."""
+    """Store signals to Qdrant + JSONL, feed into convergence engine.
+
+    Applies VelocityDetector (populates velocity field) and FilingTimeAnalyzer
+    (applies confidence modifiers for suspicious filing times) before feeding
+    signals into the convergence alerter.
+    """
     # Qdrant storage
     if not dry_run and memory.is_available():
         success = memory.store_signals(signals)
@@ -296,6 +303,31 @@ def store_and_feed(
 
     logger.info(f"Appended {len(signals)} signals to {jsonl_path}")
 
+    # Enrich signals with velocity and filing-time modifiers before feeding alerter
+    for sig in signals:
+        # Populate velocity via VelocityDetector
+        if velocity_detector is not None:
+            try:
+                state = velocity_detector.record(sig.signal_id, sig.strength, sig.timestamp)
+                sig.velocity = state.current_velocity
+            except Exception:
+                pass
+
+        # Apply filing-time confidence modifier for SEC filings
+        if filing_analyzer is not None and sig.source in ("sec_form4", "sec_form8k"):
+            try:
+                filing_dt = sig.received_at or sig.timestamp
+                fta_signal = filing_analyzer.analyze_filing_time(
+                    ticker=sig.symbol,
+                    filer_name=sig.metadata.get("filer_name", ""),
+                    filing_date=sig.timestamp.strftime("%Y-%m-%d"),
+                    filing_datetime=filing_dt,
+                    form_type="4" if sig.source == "sec_form4" else "8-K",
+                )
+                sig.confidence = max(0.0, min(1.0, sig.confidence + fta_signal.confidence_modifier))
+            except Exception:
+                pass
+
     # Feed convergence engine
     for sig in signals:
         alerter.record_signal(
@@ -306,7 +338,7 @@ def store_and_feed(
             confidence=sig.confidence,
             velocity=sig.velocity,
             timestamp=sig.timestamp,
-            metadata=sig.metadata,
+            metadata={**sig.metadata, "symbol": sig.symbol},
         )
 
 
@@ -315,12 +347,14 @@ def store_and_feed(
 def analyze(alerter: ConvergenceAlerter) -> dict:
     """Run convergence analysis. Returns analysis results dict."""
     alerts = alerter.check_convergence()
+    ticker_alerts = alerter.check_ticker_convergence(min_domains=2)
     summary = alerter.get_actionable_summary()
     matrix = alerter.get_convergence_matrix()
     domain_status = alerter.get_domain_status()
 
     return {
         "alerts": alerts,
+        "ticker_alerts": ticker_alerts,
         "summary": summary,
         "matrix": matrix,
         "domain_status": domain_status,
@@ -370,6 +404,7 @@ def write_report(
 
     summary = analysis["summary"]
     alerts = analysis["alerts"]
+    ticker_alerts = analysis.get("ticker_alerts", [])
     domain_status = analysis["domain_status"]
 
     source_counts = count_by_source(signals)
@@ -411,6 +446,20 @@ def write_report(
             lines.append("")
     else:
         lines.append("No convergence alerts triggered.")
+        lines.append("")
+
+    # Ticker-Level Convergence
+    lines.append("## Ticker-Level Convergence")
+    lines.append("")
+    if ticker_alerts:
+        for alert in ticker_alerts:
+            lines.append(f"### {alert.summary}")
+            lines.append(f"- Strength: {alert.strength:.2f} | Confidence: {alert.confidence:.2f}")
+            lines.append(f"- Domains: {', '.join(alert.domains_converging)}")
+            lines.append(f"- Urgency: {alert.urgency}")
+            lines.append("")
+    else:
+        lines.append("No per-ticker convergence detected.")
         lines.append("")
 
     # Signal Counts by Source
@@ -527,7 +576,7 @@ def main():
 
     # Phase 1: Setup
     logger.info("Phase 1/6: Setup")
-    clients, alerter, memory, watchlist = setup(args)
+    clients, alerter, memory, watchlist, velocity_detector, filing_analyzer = setup(args)
 
     # Phase 2: Fetch
     logger.info("Phase 2/6: Fetching live data from all sources...")
