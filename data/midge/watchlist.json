@@ -1,0 +1,19 @@
+{
+  "tickers": [
+    "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META",
+    "LMT", "RTX", "NOC", "GD", "BA"
+  ],
+  "keywords": [
+    "cybersecurity",
+    "artificial intelligence",
+    "defense",
+    "space"
+  ],
+  "companies": {
+    "Lockheed Martin": "LMT",
+    "Raytheon": "RTX",
+    "Northrop Grumman": "NOC",
+    "General Dynamics": "GD",
+    "Boeing": "BA"
+  }
+}
