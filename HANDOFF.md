@@ -22,7 +22,7 @@ Built and verified the full market intelligence integration into Mae's organism.
 
 - **2473 tests pass, 0 failures**
 - **108 systems** (92 core + 16 market), **127 holons**, **336 connections** (211 core + 47 fractal + 55 bootstrap + 23 market)
-- **22 market files** in `mae_core/market/` (bootstrapped as Layer 33)
+- **23 market files** in `mae_core/market/` (bootstrapped as Layer 33, + memory.py for Qdrant persistence)
 - **33-layer bootstrap** runs cleanly — all 8 Layer 33 stages log successfully
 - **12 stem cell roles** (9 original + SEC_WATCHER, CONTRACT_TRACKER, MARKET_ANALYST)
 - **Git:** Remote at `github.com/CBaen/MIDGE`
@@ -48,7 +48,7 @@ Layer 33  - Market Intelligence organ complete: 16 systems, 20 holons, 23 connec
 | `apis/` | 7 (price_fetcher, house_stock_watcher, job_tracker, usa_spending, sam_gov, ticker_resolver, market_data_provider) | Market data sources + utilities |
 | `edge/` | 4 (cluster_detector, politician_tracker, filing_time_analyzer, contract_predictor) | Pattern recognition |
 | `intelligence/` | 6 (thompson_sampler, velocity_detector, correlation_tracker, convergence_alerter, learning_config, regime_classifier) | Bayesian learning |
-| `root` | 3 (signal.py, channels.py, outcome_tracker.py) | Integration layer |
+| `root` | 4 (signal.py, channels.py, outcome_tracker.py, memory.py) | Integration layer + Qdrant persistence |
 
 ---
 
@@ -87,7 +87,9 @@ Welcome. MIDGE is Mae differentiated for financial markets. Here is what you nee
 7. **All 8 Mathematical Laws are satisfied.** See implementation plan Section 12 for compliance map.
 8. **2473 tests must keep passing.** Zero regressions.
 9. **Deep memory runs on Qdrant** container (port 6333). Start with `docker compose up -d`.
-10. **API keys** needed: RAPIDAPI_KEY (job tracker, congressional trades), ALPHA_VANTAGE_KEY (price fallback), SAM_GOV_API_KEY. SEC EDGAR and yfinance are free.
+10. **API keys** needed: RAPIDAPI_KEY (job tracker, congressional trades), ALPHA_VANTAGE_KEY (price fallback), SAM_GOV_API_KEY, MAE_TAVILY_API_KEY. SEC EDGAR, yfinance, and USASpending are free.
+11. **`python midge_scan.py`** runs a full market intelligence scan (no bootstrap needed). Reports go to `data/midge/scans/`, signal archives to `data/midge/signals/`. Use `--dry-run` to skip Qdrant.
+12. **`python test_live_apis.py`** tests all 8 API connections individually.
 
 ---
 
