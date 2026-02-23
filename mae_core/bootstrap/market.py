@@ -68,7 +68,7 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
     )
     logger.info(
         "            NOTE: MarketDataProvider registered with ApiGateway. "
-        "Client migration to gateway routing is incremental."
+        "All 6 API clients route through provider when available."
     )
 
 
