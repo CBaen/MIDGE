@@ -118,10 +118,12 @@ def from_insider_trade(trade: InsiderTrade) -> MarketSignal:
     is_buy = trade.is_purchase
     direction = "bullish" if is_buy else "bearish"
 
+    # Log-linear scale: preserves differentiation at high values
+    # $100k -> 0.42, $500k -> 0.73, $1M -> 0.83, $5M -> 0.95, $10M -> 1.0
     if is_buy:
-        strength = min(1.0, trade.total_value / 1_000_000)
+        strength = min(1.0, math.log1p(trade.total_value / 100_000) / math.log1p(10))
     else:
-        strength = min(1.0, trade.total_value / 500_000)
+        strength = min(1.0, math.log1p(trade.total_value / 50_000) / math.log1p(10))
 
     confidence = 0.70
 
