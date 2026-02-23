@@ -6,52 +6,28 @@
 
 ---
 
-## Completed (2026-02-22) — Fork & Port
+## Completed
 
-- [x] **Fork mae-core into MIDGE** (2026-02-22)
-      What: Copied full mae-core (85 systems, 2425 tests, 313 connections) into MIDGE directory. Verified all tests pass.
-      Result: MIDGE is a standalone Mae organism with its own git history.
+All Phase 1 and Phase 2 work is complete. See HANDOFF.md for full history.
 
-- [x] **Port MIDGE market intelligence** (2026-02-22)
-      What: 16 market modules ported into `mae_core/market/` (7 APIs, 4 edge detectors, 5 intelligence). Fixed all imports (`trading.apis.xxx` -> `mae_core.market.apis.xxx`). Fixed hardcoded data paths. Created `__init__.py` for all 6 subpackages. Moved learned data to `data/market/`.
-      Result: All 16 modules import cleanly. 2425 tests pass. Smoke test clean.
-
-- [x] **Write MIDGE identity docs** (2026-02-22)
-      What: CLAUDE.md, README.md, HANDOFF.md, midge-index.md, pyproject.toml, MAES_BIOLOGY.md, SYSTEMS.md updated for MIDGE identity. Divergence point documented. Project memory created.
-      Result: All project files reflect MIDGE as trading-purposed Mae fork.
+- Fork & port (2026-02-22)
+- Bootstrap integration: Layer 33 with 16 systems, 23 connections, 20 holons (2026-02-22)
+- Phase 2: CorrelationTracker persistence, discovery_log reader, KNOWN_POLITICIANS, TickerResolver, MarketDataProvider, ContractPredictor evaluation (2026-02-22)
+- Regime-aware Thompson Sampling (2026-02-22)
+- Client migration: all 6 API clients route through MarketDataProvider/ApiGateway (2026-02-22)
+- SEC user agent email updated (2026-02-22)
 
 ---
 
 ## Active
 
-### Priority 1: Bootstrap Integration
+No active tasks. MIDGE's integration work is complete.
 
-- [ ] **Create market bootstrap layer (Layer 33)**
-      What: Instantiate ThompsonSampler, ConvergenceAlerter, VelocityDetector, CorrelationTracker, edge detectors in bootstrap. Register on ctx namespace.
-
-- [ ] **Register market connections with ConnectionRegistry**
-      What: All market system connections need triadic witnesses (Law 1). Edge detectors -> EventBus, intelligence -> learning loop.
-
-- [ ] **Register market systems with HolonRegistry**
-      What: Market systems as holons with 10 capabilities (Law 3). Place in fractal hierarchy.
-
-- [ ] **Wire market signals to EventBus**
-      What: Edge detectors publish signals, convergence alerter subscribes, agent decision cascade receives.
-
-### Priority 2: Stem Cell Specialization
-
-- [ ] **Create market-specific role profiles**
-      What: Add to stem_cell.py: sec_watcher, contract_tracker, market_analyst roles.
-
-### Priority 3: API Gateway Integration
-
-- [ ] **Route market APIs through BoundaryMembrane**
-      What: SEC EDGAR (trusted), RapidAPI (keyed), yfinance (trusted), USASpending (trusted), SAM.gov (keyed).
-
-### Infrastructure
-
-- [ ] **Clean up staging directory**
-      What: Remove `_midge_staging/` after confirming all code ported. Delete recovery clone from AppData/Local/Temp.
+**Potential next directions (not yet decided):**
+- Live data testing with real API keys
+- Dashboard/UI for convergence alerts
+- Upstream mae-core genome sync
+- Additional edge detectors or signal sources
 
 ---
 
