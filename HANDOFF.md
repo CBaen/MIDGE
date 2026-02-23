@@ -8,7 +8,7 @@ Wired MIDGE's market intelligence through Mae's agent system. Previously, market
 
 **What was built:**
 
-1. **MarketSensingHook** — `mae_core/market/sensing_hook.py` (NEW). Async market data fetcher that runs inside Mae's step loop. ThreadPoolExecutor(1) with source rotation (SEC Form 4 → 8-K → congressional → hiring → USASpending → SAM.gov). Fetch cadence: every 50 steps. Outcome evaluation: every 200 steps. Same proven async pattern as ApiGateway.
+1. **MarketSensingHook** — `mae_core/market/sensing_hook.py` (NEW). Async market data fetcher that runs inside Mae's step loop. ThreadPoolExecutor(1) with 12-source rotation (SEC Form 4 → 8-K → congressional → senate → hiring → USASpending → SAM.gov → Reddit sentiment → FINRA short → SEC EFTS → Finnhub → FRED macro). Fetch cadence: every 50 steps. Outcome evaluation: every 200 steps. Same proven async pattern as ApiGateway.
 
 2. **Bootstrap wiring** — `mae_core/bootstrap/market.py` gained Layer 33h (`_wire_sensing_hook`) and Layer 33i (`_differentiate_market_agents`):
    - **33h:** Instantiates MarketSensingHook with all market systems from ctx, creates 3 tiered ConvergenceAlerters (tactical/strategic/thematic), OutcomeCollector, SignalMemory. Adds `_market_advisory` dict as Channel B for market-role agents. Registers the hook as a model step hook.
