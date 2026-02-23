@@ -284,6 +284,22 @@ class SECEdgarClient:
                 if cik_elem is not None:
                     company_cik = cik_elem.text or cik
 
+            # Collect footnotes — 10b5-1 plan sales are disclosed here
+            footnotes_text = ""
+            is_plan_sale = False
+            footnotes_elem = root.find(".//footnotes") or root.find("footnotes")
+            if footnotes_elem is not None:
+                parts = []
+                for fn in footnotes_elem:
+                    text = fn.text or ""
+                    if text:
+                        parts.append(text)
+                footnotes_text = " ".join(parts)
+                # Detect 10b5-1 plan references
+                fn_lower = footnotes_text.lower()
+                if "10b5-1" in fn_lower or "10b-5" in fn_lower or "rule 10b" in fn_lower:
+                    is_plan_sale = True
+
             trades = []
 
             non_deriv_table = root.find(".//nonDerivativeTable") or root.find("nonDerivativeTable")
@@ -297,7 +313,9 @@ class SECEdgarClient:
                         company_name=company_name,
                         company_cik=company_cik,
                         ticker_symbol=ticker_symbol,
-                        accession_number=accession_number
+                        accession_number=accession_number,
+                        is_plan_sale=is_plan_sale,
+                        footnotes=footnotes_text,
                     )
                     if trade:
                         trades.append(trade)
@@ -422,6 +440,14 @@ class SECEdgarClient:
             date_elem = trans_elem.find(".//transactionDate/value")
             trans_date = date_elem.text if date_elem is not None else None
 
+            # Extract transaction code (S=sale, P=purchase, M=option exercise, etc.)
+            coding = trans_elem.find("transactionCoding")
+            trans_code = ""
+            if coding is not None:
+                code_elem = coding.find("transactionCode")
+                if code_elem is not None and code_elem.text:
+                    trans_code = code_elem.text.strip()
+
             amounts = trans_elem.find("transactionAmounts")
             if amounts is None:
                 return None
@@ -454,13 +480,16 @@ class SECEdgarClient:
                 ticker_symbol=metadata["ticker_symbol"],
                 transaction_date=trans_date or "",
                 transaction_type=trans_type,
+                transaction_code=trans_code,
                 shares=shares,
                 price_per_share=price,
                 total_value=shares * price,
                 shares_owned_after=shares_after,
                 filing_date="",
                 accession_number=metadata["accession_number"],
-                form_type="4"
+                form_type="4",
+                is_plan_sale=metadata.get("is_plan_sale", False),
+                footnotes=metadata.get("footnotes", ""),
             )
 
         except Exception as e:

@@ -131,8 +131,10 @@ def from_insider_trade(trade: InsiderTrade) -> MarketSignal:
     compensation_codes = {"D", "A", "F", "G", "M"}  # disposition, award, tax, gift, option exercise
     tc = trade.transaction_code.upper().strip() if trade.transaction_code else ""
     is_compensation = tc in compensation_codes
+    # 10b5-1 plan sales: scheduled, not informed (Pichai, Kress, etc.)
+    is_plan = trade.is_plan_sale and not is_buy
 
-    if is_compensation:
+    if is_compensation or is_plan:
         strength *= 0.25
         confidence = 0.40
 

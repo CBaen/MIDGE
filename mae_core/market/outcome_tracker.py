@@ -155,7 +155,12 @@ class OutcomeTracker:
 
         for pred in predictions:
             try:
-                signal_timestamp = datetime.fromisoformat(pred["timestamp"])
+                # Handle both new format ("timestamp") and legacy ("predicted_at")
+                ts_str = pred.get("timestamp") or pred.get("predicted_at", "")
+                if not ts_str:
+                    self._logger.warning("Prediction missing timestamp, skipping")
+                    continue
+                signal_timestamp = datetime.fromisoformat(ts_str)
                 window_days = pred.get("outcome_window_days", 14)
                 outcome_date = signal_timestamp + timedelta(days=window_days)
 

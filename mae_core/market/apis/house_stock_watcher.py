@@ -337,9 +337,9 @@ class HouseStockWatcherClient:
                 amount_low = normalized["amount_low"]
                 amount_high = normalized["amount_high"]
 
-            # Clean ticker
+            # Clean ticker — guard against NaN, None, dashes, and nonsense values
             ticker = normalized["ticker"]
-            if ticker == "--" or not ticker:
+            if not ticker or ticker == "--" or str(ticker).strip().upper() in ("NAN", "N/A", "NONE"):
                 ticker = ""
 
             trade = CongressionalTrade(
