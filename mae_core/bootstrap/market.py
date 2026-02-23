@@ -104,7 +104,10 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
 
     try:
         from mae_core.market.apis.price_fetcher import PriceFetcher
-        ctx.price_fetcher = PriceFetcher(provider=provider)
+        ctx.price_fetcher = PriceFetcher(
+            alpha_vantage_key=os.environ.get("MAE_ALPHAVANTAGE_API_KEY", ""),
+            provider=provider,
+        )
     except Exception:
         logger.debug("Market: price_fetcher failed to construct", exc_info=True)
         ctx.price_fetcher = None
