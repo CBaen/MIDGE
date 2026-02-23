@@ -79,7 +79,7 @@ def load_watchlist(path: Path) -> dict:
 
 
 def setup(args):
-    """Initialize all components. Returns (clients, alerter, memory, watchlist, velocity_detector, filing_analyzer, outcome_collector)."""
+    """Initialize all components."""
     watchlist_path = Path(args.watchlist) if args.watchlist else DATA_DIR / "watchlist.json"
     watchlist = load_watchlist(watchlist_path)
     logger.info(
@@ -111,6 +111,13 @@ def setup(args):
 
     alerter = ConvergenceAlerter(min_domains=2, convergence_window_hours=168)
 
+    # Multi-timeframe convergence: three tier-specific alerters
+    tiered_alerters = {
+        "tactical": ConvergenceAlerter(min_domains=2, convergence_window_hours=48),
+        "strategic": ConvergenceAlerter(min_domains=2, convergence_window_hours=504),   # 21 days
+        "thematic": ConvergenceAlerter(min_domains=2, convergence_window_hours=2160),   # 90 days
+    }
+
     memory = SignalMemory()
     if not args.dry_run and memory.is_available():
         memory.ensure_collection()
@@ -129,7 +136,7 @@ def setup(args):
     outcome_collector = OutcomeCollector(clients["price"], thompson)
     logger.info(f"Outcome collector: {outcome_collector.get_statistics()['registered_signals']} signals tracked")
 
-    return clients, alerter, memory, watchlist, velocity_detector, filing_analyzer, outcome_collector
+    return clients, alerter, tiered_alerters, memory, watchlist, velocity_detector, filing_analyzer, outcome_collector
 
 
 # ── Phase 2: Fetch ────────────────────────────────────────────────────────
@@ -283,6 +290,7 @@ def convert_to_signals(results: dict) -> List[MarketSignal]:
 def store_and_feed(
     signals: List[MarketSignal],
     alerter: ConvergenceAlerter,
+    tiered_alerters: dict,
     memory: SignalMemory,
     dry_run: bool,
     velocity_detector: VelocityDetector = None,
@@ -292,7 +300,7 @@ def store_and_feed(
 
     Applies VelocityDetector (populates velocity field) and FilingTimeAnalyzer
     (applies confidence modifiers for suspicious filing times) before feeding
-    signals into the convergence alerter.
+    signals into the global alerter and appropriate tiered alerter.
     """
     # Qdrant storage
     if not dry_run and memory.is_available():
@@ -351,9 +359,9 @@ def store_and_feed(
             except Exception:
                 pass
 
-    # Feed convergence engine
+    # Feed convergence engine (global + tiered)
     for sig in signals:
-        alerter.record_signal(
+        sig_kwargs = dict(
             signal_id=sig.signal_id,
             strength=sig.strength,
             domain=sig.domain,
@@ -363,11 +371,18 @@ def store_and_feed(
             timestamp=sig.timestamp,
             metadata={**sig.metadata, "symbol": sig.symbol},
         )
+        # Global alerter gets everything
+        alerter.record_signal(**sig_kwargs)
+
+        # Route to appropriate tier
+        tier = TIER_ROUTING.get(sig.source, "strategic")
+        if tier in tiered_alerters:
+            tiered_alerters[tier].record_signal(**sig_kwargs)
 
 
 # ── Phase 5: Analyze ─────────────────────────────────────────────────────
 
-def analyze(alerter: ConvergenceAlerter) -> dict:
+def analyze(alerter: ConvergenceAlerter, tiered_alerters: dict = None) -> dict:
     """Run convergence analysis. Returns analysis results dict."""
     alerts = alerter.check_convergence()
     ticker_alerts = alerter.check_ticker_convergence(min_domains=2)
@@ -375,13 +390,75 @@ def analyze(alerter: ConvergenceAlerter) -> dict:
     matrix = alerter.get_convergence_matrix()
     domain_status = alerter.get_domain_status()
 
+    # Multi-timeframe tier analysis
+    tier_results = {}
+    if tiered_alerters:
+        for tier_name, tier_alerter in tiered_alerters.items():
+            tier_alerts = tier_alerter.check_convergence()
+            tier_ticker = tier_alerter.check_ticker_convergence(min_domains=2)
+            tier_results[tier_name] = {
+                "alerts": tier_alerts,
+                "ticker_alerts": tier_ticker,
+            }
+
+    # Cross-tier convergence: same ticker in 2+ tiers = elevated signal
+    cross_tier = _detect_cross_tier(tier_results)
+
     return {
         "alerts": alerts,
         "ticker_alerts": ticker_alerts,
         "summary": summary,
         "matrix": matrix,
         "domain_status": domain_status,
+        "tier_results": tier_results,
+        "cross_tier": cross_tier,
     }
+
+
+def _detect_cross_tier(tier_results: dict) -> list:
+    """Detect tickers with convergence alerts across multiple tiers.
+
+    Cross-tier convergence = same ticker appearing in 2+ independent time
+    horizons.  Per Alpha's amendment, cross-tier gets a REDUCED confidence
+    boost because signals at different timeframes responding to the same
+    event are not truly independent evidence.
+    """
+    if not tier_results:
+        return []
+
+    # Collect tickers with alerts per tier
+    ticker_tiers: dict = {}  # {ticker: [tier_names]}
+    for tier_name, results in tier_results.items():
+        for alert in results.get("ticker_alerts", []):
+            # Extract ticker from alert summary (format: "TICKER bullish/bearish...")
+            parts = alert.summary.split()
+            if parts:
+                ticker = parts[0]
+                if ticker not in ticker_tiers:
+                    ticker_tiers[ticker] = []
+                ticker_tiers[ticker].append((tier_name, alert))
+
+    cross_tier = []
+    for ticker, entries in ticker_tiers.items():
+        tier_names = list(set(e[0] for e in entries))
+        if len(tier_names) >= 2:
+            # Cross-tier convergence detected
+            directions = [e[1].direction for e in entries]
+            # Only flag if directions agree
+            if len(set(directions)) == 1:
+                avg_strength = sum(e[1].strength for e in entries) / len(entries)
+                # Reduced confidence: 0.7x within-tier equivalent (Alpha's amendment)
+                avg_confidence = sum(e[1].confidence for e in entries) / len(entries) * 0.7
+                cross_tier.append({
+                    "ticker": ticker,
+                    "direction": directions[0],
+                    "tiers": tier_names,
+                    "strength": round(avg_strength, 3),
+                    "confidence": round(avg_confidence, 3),
+                    "alert_count": len(entries),
+                })
+
+    return cross_tier
 
 
 # ── Phase 6: Report ──────────────────────────────────────────────────────
@@ -623,7 +700,7 @@ def main():
 
     # Phase 1: Setup
     logger.info("Phase 1/7: Setup")
-    clients, alerter, memory, watchlist, velocity_detector, filing_analyzer, outcome_collector = setup(args)
+    clients, alerter, tiered_alerters, memory, watchlist, velocity_detector, filing_analyzer, outcome_collector = setup(args)
 
     # Phase 2: Fetch
     logger.info("Phase 2/7: Fetching live data from all sources...")
@@ -642,7 +719,7 @@ def main():
     # Phase 4: Store + Feed
     logger.info("Phase 4/7: Storing signals and feeding convergence engine...")
     store_and_feed(
-        signals, alerter, memory,
+        signals, alerter, tiered_alerters, memory,
         dry_run=args.dry_run,
         velocity_detector=velocity_detector,
         filing_analyzer=filing_analyzer,
