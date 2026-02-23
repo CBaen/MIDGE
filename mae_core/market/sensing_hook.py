@@ -36,24 +36,37 @@ SIGNALS_DIR = DATA_DIR / "signals"
 TIER_ROUTING = {
     "sec_form4": "tactical",
     "sec_form8k": "tactical",
+    "sec_efts": "tactical",
+    "finnhub_news": "tactical",
+    "finnhub_earnings": "tactical",
     "congressional": "strategic",
+    "senate": "strategic",
     "contract": "strategic",
     "insider_cluster": "strategic",
     "correlation": "strategic",
+    "finra_short": "strategic",
     "sam_gov": "thematic",
     "hiring_tracker": "thematic",
     "contract_prediction": "thematic",
     "contract_award": "thematic",
+    "social_sentiment": "thematic",
+    "fred_macro": "thematic",
 }
 
-# Source names for rotation
+# Source names for rotation — 12 sources, full cycle every 600 steps
 SOURCE_ROTATION = [
     "sec_form4",
     "sec_form8k",
     "congressional",
+    "senate",
     "hiring",
     "usa_spending",
     "sam_gov_and_prices",
+    "social_sentiment",
+    "finra_short",
+    "sec_efts",
+    "finnhub",
+    "fred_macro",
 ]
 
 
