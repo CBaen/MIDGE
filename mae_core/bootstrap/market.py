@@ -688,13 +688,13 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
     tiered_alerters = {}
     try:
         tiered_alerters["tactical"] = ConvergenceAlerter(
-            min_domains=2, window_hours=48,
+            min_domains=2, convergence_window_hours=48,
         )
         tiered_alerters["strategic"] = ConvergenceAlerter(
-            min_domains=2, window_hours=21 * 24,
+            min_domains=2, convergence_window_hours=21 * 24,
         )
         tiered_alerters["thematic"] = ConvergenceAlerter(
-            min_domains=2, window_hours=90 * 24,
+            min_domains=2, convergence_window_hours=90 * 24,
         )
     except Exception:
         logger.debug("Tiered alerter construction failed", exc_info=True)
