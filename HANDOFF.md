@@ -69,7 +69,7 @@ All Phase 2 items from implementation plan Section 9 are done:
 
 - ~~Regime-aware Thompson Sampling~~ — RegimeClassifier (bull/bear/volatile/sideways/default from SPY 20-day return + annualized volatility). OutcomeTracker and step hooks pass detected regime to ThompsonSampler. Cached daily, graceful degradation to "default".
 - **Incremental client migration** — Migrate 6 market API clients from direct HTTP to MarketDataProvider/ApiGateway routing
-- Replace `midge@wardenclyffe.local` in SEC user agent with real email before live EDGAR queries
+- ~~SEC user agent email~~ — Updated to `cameronbpaul@gmail.com`, ready for live EDGAR queries
 
 ---
 
