@@ -1,50 +1,50 @@
 {
   "sec_edgar": {
     "default": {
-      "alpha": 1.7356827702189177,
+      "alpha": 1.7011426830915612,
       "beta": 1.0
     }
   },
   "13f_filing": {
     "default": {
-      "alpha": 1.6443310454705538,
+      "alpha": 1.6116088576656897,
       "beta": 1.0
     }
   },
   "form_4": {
     "default": {
-      "alpha": 1.6443310454705538,
+      "alpha": 1.6116088576656897,
       "beta": 1.0
     }
   },
   "capitol_trades": {
     "default": {
-      "alpha": 1.5529793207221894,
+      "alpha": 1.5220750322398178,
       "beta": 1.0
     }
   },
   "unusual_whales": {
     "default": {
-      "alpha": 1.4616275959738254,
+      "alpha": 1.4325412068139463,
       "beta": 1.0
     }
   },
   "polygon": {
     "default": {
-      "alpha": 1.7356827702189177,
+      "alpha": 1.7011426830915612,
       "beta": 1.0
     }
   },
   "twitter_verified": {
     "default": {
-      "alpha": 1.096220696980369,
+      "alpha": 1.0744059051104595,
       "beta": 1.0
     }
   },
   "reddit": {
     "default": {
       "alpha": 1.0,
-      "beta": 1.2789241464770968
+      "beta": 1.2534735559622026
     }
   },
   "stocktwits": {
@@ -55,13 +55,13 @@
   },
   "gemini": {
     "default": {
-      "alpha": 1.3702758712254612,
+      "alpha": 1.3430073813880745,
       "beta": 1.0
     }
   },
   "deepseek": {
     "default": {
-      "alpha": 1.2789241464770968,
+      "alpha": 1.2534735559622026,
       "beta": 1.0
     }
   },
