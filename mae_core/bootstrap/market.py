@@ -788,18 +788,14 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
 # =========================================================================
 
 def _differentiate_market_agents(ctx: SimpleNamespace) -> None:
-    """Differentiate a subset of agents into market roles.
+    """Differentiate agents into triadic groups per Law 2.
 
-    Law 5 in action: same genome, market-specialized epigenome.
-    Three agents get the roles that stem_cell.py already defines
-    (SEC_WATCHER, CONTRACT_TRACKER, MARKET_ANALYST) but that were
-    never actually applied to any agent.
+    Progressive differentiation by agent count:
+      6 agents: K3 general (1-3 STEM) + K3 market (4-6)
+      9 agents: K3 general + K3 market + K3 intelligence (7-9)
 
-    These agents will:
-    - Have api_call_enabled=True → oracle pathway fires on high prediction error
-    - Have market-specific capabilities → GNN routing targets them for market tasks
-    - Have world_model_enabled=True → prediction/error correction active
-    - Read _market_advisory_ref in their decision cascade
+    Law 5: same genome, specialized epigenome.
+    Law 2: K3 is the atom of all structure — groups of 3, always.
     """
     from mae_core.agents.stem_cell import redifferentiate
 
@@ -813,26 +809,25 @@ def _differentiate_market_agents(ctx: SimpleNamespace) -> None:
         return
 
     registry = getattr(ctx, "stem_cell_registry", None)
+    market_advisory = getattr(ctx, "_market_advisory", None)
 
-    # Differentiate last 3 agents (leave earlier ones as general-purpose)
-    role_assignments = [
-        ("SEC_WATCHER", -3),
-        ("CONTRACT_TRACKER", -2),
-        ("MARKET_ANALYST", -1),
+    # --- K3 Market: agents[-6], [-5], [-4] (or [-3], [-2], [-1] when only 6) ---
+    # With 6 agents: indices 3, 4, 5. With 9: indices 3, 4, 5.
+    market_roles = [
+        ("SEC_WATCHER", 3),
+        ("CONTRACT_TRACKER", 4),
+        ("MARKET_ANALYST", 5),
     ]
 
-    market_advisory = getattr(ctx, "_market_advisory", None)
     differentiated = 0
-
-    for role, idx in role_assignments:
+    for role, idx in market_roles:
+        if idx >= len(agents):
+            break
         try:
             agent = agents[idx]
             redifferentiate(agent, role, registry=registry, step=0)
-
-            # Inject market advisory reference so agent can read it in _observe()/_decide()
             if market_advisory is not None:
                 agent._market_advisory_ref = market_advisory
-
             differentiated += 1
             logger.info(
                 "Market differentiation: agent %s → %s",
@@ -841,7 +836,31 @@ def _differentiate_market_agents(ctx: SimpleNamespace) -> None:
         except Exception:
             logger.debug("Failed to differentiate agent[%d] as %s", idx, role, exc_info=True)
 
+    # --- K3 Intelligence: agents 6, 7, 8 (only when 9+ agents) ---
+    if len(agents) >= 9:
+        intel_roles = [
+            ("EXPLORER", 6),
+            ("LEARNER", 7),
+            ("LLM_SPECIALIST", 8),
+        ]
+        for role, idx in intel_roles:
+            try:
+                agent = agents[idx]
+                redifferentiate(agent, role, registry=registry, step=0)
+                if market_advisory is not None:
+                    agent._market_advisory_ref = market_advisory
+                differentiated += 1
+                logger.info(
+                    "Intelligence differentiation: agent %s → %s",
+                    getattr(agent, "unique_id", id(agent)), role,
+                )
+            except Exception:
+                logger.debug("Failed to differentiate agent[%d] as %s", idx, role, exc_info=True)
+
+    triads = 1 + (1 if len(agents) >= 6 else 0) + (1 if len(agents) >= 9 else 0)
     logger.info(
-        "Layer 33i - Market agent differentiation: %d/%d agents differentiated",
-        differentiated, len(role_assignments),
+        "Layer 33i - Agent differentiation: %d agents across %d K3 triads "
+        "(general + %s)",
+        differentiated, triads,
+        "market + intelligence" if len(agents) >= 9 else "market",
     )

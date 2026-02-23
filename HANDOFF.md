@@ -177,7 +177,7 @@ Welcome. MIDGE is Mae differentiated for financial markets. Here is what you nee
 8. **2473 tests must keep passing.** Zero regressions.
 9. **Deep memory runs on Qdrant** container (port 6333). Start with `docker compose up -d`.
 10. **API keys** needed: RAPIDAPI_KEY (job tracker, congressional trades), ALPHA_VANTAGE_KEY (price fallback), SAM_GOV_API_KEY, MAE_TAVILY_API_KEY. SEC EDGAR, yfinance, and USASpending are free.
-11. **`python main.py --agents 5 --steps 500`** runs MIDGE with agents sensing the market. Market-role agents need at least 3 agents total.
+11. **`python main.py --agents 6 --steps 500`** runs MIDGE with agents sensing the market. Requires 6 agents (K3 general + K3 market per Law 2).
 12. **`python midge_scan.py`** runs a standalone 7-phase scan (no bootstrap needed). Reports go to `data/midge/scans/`, signal archives to `data/midge/signals/`. Use `--dry-run` to skip Qdrant.
 13. **`python test_live_apis.py`** tests all 8 API connections individually.
 14. **Triadic research** at `research/midge-prediction-optimization/deliverable.md` — prioritized modification plan with remaining Layer 5 items.
