@@ -334,6 +334,17 @@ class SECEdgarClient:
         trades = []
 
         try:
+            # Detect 10b5-1 plan references in footnotes section of HTML
+            html_lower = html_content.lower()
+            is_plan_sale = ("10b5-1" in html_lower or "10b-5" in html_lower
+                            or "rule 10b" in html_lower)
+            # Extract footnote text for audit trail
+            footnotes_text = ""
+            fn_matches = re.findall(r'class="Footnote[^"]*"[^>]*>(.*?)</(?:td|span|div)',
+                                    html_content, re.DOTALL | re.IGNORECASE)
+            if fn_matches:
+                footnotes_text = " ".join(re.sub(r'<[^>]+>', '', m).strip() for m in fn_matches)
+
             filer_match = re.search(r'Reporting Person.*?<a[^>]*>([^<]+)</a>', html_content, re.DOTALL | re.IGNORECASE)
             filer_name = filer_match.group(1).strip() if filer_match else "Unknown"
 
