@@ -423,8 +423,8 @@ def write_report(
         lines.append("|--------|-----------|----------|---------|")
         for domain, status in sorted(domain_status.items()):
             d = status.get("direction", "neutral")
-            s = status.get("avg_strength", 0)
-            c = status.get("count", 0)
+            s = status.get("strength", 0)
+            c = status.get("signal_count", 0)
             lines.append(f"| {domain} | {d} | {s:.2f} | {c} |")
     else:
         lines.append("No domain data.")

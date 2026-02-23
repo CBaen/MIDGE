@@ -298,6 +298,28 @@ class OutcomeTracker:
             self._logger.debug(f"Price check failed for {symbol}: {e}")
             return None
 
+    def _load_evaluated_ids(self) -> set:
+        """Load signal_ids already recorded in outcomes.jsonl to prevent duplication."""
+        evaluated = set()
+        if not self.outcomes_path.exists():
+            return evaluated
+        try:
+            with open(self.outcomes_path, "r") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        record = json.loads(line)
+                        sid = record.get("signal_id", "")
+                        if sid:
+                            evaluated.add(sid)
+                    except json.JSONDecodeError:
+                        continue
+        except Exception as e:
+            self._logger.warning(f"Failed to read outcomes for dedup: {e}")
+        return evaluated
+
     def _append_outcome(self, outcome: dict) -> None:
         """Append outcome record to outcomes.jsonl."""
         try:

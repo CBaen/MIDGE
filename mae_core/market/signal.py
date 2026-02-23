@@ -23,6 +23,7 @@ from mae_core.market.apis.sam_gov import ContractOpportunity
 from mae_core.market.edge.cluster_detector import ClusterSignal
 from mae_core.market.edge.contract_predictor import ContractPrediction
 from mae_core.market.edge.politician_tracker import CorrelationSignal
+from mae_core.market.apis import ticker_resolver
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +106,14 @@ class TradeSignal:
 # ---------------------------------------------------------------------------
 
 def from_insider_trade(trade: InsiderTrade) -> MarketSignal:
-    """Convert a Form 4 InsiderTrade to a MarketSignal."""
+    """Convert a Form 4 InsiderTrade to a MarketSignal.
+
+    Filters out noise from scheduled compensation transactions:
+    - Transaction code "D" (disposition/delivery for RSU vesting): strength * 0.25
+    - Transaction code "A" (award/grant): strength * 0.25
+    - Transaction code "F" (tax withholding on vesting): strength * 0.25
+    - Suspected 10b5-1 plan sales (non-buy with plan indicators): strength * 0.25
+    """
     is_buy = trade.is_purchase
     direction = "bullish" if is_buy else "bearish"
 
@@ -113,6 +121,17 @@ def from_insider_trade(trade: InsiderTrade) -> MarketSignal:
         strength = min(1.0, trade.total_value / 1_000_000)
     else:
         strength = min(1.0, trade.total_value / 500_000)
+
+    confidence = 0.70
+
+    # Detect compensation/plan transactions (noise, not informed trading)
+    compensation_codes = {"D", "A", "F", "G", "M"}  # disposition, award, tax, gift, option exercise
+    tc = trade.transaction_code.upper().strip() if trade.transaction_code else ""
+    is_compensation = tc in compensation_codes
+
+    if is_compensation:
+        strength *= 0.25
+        confidence = 0.40
 
     event_dt = _ensure_datetime(trade.transaction_date)
     received_dt = _ensure_datetime(trade.filing_date) if trade.filing_date else datetime.now()
@@ -128,7 +147,7 @@ def from_insider_trade(trade: InsiderTrade) -> MarketSignal:
         domain="insider",
         direction=direction,
         strength=strength,
-        confidence=0.70,
+        confidence=confidence,
         decay_rate=trade.decay_rate,
         timestamp=event_dt,
         received_at=received_dt,
@@ -282,13 +301,15 @@ def from_government_contract(contract: GovernmentContract) -> MarketSignal:
 
     event_dt = _ensure_datetime(contract.award_date)
 
-    # GovernmentContract doesn't carry a ticker; symbol will be resolved downstream
+    # Resolve company name to ticker via TickerResolver
+    resolved_ticker = ticker_resolver.resolve(contract.recipient_name) or ""
+
     signal_id = f"contract_award:{contract.award_id}:{contract.award_date}"
 
     return MarketSignal(
         signal_id=signal_id,
         source="contract_award",
-        symbol="",
+        symbol=resolved_ticker,
         asset_class="stock",
         domain="contracts",
         direction=direction,
@@ -297,7 +318,7 @@ def from_government_contract(contract: GovernmentContract) -> MarketSignal:
         decay_rate=contract.decay_rate,
         timestamp=event_dt,
         received_at=datetime.now(),
-        outcome_symbol="",
+        outcome_symbol=resolved_ticker,
         raw_id=contract.award_id or "",
         raw_type="GovernmentContract",
         metadata={
