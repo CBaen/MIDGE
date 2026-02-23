@@ -67,7 +67,7 @@ class HiringSignal:
     signal_source: str = "hiring_tracker"
     confidence: float = 0.5
     detected_at: str = ""
-    decay_rate: float = 0.07  # ~10 day half-life
+    decay_rate: float = 0.015  # ~46 day half-life (hiring leads contract by 60-120 days)
 
     def __post_init__(self):
         if not self.detected_at:

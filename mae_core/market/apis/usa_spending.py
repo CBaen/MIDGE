@@ -64,7 +64,7 @@ class GovernmentContract:
 
     # Signal metadata for MIDGE
     signal_source: str = "contract"
-    decay_rate: float = 0.02  # ~35 day half-life
+    decay_rate: float = 0.07  # ~10 day half-life (post-announcement drift resolves quickly)
 
     def to_plain_language(self) -> str:
         """Format for Guiding Light's dashboard."""

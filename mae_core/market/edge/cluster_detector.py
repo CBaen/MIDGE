@@ -100,7 +100,7 @@ class ClusterSignal:
     confidence: float = 0.70
     detected_at: str = ""
     signal_source: str = "insider_cluster"
-    decay_rate: float = 0.05  # Same as insider signals (~14 day half-life)
+    decay_rate: float = 0.025  # ~28 day half-life (clusters persist longer, Alldredge 2019)
 
     def __post_init__(self):
         if not self.cluster_id:

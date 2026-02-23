@@ -9,6 +9,7 @@ Each adapter is a standalone function named `from_{source_type}`.
 
 from __future__ import annotations
 
+import math
 import uuid
 import logging
 from dataclasses import dataclass, field
@@ -353,7 +354,7 @@ def from_contract_opportunity(opportunity: ContractOpportunity) -> MarketSignal:
         direction="neutral",
         strength=0.3,
         confidence=0.40,
-        decay_rate=0.04,  # SAM.gov opportunities don't carry decay_rate; use reasonable default
+        decay_rate=0.008,  # ~87 day half-life (competition periods last months)
         timestamp=event_dt,
         received_at=datetime.now(),
         outcome_symbol="",
@@ -469,7 +470,7 @@ def from_correlation_signal(correlation: CorrelationSignal) -> MarketSignal:
         direction=direction,
         strength=correlation.confidence,
         confidence=correlation.confidence,
-        decay_rate=0.03,  # CorrelationSignal has no decay_rate field; use congressional default
+        decay_rate=0.04,  # ~17 day half-life (combination of trade staleness + political info)
         timestamp=event_dt,
         received_at=datetime.now(),
         outcome_symbol=symbol,

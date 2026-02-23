@@ -68,7 +68,7 @@ class CongressionalTrade:
 
     # Signal metadata for MIDGE
     signal_source: str = "congressional"
-    decay_rate: float = 0.03  # ~23 day half-life (slow - political info persists)
+    decay_rate: float = 0.05  # ~14 day half-life from disclosure date (trade is stale by disclosure)
     confidence: float = 0.65  # Base confidence
 
     def to_plain_language(self) -> str:

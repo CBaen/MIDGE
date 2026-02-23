@@ -25,7 +25,7 @@ class Form8KEvent:
     material_impact: str = "unknown"
     confidence: float = 0.70
     signal_source: str = "sec_form8k"
-    decay_rate: float = 0.03
+    decay_rate: float = 0.25  # ~3 day half-life (market prices binary 8-K events fast)
 
     ITEM_CODES = {
         "1.01": ("Material Agreement", "bullish"),

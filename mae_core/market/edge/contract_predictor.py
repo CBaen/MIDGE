@@ -71,7 +71,7 @@ class ContractPrediction:
 
     # Metadata
     signal_source: str = "contract_prediction"
-    decay_rate: float = 0.03  # Slow decay - contract timelines are long
+    decay_rate: float = 0.018  # ~39 day half-life (pre-announcement thesis valid for weeks)
 
     def __post_init__(self):
         if not self.predicted_at:
