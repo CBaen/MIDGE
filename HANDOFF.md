@@ -30,14 +30,14 @@ Built and verified the full market intelligence integration into Mae's organism.
 ### Layer 33 Bootstrap Output (verified)
 
 ```
-Layer 33a - Market systems instantiated: 15 systems (construction failures: 0)
-Layer 33b - Market holons registered: 15 holons
+Layer 33a - Market systems instantiated: 16 systems (construction failures: 0)
+Layer 33b - Market holons registered: 16 holons
 Layer 33c - Market fractal: organ-cluster-cognitive now has 3 children (K3 requires 3)
 Layer 33d - Market connections: 23 triadic connections registered (Group 14)
 Layer 33e - Market stem cell roles verified
 Layer 33f - Market EventBus: convergence -> endocrine coupling wired
 Layer 33g - Market step hooks: convergence/1, stats/10, velocity/50, forgetting/100
-Layer 33  - Market Intelligence organ complete: 15 systems, 19 holons, 23 connections
+Layer 33  - Market Intelligence organ complete: 16 systems, 20 holons, 23 connections
 ```
 
 ### Market Package Structure
@@ -47,7 +47,7 @@ Layer 33  - Market Intelligence organ complete: 15 systems, 19 holons, 23 connec
 | `apis/sec_edgar/` | 3 (models, client, __init__) | SEC insider trades + material events |
 | `apis/` | 7 (price_fetcher, house_stock_watcher, job_tracker, usa_spending, sam_gov, ticker_resolver, market_data_provider) | Market data sources + utilities |
 | `edge/` | 4 (cluster_detector, politician_tracker, filing_time_analyzer, contract_predictor) | Pattern recognition |
-| `intelligence/` | 5 (thompson_sampler, velocity_detector, correlation_tracker, convergence_alerter, learning_config) | Bayesian learning |
+| `intelligence/` | 6 (thompson_sampler, velocity_detector, correlation_tracker, convergence_alerter, learning_config, regime_classifier) | Bayesian learning |
 | `root` | 3 (signal.py, channels.py, outcome_tracker.py) | Integration layer |
 
 ---
@@ -67,7 +67,7 @@ All Phase 2 items from implementation plan Section 9 are done:
 
 ### Remaining Work
 
-- **Regime-aware Thompson Sampling** — Separate Beta distributions per market regime (architecture exists, all calls use `regime="default"`)
+- ~~Regime-aware Thompson Sampling~~ — RegimeClassifier (bull/bear/volatile/sideways/default from SPY 20-day return + annualized volatility). OutcomeTracker and step hooks pass detected regime to ThompsonSampler. Cached daily, graceful degradation to "default".
 - **Incremental client migration** — Migrate 6 market API clients from direct HTTP to MarketDataProvider/ApiGateway routing
 - Replace `midge@wardenclyffe.local` in SEC user agent with real email before live EDGAR queries
 
@@ -93,7 +93,7 @@ Welcome. MIDGE is Mae differentiated for financial markets. Here is what you nee
 ## Previous Sessions
 
 ### Market Integration (2026-02-22 — multi-session)
-Built full market intelligence integration (Tiers 0-5). Created Layer 33 bootstrap with 15 systems, 23 triadic connections, fractal K3 hierarchy, endocrine coupling, step hooks, Bayesian forgetting. Phase 2 completed: CorrelationTracker persistence, discovery_log reader, 437 Congress members, TickerResolver, MarketDataProvider, ContractPredictor evaluation. All verified: 2466 tests pass, 0 alert storms.
+Built full market intelligence integration (Tiers 0-5). Created Layer 33 bootstrap with 16 systems, 23 triadic connections, fractal K3 hierarchy, endocrine coupling, step hooks, Bayesian forgetting. Phase 2 completed: CorrelationTracker persistence, discovery_log reader, 437 Congress members, TickerResolver, MarketDataProvider, ContractPredictor evaluation, regime-aware Thompson Sampling. All verified: 2466 tests pass, 0 alert storms.
 
 ### MIDGE Fork (2026-02-22)
 Forked mae-core into MIDGE. Ported 16 market intelligence files. Fixed imports and paths. Verified tests pass. Wrote identity docs.

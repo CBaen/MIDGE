@@ -1,0 +1,4981 @@
+{
+  "last_updated": "2026-02-22",
+  "source": "govtrack.us API (members) + senate.gov committee assignments (119th Congress)",
+  "notes": "Senator committees: complete (119th Congress). Representative committees: empty (pending — house committee data requires separate fetch).",
+  "counts": {
+    "senators": 105,
+    "representatives": 338,
+    "total": 443
+  },
+  "members": {
+    "ALSOBROOKS": {
+      "name": "Angela D. Alsobrooks",
+      "party": "D",
+      "state": "MD",
+      "role_type": "senator",
+      "committees": [
+        "Senate Banking, Housing, and Urban Affairs",
+        "Senate Environment and Public Works",
+        "Senate Health, Education, Labor, and Pensions",
+        "Senate Special Committee on Aging"
+      ],
+      "search_keys": [
+        "ALSOBROOKS"
+      ]
+    },
+    "BALDWIN": {
+      "name": "Tammy Baldwin",
+      "party": "D",
+      "state": "WI",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Commerce, Science, and Transportation",
+        "Senate Health, Education, Labor, and Pensions"
+      ],
+      "search_keys": [
+        "BALDWIN"
+      ]
+    },
+    "BANKS": {
+      "name": "Jim Banks",
+      "party": "R",
+      "state": "IN",
+      "role_type": "senator",
+      "committees": [
+        "Senate Armed Services",
+        "Senate Banking, Housing, and Urban Affairs",
+        "Senate Health, Education, Labor, and Pensions",
+        "Senate Veterans' Affairs"
+      ],
+      "search_keys": [
+        "BANKS"
+      ]
+    },
+    "BARRASSO": {
+      "name": "John Barrasso",
+      "party": "R",
+      "state": "WY",
+      "role_type": "senator",
+      "committees": [
+        "Senate Energy and Natural Resources",
+        "Senate Finance",
+        "Senate Foreign Relations"
+      ],
+      "search_keys": [
+        "BARRASSO"
+      ]
+    },
+    "BENNET": {
+      "name": "Michael F. Bennet",
+      "party": "D",
+      "state": "CO",
+      "role_type": "senator",
+      "committees": [
+        "Senate Agriculture, Nutrition, and Forestry",
+        "Senate Finance",
+        "Senate Rules and Administration",
+        "Senate Select Committee on Intelligence"
+      ],
+      "search_keys": [
+        "BENNET"
+      ]
+    },
+    "BLACKBURN": {
+      "name": "Marsha Blackburn",
+      "party": "R",
+      "state": "TN",
+      "role_type": "senator",
+      "committees": [
+        "Senate Commerce, Science, and Transportation",
+        "Senate Finance",
+        "Senate Judiciary",
+        "Senate Veterans' Affairs",
+        "Joint Economic Committee"
+      ],
+      "search_keys": [
+        "BLACKBURN"
+      ]
+    },
+    "BLUMENTHAL": {
+      "name": "Richard Blumenthal",
+      "party": "D",
+      "state": "CT",
+      "role_type": "senator",
+      "committees": [
+        "Senate Armed Services",
+        "Senate Homeland Security and Governmental Affairs",
+        "Senate Judiciary",
+        "Senate Veterans' Affairs"
+      ],
+      "search_keys": [
+        "BLUMENTHAL"
+      ]
+    },
+    "BLUNT_ROCHESTER": {
+      "name": "Lisa Blunt Rochester",
+      "party": "D",
+      "state": "DE",
+      "role_type": "senator",
+      "committees": [
+        "Senate Banking, Housing, and Urban Affairs",
+        "Senate Commerce, Science, and Transportation",
+        "Senate Environment and Public Works",
+        "Senate Health, Education, Labor, and Pensions"
+      ],
+      "search_keys": [
+        "BLUNT",
+        "BLUNT ROCHESTER",
+        "BLUNTROCHESTER",
+        "BLUNT_ROCHESTER",
+        "ROCHESTER"
+      ]
+    },
+    "BLUNTROCHESTER": {
+      "name": "Lisa Blunt Rochester",
+      "party": "D",
+      "state": "DE",
+      "role_type": "senator",
+      "committees": [
+        "Senate Banking, Housing, and Urban Affairs",
+        "Senate Commerce, Science, and Transportation",
+        "Senate Environment and Public Works",
+        "Senate Health, Education, Labor, and Pensions"
+      ],
+      "search_keys": [
+        "BLUNT",
+        "BLUNT ROCHESTER",
+        "BLUNTROCHESTER",
+        "BLUNT_ROCHESTER",
+        "ROCHESTER"
+      ]
+    },
+    "ROCHESTER": {
+      "name": "Lisa Blunt Rochester",
+      "party": "D",
+      "state": "DE",
+      "role_type": "senator",
+      "committees": [
+        "Senate Banking, Housing, and Urban Affairs",
+        "Senate Commerce, Science, and Transportation",
+        "Senate Environment and Public Works",
+        "Senate Health, Education, Labor, and Pensions"
+      ],
+      "search_keys": [
+        "BLUNT",
+        "BLUNT ROCHESTER",
+        "BLUNTROCHESTER",
+        "BLUNT_ROCHESTER",
+        "ROCHESTER"
+      ]
+    },
+    "BOOKER": {
+      "name": "Cory A. Booker",
+      "party": "D",
+      "state": "NJ",
+      "role_type": "senator",
+      "committees": [
+        "Senate Agriculture, Nutrition, and Forestry",
+        "Senate Foreign Relations",
+        "Senate Small Business and Entrepreneurship",
+        "Senate Judiciary"
+      ],
+      "search_keys": [
+        "BOOKER"
+      ]
+    },
+    "BOOZMAN": {
+      "name": "John Boozman",
+      "party": "R",
+      "state": "AR",
+      "role_type": "senator",
+      "committees": [
+        "Senate Agriculture, Nutrition, and Forestry",
+        "Senate Appropriations",
+        "Senate Environment and Public Works",
+        "Senate Rules and Administration",
+        "Senate Veterans' Affairs"
+      ],
+      "search_keys": [
+        "BOOZMAN"
+      ]
+    },
+    "BRITT": {
+      "name": "Katie Boyd Britt",
+      "party": "R",
+      "state": "AL",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Banking, Housing, and Urban Affairs",
+        "Senate Rules and Administration",
+        "Senate Judiciary"
+      ],
+      "search_keys": [
+        "BRITT"
+      ]
+    },
+    "BUDD": {
+      "name": "Ted Budd",
+      "party": "R",
+      "state": "NC",
+      "role_type": "senator",
+      "committees": [
+        "Senate Armed Services",
+        "Senate Commerce, Science, and Transportation",
+        "Senate Small Business and Entrepreneurship",
+        "Senate Select Committee on Intelligence"
+      ],
+      "search_keys": [
+        "BUDD"
+      ]
+    },
+    "CANTWELL": {
+      "name": "Maria Cantwell",
+      "party": "D",
+      "state": "WA",
+      "role_type": "senator",
+      "committees": [
+        "Senate Commerce, Science, and Transportation",
+        "Senate Energy and Natural Resources",
+        "Senate Finance",
+        "Senate Indian Affairs",
+        "Senate Small Business and Entrepreneurship"
+      ],
+      "search_keys": [
+        "CANTWELL"
+      ]
+    },
+    "CAPITO": {
+      "name": "Shelley Moore Capito",
+      "party": "R",
+      "state": "WV",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Commerce, Science, and Transportation",
+        "Senate Environment and Public Works",
+        "Senate Rules and Administration"
+      ],
+      "search_keys": [
+        "CAPITO"
+      ]
+    },
+    "CASSIDY": {
+      "name": "Bill Cassidy",
+      "party": "R",
+      "state": "LA",
+      "role_type": "senator",
+      "committees": [
+        "Senate Energy and Natural Resources",
+        "Senate Finance",
+        "Senate Health, Education, Labor, and Pensions",
+        "Senate Veterans' Affairs"
+      ],
+      "search_keys": [
+        "CASSIDY"
+      ]
+    },
+    "COLLINS": {
+      "name": "Susan M. Collins",
+      "party": "R",
+      "state": "ME",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Health, Education, Labor, and Pensions",
+        "Senate Select Committee on Intelligence"
+      ],
+      "search_keys": [
+        "COLLINS"
+      ]
+    },
+    "COONS": {
+      "name": "Christopher A. Coons",
+      "party": "D",
+      "state": "DE",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Foreign Relations",
+        "Senate Small Business and Entrepreneurship",
+        "Senate Judiciary",
+        "Senate Select Committee on Ethics"
+      ],
+      "search_keys": [
+        "COONS"
+      ]
+    },
+    "CORNYN": {
+      "name": "John Cornyn",
+      "party": "R",
+      "state": "TX",
+      "role_type": "senator",
+      "committees": [
+        "Senate Finance",
+        "Senate Foreign Relations",
+        "Senate Budget",
+        "Senate Judiciary",
+        "Senate Select Committee on Intelligence"
+      ],
+      "search_keys": [
+        "CORNYN"
+      ]
+    },
+    "CORTEZ_MASTO": {
+      "name": "Catherine Cortez Masto",
+      "party": "D",
+      "state": "NV",
+      "role_type": "senator",
+      "committees": [
+        "Senate Banking, Housing, and Urban Affairs",
+        "Senate Energy and Natural Resources",
+        "Senate Finance",
+        "Senate Indian Affairs"
+      ],
+      "search_keys": [
+        "CORTEZ",
+        "CORTEZ MASTO",
+        "CORTEZMASTO",
+        "CORTEZ_MASTO",
+        "MASTO"
+      ]
+    },
+    "CORTEZMASTO": {
+      "name": "Catherine Cortez Masto",
+      "party": "D",
+      "state": "NV",
+      "role_type": "senator",
+      "committees": [
+        "Senate Banking, Housing, and Urban Affairs",
+        "Senate Energy and Natural Resources",
+        "Senate Finance",
+        "Senate Indian Affairs"
+      ],
+      "search_keys": [
+        "CORTEZ",
+        "CORTEZ MASTO",
+        "CORTEZMASTO",
+        "CORTEZ_MASTO",
+        "MASTO"
+      ]
+    },
+    "MASTO": {
+      "name": "Catherine Cortez Masto",
+      "party": "D",
+      "state": "NV",
+      "role_type": "senator",
+      "committees": [
+        "Senate Banking, Housing, and Urban Affairs",
+        "Senate Energy and Natural Resources",
+        "Senate Finance",
+        "Senate Indian Affairs"
+      ],
+      "search_keys": [
+        "CORTEZ",
+        "CORTEZ MASTO",
+        "CORTEZMASTO",
+        "CORTEZ_MASTO",
+        "MASTO"
+      ]
+    },
+    "COTTON": {
+      "name": "Tom Cotton",
+      "party": "R",
+      "state": "AR",
+      "role_type": "senator",
+      "committees": [
+        "Senate Armed Services",
+        "Senate Energy and Natural Resources",
+        "Senate Select Committee on Intelligence"
+      ],
+      "search_keys": [
+        "COTTON"
+      ]
+    },
+    "CRAMER": {
+      "name": "Kevin Cramer",
+      "party": "R",
+      "state": "ND",
+      "role_type": "senator",
+      "committees": [
+        "Senate Armed Services",
+        "Senate Banking, Housing, and Urban Affairs",
+        "Senate Environment and Public Works",
+        "Senate Veterans' Affairs"
+      ],
+      "search_keys": [
+        "CRAMER"
+      ]
+    },
+    "CRAPO": {
+      "name": "Mike Crapo",
+      "party": "R",
+      "state": "ID",
+      "role_type": "senator",
+      "committees": [
+        "Senate Banking, Housing, and Urban Affairs",
+        "Senate Finance",
+        "Senate Budget"
+      ],
+      "search_keys": [
+        "CRAPO"
+      ]
+    },
+    "CRUZ": {
+      "name": "Ted Cruz",
+      "party": "R",
+      "state": "TX",
+      "role_type": "senator",
+      "committees": [
+        "Senate Commerce, Science, and Transportation",
+        "Senate Foreign Relations",
+        "Senate Rules and Administration",
+        "Senate Judiciary"
+      ],
+      "search_keys": [
+        "CRUZ"
+      ]
+    },
+    "CURTIS": {
+      "name": "John R. Curtis",
+      "party": "R",
+      "state": "UT",
+      "role_type": "senator",
+      "committees": [
+        "Senate Commerce, Science, and Transportation",
+        "Senate Environment and Public Works",
+        "Senate Foreign Relations",
+        "Senate Small Business and Entrepreneurship"
+      ],
+      "search_keys": [
+        "CURTIS"
+      ]
+    },
+    "DAINES": {
+      "name": "Steve Daines",
+      "party": "R",
+      "state": "MT",
+      "role_type": "senator",
+      "committees": [
+        "Senate Energy and Natural Resources",
+        "Senate Finance",
+        "Senate Foreign Relations",
+        "Senate Indian Affairs"
+      ],
+      "search_keys": [
+        "DAINES"
+      ]
+    },
+    "DUCKWORTH": {
+      "name": "Tammy Duckworth",
+      "party": "D",
+      "state": "IL",
+      "role_type": "senator",
+      "committees": [
+        "Senate Armed Services",
+        "Senate Commerce, Science, and Transportation",
+        "Senate Foreign Relations",
+        "Senate Veterans' Affairs"
+      ],
+      "search_keys": [
+        "DUCKWORTH"
+      ]
+    },
+    "DURBIN": {
+      "name": "Richard J. Durbin",
+      "party": "D",
+      "state": "IL",
+      "role_type": "senator",
+      "committees": [
+        "Senate Agriculture, Nutrition, and Forestry",
+        "Senate Appropriations",
+        "Senate Judiciary"
+      ],
+      "search_keys": [
+        "DURBIN"
+      ]
+    },
+    "ERNST": {
+      "name": "Joni Ernst",
+      "party": "R",
+      "state": "IA",
+      "role_type": "senator",
+      "committees": [
+        "Senate Agriculture, Nutrition, and Forestry",
+        "Senate Armed Services",
+        "Senate Homeland Security and Governmental Affairs",
+        "Senate Small Business and Entrepreneurship"
+      ],
+      "search_keys": [
+        "ERNST"
+      ]
+    },
+    "FETTERMAN": {
+      "name": "John Fetterman",
+      "party": "D",
+      "state": "PA",
+      "role_type": "senator",
+      "committees": [
+        "Senate Agriculture, Nutrition, and Forestry",
+        "Senate Commerce, Science, and Transportation",
+        "Senate Homeland Security and Governmental Affairs"
+      ],
+      "search_keys": [
+        "FETTERMAN"
+      ]
+    },
+    "FISCHER": {
+      "name": "Deb Fischer",
+      "party": "R",
+      "state": "NE",
+      "role_type": "senator",
+      "committees": [
+        "Senate Agriculture, Nutrition, and Forestry",
+        "Senate Appropriations",
+        "Senate Armed Services",
+        "Senate Commerce, Science, and Transportation",
+        "Senate Rules and Administration",
+        "Senate Select Committee on Ethics"
+      ],
+      "search_keys": [
+        "FISCHER"
+      ]
+    },
+    "GALLEGO": {
+      "name": "Ruben Gallego",
+      "party": "D",
+      "state": "AZ",
+      "role_type": "senator",
+      "committees": [
+        "Senate Banking, Housing, and Urban Affairs",
+        "Senate Energy and Natural Resources",
+        "Senate Homeland Security and Governmental Affairs",
+        "Senate Veterans' Affairs"
+      ],
+      "search_keys": [
+        "GALLEGO"
+      ]
+    },
+    "GILLIBRAND": {
+      "name": "Kirsten E. Gillibrand",
+      "party": "D",
+      "state": "NY",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Armed Services",
+        "Senate Select Committee on Intelligence",
+        "Senate Special Committee on Aging"
+      ],
+      "search_keys": [
+        "GILLIBRAND"
+      ]
+    },
+    "GRAHAM": {
+      "name": "Lindsey Graham",
+      "party": "R",
+      "state": "SC",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Environment and Public Works",
+        "Senate Budget",
+        "Senate Judiciary"
+      ],
+      "search_keys": [
+        "GRAHAM"
+      ]
+    },
+    "GRASSLEY": {
+      "name": "Chuck Grassley",
+      "party": "R",
+      "state": "IA",
+      "role_type": "senator",
+      "committees": [
+        "Senate Agriculture, Nutrition, and Forestry",
+        "Senate Finance",
+        "Senate Budget",
+        "Senate Judiciary"
+      ],
+      "search_keys": [
+        "GRASSLEY"
+      ]
+    },
+    "HAGERTY": {
+      "name": "Bill Hagerty",
+      "party": "R",
+      "state": "TN",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Banking, Housing, and Urban Affairs",
+        "Senate Foreign Relations",
+        "Senate Rules and Administration"
+      ],
+      "search_keys": [
+        "HAGERTY"
+      ]
+    },
+    "HASSAN": {
+      "name": "Margaret Wood Hassan",
+      "party": "D",
+      "state": "NH",
+      "role_type": "senator",
+      "committees": [
+        "Senate Finance",
+        "Senate Health, Education, Labor, and Pensions",
+        "Senate Homeland Security and Governmental Affairs",
+        "Senate Veterans' Affairs"
+      ],
+      "search_keys": [
+        "HASSAN"
+      ]
+    },
+    "HAWLEY": {
+      "name": "Josh Hawley",
+      "party": "R",
+      "state": "MO",
+      "role_type": "senator",
+      "committees": [
+        "Senate Health, Education, Labor, and Pensions",
+        "Senate Homeland Security and Governmental Affairs",
+        "Senate Small Business and Entrepreneurship",
+        "Senate Judiciary"
+      ],
+      "search_keys": [
+        "HAWLEY"
+      ]
+    },
+    "HEINRICH": {
+      "name": "Martin Heinrich",
+      "party": "D",
+      "state": "NM",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Energy and Natural Resources",
+        "Senate Select Committee on Intelligence"
+      ],
+      "search_keys": [
+        "HEINRICH"
+      ]
+    },
+    "HICKENLOOPER": {
+      "name": "John W. Hickenlooper",
+      "party": "D",
+      "state": "CO",
+      "role_type": "senator",
+      "committees": [
+        "Senate Commerce, Science, and Transportation",
+        "Senate Energy and Natural Resources",
+        "Senate Health, Education, Labor, and Pensions",
+        "Senate Small Business and Entrepreneurship"
+      ],
+      "search_keys": [
+        "HICKENLOOPER"
+      ]
+    },
+    "HIRONO": {
+      "name": "Mazie K. Hirono",
+      "party": "D",
+      "state": "HI",
+      "role_type": "senator",
+      "committees": [
+        "Senate Armed Services",
+        "Senate Energy and Natural Resources",
+        "Senate Small Business and Entrepreneurship",
+        "Senate Judiciary",
+        "Senate Veterans' Affairs"
+      ],
+      "search_keys": [
+        "HIRONO"
+      ]
+    },
+    "HOEVEN": {
+      "name": "John Hoeven",
+      "party": "R",
+      "state": "ND",
+      "role_type": "senator",
+      "committees": [
+        "Senate Agriculture, Nutrition, and Forestry",
+        "Senate Appropriations",
+        "Senate Energy and Natural Resources",
+        "Senate Indian Affairs"
+      ],
+      "search_keys": [
+        "HOEVEN"
+      ]
+    },
+    "HUSTED": {
+      "name": "Jon Husted",
+      "party": "R",
+      "state": "OH",
+      "role_type": "senator",
+      "committees": [
+        "Senate Environment and Public Works",
+        "Senate Health, Education, Labor, and Pensions",
+        "Senate Small Business and Entrepreneurship",
+        "Senate Special Committee on Aging"
+      ],
+      "search_keys": [
+        "HUSTED"
+      ]
+    },
+    "HYDE-SMITH": {
+      "name": "Cindy Hyde-Smith",
+      "party": "R",
+      "state": "MS",
+      "role_type": "senator",
+      "committees": [
+        "Senate Agriculture, Nutrition, and Forestry",
+        "Senate Appropriations",
+        "Senate Energy and Natural Resources",
+        "Senate Rules and Administration"
+      ],
+      "search_keys": [
+        "HYDE-SMITH"
+      ]
+    },
+    "JOHNSON": {
+      "name": "Ron Johnson",
+      "party": "R",
+      "state": "WI",
+      "role_type": "senator",
+      "committees": [
+        "Senate Finance",
+        "Senate Homeland Security and Governmental Affairs",
+        "Senate Budget",
+        "Senate Special Committee on Aging"
+      ],
+      "search_keys": [
+        "JOHNSON"
+      ]
+    },
+    "JUSTICE": {
+      "name": "James C. Justice",
+      "party": "R",
+      "state": "WV",
+      "role_type": "senator",
+      "committees": [
+        "Senate Agriculture, Nutrition, and Forestry",
+        "Senate Energy and Natural Resources",
+        "Senate Small Business and Entrepreneurship",
+        "Senate Special Committee on Aging"
+      ],
+      "search_keys": [
+        "JUSTICE"
+      ]
+    },
+    "KAINE": {
+      "name": "Tim Kaine",
+      "party": "D",
+      "state": "VA",
+      "role_type": "senator",
+      "committees": [
+        "Senate Armed Services",
+        "Senate Foreign Relations",
+        "Senate Health, Education, Labor, and Pensions",
+        "Senate Budget"
+      ],
+      "search_keys": [
+        "KAINE"
+      ]
+    },
+    "KELLY": {
+      "name": "Mark Kelly",
+      "party": "D",
+      "state": "AZ",
+      "role_type": "senator",
+      "committees": [
+        "Senate Armed Services",
+        "Senate Environment and Public Works",
+        "Senate Select Committee on Intelligence",
+        "Senate Special Committee on Aging"
+      ],
+      "search_keys": [
+        "KELLY"
+      ]
+    },
+    "KENNEDY": {
+      "name": "John Kennedy",
+      "party": "R",
+      "state": "LA",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Banking, Housing, and Urban Affairs",
+        "Senate Budget",
+        "Senate Judiciary"
+      ],
+      "search_keys": [
+        "KENNEDY"
+      ]
+    },
+    "KIM": {
+      "name": "Andy Kim",
+      "party": "D",
+      "state": "NJ",
+      "role_type": "senator",
+      "committees": [
+        "Senate Banking, Housing, and Urban Affairs",
+        "Senate Commerce, Science, and Transportation",
+        "Senate Health, Education, Labor, and Pensions",
+        "Senate Homeland Security and Governmental Affairs",
+        "Senate Special Committee on Aging"
+      ],
+      "search_keys": [
+        "KIM"
+      ]
+    },
+    "KING": {
+      "name": "Angus S., Jr. King",
+      "party": "I",
+      "state": "ME",
+      "role_type": "senator",
+      "committees": [
+        "Senate Armed Services",
+        "Senate Energy and Natural Resources",
+        "Senate Veterans' Affairs",
+        "Senate Select Committee on Intelligence"
+      ],
+      "search_keys": [
+        "KING"
+      ]
+    },
+    "KLOBUCHAR": {
+      "name": "Amy Klobuchar",
+      "party": "D",
+      "state": "MN",
+      "role_type": "senator",
+      "committees": [
+        "Senate Agriculture, Nutrition, and Forestry",
+        "Senate Commerce, Science, and Transportation",
+        "Senate Rules and Administration",
+        "Senate Judiciary"
+      ],
+      "search_keys": [
+        "KLOBUCHAR"
+      ]
+    },
+    "LANKFORD": {
+      "name": "James Lankford",
+      "party": "R",
+      "state": "OK",
+      "role_type": "senator",
+      "committees": [
+        "Senate Finance",
+        "Senate Homeland Security and Governmental Affairs",
+        "Senate Select Committee on Ethics",
+        "Senate Select Committee on Intelligence"
+      ],
+      "search_keys": [
+        "LANKFORD"
+      ]
+    },
+    "LEE": {
+      "name": "Mike Lee",
+      "party": "R",
+      "state": "UT",
+      "role_type": "senator",
+      "committees": [
+        "Senate Energy and Natural Resources",
+        "Senate Foreign Relations",
+        "Senate Budget",
+        "Senate Judiciary"
+      ],
+      "search_keys": [
+        "LEE"
+      ]
+    },
+    "LUJAN": {
+      "name": "Ben Ray Lujan",
+      "party": "D",
+      "state": "NM",
+      "role_type": "senator",
+      "committees": [
+        "Senate Agriculture, Nutrition, and Forestry",
+        "Senate Commerce, Science, and Transportation",
+        "Senate Finance",
+        "Senate Indian Affairs",
+        "Senate Budget"
+      ],
+      "search_keys": [
+        "LUJAN"
+      ]
+    },
+    "LUMMIS": {
+      "name": "Cynthia M. Lummis",
+      "party": "R",
+      "state": "WY",
+      "role_type": "senator",
+      "committees": [
+        "Senate Banking, Housing, and Urban Affairs",
+        "Senate Commerce, Science, and Transportation",
+        "Senate Environment and Public Works"
+      ],
+      "search_keys": [
+        "LUMMIS"
+      ]
+    },
+    "MARKEY": {
+      "name": "Edward J. Markey",
+      "party": "D",
+      "state": "MA",
+      "role_type": "senator",
+      "committees": [
+        "Senate Commerce, Science, and Transportation",
+        "Senate Environment and Public Works",
+        "Senate Health, Education, Labor, and Pensions",
+        "Senate Small Business and Entrepreneurship"
+      ],
+      "search_keys": [
+        "MARKEY"
+      ]
+    },
+    "MARSHALL": {
+      "name": "Roger Marshall",
+      "party": "R",
+      "state": "KS",
+      "role_type": "senator",
+      "committees": [
+        "Senate Agriculture, Nutrition, and Forestry",
+        "Senate Finance",
+        "Senate Health, Education, Labor, and Pensions",
+        "Senate Budget"
+      ],
+      "search_keys": [
+        "MARSHALL"
+      ]
+    },
+    "MCCONNELL": {
+      "name": "Mitch McConnell",
+      "party": "R",
+      "state": "KY",
+      "role_type": "senator",
+      "committees": [
+        "Senate Agriculture, Nutrition, and Forestry",
+        "Senate Appropriations",
+        "Senate Rules and Administration"
+      ],
+      "search_keys": [
+        "MCCONNELL"
+      ]
+    },
+    "MCCORMICK": {
+      "name": "David McCormick",
+      "party": "R",
+      "state": "PA",
+      "role_type": "senator",
+      "committees": [
+        "Senate Banking, Housing, and Urban Affairs",
+        "Senate Energy and Natural Resources",
+        "Senate Foreign Relations",
+        "Senate Special Committee on Aging"
+      ],
+      "search_keys": [
+        "MCCORMICK"
+      ]
+    },
+    "MERKLEY": {
+      "name": "Jeff Merkley",
+      "party": "D",
+      "state": "OR",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Environment and Public Works",
+        "Senate Foreign Relations",
+        "Senate Rules and Administration",
+        "Senate Budget"
+      ],
+      "search_keys": [
+        "MERKLEY"
+      ]
+    },
+    "MOODY": {
+      "name": "Ashley Moody",
+      "party": "R",
+      "state": "FL",
+      "role_type": "senator",
+      "committees": [
+        "Senate Health, Education, Labor, and Pensions",
+        "Senate Homeland Security and Governmental Affairs",
+        "Senate Judiciary",
+        "Senate Special Committee on Aging"
+      ],
+      "search_keys": [
+        "MOODY"
+      ]
+    },
+    "MORAN": {
+      "name": "Jerry Moran",
+      "party": "R",
+      "state": "KS",
+      "role_type": "senator",
+      "committees": [
+        "Senate Agriculture, Nutrition, and Forestry",
+        "Senate Appropriations",
+        "Senate Commerce, Science, and Transportation",
+        "Senate Indian Affairs",
+        "Senate Veterans' Affairs",
+        "Senate Select Committee on Intelligence"
+      ],
+      "search_keys": [
+        "MORAN"
+      ]
+    },
+    "MORENO": {
+      "name": "Bernie Moreno",
+      "party": "R",
+      "state": "OH",
+      "role_type": "senator",
+      "committees": [
+        "Senate Banking, Housing, and Urban Affairs",
+        "Senate Commerce, Science, and Transportation",
+        "Senate Homeland Security and Governmental Affairs",
+        "Senate Budget"
+      ],
+      "search_keys": [
+        "MORENO"
+      ]
+    },
+    "MULLIN": {
+      "name": "Markwayne Mullin",
+      "party": "R",
+      "state": "OK",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Armed Services",
+        "Senate Health, Education, Labor, and Pensions",
+        "Senate Indian Affairs"
+      ],
+      "search_keys": [
+        "MULLIN"
+      ]
+    },
+    "MURKOWSKI": {
+      "name": "Lisa Murkowski",
+      "party": "R",
+      "state": "AK",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Energy and Natural Resources",
+        "Senate Health, Education, Labor, and Pensions",
+        "Senate Indian Affairs"
+      ],
+      "search_keys": [
+        "MURKOWSKI"
+      ]
+    },
+    "MURPHY": {
+      "name": "Christopher Murphy",
+      "party": "D",
+      "state": "CT",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Foreign Relations",
+        "Senate Health, Education, Labor, and Pensions"
+      ],
+      "search_keys": [
+        "MURPHY"
+      ]
+    },
+    "MURRAY": {
+      "name": "Patty Murray",
+      "party": "D",
+      "state": "WA",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Health, Education, Labor, and Pensions",
+        "Senate Budget",
+        "Senate Veterans' Affairs"
+      ],
+      "search_keys": [
+        "MURRAY"
+      ]
+    },
+    "OSSOFF": {
+      "name": "Jon Ossoff",
+      "party": "D",
+      "state": "GA",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Rules and Administration",
+        "Senate Select Committee on Intelligence"
+      ],
+      "search_keys": [
+        "OSSOFF"
+      ]
+    },
+    "PADILLA": {
+      "name": "Alex Padilla",
+      "party": "D",
+      "state": "CA",
+      "role_type": "senator",
+      "committees": [
+        "Senate Energy and Natural Resources",
+        "Senate Environment and Public Works",
+        "Senate Rules and Administration",
+        "Senate Budget",
+        "Senate Judiciary"
+      ],
+      "search_keys": [
+        "PADILLA"
+      ]
+    },
+    "PAUL": {
+      "name": "Rand Paul",
+      "party": "R",
+      "state": "KY",
+      "role_type": "senator",
+      "committees": [
+        "Senate Foreign Relations",
+        "Senate Health, Education, Labor, and Pensions",
+        "Senate Homeland Security and Governmental Affairs",
+        "Senate Small Business and Entrepreneurship"
+      ],
+      "search_keys": [
+        "PAUL"
+      ]
+    },
+    "PETERS": {
+      "name": "Gary C. Peters",
+      "party": "D",
+      "state": "MI",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Commerce, Science, and Transportation",
+        "Senate Homeland Security and Governmental Affairs"
+      ],
+      "search_keys": [
+        "PETERS"
+      ]
+    },
+    "REED": {
+      "name": "Jack Reed",
+      "party": "D",
+      "state": "RI",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Armed Services",
+        "Senate Banking, Housing, and Urban Affairs"
+      ],
+      "search_keys": [
+        "REED"
+      ]
+    },
+    "RICKETTS": {
+      "name": "Pete Ricketts",
+      "party": "R",
+      "state": "NE",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Commerce, Science, and Transportation",
+        "Senate Energy and Natural Resources",
+        "Senate Indian Affairs"
+      ],
+      "search_keys": [
+        "RICKETTS"
+      ]
+    },
+    "RISCH": {
+      "name": "James E. Risch",
+      "party": "R",
+      "state": "ID",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Foreign Relations",
+        "Senate Select Committee on Intelligence"
+      ],
+      "search_keys": [
+        "RISCH"
+      ]
+    },
+    "ROSEN": {
+      "name": "Jacky Rosen",
+      "party": "D",
+      "state": "NV",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Commerce, Science, and Transportation",
+        "Senate Health, Education, Labor, and Pensions"
+      ],
+      "search_keys": [
+        "ROSEN"
+      ]
+    },
+    "ROUNDS": {
+      "name": "Mike Rounds",
+      "party": "R",
+      "state": "SD",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Armed Services",
+        "Senate Banking, Housing, and Urban Affairs",
+        "Senate Indian Affairs"
+      ],
+      "search_keys": [
+        "ROUNDS"
+      ]
+    },
+    "SANDERS": {
+      "name": "Bernard Sanders",
+      "party": "I",
+      "state": "VT",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Health, Education, Labor, and Pensions",
+        "Senate Budget"
+      ],
+      "search_keys": [
+        "SANDERS"
+      ]
+    },
+    "SCHATZ": {
+      "name": "Brian Schatz",
+      "party": "D",
+      "state": "HI",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Commerce, Science, and Transportation",
+        "Senate Indian Affairs",
+        "Senate Select Committee on Intelligence"
+      ],
+      "search_keys": [
+        "SCHATZ"
+      ]
+    },
+    "SCHIFF": {
+      "name": "Adam B. Schiff",
+      "party": "D",
+      "state": "CA",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Rules and Administration",
+        "Senate Select Committee on Intelligence"
+      ],
+      "search_keys": [
+        "SCHIFF"
+      ]
+    },
+    "SCHMITT": {
+      "name": "Eric Schmitt",
+      "party": "R",
+      "state": "MO",
+      "role_type": "senator",
+      "committees": [
+        "Senate Commerce, Science, and Transportation",
+        "Senate Energy and Natural Resources",
+        "Senate Small Business and Entrepreneurship"
+      ],
+      "search_keys": [
+        "SCHMITT"
+      ]
+    },
+    "SCHUMER": {
+      "name": "Charles E. Schumer",
+      "party": "D",
+      "state": "NY",
+      "role_type": "senator",
+      "committees": [
+        "Senate Agriculture, Nutrition, and Forestry",
+        "Senate Appropriations",
+        "Senate Rules and Administration"
+      ],
+      "search_keys": [
+        "SCHUMER"
+      ]
+    },
+    "SCOTT": {
+      "name": "Tim Scott",
+      "party": "R",
+      "state": "SC",
+      "role_type": "senator",
+      "committees": [
+        "Senate Finance",
+        "Senate Health, Education, Labor, and Pensions",
+        "Senate Small Business and Entrepreneurship"
+      ],
+      "search_keys": [
+        "SCOTT"
+      ]
+    },
+    "SHAHEEN": {
+      "name": "Jeanne Shaheen",
+      "party": "D",
+      "state": "NH",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Energy and Natural Resources",
+        "Senate Foreign Relations",
+        "Senate Select Committee on Intelligence"
+      ],
+      "search_keys": [
+        "SHAHEEN"
+      ]
+    },
+    "SHEEHY": {
+      "name": "Tim Sheehy",
+      "party": "R",
+      "state": "MT",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Armed Services",
+        "Senate Commerce, Science, and Transportation",
+        "Senate Indian Affairs"
+      ],
+      "search_keys": [
+        "SHEEHY"
+      ]
+    },
+    "SLOTKIN": {
+      "name": "Elissa Slotkin",
+      "party": "D",
+      "state": "MI",
+      "role_type": "senator",
+      "committees": [
+        "Senate Armed Services",
+        "Senate Homeland Security and Governmental Affairs",
+        "Senate Select Committee on Intelligence"
+      ],
+      "search_keys": [
+        "SLOTKIN"
+      ]
+    },
+    "SMITH": {
+      "name": "Tina Smith",
+      "party": "D",
+      "state": "MN",
+      "role_type": "senator",
+      "committees": [
+        "Senate Agriculture, Nutrition, and Forestry",
+        "Senate Health, Education, Labor, and Pensions",
+        "Senate Indian Affairs",
+        "Senate Special Committee on Aging"
+      ],
+      "search_keys": [
+        "SMITH"
+      ]
+    },
+    "SULLIVAN": {
+      "name": "Dan Sullivan",
+      "party": "R",
+      "state": "AK",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Armed Services",
+        "Senate Commerce, Science, and Transportation",
+        "Senate Select Committee on Intelligence"
+      ],
+      "search_keys": [
+        "SULLIVAN"
+      ]
+    },
+    "THUNE": {
+      "name": "John Thune",
+      "party": "R",
+      "state": "SD",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Commerce, Science, and Transportation",
+        "Senate Finance"
+      ],
+      "search_keys": [
+        "THUNE"
+      ]
+    },
+    "TILLIS": {
+      "name": "Thom Tillis",
+      "party": "R",
+      "state": "NC",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Armed Services",
+        "Senate Banking, Housing, and Urban Affairs",
+        "Senate Judiciary"
+      ],
+      "search_keys": [
+        "TILLIS"
+      ]
+    },
+    "TUBERVILLE": {
+      "name": "Tommy Tuberville",
+      "party": "R",
+      "state": "AL",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Armed Services",
+        "Senate Veterans' Affairs"
+      ],
+      "search_keys": [
+        "TUBERVILLE"
+      ]
+    },
+    "VAN_HOLLEN": {
+      "name": "Chris Van Hollen",
+      "party": "D",
+      "state": "MD",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Budget"
+      ],
+      "search_keys": [
+        "HOLLEN",
+        "VAN",
+        "VAN HOLLEN",
+        "VANHOLLEN",
+        "VAN_HOLLEN"
+      ]
+    },
+    "VANHOLLEN": {
+      "name": "Chris Van Hollen",
+      "party": "D",
+      "state": "MD",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Budget"
+      ],
+      "search_keys": [
+        "HOLLEN",
+        "VAN",
+        "VAN HOLLEN",
+        "VANHOLLEN",
+        "VAN_HOLLEN"
+      ]
+    },
+    "HOLLEN": {
+      "name": "Chris Van Hollen",
+      "party": "D",
+      "state": "MD",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Budget"
+      ],
+      "search_keys": [
+        "HOLLEN",
+        "VAN",
+        "VAN HOLLEN",
+        "VANHOLLEN",
+        "VAN_HOLLEN"
+      ]
+    },
+    "WARNER": {
+      "name": "Mark R. Warner",
+      "party": "D",
+      "state": "VA",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Finance",
+        "Senate Rules and Administration",
+        "Senate Select Committee on Intelligence"
+      ],
+      "search_keys": [
+        "WARNER"
+      ]
+    },
+    "WARNOCK": {
+      "name": "Raphael G. Warnock",
+      "party": "D",
+      "state": "GA",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Health, Education, Labor, and Pensions",
+        "Senate Veterans' Affairs"
+      ],
+      "search_keys": [
+        "WARNOCK"
+      ]
+    },
+    "WARREN": {
+      "name": "Elizabeth Warren",
+      "party": "D",
+      "state": "MA",
+      "role_type": "senator",
+      "committees": [
+        "Senate Banking, Housing, and Urban Affairs",
+        "Senate Health, Education, Labor, and Pensions",
+        "Senate Budget"
+      ],
+      "search_keys": [
+        "WARREN"
+      ]
+    },
+    "WELCH": {
+      "name": "Peter Welch",
+      "party": "D",
+      "state": "VT",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Energy and Natural Resources",
+        "Senate Judiciary"
+      ],
+      "search_keys": [
+        "WELCH"
+      ]
+    },
+    "WHITEHOUSE": {
+      "name": "Sheldon Whitehouse",
+      "party": "D",
+      "state": "RI",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Environment and Public Works",
+        "Senate Judiciary",
+        "Senate Select Committee on Intelligence"
+      ],
+      "search_keys": [
+        "WHITEHOUSE"
+      ]
+    },
+    "WICKER": {
+      "name": "Roger F. Wicker",
+      "party": "R",
+      "state": "MS",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Armed Services",
+        "Senate Commerce, Science, and Transportation"
+      ],
+      "search_keys": [
+        "WICKER"
+      ]
+    },
+    "WYDEN": {
+      "name": "Ron Wyden",
+      "party": "D",
+      "state": "OR",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Energy and Natural Resources",
+        "Senate Finance"
+      ],
+      "search_keys": [
+        "WYDEN"
+      ]
+    },
+    "YOUNG": {
+      "name": "Todd Young",
+      "party": "R",
+      "state": "IN",
+      "role_type": "senator",
+      "committees": [
+        "Senate Appropriations",
+        "Senate Foreign Relations",
+        "Senate Budget"
+      ],
+      "search_keys": [
+        "YOUNG"
+      ]
+    },
+    "ADERHOLT": {
+      "name": "Robert Aderholt",
+      "party": "R",
+      "state": "AL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "ADERHOLT"
+      ]
+    },
+    "BILIRAKIS": {
+      "name": "Gus Bilirakis",
+      "party": "R",
+      "state": "FL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "BILIRAKIS"
+      ]
+    },
+    "BISHOP": {
+      "name": "Sanford Bishop",
+      "party": "D",
+      "state": "GA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "BISHOP"
+      ]
+    },
+    "BUCHANAN": {
+      "name": "Vern Buchanan",
+      "party": "R",
+      "state": "FL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "BUCHANAN"
+      ]
+    },
+    "CALVERT": {
+      "name": "Ken Calvert",
+      "party": "R",
+      "state": "CA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "CALVERT"
+      ]
+    },
+    "CARSON": {
+      "name": "Andre Carson",
+      "party": "D",
+      "state": "IN",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "CARSON"
+      ]
+    },
+    "CARTER": {
+      "name": "John R. Carter",
+      "party": "R",
+      "state": "TX",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "CARTER"
+      ]
+    },
+    "CASTOR": {
+      "name": "Kathy Castor",
+      "party": "D",
+      "state": "FL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "CASTOR"
+      ]
+    },
+    "CHU": {
+      "name": "Judy Chu",
+      "party": "D",
+      "state": "CA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "CHU"
+      ]
+    },
+    "CLARKE": {
+      "name": "Yvette Clarke",
+      "party": "D",
+      "state": "NY",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "CLARKE"
+      ]
+    },
+    "CLEAVER": {
+      "name": "Emanuel Cleaver",
+      "party": "D",
+      "state": "MO",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "CLEAVER"
+      ]
+    },
+    "CLYBURN": {
+      "name": "James Clyburn",
+      "party": "D",
+      "state": "SC",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "CLYBURN"
+      ]
+    },
+    "COHEN": {
+      "name": "Steve Cohen",
+      "party": "D",
+      "state": "TN",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "COHEN"
+      ]
+    },
+    "COLE": {
+      "name": "Tom Cole",
+      "party": "R",
+      "state": "OK",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "COLE"
+      ]
+    },
+    "COSTA": {
+      "name": "Jim Costa",
+      "party": "D",
+      "state": "CA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "COSTA"
+      ]
+    },
+    "COURTNEY": {
+      "name": "Joe Courtney",
+      "party": "D",
+      "state": "CT",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "COURTNEY"
+      ]
+    },
+    "CRAWFORD": {
+      "name": "Eric Crawford",
+      "party": "R",
+      "state": "AR",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "CRAWFORD"
+      ]
+    },
+    "CUELLAR": {
+      "name": "Henry Cuellar",
+      "party": "D",
+      "state": "TX",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "CUELLAR"
+      ]
+    },
+    "DAVIS": {
+      "name": "Danny Davis",
+      "party": "D",
+      "state": "IL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "DAVIS"
+      ]
+    },
+    "DEGETTE": {
+      "name": "Diana DeGette",
+      "party": "D",
+      "state": "CO",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "DEGETTE"
+      ]
+    },
+    "DELAURO": {
+      "name": "Rosa DeLauro",
+      "party": "D",
+      "state": "CT",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "DELAURO"
+      ]
+    },
+    "DESJARLAIS": {
+      "name": "Scott DesJarlais",
+      "party": "R",
+      "state": "TN",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "DESJARLAIS"
+      ]
+    },
+    "DIAZ-BALART": {
+      "name": "Mario Diaz-Balart",
+      "party": "R",
+      "state": "FL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "DIAZ-BALART"
+      ]
+    },
+    "DOGGETT": {
+      "name": "Lloyd Doggett",
+      "party": "D",
+      "state": "TX",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "DOGGETT"
+      ]
+    },
+    "FLEISCHMANN": {
+      "name": "Chuck Fleischmann",
+      "party": "R",
+      "state": "TN",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "FLEISCHMANN"
+      ]
+    },
+    "FOXX": {
+      "name": "Virginia Foxx",
+      "party": "R",
+      "state": "NC",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "FOXX"
+      ]
+    },
+    "GARAMENDI": {
+      "name": "John Garamendi",
+      "party": "D",
+      "state": "CA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "GARAMENDI"
+      ]
+    },
+    "GOSAR": {
+      "name": "Paul Gosar",
+      "party": "R",
+      "state": "AZ",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "GOSAR"
+      ]
+    },
+    "GRAVES": {
+      "name": "Sam Graves",
+      "party": "R",
+      "state": "MO",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "GRAVES"
+      ]
+    },
+    "GREEN": {
+      "name": "Al Green",
+      "party": "D",
+      "state": "TX",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "GREEN"
+      ]
+    },
+    "GRIFFITH": {
+      "name": "Morgan Griffith",
+      "party": "R",
+      "state": "VA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "GRIFFITH"
+      ]
+    },
+    "GUTHRIE": {
+      "name": "Brett Guthrie",
+      "party": "R",
+      "state": "KY",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "GUTHRIE"
+      ]
+    },
+    "HARRIS": {
+      "name": "Andy Harris",
+      "party": "R",
+      "state": "MD",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "HARRIS"
+      ]
+    },
+    "HIMES": {
+      "name": "James Himes",
+      "party": "D",
+      "state": "CT",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "HIMES"
+      ]
+    },
+    "HOYER": {
+      "name": "Steny Hoyer",
+      "party": "D",
+      "state": "MD",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "HOYER"
+      ]
+    },
+    "HUIZENGA": {
+      "name": "Bill Huizenga",
+      "party": "R",
+      "state": "MI",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "HUIZENGA"
+      ]
+    },
+    "JOHNSON_GA": {
+      "name": "Hank Johnson",
+      "party": "D",
+      "state": "GA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "JOHNSON"
+      ]
+    },
+    "JORDAN": {
+      "name": "Jim Jordan",
+      "party": "R",
+      "state": "OH",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "JORDAN"
+      ]
+    },
+    "KAPTUR": {
+      "name": "Marcy Kaptur",
+      "party": "D",
+      "state": "OH",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "KAPTUR"
+      ]
+    },
+    "KEATING": {
+      "name": "William Keating",
+      "party": "D",
+      "state": "MA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "KEATING"
+      ]
+    },
+    "KELLY_PA": {
+      "name": "Mike Kelly",
+      "party": "R",
+      "state": "PA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "KELLY"
+      ]
+    },
+    "LARSEN": {
+      "name": "Rick Larsen",
+      "party": "D",
+      "state": "WA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "LARSEN"
+      ]
+    },
+    "LARSON": {
+      "name": "John Larson",
+      "party": "D",
+      "state": "CT",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "LARSON"
+      ]
+    },
+    "LATTA": {
+      "name": "Robert Latta",
+      "party": "R",
+      "state": "OH",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "LATTA"
+      ]
+    },
+    "LOFGREN": {
+      "name": "Zoe Lofgren",
+      "party": "D",
+      "state": "CA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "LOFGREN"
+      ]
+    },
+    "LUCAS": {
+      "name": "Frank Lucas",
+      "party": "R",
+      "state": "OK",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "LUCAS"
+      ]
+    },
+    "LYNCH": {
+      "name": "Stephen Lynch",
+      "party": "D",
+      "state": "MA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "LYNCH"
+      ]
+    },
+    "MATSUI": {
+      "name": "Doris Matsui",
+      "party": "D",
+      "state": "CA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MATSUI"
+      ]
+    },
+    "MCCAUL": {
+      "name": "Michael McCaul",
+      "party": "R",
+      "state": "TX",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MCCAUL"
+      ]
+    },
+    "MCCLINTOCK": {
+      "name": "Tom McClintock",
+      "party": "R",
+      "state": "CA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MCCLINTOCK"
+      ]
+    },
+    "MCCOLLUM": {
+      "name": "Betty McCollum",
+      "party": "D",
+      "state": "MN",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MCCOLLUM"
+      ]
+    },
+    "MCGOVERN": {
+      "name": "James McGovern",
+      "party": "D",
+      "state": "MA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MCGOVERN"
+      ]
+    },
+    "MEEKS": {
+      "name": "Gregory Meeks",
+      "party": "D",
+      "state": "NY",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MEEKS"
+      ]
+    },
+    "MOORE": {
+      "name": "Gwen Moore",
+      "party": "D",
+      "state": "WI",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MOORE"
+      ]
+    },
+    "NADLER": {
+      "name": "Jerrold Nadler",
+      "party": "D",
+      "state": "NY",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "NADLER"
+      ]
+    },
+    "NEAL": {
+      "name": "Richard Neal",
+      "party": "D",
+      "state": "MA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "NEAL"
+      ]
+    },
+    "NORTON": {
+      "name": "Eleanor Holmes Norton",
+      "party": "D",
+      "state": "DC",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "NORTON"
+      ]
+    },
+    "PALLONE": {
+      "name": "Frank Pallone",
+      "party": "D",
+      "state": "NJ",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "PALLONE"
+      ]
+    },
+    "PELOSI": {
+      "name": "Nancy Pelosi",
+      "party": "D",
+      "state": "CA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "PELOSI"
+      ]
+    },
+    "PINGREE": {
+      "name": "Chellie Pingree",
+      "party": "D",
+      "state": "ME",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "PINGREE"
+      ]
+    },
+    "QUIGLEY": {
+      "name": "Mike Quigley",
+      "party": "D",
+      "state": "IL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "QUIGLEY"
+      ]
+    },
+    "ROGERS": {
+      "name": "Harold Rogers",
+      "party": "R",
+      "state": "KY",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "ROGERS"
+      ]
+    },
+    "ROGERS_AL": {
+      "name": "Mike Rogers",
+      "party": "R",
+      "state": "AL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "ROGERS"
+      ]
+    },
+    "SCALISE": {
+      "name": "Steve Scalise",
+      "party": "R",
+      "state": "LA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "SCALISE"
+      ]
+    },
+    "SCHAKOWSKY": {
+      "name": "Jan Schakowsky",
+      "party": "D",
+      "state": "IL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "SCHAKOWSKY"
+      ]
+    },
+    "SCHWEIKERT": {
+      "name": "David Schweikert",
+      "party": "R",
+      "state": "AZ",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "SCHWEIKERT"
+      ]
+    },
+    "SCOTT_GA": {
+      "name": "Austin Scott",
+      "party": "R",
+      "state": "GA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "SCOTT"
+      ]
+    },
+    "SCOTT_GA_D": {
+      "name": "David Scott",
+      "party": "D",
+      "state": "GA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "SCOTT"
+      ]
+    },
+    "SCOTT_VA": {
+      "name": "Bobby Scott",
+      "party": "D",
+      "state": "VA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "SCOTT"
+      ]
+    },
+    "SEWELL": {
+      "name": "Terri Sewell",
+      "party": "D",
+      "state": "AL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "SEWELL"
+      ]
+    },
+    "SHERMAN": {
+      "name": "Brad Sherman",
+      "party": "D",
+      "state": "CA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "SHERMAN"
+      ]
+    },
+    "SIMPSON": {
+      "name": "Mike Simpson",
+      "party": "R",
+      "state": "ID",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "SIMPSON"
+      ]
+    },
+    "RUIZ": {
+      "name": "Raul Ruiz",
+      "party": "D",
+      "state": "CA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "RUIZ"
+      ]
+    },
+    "TAKANO": {
+      "name": "Mark Takano",
+      "party": "D",
+      "state": "CA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "TAKANO"
+      ]
+    },
+    "VARGAS": {
+      "name": "Juan Vargas",
+      "party": "D",
+      "state": "CA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "VARGAS"
+      ]
+    },
+    "PETERS_CA": {
+      "name": "Scott Peters",
+      "party": "D",
+      "state": "CA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "PETERS"
+      ]
+    },
+    "FRANKEL": {
+      "name": "Lois Frankel",
+      "party": "D",
+      "state": "FL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "FRANKEL"
+      ]
+    },
+    "BARR": {
+      "name": "Garland Barr",
+      "party": "R",
+      "state": "KY",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "BARR"
+      ]
+    },
+    "WAGNER": {
+      "name": "Ann Wagner",
+      "party": "R",
+      "state": "MO",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "WAGNER"
+      ]
+    },
+    "HUDSON": {
+      "name": "Richard Hudson",
+      "party": "R",
+      "state": "NC",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "HUDSON"
+      ]
+    },
+    "MENG": {
+      "name": "Grace Meng",
+      "party": "D",
+      "state": "NY",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MENG"
+      ]
+    },
+    "JEFFRIES": {
+      "name": "Hakeem Jeffries",
+      "party": "D",
+      "state": "NY",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "JEFFRIES"
+      ]
+    },
+    "BEATTY": {
+      "name": "Joyce Beatty",
+      "party": "D",
+      "state": "OH",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "BEATTY"
+      ]
+    },
+    "JOYCE": {
+      "name": "David Joyce",
+      "party": "R",
+      "state": "OH",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "JOYCE"
+      ]
+    },
+    "PERRY": {
+      "name": "Scott Perry",
+      "party": "R",
+      "state": "PA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "PERRY"
+      ]
+    },
+    "WEBER": {
+      "name": "Randy Weber",
+      "party": "R",
+      "state": "TX",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "WEBER"
+      ]
+    },
+    "CASTRO": {
+      "name": "Joaquin Castro",
+      "party": "D",
+      "state": "TX",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "CASTRO"
+      ]
+    },
+    "WILLIAMS": {
+      "name": "Roger Williams",
+      "party": "R",
+      "state": "TX",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "WILLIAMS"
+      ]
+    },
+    "VEASEY": {
+      "name": "Marc Veasey",
+      "party": "D",
+      "state": "TX",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "VEASEY"
+      ]
+    },
+    "POCAN": {
+      "name": "Mark Pocan",
+      "party": "D",
+      "state": "WI",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "POCAN"
+      ]
+    },
+    "KELLY_IL": {
+      "name": "Robin Kelly",
+      "party": "D",
+      "state": "IL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "KELLY"
+      ]
+    },
+    "SMITH_MO": {
+      "name": "Jason Smith",
+      "party": "R",
+      "state": "MO",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "SMITH"
+      ]
+    },
+    "CLARK": {
+      "name": "Katherine Clark",
+      "party": "D",
+      "state": "MA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "CLARK"
+      ]
+    },
+    "NORCROSS": {
+      "name": "Donald Norcross",
+      "party": "D",
+      "state": "NJ",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "NORCROSS"
+      ]
+    },
+    "ADAMS": {
+      "name": "Alma Adams",
+      "party": "D",
+      "state": "NC",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "ADAMS"
+      ]
+    },
+    "PALMER": {
+      "name": "Gary Palmer",
+      "party": "R",
+      "state": "AL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "PALMER"
+      ]
+    },
+    "HILL": {
+      "name": "French Hill",
+      "party": "R",
+      "state": "AR",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "HILL"
+      ]
+    },
+    "WESTERMAN": {
+      "name": "Bruce Westerman",
+      "party": "R",
+      "state": "AR",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "WESTERMAN"
+      ]
+    },
+    "DESAULNIER": {
+      "name": "Mark DeSaulnier",
+      "party": "D",
+      "state": "CA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "DESAULNIER"
+      ]
+    },
+    "AGUILAR": {
+      "name": "Pete Aguilar",
+      "party": "D",
+      "state": "CA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "AGUILAR"
+      ]
+    },
+    "LIEU": {
+      "name": "Ted Lieu",
+      "party": "D",
+      "state": "CA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "LIEU"
+      ]
+    },
+    "TORRES": {
+      "name": "Norma Torres",
+      "party": "D",
+      "state": "CA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "TORRES"
+      ]
+    },
+    "CARTER_GA": {
+      "name": "Earl Carter",
+      "party": "R",
+      "state": "GA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "CARTER"
+      ]
+    },
+    "LOUDERMILK": {
+      "name": "Barry Loudermilk",
+      "party": "R",
+      "state": "GA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "LOUDERMILK"
+      ]
+    },
+    "ALLEN": {
+      "name": "Rick Allen",
+      "party": "R",
+      "state": "GA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "ALLEN"
+      ]
+    },
+    "BOST": {
+      "name": "Mike Bost",
+      "party": "R",
+      "state": "IL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "BOST"
+      ]
+    },
+    "MOULTON": {
+      "name": "Seth Moulton",
+      "party": "D",
+      "state": "MA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MOULTON"
+      ]
+    },
+    "MOOLENAAR": {
+      "name": "John Moolenaar",
+      "party": "R",
+      "state": "MI",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MOOLENAAR"
+      ]
+    },
+    "DINGELL": {
+      "name": "Debbie Dingell",
+      "party": "D",
+      "state": "MI",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "DINGELL"
+      ]
+    },
+    "EMMER": {
+      "name": "Tom Emmer",
+      "party": "R",
+      "state": "MN",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "EMMER"
+      ]
+    },
+    "ROUZER": {
+      "name": "David Rouzer",
+      "party": "R",
+      "state": "NC",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "ROUZER"
+      ]
+    },
+    "COLEMAN": {
+      "name": "Bonnie Watson Coleman",
+      "party": "D",
+      "state": "NJ",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "COLEMAN"
+      ]
+    },
+    "STEFANIK": {
+      "name": "Elise Stefanik",
+      "party": "R",
+      "state": "NY",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "STEFANIK"
+      ]
+    },
+    "BOYLE": {
+      "name": "Brendan Boyle",
+      "party": "D",
+      "state": "PA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "BOYLE"
+      ]
+    },
+    "BABIN": {
+      "name": "Brian Babin",
+      "party": "R",
+      "state": "TX",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "BABIN"
+      ]
+    },
+    "BEYER": {
+      "name": "Donald Beyer",
+      "party": "D",
+      "state": "VA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "BEYER"
+      ]
+    },
+    "PLASKETT": {
+      "name": "Stacey Plaskett",
+      "party": "D",
+      "state": "VI",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "PLASKETT"
+      ]
+    },
+    "NEWHOUSE": {
+      "name": "Dan Newhouse",
+      "party": "R",
+      "state": "WA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "NEWHOUSE"
+      ]
+    },
+    "GROTHMAN": {
+      "name": "Glenn Grothman",
+      "party": "R",
+      "state": "WI",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "GROTHMAN"
+      ]
+    },
+    "RADEWAGEN": {
+      "name": "Aumua Amata Radewagen",
+      "party": "R",
+      "state": "AS",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "RADEWAGEN"
+      ]
+    },
+    "KELLY_MS": {
+      "name": "Trent Kelly",
+      "party": "R",
+      "state": "MS",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "KELLY"
+      ]
+    },
+    "LAHOOD": {
+      "name": "Darin LaHood",
+      "party": "R",
+      "state": "IL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "LAHOOD"
+      ]
+    },
+    "DAVIDSON": {
+      "name": "Warren Davidson",
+      "party": "R",
+      "state": "OH",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "DAVIDSON"
+      ]
+    },
+    "COMER": {
+      "name": "James Comer",
+      "party": "R",
+      "state": "KY",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "COMER"
+      ]
+    },
+    "EVANS": {
+      "name": "Dwight Evans",
+      "party": "D",
+      "state": "PA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "EVANS"
+      ]
+    },
+    "SCHNEIDER": {
+      "name": "Bradley Schneider",
+      "party": "D",
+      "state": "IL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "SCHNEIDER"
+      ]
+    },
+    "BIGGS": {
+      "name": "Andy Biggs",
+      "party": "R",
+      "state": "AZ",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "BIGGS"
+      ]
+    },
+    "KHANNA": {
+      "name": "Ro Khanna",
+      "party": "D",
+      "state": "CA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "KHANNA"
+      ]
+    },
+    "PANETTA": {
+      "name": "Jimmy Panetta",
+      "party": "D",
+      "state": "CA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "PANETTA"
+      ]
+    },
+    "CARBAJAL": {
+      "name": "Salud Carbajal",
+      "party": "D",
+      "state": "CA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "CARBAJAL"
+      ]
+    },
+    "BARRAGAN": {
+      "name": "Nanette Barragan",
+      "party": "D",
+      "state": "CA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "BARRAGAN"
+      ]
+    },
+    "CORREA": {
+      "name": "Luis Correa",
+      "party": "D",
+      "state": "CA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "CORREA"
+      ]
+    },
+    "DUNN": {
+      "name": "Neal Dunn",
+      "party": "R",
+      "state": "FL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "DUNN"
+      ]
+    },
+    "RUTHERFORD": {
+      "name": "John Rutherford",
+      "party": "R",
+      "state": "FL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "RUTHERFORD"
+      ]
+    },
+    "SOTO": {
+      "name": "Darren Soto",
+      "party": "D",
+      "state": "FL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "SOTO"
+      ]
+    },
+    "MAST": {
+      "name": "Brian Mast",
+      "party": "R",
+      "state": "FL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MAST"
+      ]
+    },
+    "KRISHNAMOORTHI": {
+      "name": "Raja Krishnamoorthi",
+      "party": "D",
+      "state": "IL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "KRISHNAMOORTHI"
+      ]
+    },
+    "HIGGINS": {
+      "name": "Clay Higgins",
+      "party": "R",
+      "state": "LA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "HIGGINS"
+      ]
+    },
+    "JOHNSON_LA": {
+      "name": "Mike Johnson",
+      "party": "R",
+      "state": "LA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "JOHNSON"
+      ]
+    },
+    "RASKIN": {
+      "name": "Jamie Raskin",
+      "party": "D",
+      "state": "MD",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "RASKIN"
+      ]
+    },
+    "BERGMAN": {
+      "name": "Jack Bergman",
+      "party": "R",
+      "state": "MI",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "BERGMAN"
+      ]
+    },
+    "BACON": {
+      "name": "Don Bacon",
+      "party": "R",
+      "state": "NE",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "BACON"
+      ]
+    },
+    "GOTTHEIMER": {
+      "name": "Josh Gottheimer",
+      "party": "D",
+      "state": "NJ",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "GOTTHEIMER"
+      ]
+    },
+    "ESPAILLAT": {
+      "name": "Adriano Espaillat",
+      "party": "D",
+      "state": "NY",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "ESPAILLAT"
+      ]
+    },
+    "FITZPATRICK": {
+      "name": "Brian Fitzpatrick",
+      "party": "R",
+      "state": "PA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "FITZPATRICK"
+      ]
+    },
+    "SMUCKER": {
+      "name": "Lloyd Smucker",
+      "party": "R",
+      "state": "PA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "SMUCKER"
+      ]
+    },
+    "KUSTOFF": {
+      "name": "David Kustoff",
+      "party": "R",
+      "state": "TN",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "KUSTOFF"
+      ]
+    },
+    "BAIRD": {
+      "name": "James Baird",
+      "party": "R",
+      "state": "IN",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "BAIRD"
+      ]
+    },
+    "DAVIDS": {
+      "name": "Sharice Davids",
+      "party": "D",
+      "state": "KS",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "DAVIDS"
+      ]
+    },
+    "TRAHAN": {
+      "name": "Lori Trahan",
+      "party": "D",
+      "state": "MA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "TRAHAN"
+      ]
+    },
+    "PRESSLEY": {
+      "name": "Ayanna Pressley",
+      "party": "D",
+      "state": "MA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "PRESSLEY"
+      ]
+    },
+    "STEVENS": {
+      "name": "Haley Stevens",
+      "party": "D",
+      "state": "MI",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "STEVENS"
+      ]
+    },
+    "TLAIB": {
+      "name": "Rashida Tlaib",
+      "party": "D",
+      "state": "MI",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "TLAIB"
+      ]
+    },
+    "CRAIG": {
+      "name": "Angie Craig",
+      "party": "D",
+      "state": "MN",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "CRAIG"
+      ]
+    },
+    "OMAR": {
+      "name": "Ilhan Omar",
+      "party": "D",
+      "state": "MN",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "OMAR"
+      ]
+    },
+    "STAUBER": {
+      "name": "Pete Stauber",
+      "party": "R",
+      "state": "MN",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "STAUBER"
+      ]
+    },
+    "GUEST": {
+      "name": "Michael Guest",
+      "party": "R",
+      "state": "MS",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "GUEST"
+      ]
+    },
+    "PAPPAS": {
+      "name": "Chris Pappas",
+      "party": "D",
+      "state": "NH",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "PAPPAS"
+      ]
+    },
+    "DREW": {
+      "name": "Jefferson Van Drew",
+      "party": "R",
+      "state": "NJ",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "DREW"
+      ]
+    },
+    "LEE_NV": {
+      "name": "Susie Lee",
+      "party": "D",
+      "state": "NV",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "LEE"
+      ]
+    },
+    "OCASIO-CORTEZ": {
+      "name": "Alexandria Ocasio-Cortez",
+      "party": "D",
+      "state": "NY",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "OCASIO-CORTEZ"
+      ]
+    },
+    "DEAN": {
+      "name": "Madeleine Dean",
+      "party": "D",
+      "state": "PA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "DEAN"
+      ]
+    },
+    "HOULAHAN": {
+      "name": "Chrissy Houlahan",
+      "party": "D",
+      "state": "PA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "HOULAHAN"
+      ]
+    },
+    "MEUSER": {
+      "name": "Daniel Meuser",
+      "party": "R",
+      "state": "PA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MEUSER"
+      ]
+    },
+    "JOYCE_PA": {
+      "name": "John Joyce",
+      "party": "R",
+      "state": "PA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "JOYCE"
+      ]
+    },
+    "RESCHENTHALER": {
+      "name": "Guy Reschenthaler",
+      "party": "R",
+      "state": "PA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "RESCHENTHALER"
+      ]
+    },
+    "TIMMONS": {
+      "name": "William Timmons",
+      "party": "R",
+      "state": "SC",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "TIMMONS"
+      ]
+    },
+    "JOHNSON_SD": {
+      "name": "Dusty Johnson",
+      "party": "R",
+      "state": "SD",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "JOHNSON"
+      ]
+    },
+    "BURCHETT": {
+      "name": "Tim Burchett",
+      "party": "R",
+      "state": "TN",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "BURCHETT"
+      ]
+    },
+    "ROSE": {
+      "name": "John W. Rose",
+      "party": "R",
+      "state": "TN",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "ROSE"
+      ]
+    },
+    "CRENSHAW": {
+      "name": "Dan Crenshaw",
+      "party": "R",
+      "state": "TX",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "CRENSHAW"
+      ]
+    },
+    "GOODEN": {
+      "name": "Lance Gooden",
+      "party": "R",
+      "state": "TX",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "GOODEN"
+      ]
+    },
+    "FLETCHER": {
+      "name": "Lizzie Fletcher",
+      "party": "D",
+      "state": "TX",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "FLETCHER"
+      ]
+    },
+    "ESCOBAR": {
+      "name": "Veronica Escobar",
+      "party": "D",
+      "state": "TX",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "ESCOBAR"
+      ]
+    },
+    "ROY": {
+      "name": "Chip Roy",
+      "party": "R",
+      "state": "TX",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "ROY"
+      ]
+    },
+    "GARCIA": {
+      "name": "Sylvia Garcia",
+      "party": "D",
+      "state": "TX",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "GARCIA"
+      ]
+    },
+    "CLINE": {
+      "name": "Ben Cline",
+      "party": "R",
+      "state": "VA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "CLINE"
+      ]
+    },
+    "SCHRIER": {
+      "name": "Kim Schrier",
+      "party": "D",
+      "state": "WA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "SCHRIER"
+      ]
+    },
+    "STEIL": {
+      "name": "Bryan Steil",
+      "party": "R",
+      "state": "WI",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "STEIL"
+      ]
+    },
+    "MILLER": {
+      "name": "Carol Miller",
+      "party": "R",
+      "state": "WV",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MILLER"
+      ]
+    },
+    "GOLDEN": {
+      "name": "Jared Golden",
+      "party": "D",
+      "state": "ME",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "GOLDEN"
+      ]
+    },
+    "MURPHY_NC": {
+      "name": "Gregory Murphy",
+      "party": "R",
+      "state": "NC",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MURPHY"
+      ]
+    },
+    "MFUME": {
+      "name": "Kweisi Mfume",
+      "party": "D",
+      "state": "MD",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MFUME"
+      ]
+    },
+    "TIFFANY": {
+      "name": "Thomas Tiffany",
+      "party": "R",
+      "state": "WI",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "TIFFANY"
+      ]
+    },
+    "ISSA": {
+      "name": "Darrell Issa",
+      "party": "R",
+      "state": "CA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "ISSA"
+      ]
+    },
+    "SESSIONS": {
+      "name": "Pete Sessions",
+      "party": "R",
+      "state": "TX",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "SESSIONS"
+      ]
+    },
+    "VALADAO": {
+      "name": "David Valadao",
+      "party": "R",
+      "state": "CA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "VALADAO"
+      ]
+    },
+    "MOORE_AL": {
+      "name": "Barry Moore",
+      "party": "R",
+      "state": "AL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MOORE"
+      ]
+    },
+    "OBERNOLTE": {
+      "name": "Jay Obernolte",
+      "party": "R",
+      "state": "CA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "OBERNOLTE"
+      ]
+    },
+    "KIM_CA": {
+      "name": "Young Kim",
+      "party": "R",
+      "state": "CA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "KIM"
+      ]
+    },
+    "JACOBS": {
+      "name": "Sara Jacobs",
+      "party": "D",
+      "state": "CA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "JACOBS"
+      ]
+    },
+    "BOEBERT": {
+      "name": "Lauren Boebert",
+      "party": "R",
+      "state": "CO",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "BOEBERT"
+      ]
+    },
+    "CAMMACK": {
+      "name": "Katherine Cammack",
+      "party": "R",
+      "state": "FL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "CAMMACK"
+      ]
+    },
+    "FRANKLIN": {
+      "name": "Scott Franklin",
+      "party": "R",
+      "state": "FL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "FRANKLIN"
+      ]
+    },
+    "DONALDS": {
+      "name": "Byron Donalds",
+      "party": "R",
+      "state": "FL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "DONALDS"
+      ]
+    },
+    "GIMENEZ": {
+      "name": "Carlos Gimenez",
+      "party": "R",
+      "state": "FL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "GIMENEZ"
+      ]
+    },
+    "SALAZAR": {
+      "name": "Maria Salazar",
+      "party": "R",
+      "state": "FL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "SALAZAR"
+      ]
+    },
+    "WILLIAMS_GA": {
+      "name": "Nikema Williams",
+      "party": "D",
+      "state": "GA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "WILLIAMS"
+      ]
+    },
+    "CLYDE": {
+      "name": "Andrew Clyde",
+      "party": "R",
+      "state": "GA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "CLYDE"
+      ]
+    },
+    "HINSON": {
+      "name": "Ashley Hinson",
+      "party": "R",
+      "state": "IA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "HINSON"
+      ]
+    },
+    "MILLER-MEEKS": {
+      "name": "Mariannette Miller-Meeks",
+      "party": "R",
+      "state": "IA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MILLER-MEEKS"
+      ]
+    },
+    "FEENSTRA": {
+      "name": "Randy Feenstra",
+      "party": "R",
+      "state": "IA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "FEENSTRA"
+      ]
+    },
+    "MILLER_IL": {
+      "name": "Mary Miller",
+      "party": "R",
+      "state": "IL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MILLER"
+      ]
+    },
+    "MRVAN": {
+      "name": "Frank Mrvan",
+      "party": "D",
+      "state": "IN",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MRVAN"
+      ]
+    },
+    "SPARTZ": {
+      "name": "Victoria Spartz",
+      "party": "R",
+      "state": "IN",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "SPARTZ"
+      ]
+    },
+    "MANN": {
+      "name": "Tracey Mann",
+      "party": "R",
+      "state": "KS",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MANN"
+      ]
+    },
+    "AUCHINCLOSS": {
+      "name": "Jake Auchincloss",
+      "party": "D",
+      "state": "MA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "AUCHINCLOSS"
+      ]
+    },
+    "MCCLAIN": {
+      "name": "Lisa McClain",
+      "party": "R",
+      "state": "MI",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MCCLAIN"
+      ]
+    },
+    "FISCHBACH": {
+      "name": "Michelle Fischbach",
+      "party": "R",
+      "state": "MN",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "FISCHBACH"
+      ]
+    },
+    "ROSS": {
+      "name": "Deborah Ross",
+      "party": "D",
+      "state": "NC",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "ROSS"
+      ]
+    },
+    "FERNANDEZ": {
+      "name": "Teresa Leger Fernandez",
+      "party": "D",
+      "state": "NM",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "FERNANDEZ"
+      ]
+    },
+    "GARBARINO": {
+      "name": "Andrew Garbarino",
+      "party": "R",
+      "state": "NY",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "GARBARINO"
+      ]
+    },
+    "MALLIOTAKIS": {
+      "name": "Nicole Malliotakis",
+      "party": "R",
+      "state": "NY",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MALLIOTAKIS"
+      ]
+    },
+    "TORRES_NY": {
+      "name": "Ritchie Torres",
+      "party": "D",
+      "state": "NY",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "TORRES"
+      ]
+    },
+    "BICE": {
+      "name": "Stephanie Bice",
+      "party": "R",
+      "state": "OK",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "BICE"
+      ]
+    },
+    "BENTZ": {
+      "name": "Cliff Bentz",
+      "party": "R",
+      "state": "OR",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "BENTZ"
+      ]
+    },
+    "MACE": {
+      "name": "Nancy Mace",
+      "party": "R",
+      "state": "SC",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MACE"
+      ]
+    },
+    "HARSHBARGER": {
+      "name": "Diana Harshbarger",
+      "party": "R",
+      "state": "TN",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "HARSHBARGER"
+      ]
+    },
+    "FALLON": {
+      "name": "Patrick Fallon",
+      "party": "R",
+      "state": "TX",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "FALLON"
+      ]
+    },
+    "PFLUGER": {
+      "name": "August Pfluger",
+      "party": "R",
+      "state": "TX",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "PFLUGER"
+      ]
+    },
+    "JACKSON": {
+      "name": "Ronny Jackson",
+      "party": "R",
+      "state": "TX",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "JACKSON"
+      ]
+    },
+    "NEHLS": {
+      "name": "Troy Nehls",
+      "party": "R",
+      "state": "TX",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "NEHLS"
+      ]
+    },
+    "GONZALES": {
+      "name": "Tony Gonzales",
+      "party": "R",
+      "state": "TX",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "GONZALES"
+      ]
+    },
+    "GARCIA_CA": {
+      "name": "Robert Garcia",
+      "party": "D",
+      "state": "CA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "GARCIA"
+      ]
+    },
+    "PETTERSEN": {
+      "name": "Brittany Pettersen",
+      "party": "D",
+      "state": "CO",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "PETTERSEN"
+      ]
+    },
+    "BEAN": {
+      "name": "Aaron Bean",
+      "party": "R",
+      "state": "FL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "BEAN"
+      ]
+    },
+    "MILLS": {
+      "name": "Cory Mills",
+      "party": "R",
+      "state": "FL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MILLS"
+      ]
+    },
+    "FROST": {
+      "name": "Maxwell Frost",
+      "party": "D",
+      "state": "FL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "FROST"
+      ]
+    },
+    "LUNA": {
+      "name": "Anna Luna",
+      "party": "R",
+      "state": "FL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "LUNA"
+      ]
+    },
+    "LEE_FL": {
+      "name": "Laurel Lee",
+      "party": "R",
+      "state": "FL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "LEE"
+      ]
+    },
+    "MOSKOWITZ": {
+      "name": "Jared Moskowitz",
+      "party": "D",
+      "state": "FL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MOSKOWITZ"
+      ]
+    },
+    "MCCORMICK_GA": {
+      "name": "Rich McCormick",
+      "party": "R",
+      "state": "GA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MCCORMICK"
+      ]
+    },
+    "COLLINS_GA": {
+      "name": "Mike Collins",
+      "party": "R",
+      "state": "GA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "COLLINS"
+      ]
+    },
+    "MOYLAN": {
+      "name": "James Moylan",
+      "party": "R",
+      "state": "GU",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MOYLAN"
+      ]
+    },
+    "TOKUDA": {
+      "name": "Jill Tokuda",
+      "party": "D",
+      "state": "HI",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "TOKUDA"
+      ]
+    },
+    "NUNN": {
+      "name": "Zachary Nunn",
+      "party": "R",
+      "state": "IA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "NUNN"
+      ]
+    },
+    "JACKSON_IL": {
+      "name": "Jonathan Jackson",
+      "party": "D",
+      "state": "IL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "JACKSON"
+      ]
+    },
+    "RAMIREZ": {
+      "name": "Delia Ramirez",
+      "party": "D",
+      "state": "IL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "RAMIREZ"
+      ]
+    },
+    "BUDZINSKI": {
+      "name": "Nicole Budzinski",
+      "party": "D",
+      "state": "IL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "BUDZINSKI"
+      ]
+    },
+    "SORENSEN": {
+      "name": "Eric Sorensen",
+      "party": "D",
+      "state": "IL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "SORENSEN"
+      ]
+    },
+    "HOUCHIN": {
+      "name": "Erin Houchin",
+      "party": "R",
+      "state": "IN",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "HOUCHIN"
+      ]
+    },
+    "MCGARVEY": {
+      "name": "Morgan McGarvey",
+      "party": "D",
+      "state": "KY",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MCGARVEY"
+      ]
+    },
+    "IVEY": {
+      "name": "Glenn Ivey",
+      "party": "D",
+      "state": "MD",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "IVEY"
+      ]
+    },
+    "SCHOLTEN": {
+      "name": "Hillary Scholten",
+      "party": "D",
+      "state": "MI",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "SCHOLTEN"
+      ]
+    },
+    "JAMES": {
+      "name": "John James",
+      "party": "R",
+      "state": "MI",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "JAMES"
+      ]
+    },
+    "THANEDAR": {
+      "name": "Shri Thanedar",
+      "party": "D",
+      "state": "MI",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "THANEDAR"
+      ]
+    },
+    "ALFORD": {
+      "name": "Mark Alford",
+      "party": "R",
+      "state": "MO",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "ALFORD"
+      ]
+    },
+    "BURLISON": {
+      "name": "Eric Burlison",
+      "party": "R",
+      "state": "MO",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "BURLISON"
+      ]
+    },
+    "EZELL": {
+      "name": "Mike Ezell",
+      "party": "R",
+      "state": "MS",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "EZELL"
+      ]
+    },
+    "DAVIS_NC": {
+      "name": "Donald Davis",
+      "party": "D",
+      "state": "NC",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "DAVIS"
+      ]
+    },
+    "FOUSHEE": {
+      "name": "Valerie Foushee",
+      "party": "D",
+      "state": "NC",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "FOUSHEE"
+      ]
+    },
+    "EDWARDS": {
+      "name": "Chuck Edwards",
+      "party": "R",
+      "state": "NC",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "EDWARDS"
+      ]
+    },
+    "KEAN": {
+      "name": "Thomas Kean",
+      "party": "R",
+      "state": "NJ",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "KEAN"
+      ]
+    },
+    "MENENDEZ": {
+      "name": "Robert Menendez",
+      "party": "D",
+      "state": "NJ",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MENENDEZ"
+      ]
+    },
+    "VASQUEZ": {
+      "name": "Gabriel Vasquez",
+      "party": "D",
+      "state": "NM",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "VASQUEZ"
+      ]
+    },
+    "LALOTA": {
+      "name": "Nicolas LaLota",
+      "party": "R",
+      "state": "NY",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "LALOTA"
+      ]
+    },
+    "GOLDMAN": {
+      "name": "Dan Goldman",
+      "party": "D",
+      "state": "NY",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "GOLDMAN"
+      ]
+    },
+    "LAWLER": {
+      "name": "Michael Lawler",
+      "party": "R",
+      "state": "NY",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "LAWLER"
+      ]
+    },
+    "LANGWORTHY": {
+      "name": "Nicholas Langworthy",
+      "party": "R",
+      "state": "NY",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "LANGWORTHY"
+      ]
+    },
+    "LANDSMAN": {
+      "name": "Greg Landsman",
+      "party": "D",
+      "state": "OH",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "LANDSMAN"
+      ]
+    },
+    "MILLER_OH": {
+      "name": "Max Miller",
+      "party": "R",
+      "state": "OH",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MILLER"
+      ]
+    },
+    "SYKES": {
+      "name": "Emilia Sykes",
+      "party": "D",
+      "state": "OH",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "SYKES"
+      ]
+    },
+    "BRECHEEN": {
+      "name": "Josh Brecheen",
+      "party": "R",
+      "state": "OK",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "BRECHEEN"
+      ]
+    },
+    "HOYLE": {
+      "name": "Valerie Hoyle",
+      "party": "D",
+      "state": "OR",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "HOYLE"
+      ]
+    },
+    "SALINAS": {
+      "name": "Andrea Salinas",
+      "party": "D",
+      "state": "OR",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "SALINAS"
+      ]
+    },
+    "LEE_PA": {
+      "name": "Summer Lee",
+      "party": "D",
+      "state": "PA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "LEE"
+      ]
+    },
+    "DELUZIO": {
+      "name": "Chris Deluzio",
+      "party": "D",
+      "state": "PA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "DELUZIO"
+      ]
+    },
+    "MAGAZINER": {
+      "name": "Seth Magaziner",
+      "party": "D",
+      "state": "RI",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MAGAZINER"
+      ]
+    },
+    "FRY": {
+      "name": "Russell Fry",
+      "party": "R",
+      "state": "SC",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "FRY"
+      ]
+    },
+    "OGLES": {
+      "name": "Andrew Ogles",
+      "party": "R",
+      "state": "TN",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "OGLES"
+      ]
+    },
+    "MORAN_TX": {
+      "name": "Nathaniel Moran",
+      "party": "R",
+      "state": "TX",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MORAN"
+      ]
+    },
+    "SELF": {
+      "name": "Keith Self",
+      "party": "R",
+      "state": "TX",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "SELF"
+      ]
+    },
+    "LUTTRELL": {
+      "name": "Morgan Luttrell",
+      "party": "R",
+      "state": "TX",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "LUTTRELL"
+      ]
+    },
+    "CRUZ_TX": {
+      "name": "Monica De La Cruz",
+      "party": "R",
+      "state": "TX",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "CRUZ"
+      ]
+    },
+    "CROCKETT": {
+      "name": "Jasmine Crockett",
+      "party": "D",
+      "state": "TX",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "CROCKETT"
+      ]
+    },
+    "CASAR": {
+      "name": "Gregorio Casar",
+      "party": "D",
+      "state": "TX",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "CASAR"
+      ]
+    },
+    "HUNT": {
+      "name": "Wesley Hunt",
+      "party": "R",
+      "state": "TX",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "HUNT"
+      ]
+    },
+    "KIGGANS": {
+      "name": "Jennifer Kiggans",
+      "party": "R",
+      "state": "VA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "KIGGANS"
+      ]
+    },
+    "BALINT": {
+      "name": "Becca Balint",
+      "party": "D",
+      "state": "VT",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "BALINT"
+      ]
+    },
+    "PEREZ": {
+      "name": "Marie Gluesenkamp Perez",
+      "party": "D",
+      "state": "WA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "PEREZ"
+      ]
+    },
+    "ORDEN": {
+      "name": "Derrick Van Orden",
+      "party": "R",
+      "state": "WI",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "ORDEN"
+      ]
+    },
+    "HAGEMAN": {
+      "name": "Harriet Hageman",
+      "party": "R",
+      "state": "WY",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "HAGEMAN"
+      ]
+    },
+    "MCCLELLAN": {
+      "name": "Jennifer McClellan",
+      "party": "D",
+      "state": "VA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MCCLELLAN"
+      ]
+    },
+    "AMO": {
+      "name": "Gabe Amo",
+      "party": "D",
+      "state": "RI",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "AMO"
+      ]
+    },
+    "MALOY": {
+      "name": "Celeste Maloy",
+      "party": "R",
+      "state": "UT",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MALOY"
+      ]
+    },
+    "SUOZZI": {
+      "name": "Thomas Suozzi",
+      "party": "D",
+      "state": "NY",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "SUOZZI"
+      ]
+    },
+    "KENNEDY_NY": {
+      "name": "Timothy Kennedy",
+      "party": "D",
+      "state": "NY",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "KENNEDY"
+      ]
+    },
+    "FONG": {
+      "name": "Vince Fong",
+      "party": "R",
+      "state": "CA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "FONG"
+      ]
+    },
+    "RULLI": {
+      "name": "Michael Rulli",
+      "party": "R",
+      "state": "OH",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "RULLI"
+      ]
+    },
+    "MCIVER": {
+      "name": "LaMonica McIver",
+      "party": "D",
+      "state": "NJ",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MCIVER"
+      ]
+    },
+    "WIED": {
+      "name": "Tony Wied",
+      "party": "R",
+      "state": "WI",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "WIED"
+      ]
+    },
+    "FIELDS": {
+      "name": "Cleo Fields",
+      "party": "D",
+      "state": "LA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "FIELDS"
+      ]
+    },
+    "STUTZMAN": {
+      "name": "Marlin Stutzman",
+      "party": "R",
+      "state": "IN",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "STUTZMAN"
+      ]
+    },
+    "CISNEROS": {
+      "name": "Gilbert Cisneros",
+      "party": "D",
+      "state": "CA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "CISNEROS"
+      ]
+    },
+    "III": {
+      "name": "Nicholas Begich III",
+      "party": "R",
+      "state": "AK",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "III"
+      ]
+    },
+    "FIGURES": {
+      "name": "Shomari Figures",
+      "party": "D",
+      "state": "AL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "FIGURES"
+      ]
+    },
+    "ANSARI": {
+      "name": "Yassamin Ansari",
+      "party": "D",
+      "state": "AZ",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "ANSARI"
+      ]
+    },
+    "HAMADEH": {
+      "name": "Abraham Hamadeh",
+      "party": "R",
+      "state": "AZ",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "HAMADEH"
+      ]
+    },
+    "SIMON": {
+      "name": "Lateefah Simon",
+      "party": "D",
+      "state": "CA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "SIMON"
+      ]
+    },
+    "GRAY": {
+      "name": "Adam Gray",
+      "party": "D",
+      "state": "CA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "GRAY"
+      ]
+    },
+    "KING-HINDS": {
+      "name": "Kimberlyn King-Hinds",
+      "party": "R",
+      "state": "MP",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "KING-HINDS"
+      ]
+    },
+    "DOWNING": {
+      "name": "Troy Downing",
+      "party": "R",
+      "state": "MT",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "DOWNING"
+      ]
+    },
+    "MCDOWELL": {
+      "name": "Addison McDowell",
+      "party": "R",
+      "state": "NC",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MCDOWELL"
+      ]
+    },
+    "HARRIS_NC": {
+      "name": "Mark Everette Harris",
+      "party": "R",
+      "state": "NC",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "HARRIS"
+      ]
+    },
+    "HARRIGAN": {
+      "name": "Pat Harrigan",
+      "party": "R",
+      "state": "NC",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "HARRIGAN"
+      ]
+    },
+    "KNOTT": {
+      "name": "Brad Knott",
+      "party": "R",
+      "state": "NC",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "KNOTT"
+      ]
+    },
+    "MOORE_NC": {
+      "name": "Tim Moore",
+      "party": "R",
+      "state": "NC",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MOORE"
+      ]
+    },
+    "FEDORCHAK": {
+      "name": "Julie Fedorchak",
+      "party": "R",
+      "state": "ND",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "FEDORCHAK"
+      ]
+    },
+    "GOODLANDER": {
+      "name": "Maggie Goodlander",
+      "party": "D",
+      "state": "NH",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "GOODLANDER"
+      ]
+    },
+    "CONAWAY": {
+      "name": "Herbert Conaway",
+      "party": "D",
+      "state": "NJ",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "CONAWAY"
+      ]
+    },
+    "POU": {
+      "name": "Nellie Pou",
+      "party": "D",
+      "state": "NJ",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "POU"
+      ]
+    },
+    "GILLEN": {
+      "name": "Laura Gillen",
+      "party": "D",
+      "state": "NY",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "GILLEN"
+      ]
+    },
+    "LATIMER": {
+      "name": "George Latimer",
+      "party": "D",
+      "state": "NY",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "LATIMER"
+      ]
+    },
+    "RILEY": {
+      "name": "Josh Riley",
+      "party": "D",
+      "state": "NY",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "RILEY"
+      ]
+    },
+    "MANNION": {
+      "name": "John Mannion",
+      "party": "D",
+      "state": "NY",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MANNION"
+      ]
+    },
+    "TAYLOR": {
+      "name": "David Taylor",
+      "party": "R",
+      "state": "OH",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "TAYLOR"
+      ]
+    },
+    "DEXTER": {
+      "name": "Maxine Dexter",
+      "party": "D",
+      "state": "OR",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "DEXTER"
+      ]
+    },
+    "BYNUM": {
+      "name": "Janelle Bynum",
+      "party": "D",
+      "state": "OR",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "BYNUM"
+      ]
+    },
+    "MACKENZIE": {
+      "name": "Ryan Mackenzie",
+      "party": "R",
+      "state": "PA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MACKENZIE"
+      ]
+    },
+    "BRESNAHAN": {
+      "name": "Robert Bresnahan",
+      "party": "R",
+      "state": "PA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "BRESNAHAN"
+      ]
+    },
+    "RIVERA": {
+      "name": "Pablo Jose Hernandez Rivera",
+      "party": "D",
+      "state": "PR",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "RIVERA"
+      ]
+    },
+    "BIGGS_SC": {
+      "name": "Sheri Biggs",
+      "party": "R",
+      "state": "SC",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "BIGGS"
+      ]
+    },
+    "GOLDMAN_TX": {
+      "name": "Craig Goldman",
+      "party": "R",
+      "state": "TX",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "GOLDMAN"
+      ]
+    },
+    "GILL": {
+      "name": "Brandon Gill",
+      "party": "R",
+      "state": "TX",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "GILL"
+      ]
+    },
+    "JOHNSON_TX": {
+      "name": "Julie Johnson",
+      "party": "D",
+      "state": "TX",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "JOHNSON"
+      ]
+    },
+    "KENNEDY_UT": {
+      "name": "Mike Kennedy",
+      "party": "R",
+      "state": "UT",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "KENNEDY"
+      ]
+    },
+    "MCGUIRE": {
+      "name": "John J. McGuire",
+      "party": "R",
+      "state": "VA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MCGUIRE"
+      ]
+    },
+    "VINDMAN": {
+      "name": "Eugene Vindman",
+      "party": "D",
+      "state": "VA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "VINDMAN"
+      ]
+    },
+    "SUBRAMANYAM": {
+      "name": "Suhas Subramanyam",
+      "party": "D",
+      "state": "VA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "SUBRAMANYAM"
+      ]
+    },
+    "BAUMGARTNER": {
+      "name": "Michael Baumgartner",
+      "party": "R",
+      "state": "WA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "BAUMGARTNER"
+      ]
+    },
+    "RANDALL": {
+      "name": "Emily Randall",
+      "party": "D",
+      "state": "WA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "RANDALL"
+      ]
+    },
+    "MOORE_WV": {
+      "name": "Riley Moore",
+      "party": "R",
+      "state": "WV",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MOORE"
+      ]
+    },
+    "PATRONIS": {
+      "name": "Jimmy Patronis",
+      "party": "R",
+      "state": "FL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "PATRONIS"
+      ]
+    },
+    "FINE": {
+      "name": "Randy Fine",
+      "party": "R",
+      "state": "FL",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "FINE"
+      ]
+    },
+    "WALKINSHAW": {
+      "name": "James Walkinshaw",
+      "party": "D",
+      "state": "VA",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "WALKINSHAW"
+      ]
+    },
+    "GRIJALVA": {
+      "name": "Adelita Grijalva",
+      "party": "D",
+      "state": "AZ",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "GRIJALVA"
+      ]
+    },
+    "EPPS": {
+      "name": "Matt Van Epps",
+      "party": "R",
+      "state": "TN",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "EPPS"
+      ]
+    },
+    "MENEFEE": {
+      "name": "Christian Menefee",
+      "party": "D",
+      "state": "TX",
+      "role_type": "representative",
+      "committees": [],
+      "search_keys": [
+        "MENEFEE"
+      ]
+    }
+  }
+}

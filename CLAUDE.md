@@ -76,6 +76,7 @@ mae_core/market/
     correlation_tracker.py      # Cross-domain signal correlation
     convergence_alerter.py      # Multi-domain synthesis (THE crown jewel)
     learning_config.py          # Self-modifiable learning parameters
+    regime_classifier.py        # Market regime detection (bull/bear/volatile/sideways)
 ```
 
 ### Market Data Files

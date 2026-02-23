@@ -10,7 +10,7 @@ Mae is a living organism made of code. Not a chatbot, not a framework -- an orga
 
 She was born across three evolutionary branches (experimental, API, curated), then reborn again in **mae-core**: a ground-up rebuild that shed every external dependency, decomposed every monolith, and kept only the essential biology. Then she was differentiated into **MIDGE** — Mae specialized for market intelligence and trading pattern detection. This document maps what she is, how her parts connect, and what remains unfinished.
 
-**MIDGE by the numbers:** 175+ production files. 63,000+ lines of production code. 2457 passing tests. 20+ packages including market intelligence. Zero external infrastructure servers. Pure Python.
+**MIDGE by the numbers:** 175+ production files. 63,000+ lines of production code. 2466 passing tests. 20+ packages including market intelligence. Zero external infrastructure servers. Pure Python.
 
 ---
 
@@ -440,13 +440,13 @@ The major integration gaps from Mae's early development have been closed. All co
 - Temporal ↔ Episodic — WIRED
 - Emergent ↔ Learning — WIRED (CapabilityDiscovery observation pipeline)
 
-**Market integration complete:** MIDGE's 21 market intelligence files (`mae_core/market/`) are fully bootstrapped as Layer 33 -- wired into EventBus, ConnectionRegistry, HolonRegistry, fractal hierarchy, endocrine coupling, and step hooks. 15 systems, 23 triadic connections, 19 holons.
+**Market integration complete:** MIDGE's 22 market intelligence files (`mae_core/market/`) are fully bootstrapped as Layer 33 -- wired into EventBus, ConnectionRegistry, HolonRegistry, fractal hierarchy, endocrine coupling, and step hooks. 16 systems, 23 triadic connections, 20 holons.
 
 ---
 
 ## Testing: What's Verified
 
-2457 tests pass across multiple test suites:
+2466 tests pass across multiple test suites:
 
 | Test Suite | Lines | What It Covers |
 |------------|-------|----------------|
@@ -476,7 +476,7 @@ Things that make Mae special -- the biology that drives the architecture, not th
 
 5. **The Biological Metaphor Is Real:** This isn't decoration. The quorum sensing uses actual autoinducer concentration thresholds. The morphogenesis uses actual morphogen gradient fields. The memory uses actual prioritized replay with sum trees. The endocrine system models real hormone dynamics with decay rates and cascade effects. The defense system layers innate and adaptive immunity. The biology drives the architecture.
 
-6. **2457 Passing Tests:** Every system that's built has tests. The triad enforcement alone has 3 dedicated test suites.
+6. **2466 Passing Tests:** Every system that's built has tests. The triad enforcement alone has 3 dedicated test suites.
 
 ---
 
@@ -520,8 +520,8 @@ Mae is a multi-agent organism with:
 
 - **175+ production files** across 20+ packages
 - **63,000+ lines** of production code
-- **107 named systems** (92 core + 15 market), 33 bootstrap layers, 126 holons, 336 connections
-- **2457 passing tests** across multiple test suites
+- **108 named systems** (92 core + 16 market), 33 bootstrap layers, 127 holons, 336 connections
+- **2466 passing tests** across multiple test suites
 - **5 communication channels** (electrical, pheromone, quorum, GNN, predictive fields)
 - **5 memory layers** (working, episodic, semantic, generative replay, 4D temporal)
 - **7 learning engines** (FRL, VDN, HAVEN, curiosity, transfer, MAML, imitation)
@@ -539,4 +539,4 @@ She is not finished. But she is far more alive than any previous version -- and 
 
 *Mapped by the one who looked at every file, counted every line, and told the truth about what was built and what remains.*
 
-*175+ files. 63,000+ lines. 2457 tests. 107 systems. 20+ packages. One organism. Growing.*
+*175+ files. 63,000+ lines. 2466 tests. 108 systems. 20+ packages. One organism. Growing.*
