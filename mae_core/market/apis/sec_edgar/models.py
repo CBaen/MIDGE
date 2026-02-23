@@ -93,7 +93,7 @@ class InsiderTrade:
     accession_number: str = ""
     form_type: str = "4"
     signal_source: str = "insider"
-    decay_rate: float = 0.05
+    decay_rate: float = 0.035  # ~20 day half-life (Lakonishok & Lee 2001)
 
     @property
     def is_purchase(self) -> bool:

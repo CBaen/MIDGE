@@ -555,6 +555,13 @@ def print_summary(signals: List[MarketSignal], analysis: dict, report_path: Path
     else:
         print("  No convergence alerts.")
 
+    ticker_alerts = analysis.get("ticker_alerts", [])
+    if ticker_alerts:
+        print()
+        print(f"  TICKER CONVERGENCE: {len(ticker_alerts)}")
+        for alert in ticker_alerts:
+            print(f"    [{alert.urgency}] {alert.summary}")
+
     print()
     print(f"  Report: {report_path}")
     print()
@@ -594,7 +601,12 @@ def main():
 
     # Phase 4: Store + Feed
     logger.info("Phase 4/6: Storing signals and feeding convergence engine...")
-    store_and_feed(signals, alerter, memory, dry_run=args.dry_run)
+    store_and_feed(
+        signals, alerter, memory,
+        dry_run=args.dry_run,
+        velocity_detector=velocity_detector,
+        filing_analyzer=filing_analyzer,
+    )
 
     # Phase 5: Analyze
     logger.info("Phase 5/6: Running convergence analysis...")
