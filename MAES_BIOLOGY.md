@@ -440,7 +440,7 @@ The major integration gaps from Mae's early development have been closed. All co
 - Temporal ↔ Episodic — WIRED
 - Emergent ↔ Learning — WIRED (CapabilityDiscovery observation pipeline)
 
-**Market integration complete:** MIDGE's 23 market intelligence files (`mae_core/market/`) are fully bootstrapped as Layer 33 -- wired into EventBus, ConnectionRegistry, HolonRegistry, fractal hierarchy, endocrine coupling, and step hooks. 16 systems, 23 triadic connections, 20 holons.
+**Market integration complete:** MIDGE's 24 market intelligence files (`mae_core/market/`) are fully bootstrapped as Layer 33 -- wired into EventBus, ConnectionRegistry, HolonRegistry, fractal hierarchy, endocrine coupling, and step hooks. 16 systems, 23 triadic connections, 20 holons.
 
 ---
 
