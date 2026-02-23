@@ -133,7 +133,8 @@ class SAMGovClient:
     Tracks federal contract solicitations and awards.
     """
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, provider=None):
+        self._provider = provider
         self.session = requests.Session()
         self.api_key = api_key or SAM_GOV_API_KEY
         self._last_request_time = 0
@@ -187,12 +188,24 @@ class SAMGovClient:
         if response_deadline_from:
             params["rdlfrom"] = response_deadline_from
 
-        try:
-            response = self.session.get(
-                f"{SAM_GOV_BASE}/search",
-                params=params,
-                timeout=30
+        url = f"{SAM_GOV_BASE}/search"
+
+        if self._provider is not None:
+            from mae_core.market.apis.market_data_provider import market_request
+            from mae_core.external.api_client import ApiResponseStatus
+            resp = market_request(
+                self._provider, url, params=params,
+                source_name="sam_gov", timeout_ms=30000.0,
             )
+            if resp.status == ApiResponseStatus.SUCCESS:
+                data = resp.payload or {}
+                opportunities = data.get("opportunitiesData", [])
+                return [self._parse_opportunity(opp) for opp in opportunities]
+            logger.warning("SAM.gov search failed via provider: %s", resp.error_message)
+            return []
+
+        try:
+            response = self.session.get(url, params=params, timeout=30)
 
             if response.status_code == 200:
                 data = response.json()

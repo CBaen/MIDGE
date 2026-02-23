@@ -143,3 +143,48 @@ class MarketDataProvider(BaseProvider):
     def close(self) -> None:
         """Close the underlying session."""
         self._session.close()
+
+
+def market_request(
+    provider: MarketDataProvider,
+    url: str,
+    method: str = "GET",
+    headers: dict | None = None,
+    params: dict | None = None,
+    json_body: dict | None = None,
+    source_name: str = "",
+    timeout_ms: float = 30000.0,
+) -> ApiResponse:
+    """Route an HTTP request through MarketDataProvider.
+
+    Convenience function that builds ApiRequest and calls provider.execute(),
+    eliminating boilerplate across all market API clients.
+
+    Args:
+        provider: MarketDataProvider instance
+        url: Target URL
+        method: HTTP method (GET or POST)
+        headers: Extra request headers (auth, user-agent, etc.)
+        params: Query string parameters
+        json_body: POST JSON body (only for POST)
+        source_name: BoundaryMembrane classification key
+        timeout_ms: Request timeout in milliseconds
+
+    Returns:
+        ApiResponse with status and payload
+    """
+    request = ApiRequest(
+        request_id=str(uuid.uuid4()),
+        provider="market_data",
+        endpoint=url,
+        payload={
+            "url": url,
+            "method": method,
+            "headers": headers or {},
+            "params": params or {},
+            "json_body": json_body,
+            "source_name": source_name,
+        },
+        timeout_ms=timeout_ms,
+    )
+    return provider.execute(request, timeout_ms=timeout_ms)

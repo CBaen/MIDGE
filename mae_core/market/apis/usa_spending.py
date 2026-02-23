@@ -81,7 +81,8 @@ class USASpendingClient:
     API documentation: https://api.usaspending.gov/
     """
 
-    def __init__(self):
+    def __init__(self, provider=None):
+        self._provider = provider
         self.session = requests.Session()
         self.session.headers.update({
             "Content-Type": "application/json"
@@ -98,11 +99,24 @@ class USASpendingClient:
     def _post(self, endpoint: str, data: dict) -> Optional[dict]:
         """Make rate-limited POST request."""
         self._rate_limit()
+
+        url = f"{USASPENDING_API}/{endpoint}"
+
+        if self._provider is not None:
+            from mae_core.market.apis.market_data_provider import market_request
+            from mae_core.external.api_client import ApiResponseStatus
+            resp = market_request(
+                self._provider, url, method="POST",
+                json_body=data, source_name="usa_spending", timeout_ms=60000.0,
+            )
+            if resp.status == ApiResponseStatus.SUCCESS:
+                return resp.payload
+            logger.warning("USASpending API error via provider: %s", resp.error_message)
+            return None
+
         try:
             response = self.session.post(
-                f"{USASPENDING_API}/{endpoint}",
-                json=data,
-                timeout=60
+                url, json=data, timeout=60
             )
             if response.status_code == 200:
                 return response.json()

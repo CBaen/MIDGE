@@ -51,14 +51,16 @@ class PriceFetcher:
         print(f"AAPL: ${price.price}")
     """
 
-    def __init__(self, alpha_vantage_key: str = None):
+    def __init__(self, alpha_vantage_key: str = None, provider=None):
         """
         Initialize price fetcher.
 
         Args:
             alpha_vantage_key: Optional Alpha Vantage API key for fallback
+            provider: Optional MarketDataProvider for gateway routing
         """
         self.alpha_vantage_key = alpha_vantage_key
+        self._provider = provider
         self._cache: Dict[str, Tuple[PriceData, datetime]] = {}
         self._cache_ttl = 60  # Cache prices for 60 seconds
 
@@ -218,15 +220,27 @@ class PriceFetcher:
             return None
 
         try:
-            url = (
-                f"https://www.alphavantage.co/query"
-                f"?function=GLOBAL_QUOTE"
-                f"&symbol={symbol}"
-                f"&apikey={self.alpha_vantage_key}"
-            )
+            params = {
+                "function": "GLOBAL_QUOTE",
+                "symbol": symbol,
+                "apikey": self.alpha_vantage_key,
+            }
 
-            response = requests.get(url, timeout=10)
-            data = response.json()
+            if self._provider is not None:
+                from mae_core.market.apis.market_data_provider import market_request
+                from mae_core.external.api_client import ApiResponseStatus
+                url = "https://www.alphavantage.co/query"
+                resp = market_request(
+                    self._provider, url, params=params,
+                    source_name="alpha_vantage", timeout_ms=10000.0,
+                )
+                if resp.status != ApiResponseStatus.SUCCESS:
+                    return None
+                data = resp.payload or {}
+            else:
+                url = "https://www.alphavantage.co/query"
+                response = requests.get(url, params=params, timeout=10)
+                data = response.json()
 
             quote = data.get("Global Quote", {})
             if quote:

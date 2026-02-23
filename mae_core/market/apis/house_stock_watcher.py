@@ -120,7 +120,8 @@ class HouseStockWatcherClient:
     Data is based on STOCK Act disclosures.
     """
 
-    def __init__(self, rapidapi_key: Optional[str] = None):
+    def __init__(self, rapidapi_key: Optional[str] = None, provider=None):
+        self._provider = provider
         self.session = requests.Session()
         self.session.headers.update({
             "User-Agent": "MIDGE Trading Research"
