@@ -27,6 +27,31 @@ SEC_USER_AGENT = "MIDGE Trading Research cameronbpaul@gmail.com"
 REQUEST_DELAY = 0.15  # 150ms between requests
 
 
+class _ResponseShim:
+    """Minimal Response-like wrapper for MarketDataProvider results.
+
+    Allows SEC EDGAR callers to continue using .json(), .text, .content
+    without knowing the request was routed through the provider.
+    """
+
+    def __init__(self, payload):
+        self._payload = payload
+        self.status_code = 200
+
+    @property
+    def text(self) -> str:
+        if isinstance(self._payload, dict) and "text" in self._payload:
+            return self._payload["text"]
+        return ""
+
+    @property
+    def content(self) -> bytes:
+        return self.text.encode("utf-8")
+
+    def json(self):
+        return self._payload
+
+
 class SECEdgarClient:
     """
     Client for SEC EDGAR API.
@@ -34,7 +59,8 @@ class SECEdgarClient:
     Respects rate limits and uses required User-Agent header.
     """
 
-    def __init__(self, user_agent: str = SEC_USER_AGENT):
+    def __init__(self, user_agent: str = SEC_USER_AGENT, provider=None):
+        self._provider = provider
         self.user_agent = user_agent
         self.session = requests.Session()
         self.session.headers.update({
@@ -53,6 +79,20 @@ class SECEdgarClient:
     def _get(self, url: str, params: dict = None) -> Optional[requests.Response]:
         """Make rate-limited GET request."""
         self._rate_limit()
+
+        if self._provider is not None:
+            from mae_core.market.apis.market_data_provider import market_request
+            from mae_core.external.api_client import ApiResponseStatus
+            resp = market_request(
+                self._provider, url,
+                headers={"User-Agent": self.user_agent, "Accept-Encoding": "gzip, deflate"},
+                params=params, source_name="sec_edgar", timeout_ms=30000.0,
+            )
+            if resp.status == ApiResponseStatus.SUCCESS:
+                return _ResponseShim(resp.payload)
+            logger.warning("SEC EDGAR error via provider: %s", resp.error_message)
+            return None
+
         try:
             response = self.session.get(url, params=params, timeout=30)
             if response.status_code == 200:

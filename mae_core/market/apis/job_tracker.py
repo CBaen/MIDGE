@@ -223,7 +223,7 @@ class JobTracker:
         self._rate_limit()
 
         try:
-            response = self.session.get(
+            data = self._request(
                 f"{GLASSDOOR_BASE}/company-jobs",
                 headers=self._get_headers(GLASSDOOR_HOST),
                 params={
@@ -231,17 +231,12 @@ class JobTracker:
                     "page": 1,
                     "sort": "MOST_RELEVANT",
                     "max_age_days": max_age_days,
-                    "domain": "www.glassdoor.com"
+                    "domain": "www.glassdoor.com",
                 },
-                timeout=30
             )
-
-            if response.status_code == 200:
-                data = response.json()
+            if data is not None:
                 return data.get("jobs", data.get("data", []))
-            else:
-                logger.warning(f"Glassdoor failed ({response.status_code})")
-                return []
+            return []
 
         except Exception as e:
             logger.warning(f"Glassdoor error: {str(e)[:50]}")
