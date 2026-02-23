@@ -222,6 +222,9 @@ def convert_to_signals(results: dict) -> List[MarketSignal]:
 
     for trade in results["congressional_trades"]:
         try:
+            # Filter: trades below $50K are economically unactionable noise
+            if trade.amount_high < 50_000:
+                continue
             signals.append(from_congressional_trade(trade))
         except Exception as e:
             logger.debug(f"  Signal conversion failed (congressional): {e}")

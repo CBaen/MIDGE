@@ -369,6 +369,90 @@ class ConvergenceAlerter:
 
         return status
 
+    def check_ticker_convergence(self, min_domains: int = 2) -> List[ConvergenceAlert]:
+        """Per-ticker convergence — more actionable than global domain convergence.
+
+        Groups signals by symbol, then checks if multiple domains converge
+        on the same ticker. A ticker with insider buying + hiring bullish +
+        contract award across 3 domains is far stronger than 3 domains
+        globally bullish on different stocks.
+
+        Args:
+            min_domains: Minimum different domains with signals on the same ticker
+
+        Returns:
+            List of ConvergenceAlert objects, one per ticker with sufficient convergence
+        """
+        self._prune_old_signals()
+
+        # Group all signals by symbol
+        by_ticker: Dict[str, Dict[str, List[Signal]]] = defaultdict(lambda: defaultdict(list))
+        for domain, signals in self.signals.items():
+            for sig in signals:
+                symbol = sig.metadata.get("symbol", "")
+                if symbol:
+                    by_ticker[symbol][domain].append(sig)
+
+        alerts = []
+        for ticker, domain_signals in by_ticker.items():
+            if len(domain_signals) < min_domains:
+                continue
+
+            # Check convergence for this ticker in each direction
+            for direction in ("bullish", "bearish"):
+                converging = []
+                domains_seen = set()
+                categories_seen = set()
+
+                for domain, sigs in domain_signals.items():
+                    matching = [s for s in sigs if s.direction == direction]
+                    if matching:
+                        strongest = max(matching, key=lambda s: s.strength)
+                        converging.append(strongest)
+                        domains_seen.add(domain)
+                        categories_seen.add(self.domain_categories.get(domain, domain))
+
+                if len(domains_seen) < min_domains:
+                    continue
+
+                avg_strength = sum(s.strength for s in converging) / len(converging)
+                avg_confidence = sum(s.confidence for s in converging) / len(converging)
+                cross_domain_count = len(categories_seen)
+                confidence_boost = min(0.2, 0.05 * (cross_domain_count - 1))
+                final_confidence = min(0.95, avg_confidence + confidence_boost)
+
+                avg_velocity = sum(abs(s.velocity) for s in converging) / len(converging)
+                if avg_velocity > 0.1:
+                    urgency = "immediate"
+                elif avg_velocity > 0.05:
+                    urgency = "hours"
+                else:
+                    urgency = "days"
+
+                domain_list = ", ".join(sorted(domains_seen))
+                summary = (
+                    f"TICKER {ticker} {direction.upper()}: {len(domains_seen)} domains "
+                    f"({domain_list}) | strength={avg_strength:.2f}, "
+                    f"confidence={final_confidence:.2f}, urgency={urgency}"
+                )
+
+                self._alert_counter += 1
+                alert = ConvergenceAlert(
+                    alert_id=f"TCKR-{ticker}-{datetime.now().strftime('%Y%m%d')}-{self._alert_counter:04d}",
+                    timestamp=datetime.now(),
+                    direction=direction,
+                    strength=avg_strength,
+                    confidence=final_confidence,
+                    domains_converging=sorted(domains_seen),
+                    signals=converging,
+                    cross_domain_count=cross_domain_count,
+                    summary=summary,
+                    urgency=urgency
+                )
+                alerts.append(alert)
+
+        return alerts
+
     def get_convergence_matrix(self) -> Dict[str, Dict[str, int]]:
         """
         Get matrix of which domains agree with each other.

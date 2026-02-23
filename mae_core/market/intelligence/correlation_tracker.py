@@ -222,10 +222,12 @@ class CorrelationTracker:
                     variance = sum((c - pair.historical_mean) ** 2 for c in history) / len(history)
                     pair.historical_std = math.sqrt(variance) if variance > 0 else 0.1
 
-                    # Compute z-score
+                    # Compute z-score with Bonferroni correction for multiple comparisons
                     if pair.historical_std > 0:
                         pair.correlation_zscore = (corr - pair.historical_mean) / pair.historical_std
-                        pair.is_anomalous = abs(pair.correlation_zscore) >= self.anomaly_threshold
+                        n_pairs = max(1, len(self.correlations))
+                        adjusted_threshold = self.anomaly_threshold + math.log(n_pairs) * 0.5
+                        pair.is_anomalous = abs(pair.correlation_zscore) >= adjusted_threshold
 
     def get_correlation(self, signal_a: str, signal_b: str) -> Optional[float]:
         """Get current correlation between two signals."""
