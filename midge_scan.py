@@ -37,6 +37,7 @@ from mae_core.market.signal import (
 )
 from mae_core.market.intelligence.convergence_alerter import ConvergenceAlerter
 from mae_core.market.intelligence.velocity_detector import VelocityDetector
+from mae_core.market.intelligence.outcome_collector import OutcomeCollector
 from mae_core.market.edge.filing_time_analyzer import FilingTimeAnalyzer
 from mae_core.market.memory import SignalMemory
 
@@ -52,6 +53,22 @@ DATA_DIR = Path(__file__).parent / "data" / "midge"
 SCANS_DIR = DATA_DIR / "scans"
 SIGNALS_DIR = DATA_DIR / "signals"
 
+# Multi-timeframe convergence: route signals by source → tier
+TIER_ROUTING = {
+    # Tier 1 Tactical (48h) — fast-decaying signals priced in hours/days
+    "sec_form4": "tactical",
+    "sec_form8k": "tactical",
+    # Tier 2 Strategic (21d) — medium persistence, weeks-scale information
+    "congressional": "strategic",
+    "contract": "strategic",
+    "insider_cluster": "strategic",
+    "correlation": "strategic",
+    # Tier 3 Thematic (90d) — slow-moving, months-scale patterns
+    "sam_gov": "thematic",
+    "hiring_tracker": "thematic",
+    "contract_prediction": "thematic",
+}
+
 
 # ── Phase 1: Setup ────────────────────────────────────────────────────────
 
@@ -62,7 +79,7 @@ def load_watchlist(path: Path) -> dict:
 
 
 def setup(args):
-    """Initialize all components. Returns (clients, alerter, memory, watchlist, velocity_detector, filing_analyzer)."""
+    """Initialize all components. Returns (clients, alerter, memory, watchlist, velocity_detector, filing_analyzer, outcome_collector)."""
     watchlist_path = Path(args.watchlist) if args.watchlist else DATA_DIR / "watchlist.json"
     watchlist = load_watchlist(watchlist_path)
     logger.info(
@@ -106,7 +123,13 @@ def setup(args):
     velocity_detector = VelocityDetector()
     filing_analyzer = FilingTimeAnalyzer()
 
-    return clients, alerter, memory, watchlist, velocity_detector, filing_analyzer
+    # Outcome collector — bridges signals → predictions → Thompson feedback loop
+    from mae_core.market.intelligence.thompson_sampler import ThompsonSampler
+    thompson = ThompsonSampler()
+    outcome_collector = OutcomeCollector(clients["price"], thompson)
+    logger.info(f"Outcome collector: {outcome_collector.get_statistics()['registered_signals']} signals tracked")
+
+    return clients, alerter, memory, watchlist, velocity_detector, filing_analyzer, outcome_collector
 
 
 # ── Phase 2: Fetch ────────────────────────────────────────────────────────
@@ -395,6 +418,7 @@ def write_report(
     signals: List[MarketSignal],
     analysis: dict,
     results: dict,
+    outcome_stats: dict = None,
 ) -> Path:
     """Write markdown intelligence report. Returns path to report."""
     SCANS_DIR.mkdir(parents=True, exist_ok=True)
@@ -512,6 +536,16 @@ def write_report(
             )
         lines.append("")
 
+    # Outcome Tracking
+    if outcome_stats:
+        lines.append("## Outcome Tracking (Thompson Feedback Loop)")
+        lines.append("")
+        lines.append(f"- Signals tracked: {outcome_stats.get('registered_signals', 0)}")
+        lines.append(f"- Pending predictions: {outcome_stats.get('pending_predictions', 0)}")
+        lines.append(f"- Total evaluated: {outcome_stats.get('total_evaluated', 0)}")
+        lines.append(f"- Success threshold: {outcome_stats.get('success_threshold_pct', 5.0)}% price move")
+        lines.append("")
+
     # Prices snapshot
     if results["prices"]:
         lines.append("## Price Snapshot")
@@ -528,7 +562,7 @@ def write_report(
     return report_path
 
 
-def print_summary(signals: List[MarketSignal], analysis: dict, report_path: Path):
+def print_summary(signals: List[MarketSignal], analysis: dict, report_path: Path, outcome_stats: dict = None):
     """Print concise summary to stdout."""
     summary = analysis["summary"]
     alerts = analysis["alerts"]
@@ -562,6 +596,12 @@ def print_summary(signals: List[MarketSignal], analysis: dict, report_path: Path
         for alert in ticker_alerts:
             print(f"    [{alert.urgency}] {alert.summary}")
 
+    if outcome_stats:
+        print()
+        print(f"  OUTCOME TRACKING: {outcome_stats.get('registered_signals', 0)} tracked, "
+              f"{outcome_stats.get('pending_predictions', 0)} pending, "
+              f"{outcome_stats.get('total_evaluated', 0)} evaluated")
+
     print()
     print(f"  Report: {report_path}")
     print()
@@ -582,15 +622,15 @@ def main():
     print("=" * 60)
 
     # Phase 1: Setup
-    logger.info("Phase 1/6: Setup")
-    clients, alerter, memory, watchlist, velocity_detector, filing_analyzer = setup(args)
+    logger.info("Phase 1/7: Setup")
+    clients, alerter, memory, watchlist, velocity_detector, filing_analyzer, outcome_collector = setup(args)
 
     # Phase 2: Fetch
-    logger.info("Phase 2/6: Fetching live data from all sources...")
+    logger.info("Phase 2/7: Fetching live data from all sources...")
     results = fetch_all(clients, watchlist)
 
     # Phase 3: Convert
-    logger.info("Phase 3/6: Converting to MarketSignals...")
+    logger.info("Phase 3/7: Converting to MarketSignals...")
     signals = convert_to_signals(results)
     logger.info(f"  {len(signals)} signals created")
 
@@ -600,7 +640,7 @@ def main():
         sys.exit(1)
 
     # Phase 4: Store + Feed
-    logger.info("Phase 4/6: Storing signals and feeding convergence engine...")
+    logger.info("Phase 4/7: Storing signals and feeding convergence engine...")
     store_and_feed(
         signals, alerter, memory,
         dry_run=args.dry_run,
@@ -608,15 +648,23 @@ def main():
         filing_analyzer=filing_analyzer,
     )
 
-    # Phase 5: Analyze
-    logger.info("Phase 5/6: Running convergence analysis...")
+    # Phase 5: Outcome tracking (Thompson feedback loop)
+    logger.info("Phase 5/7: Registering predictions and evaluating outcomes...")
+    registered = outcome_collector.register_signals(signals)
+    evaluated = outcome_collector.evaluate()
+    if registered or evaluated:
+        logger.info(f"  Registered: {registered} new predictions, Evaluated: {evaluated} matured outcomes")
+    outcome_stats = outcome_collector.get_statistics()
+
+    # Phase 6: Analyze
+    logger.info("Phase 6/7: Running convergence analysis...")
     analysis = analyze(alerter)
 
-    # Phase 6: Report
-    logger.info("Phase 6/6: Writing intelligence report...")
-    report_path = write_report(signals, analysis, results)
+    # Phase 7: Report
+    logger.info("Phase 7/7: Writing intelligence report...")
+    report_path = write_report(signals, analysis, results, outcome_stats)
 
-    print_summary(signals, analysis, report_path)
+    print_summary(signals, analysis, report_path, outcome_stats)
 
 
 if __name__ == "__main__":
