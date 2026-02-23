@@ -93,7 +93,7 @@ Fixed 3 bugs found in live scan output, defined data schema:
 
 - **2473 tests pass, 0 failures**
 - **108 systems** (92 core + 16 market), **127 holons**, **336 connections** (211 core + 47 fractal + 55 bootstrap + 23 market)
-- **25 market files** in `mae_core/market/` (bootstrapped as Layer 33, + memory.py, outcome_collector.py, sensing_hook.py)
+- **31 market files** in `mae_core/market/` (bootstrapped as Layer 33 + 6 new API clients: senate, apewisdom, finra, efts, finnhub, fred)
 - **33-layer bootstrap** runs cleanly (Layers 33a-33i)
 - **Agent-based market sensing active** — 3 agents differentiated (SEC_WATCHER, CONTRACT_TRACKER, MARKET_ANALYST)
 - **7-phase scan pipeline** still available as standalone (`midge_scan.py`)
@@ -103,7 +103,7 @@ Fixed 3 bugs found in live scan output, defined data schema:
 
 ```
 Bootstrap Layer 33h: MarketSensingHook wired as step hook
-  ├─ Async fetch on 50-step cadence (rotating: form4 → 8k → congressional → hiring → usaspending → sam.gov)
+  ├─ Async fetch on 50-step cadence (12-source rotation: form4 → 8k → congress → senate → hiring → usaspending → sam.gov → reddit → finra → efts → finnhub → fred)
   ├─ Signals → convergence_alerter (global) + 3 tiered alerters
   ├─ Signals → Qdrant + JSONL archive
   └─ Outcome evaluation on 200-step cadence → Thompson update
@@ -123,7 +123,7 @@ Data channels to agents:
 
 ```
 Phase 1/7: Setup — clients, alerter, 3 tiered alerters, memory, velocity, filing, outcome collector
-Phase 2/7: Fetch — 8 data sources (SEC, congressional, jobs, USASpending, SAM.gov, prices)
+Phase 2/7: Fetch — 14 data sources (SEC Form4/8K/EFTS, House/Senate trades, jobs, USASpending, SAM.gov, prices, Reddit, FINRA short, Finnhub news/earnings, FRED macro)
 Phase 3/7: Convert — raw results → MarketSignals (with filters: 10b5-1, $50K min, log-linear)
 Phase 4/7: Store + Feed — Qdrant + JSONL, enriched with velocity + filing-time modifiers, fed to global + tiered alerters
 Phase 5/7: Outcome tracking — register predictions with per-type windows, evaluate matured outcomes → Thompson update
@@ -135,8 +135,8 @@ Phase 7/7: Report — markdown intelligence report with all sections
 
 | Subpackage | Files | Purpose |
 |------------|-------|---------|
-| `apis/sec_edgar/` | 3 (models, client, __init__) | SEC insider trades + material events |
-| `apis/` | 7 (price_fetcher, house_stock_watcher, job_tracker, usa_spending, sam_gov, ticker_resolver, market_data_provider) | Market data sources + utilities |
+| `apis/sec_edgar/` | 4 (models, client, efts, __init__) | SEC insider trades + material events + full-text search |
+| `apis/` | 13 (price_fetcher, house_stock_watcher, senate_stock_watcher, job_tracker, usa_spending, sam_gov, apewisdom, finra_short_interest, finnhub_client, fred_client, ticker_resolver, market_data_provider) | 14 data sources + utilities |
 | `edge/` | 4 (cluster_detector, politician_tracker, filing_time_analyzer, contract_predictor) | Pattern recognition |
 | `intelligence/` | 7 (thompson_sampler, velocity_detector, correlation_tracker, convergence_alerter, learning_config, regime_classifier, outcome_collector) | Bayesian learning + feedback loop |
 | `root` | 5 (signal.py, channels.py, outcome_tracker.py, memory.py, sensing_hook.py) | Integration layer + sensing + Qdrant persistence |
@@ -150,12 +150,11 @@ Phase 7/7: Report — markdown intelligence report with all sections
 These items from the triadic deliverable are deferred until the outcome collector has produced enough calibrated results:
 
 1. **Options flow via Unusual Whales** ($35/mo API, "options" domain, sweep orders >$100K)
-2. **Senate Stock Watcher** (mirror house_stock_watcher.py for senatestockwatcher.com)
-3. **8-K text sentiment via Ollama** (local model classifies 8-K text)
-4. **Thompson-weighted convergence** (weight signal contribution by sampled reliability)
-5. **Lag-correlation analysis** (which signals genuinely lead others)
-6. **Compressed cluster detector** (time-spread scoring within insider clusters)
-7. **Position sizing** (Kelly criterion after 100+ outcomes)
+2. **8-K text sentiment via Ollama** (local model classifies 8-K text)
+3. **Thompson-weighted convergence** (weight signal contribution by sampled reliability)
+4. **Lag-correlation analysis** (which signals genuinely lead others)
+5. **Compressed cluster detector** (time-spread scoring within insider clusters)
+6. **Position sizing** (Kelly criterion after 100+ outcomes)
 
 ### Alpha's Standing Dissent
 
@@ -176,7 +175,7 @@ Welcome. MIDGE is Mae differentiated for financial markets. Here is what you nee
 7. **All 8 Mathematical Laws are satisfied.** See implementation plan Section 12 for compliance map.
 8. **2473 tests must keep passing.** Zero regressions.
 9. **Deep memory runs on Qdrant** container (port 6333). Start with `docker compose up -d`.
-10. **API keys** needed: RAPIDAPI_KEY (job tracker, congressional trades), ALPHA_VANTAGE_KEY (price fallback), SAM_GOV_API_KEY, MAE_TAVILY_API_KEY. SEC EDGAR, yfinance, and USASpending are free.
+10. **API keys** needed: RAPIDAPI_KEY (job tracker, congressional trades), ALPHA_VANTAGE_KEY (price fallback), SAM_GOV_API_KEY, MAE_TAVILY_API_KEY, MAE_FINNHUB_API_KEY (news sentiment + earnings), FRED_API_KEY (macro indicators). Free/no-key: SEC EDGAR, yfinance, USASpending, Senate Stock Watcher, ApeWisdom, FINRA short volume, SEC EFTS.
 11. **`python main.py --agents 6 --steps 500`** runs MIDGE with agents sensing the market. Requires 6 agents (K3 general + K3 market per Law 2).
 12. **`python midge_scan.py`** runs a standalone 7-phase scan (no bootstrap needed). Reports go to `data/midge/scans/`, signal archives to `data/midge/signals/`. Use `--dry-run` to skip Qdrant.
 13. **`python test_live_apis.py`** tests all 8 API connections individually.
@@ -186,6 +185,9 @@ Welcome. MIDGE is Mae differentiated for financial markets. Here is what you nee
 ---
 
 ## Previous Sessions
+
+### Phase 2 API Expansion (2026-02-22)
+Added 6 new data sources, expanding MIDGE from 6 to 12 sensing sources. Built: SenateStockWatcherClient (GitHub JSON mirror), ApeWisdomClient (Reddit/WSB mention velocity), FINRAShortInterestClient (daily short volume), SECFullTextSearchClient (EFTS keyword search), FinnhubClient (news sentiment + earnings calendar), FREDClient (yield curve, VIX, credit spread, rates, unemployment). All wired into MarketSensingHook source rotation, bootstrap instantiation, convergence tier routing, BoundaryMembrane trust scores. 7 new signal adapters in signal.py. 2473 tests pass.
 
 ### Agent-Based Market Sensing (2026-02-22)
 Wired market intelligence through Mae's agent system. Created MarketSensingHook (sensing_hook.py) for async data fetching in step loop. Added Layer 33h (hook wiring + tiered alerters + advisory bridge) and 33i (agent differentiation into SEC_WATCHER/CONTRACT_TRACKER/MARKET_ANALYST). Two data channels: endocrine (already wired, now has data) + market advisory dict (new). Oracle pathway functional via MarketDataProvider.

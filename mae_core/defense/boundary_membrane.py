@@ -53,6 +53,7 @@ class MembranePassport:
     first_seen: int = 0
     access_count: int = 0
     is_self: bool = False
+    trust_floor: float = 0.0  # Pre-registered sources never decay below this
 
 
 class BoundaryMembrane:
