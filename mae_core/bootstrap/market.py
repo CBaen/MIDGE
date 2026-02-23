@@ -147,6 +147,50 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         ctx.sam_gov_client = None
         failures += 1
 
+    # --- Phase 2 API clients (new free sources) ---
+
+    try:
+        from mae_core.market.apis.senate_stock_watcher import SenateStockWatcherClient
+        ctx.senate_stock_watcher = SenateStockWatcherClient(provider=provider)
+    except Exception:
+        logger.debug("Market: senate_stock_watcher failed to construct", exc_info=True)
+        ctx.senate_stock_watcher = None
+
+    try:
+        from mae_core.market.apis.apewisdom import ApeWisdomClient
+        ctx.apewisdom_client = ApeWisdomClient(provider=provider)
+    except Exception:
+        logger.debug("Market: apewisdom_client failed to construct", exc_info=True)
+        ctx.apewisdom_client = None
+
+    try:
+        from mae_core.market.apis.finra_short_interest import FINRAShortInterestClient
+        ctx.finra_client = FINRAShortInterestClient(provider=provider)
+    except Exception:
+        logger.debug("Market: finra_client failed to construct", exc_info=True)
+        ctx.finra_client = None
+
+    try:
+        from mae_core.market.apis.sec_edgar.efts import SECFullTextSearchClient
+        ctx.sec_efts_client = SECFullTextSearchClient(provider=provider)
+    except Exception:
+        logger.debug("Market: sec_efts_client failed to construct", exc_info=True)
+        ctx.sec_efts_client = None
+
+    try:
+        from mae_core.market.apis.finnhub_client import FinnhubClient
+        ctx.finnhub_client = FinnhubClient(provider=provider)
+    except Exception:
+        logger.debug("Market: finnhub_client failed to construct", exc_info=True)
+        ctx.finnhub_client = None
+
+    try:
+        from mae_core.market.apis.fred_client import FREDClient
+        ctx.fred_client = FREDClient(provider=provider)
+    except Exception:
+        logger.debug("Market: fred_client failed to construct", exc_info=True)
+        ctx.fred_client = None
+
     # --- Edge detectors ---
 
     try:
@@ -243,6 +287,8 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
     market_sources = [
         ("sec_edgar", 0.90), ("yfinance", 0.75), ("alpha_vantage", 0.80),
         ("rapidapi", 0.65), ("usa_spending", 0.85), ("sam_gov", 0.80),
+        ("senate_free", 0.80), ("apewisdom", 0.45), ("finra_short", 0.85),
+        ("sec_efts", 0.90), ("finnhub", 0.75), ("fred_macro", 0.95),
     ]
     if getattr(ctx, "boundary_membrane", None) is not None:
         for source_name, trust in market_sources:

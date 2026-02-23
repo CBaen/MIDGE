@@ -82,9 +82,15 @@ class MarketSensingHook:
         sec_client: Any = None,
         price_fetcher: Any = None,
         congress_client: Any = None,
+        senate_client: Any = None,
         job_tracker: Any = None,
         usa_spending: Any = None,
         sam_gov: Any = None,
+        apewisdom: Any = None,
+        finra_client: Any = None,
+        sec_efts: Any = None,
+        finnhub: Any = None,
+        fred: Any = None,
         convergence_alerter: Any = None,
         velocity_detector: Any = None,
         filing_analyzer: Any = None,
@@ -99,9 +105,15 @@ class MarketSensingHook:
         self._sec_client = sec_client
         self._price_fetcher = price_fetcher
         self._congress_client = congress_client
+        self._senate_client = senate_client
         self._job_tracker = job_tracker
         self._usa_spending = usa_spending
         self._sam_gov = sam_gov
+        self._apewisdom = apewisdom
+        self._finra_client = finra_client
+        self._sec_efts = sec_efts
+        self._finnhub = finnhub
+        self._fred = fred
 
         # Intelligence layer
         self._convergence_alerter = convergence_alerter
@@ -244,9 +256,16 @@ class MarketSensingHook:
             from_insider_trade,
             from_form8k_event,
             from_congressional_trade,
+            from_senate_trade,
             from_hiring_signal,
             from_government_contract,
             from_contract_opportunity,
+            from_social_sentiment,
+            from_short_interest,
+            from_filing_keyword,
+            from_news_sentiment,
+            from_earnings_event,
+            from_macro_indicator,
         )
 
         signals = []
@@ -260,6 +279,9 @@ class MarketSensingHook:
         elif source_name == "congressional":
             signals = self._fetch_congressional(from_congressional_trade)
 
+        elif source_name == "senate":
+            signals = self._fetch_senate(from_senate_trade)
+
         elif source_name == "hiring":
             signals = self._fetch_hiring(from_hiring_signal)
 
@@ -268,6 +290,21 @@ class MarketSensingHook:
 
         elif source_name == "sam_gov_and_prices":
             signals = self._fetch_sam_gov(from_contract_opportunity)
+
+        elif source_name == "social_sentiment":
+            signals = self._fetch_social_sentiment(from_social_sentiment)
+
+        elif source_name == "finra_short":
+            signals = self._fetch_finra_short(from_short_interest)
+
+        elif source_name == "sec_efts":
+            signals = self._fetch_sec_efts(from_filing_keyword)
+
+        elif source_name == "finnhub":
+            signals = self._fetch_finnhub(from_news_sentiment, from_earnings_event)
+
+        elif source_name == "fred_macro":
+            signals = self._fetch_fred(from_macro_indicator)
 
         return signals
 
@@ -364,6 +401,25 @@ class MarketSensingHook:
                 logger.debug("USASpending fetch failed for '%s': %s", keyword, e)
         return signals
 
+    def _fetch_senate(self, converter) -> list:
+        """Fetch Senate stock trades."""
+        if self._senate_client is None:
+            return []
+
+        signals = []
+        try:
+            trades = self._senate_client.get_recent_trades(days=30)
+            for trade in trades:
+                try:
+                    if trade.amount_high < 50_000:
+                        continue
+                    signals.append(converter(trade))
+                except Exception:
+                    pass
+        except Exception as e:
+            logger.debug("Senate trades fetch failed: %s", e)
+        return signals
+
     def _fetch_sam_gov(self, converter) -> list:
         """Fetch SAM.gov opportunities."""
         if self._sam_gov is None:
@@ -380,6 +436,117 @@ class MarketSensingHook:
                         pass
             except Exception as e:
                 logger.debug("SAM.gov fetch failed for '%s': %s", keyword, e)
+        return signals
+
+    def _fetch_social_sentiment(self, converter) -> list:
+        """Fetch Reddit/WSB social sentiment from ApeWisdom."""
+        if self._apewisdom is None:
+            return []
+
+        signals = []
+        try:
+            # Get accelerating tickers (2x+ mention velocity) — these are the signal
+            accelerating = self._apewisdom.get_accelerating_tickers(min_change=2.0, limit=10)
+            for sentiment in accelerating:
+                try:
+                    signals.append(converter(sentiment))
+                except Exception:
+                    pass
+
+            # Also check watchlist tickers directly
+            for ticker in self._watchlist.get("tickers", []):
+                try:
+                    sentiment = self._apewisdom.get_by_ticker(ticker)
+                    if sentiment is not None and sentiment.mention_change >= 1.5:
+                        signals.append(converter(sentiment))
+                except Exception:
+                    pass
+        except Exception as e:
+            logger.debug("ApeWisdom fetch failed: %s", e)
+        return signals
+
+    def _fetch_finra_short(self, converter) -> list:
+        """Fetch FINRA daily short volume — high short ratio tickers."""
+        if self._finra_client is None:
+            return []
+
+        signals = []
+        try:
+            # Get tickers with >50% short volume ratio
+            high_short = self._finra_client.get_high_short_ratio(min_ratio=0.5)
+            # Filter to watchlist + top 10 highest ratios
+            watchlist_tickers = set(self._watchlist.get("tickers", []))
+            for record in high_short:
+                try:
+                    if record.symbol in watchlist_tickers or high_short.index(record) < 10:
+                        signals.append(converter(record))
+                except Exception:
+                    pass
+        except Exception as e:
+            logger.debug("FINRA short volume fetch failed: %s", e)
+        return signals
+
+    def _fetch_sec_efts(self, converter) -> list:
+        """Fetch SEC EFTS full-text search keyword hits."""
+        if self._sec_efts is None:
+            return []
+
+        signals = []
+        try:
+            hits = self._sec_efts.scan_all_keywords(days=3)
+            for hit in hits:
+                try:
+                    signals.append(converter(hit))
+                except Exception:
+                    pass
+        except Exception as e:
+            logger.debug("SEC EFTS fetch failed: %s", e)
+        return signals
+
+    def _fetch_finnhub(self, news_converter, earnings_converter) -> list:
+        """Fetch Finnhub news sentiment + earnings surprises."""
+        if self._finnhub is None:
+            return []
+
+        signals = []
+
+        # News sentiment for watchlist tickers
+        for ticker in self._watchlist.get("tickers", []):
+            try:
+                sentiment = self._finnhub.get_news_sentiment(ticker)
+                if sentiment is not None:
+                    signals.append(news_converter(sentiment))
+            except Exception as e:
+                logger.debug("Finnhub news sentiment failed for %s: %s", ticker, e)
+
+        # Recent earnings surprises
+        try:
+            reported = self._finnhub.get_recent_earnings_surprises(days=7)
+            for event in reported:
+                try:
+                    signals.append(earnings_converter(event))
+                except Exception:
+                    pass
+        except Exception as e:
+            logger.debug("Finnhub earnings fetch failed: %s", e)
+
+        return signals
+
+    def _fetch_fred(self, converter) -> list:
+        """Fetch FRED macroeconomic indicators."""
+        if self._fred is None:
+            return []
+
+        signals = []
+        try:
+            snapshot = self._fred.get_macro_snapshot()
+            for indicator in snapshot:
+                try:
+                    signals.append(converter(indicator))
+                except Exception:
+                    pass
+        except Exception as e:
+            logger.debug("FRED macro fetch failed: %s", e)
         return signals
 
     # ------------------------------------------------------------------
