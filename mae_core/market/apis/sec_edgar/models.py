@@ -92,6 +92,8 @@ class InsiderTrade:
     filing_date: str = ""
     accession_number: str = ""
     form_type: str = "4"
+    is_plan_sale: bool = False  # True if 10b5-1 plan detected via footnotes
+    footnotes: str = ""  # Raw footnote text from filing (for audit trail)
     signal_source: str = "insider"
     decay_rate: float = 0.035  # ~20 day half-life (Lakonishok & Lee 2001)
 
