@@ -45,6 +45,15 @@ Ran a full triadic analysis (Lead/Alpha/Beta, 5-phase protocol) on "what modific
     - CorrelationSignal: 0.03→0.04 (17d)
 13. **Log-linear strength scale** — `signal.py:from_insider_trade()` replaced `min(1.0, value/1M)` with `min(1.0, log1p(value/100K) / log1p(10))`. $100K→0.42, $500K→0.73, $1M→0.83, $5M→0.95. No more cliff at $1M.
 
+### Bug Fixes + Schema (2026-02-22)
+
+Fixed 3 bugs found in live scan output, defined data schema:
+
+1. **10b5-1 plan sale detection (3-layer fix)** — `models.py` gained `is_plan_sale` and `footnotes` fields. `client.py` now extracts `transactionCode` from XML `<transactionCoding>` element AND scans `<footnotes>` for "10b5-1" references (both XML and HTML paths). `signal.py` checks `trade.is_plan_sale` for non-buy dispositions → strength * 0.25, confidence 0.40. Pichai/Kress/Bosworth scheduled sales now correctly penalized.
+2. **NaN ticker guard** — `house_stock_watcher.py` ticker guard now catches `"NaN"`, `"N/A"`, `"NONE"` strings. Cleaned stale `congressional:NaN:2026-01-26` from `registered_signals.json`.
+3. **Legacy prediction format** — `outcome_tracker.py` uses `pred.get("timestamp") or pred.get("predicted_at")` with graceful skip. 14 legacy predictions now processable.
+4. **Data schema** — `data/midge/SCHEMA.md` documents all 11 data types: MarketSignal (9 source-specific metadata shapes), predictions (current + legacy), outcomes, Thompson distributions, convergence alerts, decay rates, outcome windows, signal flow diagram.
+
 ---
 
 ## Current State

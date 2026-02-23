@@ -428,6 +428,7 @@ class SECEdgarClient:
                                     ticker_symbol=ticker_symbol,
                                     transaction_date=trans_date,
                                     transaction_type=acq_disp,
+                                    transaction_code=trans_code,
                                     shares=shares,
                                     price_per_share=price,
                                     total_value=shares * price,
@@ -435,7 +436,8 @@ class SECEdgarClient:
                                     filing_date="",
                                     accession_number=accession_number,
                                     form_type="4",
-                                    transaction_code=trans_code
+                                    is_plan_sale=is_plan_sale,
+                                    footnotes=footnotes_text,
                                 ))
                         except (ValueError, IndexError):
                             continue
