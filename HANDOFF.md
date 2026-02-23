@@ -70,6 +70,7 @@ All Phase 2 items from implementation plan Section 9 are done:
 - ~~Regime-aware Thompson Sampling~~ — RegimeClassifier (bull/bear/volatile/sideways/default from SPY 20-day return + annualized volatility). OutcomeTracker and step hooks pass detected regime to ThompsonSampler. Cached daily, graceful degradation to "default".
 - ~~Incremental client migration~~ — All 6 API clients (SEC EDGAR, PriceFetcher, HouseStockWatcher, JobTracker, USASpending, SAM.gov) route through MarketDataProvider when injected via bootstrap. 7 gateway routing tests added.
 - ~~SEC user agent email~~ — Updated to `cameronbpaul@gmail.com`, ready for live EDGAR queries
+- ~~Standalone scan + persistent memory~~ — `midge_scan.py` fetches all 8 sources, converts to MarketSignals, feeds ConvergenceAlerter, stores to Qdrant (`SignalMemory` in `mae_core/market/memory.py`) + JSONL. Writes markdown intelligence reports to `data/midge/scans/`. First scan: 245 signals, 1 convergence alert (bullish insider+institutional).
 
 ---
 
