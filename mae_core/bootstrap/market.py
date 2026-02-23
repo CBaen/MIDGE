@@ -804,9 +804,10 @@ def _differentiate_market_agents(ctx: SimpleNamespace) -> None:
     from mae_core.agents.stem_cell import redifferentiate
 
     agents = getattr(ctx, "agents", [])
-    if len(agents) < 3:
-        logger.warning(
-            "Layer 33i - Need at least 3 agents for market differentiation, have %d — skipping",
+    if len(agents) < 4:
+        logger.info(
+            "Layer 33i - Need at least 4 agents for market differentiation (3 market + 1 general), "
+            "have %d — skipping",
             len(agents),
         )
         return
