@@ -93,7 +93,8 @@ class JobTracker:
     to win a major contract.
     """
 
-    def __init__(self, rapidapi_key: Optional[str] = None):
+    def __init__(self, rapidapi_key: Optional[str] = None, provider=None):
+        self._provider = provider
         self.session = requests.Session()
         self.rapidapi_key = rapidapi_key or RAPIDAPI_KEY
         self._last_request_time = 0
@@ -115,6 +116,28 @@ class JobTracker:
             "x-rapidapi-key": self.rapidapi_key
         }
 
+    def _request(self, url: str, headers: Optional[Dict] = None,
+                 params: Optional[Dict] = None) -> Optional[dict]:
+        """Make a GET request through provider or session. Returns parsed JSON or None."""
+        if self._provider is not None:
+            from mae_core.market.apis.market_data_provider import market_request
+            from mae_core.external.api_client import ApiResponseStatus
+            resp = market_request(
+                self._provider, url, headers=headers,
+                params=params, source_name="rapidapi", timeout_ms=30000.0,
+            )
+            if resp.status == ApiResponseStatus.SUCCESS:
+                return resp.payload
+            return None
+
+        try:
+            response = self.session.get(url, headers=headers, params=params, timeout=30)
+            if response.status_code == 200:
+                return response.json()
+            return None
+        except Exception:
+            return None
+
     def get_recent_jobs_by_company(
         self,
         company_name: str,
@@ -130,30 +153,20 @@ class JobTracker:
 
         self._rate_limit()
 
-        try:
-            response = self.session.get(
-                f"{JSEARCH_BASE}/search",
-                headers=self._get_headers(JSEARCH_HOST),
-                params={
-                    "query": f"{company_name} jobs",
-                    "page": 1,
-                    "num_pages": 1,
-                    "country": country,
-                    "date_posted": "week"  # Last week
-                },
-                timeout=30
-            )
-
-            if response.status_code == 200:
-                data = response.json()
-                return data.get("data", [])
-            else:
-                logger.warning(f"JSearch failed ({response.status_code})")
-                return []
-
-        except Exception as e:
-            logger.warning(f"JSearch error: {str(e)[:50]}")
-            return []
+        data = self._request(
+            f"{JSEARCH_BASE}/search",
+            headers=self._get_headers(JSEARCH_HOST),
+            params={
+                "query": f"{company_name} jobs",
+                "page": 1,
+                "num_pages": 1,
+                "country": country,
+                "date_posted": "week",
+            },
+        )
+        if data is not None:
+            return data.get("data", [])
+        return []
 
     def get_jobs_last_24h(
         self,
@@ -181,19 +194,14 @@ class JobTracker:
             if title_filter:
                 params["title_filter"] = f'"{title_filter}"'
 
-            response = self.session.get(
+            data = self._request(
                 f"{ACTIVE_JOBS_BASE}/active-ats-24h",
                 headers=self._get_headers(ACTIVE_JOBS_HOST),
                 params=params,
-                timeout=30
             )
-
-            if response.status_code == 200:
-                data = response.json()
+            if data is not None:
                 return data if isinstance(data, list) else data.get("data", [])
-            else:
-                logger.warning(f"Active Jobs DB failed ({response.status_code})")
-                return []
+            return []
 
         except Exception as e:
             logger.warning(f"Active Jobs DB error: {str(e)[:50]}")

@@ -145,6 +145,31 @@ class HouseStockWatcherClient:
             time.sleep(REQUEST_DELAY - elapsed)
         self._last_request_time = time.time()
 
+    def _request(self, url: str, headers: Optional[Dict] = None,
+                 params: Optional[Dict] = None, source_name: str = "rapidapi") -> Optional[dict]:
+        """Make a GET request through provider or session. Returns parsed JSON or None."""
+        if self._provider is not None:
+            from mae_core.market.apis.market_data_provider import market_request
+            from mae_core.external.api_client import ApiResponseStatus
+            all_headers = {"User-Agent": "MIDGE Trading Research"}
+            if headers:
+                all_headers.update(headers)
+            resp = market_request(
+                self._provider, url, headers=all_headers,
+                params=params, source_name=source_name, timeout_ms=30000.0,
+            )
+            if resp.status == ApiResponseStatus.SUCCESS:
+                return resp.payload
+            return None
+
+        try:
+            response = self.session.get(url, headers=headers, params=params, timeout=30)
+            if response.status_code == 200:
+                return response.json()
+            return None
+        except Exception:
+            return None
+
     def _get_trades_from_rapidapi(self, limit: int = 100, offset: int = 0) -> List[dict]:
         """
         Fetch trades from RapidAPI US Congress Insider Trading.
@@ -156,29 +181,16 @@ class HouseStockWatcherClient:
 
         self._rate_limit()
 
-        try:
-            response = self.session.get(
-                f"{RAPIDAPI_BASE}/trades",
-                headers={
-                    "x-rapidapi-host": RAPIDAPI_HOST,
-                    "x-rapidapi-key": self.rapidapi_key
-                },
-                params={"limit": limit, "offset": offset},
-                timeout=30
-            )
-
-            if response.status_code == 200:
-                data = response.json()
-                trades = data if isinstance(data, list) else data.get("trades", data.get("data", []))
-                logger.debug(f"Loaded {len(trades)} trades from RapidAPI Congress Trading")
-                return trades
-            else:
-                logger.warning(f"RapidAPI failed ({response.status_code}): {response.text[:100]}")
-                return []
-
-        except Exception as e:
-            logger.warning(f"RapidAPI error: {str(e)[:50]}")
-            return []
+        data = self._request(
+            f"{RAPIDAPI_BASE}/trades",
+            headers={"x-rapidapi-host": RAPIDAPI_HOST, "x-rapidapi-key": self.rapidapi_key},
+            params={"limit": limit, "offset": offset},
+        )
+        if data is not None:
+            trades = data if isinstance(data, list) else data.get("trades", data.get("data", []))
+            logger.debug(f"Loaded {len(trades)} trades from RapidAPI Congress Trading")
+            return trades
+        return []
 
     def _get_all_trades(self, use_cache: bool = True) -> List[dict]:
         """
@@ -210,21 +222,13 @@ class HouseStockWatcherClient:
         ]
 
         for url, name in endpoints:
-            try:
-                response = self.session.get(url, timeout=30)
-
-                if response.status_code == 200:
-                    data = response.json()
-                    # Cache the result
-                    self._cache = data
-                    self._cache_time = time.time()
-                    logger.debug(f"Loaded {len(data)} trades from {name}")
-                    return data
-                else:
-                    logger.warning(f"{name} failed ({response.status_code}), trying next...")
-
-            except Exception as e:
-                logger.warning(f"{name} error: {str(e)[:50]}..., trying next...")
+            data = self._request(url, source_name="congressional_free")
+            if data is not None:
+                self._cache = data
+                self._cache_time = time.time()
+                logger.debug(f"Loaded {len(data)} trades from {name}")
+                return data
+            logger.warning(f"{name} failed, trying next...")
 
         logger.warning("All congressional trade endpoints failed")
         return []
@@ -432,27 +436,14 @@ class HouseStockWatcherClient:
 
         self._rate_limit()
 
-        try:
-            response = self.session.get(
-                f"{RAPIDAPI_BASE}/stats/top-politicians",
-                headers={
-                    "x-rapidapi-host": RAPIDAPI_HOST,
-                    "x-rapidapi-key": self.rapidapi_key
-                },
-                params={"limit": limit},
-                timeout=30
-            )
-
-            if response.status_code == 200:
-                data = response.json()
-                return data if isinstance(data, list) else data.get("data", [])
-            else:
-                logger.warning(f"top_politicians failed ({response.status_code})")
-                return []
-
-        except Exception as e:
-            logger.warning(f"top_politicians error: {str(e)[:50]}")
-            return []
+        data = self._request(
+            f"{RAPIDAPI_BASE}/stats/top-politicians",
+            headers={"x-rapidapi-host": RAPIDAPI_HOST, "x-rapidapi-key": self.rapidapi_key},
+            params={"limit": limit},
+        )
+        if data is not None:
+            return data if isinstance(data, list) else data.get("data", [])
+        return []
 
     def get_top_issuers(self, limit: int = 10) -> List[Dict]:
         """
@@ -469,27 +460,14 @@ class HouseStockWatcherClient:
 
         self._rate_limit()
 
-        try:
-            response = self.session.get(
-                f"{RAPIDAPI_BASE}/stats/top-issuers",
-                headers={
-                    "x-rapidapi-host": RAPIDAPI_HOST,
-                    "x-rapidapi-key": self.rapidapi_key
-                },
-                params={"limit": limit},
-                timeout=30
-            )
-
-            if response.status_code == 200:
-                data = response.json()
-                return data if isinstance(data, list) else data.get("data", [])
-            else:
-                logger.warning(f"top_issuers failed ({response.status_code})")
-                return []
-
-        except Exception as e:
-            logger.warning(f"top_issuers error: {str(e)[:50]}")
-            return []
+        data = self._request(
+            f"{RAPIDAPI_BASE}/stats/top-issuers",
+            headers={"x-rapidapi-host": RAPIDAPI_HOST, "x-rapidapi-key": self.rapidapi_key},
+            params={"limit": limit},
+        )
+        if data is not None:
+            return data if isinstance(data, list) else data.get("data", [])
+        return []
 
 
 def get_recent_trades(days: int = 30) -> List[CongressionalTrade]:
