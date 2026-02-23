@@ -139,6 +139,9 @@ class OutcomeTracker:
         today = datetime.now()
         remaining_predictions = []
 
+        # Load already-evaluated signal_ids to prevent duplication across runs
+        already_evaluated = self._load_evaluated_ids()
+
         # Read all predictions
         predictions = []
         with open(self.predictions_path, "r") as f:
@@ -161,8 +164,9 @@ class OutcomeTracker:
                     remaining_predictions.append(pred)
                     continue
 
-                # Skip if already evaluated (defensive guard)
-                if pred.get("evaluated", False):
+                # Skip if already evaluated (prevents duplication across runs)
+                signal_id = pred.get("signal_id", "")
+                if pred.get("evaluated", False) or signal_id in already_evaluated:
                     continue
 
                 outcome_symbol = pred.get("outcome_symbol") or pred.get("symbol", "")
