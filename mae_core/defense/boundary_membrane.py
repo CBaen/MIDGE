@@ -120,6 +120,7 @@ class BoundaryMembrane:
             first_seen=self._step_count,
             access_count=0,
             is_self=False,
+            trust_floor=max(0.35, trust * 0.5),  # Never decay below half initial trust (min 0.35 > rejection threshold 0.3)
         )
         self._known_sources[source] = passport
         logger.info("External source pre-trusted: %s (trust=%.2f)", source, trust)
@@ -240,6 +241,17 @@ class BoundaryMembrane:
                 "step": self._step_count,
             })
 
+    def refresh_trust(self, source: str, boost: float = 0.1) -> None:
+        """Refresh trust for a source after a successful interaction.
+
+        Biological analogy: Immune memory. Successfully processed molecules
+        get recognized faster next time. Without this, trust decays to zero
+        even for sources that are actively and successfully communicating.
+        """
+        passport = self._known_sources.get(source)
+        if passport is not None and not passport.is_self:
+            passport.trust_level = min(1.0, passport.trust_level + boost)
+
     def reject_quarantined(self, source: str) -> None:
         """Reject a quarantined source. Reduces trust by 0.3."""
         self._quarantine_queue = [
@@ -286,10 +298,13 @@ class BoundaryMembrane:
         """Per-step maintenance: trust decay, quarantine aging, permeability adaptation."""
         self._step_count = current_step if current_step > 0 else self._step_count + 1
 
-        # Decay trust for unseen sources (non-self only)
+        # Decay trust for unseen sources (non-self only), respecting floor
         for passport in self._known_sources.values():
             if not passport.is_self:
-                passport.trust_level *= 0.99
+                passport.trust_level = max(
+                    passport.trust_floor,
+                    passport.trust_level * 0.99,
+                )
 
         # Age quarantine items: auto-reject after 50 steps
         expired: list[str] = []
@@ -404,6 +419,7 @@ class BoundaryMembrane:
                 "first_seen": passport.first_seen,
                 "access_count": passport.access_count,
                 "is_self": passport.is_self,
+                "trust_floor": passport.trust_floor,
             }
         return {
             "known_sources": passports,
@@ -446,6 +462,7 @@ class BoundaryMembrane:
                 first_seen=pdata["first_seen"],
                 access_count=pdata["access_count"],
                 is_self=pdata["is_self"],
+                trust_floor=pdata.get("trust_floor", 0.0),
             )
 
         logger.info(

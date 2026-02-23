@@ -333,6 +333,12 @@ class ApiGateway:
                 response.tokens_in, response.tokens_out,
                 text, "..." if len(text) >= 100 else "",
             )
+            # Refresh provider trust — successful interaction = immune memory
+            if self._boundary_membrane is not None:
+                try:
+                    self._boundary_membrane.refresh_trust(request.provider)
+                except Exception:
+                    pass
             # Stage 3: Validate response through InputValidator
             if self._input_validator is not None:
                 try:
