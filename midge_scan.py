@@ -563,6 +563,43 @@ def write_report(
         lines.append("No per-ticker convergence detected.")
         lines.append("")
 
+    # Multi-Timeframe Convergence
+    tier_results = analysis.get("tier_results", {})
+    cross_tier = analysis.get("cross_tier", [])
+
+    if tier_results:
+        tier_labels = {"tactical": "Tactical (48h)", "strategic": "Strategic (21d)", "thematic": "Thematic (90d)"}
+        lines.append("## Multi-Timeframe Convergence")
+        lines.append("")
+        for tier_name in ("tactical", "strategic", "thematic"):
+            tier = tier_results.get(tier_name, {})
+            tier_alerts = tier.get("alerts", [])
+            tier_ticker = tier.get("ticker_alerts", [])
+            label = tier_labels.get(tier_name, tier_name)
+            lines.append(f"### {label}")
+            lines.append("")
+            if tier_alerts:
+                for alert in tier_alerts:
+                    lines.append(f"- [{alert.urgency}] {alert.direction} — {alert.summary}")
+            elif tier_ticker:
+                for alert in tier_ticker:
+                    lines.append(f"- [{alert.urgency}] {alert.summary}")
+            else:
+                lines.append("No convergence at this timeframe.")
+            lines.append("")
+
+    if cross_tier:
+        lines.append("### Cross-Tier Convergence")
+        lines.append("")
+        for ct in cross_tier:
+            tiers_str = " + ".join(ct["tiers"])
+            lines.append(
+                f"- **{ct['ticker']}** {ct['direction']} across {tiers_str} "
+                f"(str={ct['strength']:.2f}, conf={ct['confidence']:.2f}, "
+                f"confidence reduced 0.7x per Alpha's independence amendment)"
+            )
+        lines.append("")
+
     # Signal Counts by Source
     lines.append("## Signal Counts by Source")
     lines.append("")
@@ -673,6 +710,23 @@ def print_summary(signals: List[MarketSignal], analysis: dict, report_path: Path
         for alert in ticker_alerts:
             print(f"    [{alert.urgency}] {alert.summary}")
 
+    # Multi-timeframe summary
+    tier_results = analysis.get("tier_results", {})
+    cross_tier = analysis.get("cross_tier", [])
+    tier_labels = {"tactical": "Tactical(48h)", "strategic": "Strategic(21d)", "thematic": "Thematic(90d)"}
+    active_tiers = []
+    for tier_name in ("tactical", "strategic", "thematic"):
+        tier = tier_results.get(tier_name, {})
+        n_alerts = len(tier.get("alerts", [])) + len(tier.get("ticker_alerts", []))
+        if n_alerts:
+            active_tiers.append(f"{tier_labels[tier_name]}: {n_alerts}")
+    if active_tiers:
+        print()
+        print(f"  TIERED CONVERGENCE: {', '.join(active_tiers)}")
+    if cross_tier:
+        for ct in cross_tier:
+            print(f"    CROSS-TIER: {ct['ticker']} {ct['direction']} across {'+'.join(ct['tiers'])}")
+
     if outcome_stats:
         print()
         print(f"  OUTCOME TRACKING: {outcome_stats.get('registered_signals', 0)} tracked, "
@@ -735,7 +789,7 @@ def main():
 
     # Phase 6: Analyze
     logger.info("Phase 6/7: Running convergence analysis...")
-    analysis = analyze(alerter)
+    analysis = analyze(alerter, tiered_alerters)
 
     # Phase 7: Report
     logger.info("Phase 7/7: Writing intelligence report...")
