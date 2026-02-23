@@ -36,6 +36,8 @@ from mae_core.market.signal import (
     from_contract_opportunity,
 )
 from mae_core.market.intelligence.convergence_alerter import ConvergenceAlerter
+from mae_core.market.intelligence.velocity_detector import VelocityDetector
+from mae_core.market.edge.filing_time_analyzer import FilingTimeAnalyzer
 from mae_core.market.memory import SignalMemory
 
 logging.basicConfig(
@@ -60,7 +62,7 @@ def load_watchlist(path: Path) -> dict:
 
 
 def setup(args):
-    """Initialize all components. Returns (clients, alerter, memory, watchlist)."""
+    """Initialize all components. Returns (clients, alerter, memory, watchlist, velocity_detector, filing_analyzer)."""
     watchlist_path = Path(args.watchlist) if args.watchlist else DATA_DIR / "watchlist.json"
     watchlist = load_watchlist(watchlist_path)
     logger.info(
@@ -101,7 +103,10 @@ def setup(args):
     else:
         logger.info("Qdrant unavailable — signals will only persist to JSONL")
 
-    return clients, alerter, memory, watchlist
+    velocity_detector = VelocityDetector()
+    filing_analyzer = FilingTimeAnalyzer()
+
+    return clients, alerter, memory, watchlist, velocity_detector, filing_analyzer
 
 
 # ── Phase 2: Fetch ────────────────────────────────────────────────────────
