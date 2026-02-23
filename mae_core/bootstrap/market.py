@@ -37,6 +37,8 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
     _register_market_stem_roles(ctx)
     _register_market_eventbus(ctx)
     _register_market_step_hooks(ctx)
+    _wire_sensing_hook(ctx)
+    _differentiate_market_agents(ctx)
 
     # Count active systems
     market_attrs = [
@@ -660,4 +662,185 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
     logger.info(
         "Layer 33g - Market step hooks: 1 sense hook registered "
         "(cadence: convergence/1, stats/10, velocity/50, forgetting/100)"
+    )
+
+
+# =========================================================================
+# Layer 33h: Market Sensing Hook (data → convergence pipeline)
+# =========================================================================
+
+def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
+    """Wire the MarketSensingHook into the step lifecycle.
+
+    This is the critical missing link: data never flowed into the
+    convergence_alerter during agent runs. Everything downstream was
+    already wired (endocrine coupling, body state, advisory). This
+    function connects the sensory organs to the nervous system.
+
+    Biological analogy: Wiring the optic nerve — the eyes existed,
+    the visual cortex existed, but signals never traveled between them.
+    """
+    from mae_core.market.sensing_hook import MarketSensingHook
+    from mae_core.market.intelligence.convergence_alerter import ConvergenceAlerter
+    from mae_core.market.channels import CH_CONVERGENCE
+
+    # --- Tiered ConvergenceAlerters (tactical/strategic/thematic) ---
+    tiered_alerters = {}
+    try:
+        tiered_alerters["tactical"] = ConvergenceAlerter(
+            min_domains=2, window_hours=48,
+        )
+        tiered_alerters["strategic"] = ConvergenceAlerter(
+            min_domains=2, window_hours=21 * 24,
+        )
+        tiered_alerters["thematic"] = ConvergenceAlerter(
+            min_domains=2, window_hours=90 * 24,
+        )
+    except Exception:
+        logger.debug("Tiered alerter construction failed", exc_info=True)
+
+    # --- OutcomeCollector (signal → prediction → Thompson feedback) ---
+    outcome_collector = None
+    try:
+        from mae_core.market.intelligence.outcome_collector import OutcomeCollector
+        outcome_collector = OutcomeCollector(
+            price_fetcher=getattr(ctx, "price_fetcher", None),
+            thompson_sampler=getattr(ctx, "thompson_sampler", None),
+            regime_classifier=getattr(ctx, "regime_classifier", None),
+        )
+    except Exception:
+        logger.debug("OutcomeCollector construction failed", exc_info=True)
+
+    # --- SignalMemory (Qdrant persistence) ---
+    memory = None
+    try:
+        from mae_core.market.memory import SignalMemory
+        qdrant_url = getattr(ctx, "qdrant_url", "http://localhost:6333")
+        memory = SignalMemory(qdrant_url=qdrant_url)
+    except Exception:
+        logger.debug("SignalMemory construction failed", exc_info=True)
+
+    # --- Instantiate the sensing hook ---
+    try:
+        hook = MarketSensingHook(
+            sec_client=getattr(ctx, "sec_edgar_client", None),
+            price_fetcher=getattr(ctx, "price_fetcher", None),
+            congress_client=getattr(ctx, "house_stock_watcher", None),
+            job_tracker=getattr(ctx, "job_tracker", None),
+            usa_spending=getattr(ctx, "usa_spending_client", None),
+            sam_gov=getattr(ctx, "sam_gov_client", None),
+            convergence_alerter=getattr(ctx, "convergence_alerter", None),
+            velocity_detector=getattr(ctx, "velocity_detector", None),
+            filing_analyzer=getattr(ctx, "filing_time_analyzer", None),
+            outcome_collector=outcome_collector,
+            memory=memory,
+            tiered_alerters=tiered_alerters,
+        )
+    except Exception:
+        logger.warning("MarketSensingHook construction failed — agents will not sense market data", exc_info=True)
+        return
+
+    # --- Market advisory dict (Channel B: supplements endocrine Channel A) ---
+    # Separate from _latest_advisory which PatternCortex overwrites every step.
+    # Market-role agents read this in their decision cascade.
+    ctx._market_advisory = {"alert": None, "updated_step": 0}
+
+    # Wire convergence alerts into the advisory dict
+    _sensing_step_counter = [0]
+    original_step = hook.step
+
+    def _sensing_step_with_advisory():
+        """Wrap the sensing hook step to also update the market advisory."""
+        _sensing_step_counter[0] += 1
+        original_step()
+
+        # After sensing, check if convergence produced alerts
+        alerter = getattr(ctx, "convergence_alerter", None)
+        if alerter is not None:
+            try:
+                alerts = alerter.check_convergence()
+                if alerts:
+                    strongest = max(alerts, key=lambda a: a.strength)
+                    ctx._market_advisory["alert"] = (
+                        strongest.to_dict() if hasattr(strongest, "to_dict")
+                        else {"direction": strongest.direction, "strength": strongest.strength}
+                    )
+                    ctx._market_advisory["updated_step"] = _sensing_step_counter[0]
+            except Exception:
+                logger.debug("Advisory bridge failed", exc_info=True)
+
+    # Register the wrapped step hook
+    ctx.model.add_step_hook(_sensing_step_with_advisory)
+
+    # Store hook reference on ctx for monitoring
+    ctx._market_sensing_hook = hook
+
+    logger.info(
+        "Layer 33h - Market sensing hook wired: "
+        "async fetch (cadence=50), outcome tracking (cadence=200), "
+        "tiered alerters (%d), advisory bridge active",
+        len(tiered_alerters),
+    )
+
+
+# =========================================================================
+# Layer 33i: Agent differentiation into market roles
+# =========================================================================
+
+def _differentiate_market_agents(ctx: SimpleNamespace) -> None:
+    """Differentiate a subset of agents into market roles.
+
+    Law 5 in action: same genome, market-specialized epigenome.
+    Three agents get the roles that stem_cell.py already defines
+    (SEC_WATCHER, CONTRACT_TRACKER, MARKET_ANALYST) but that were
+    never actually applied to any agent.
+
+    These agents will:
+    - Have api_call_enabled=True → oracle pathway fires on high prediction error
+    - Have market-specific capabilities → GNN routing targets them for market tasks
+    - Have world_model_enabled=True → prediction/error correction active
+    - Read _market_advisory_ref in their decision cascade
+    """
+    from mae_core.agents.stem_cell import redifferentiate
+
+    agents = getattr(ctx, "agents", [])
+    if len(agents) < 3:
+        logger.warning(
+            "Layer 33i - Need at least 3 agents for market differentiation, have %d — skipping",
+            len(agents),
+        )
+        return
+
+    registry = getattr(ctx, "stem_cell_registry", None)
+
+    # Differentiate last 3 agents (leave earlier ones as general-purpose)
+    role_assignments = [
+        ("SEC_WATCHER", -3),
+        ("CONTRACT_TRACKER", -2),
+        ("MARKET_ANALYST", -1),
+    ]
+
+    market_advisory = getattr(ctx, "_market_advisory", None)
+    differentiated = 0
+
+    for role, idx in role_assignments:
+        try:
+            agent = agents[idx]
+            redifferentiate(agent, role, registry=registry, step=0)
+
+            # Inject market advisory reference so agent can read it in _observe()/_decide()
+            if market_advisory is not None:
+                agent._market_advisory_ref = market_advisory
+
+            differentiated += 1
+            logger.info(
+                "Market differentiation: agent %s → %s",
+                getattr(agent, "unique_id", id(agent)), role,
+            )
+        except Exception:
+            logger.debug("Failed to differentiate agent[%d] as %s", idx, role, exc_info=True)
+
+    logger.info(
+        "Layer 33i - Market agent differentiation: %d/%d agents differentiated",
+        differentiated, len(role_assignments),
     )
