@@ -62,14 +62,14 @@ class TestObservation:
         assert len(agent._sensed_markers["SUCCESS"]) >= 1
 
     def test_observe_builds_state_vector(self):
-        """_observe() builds an 8-dim state vector."""
+        """_observe() builds a 12-dim state vector (8 core + 4 market)."""
         agent = _make_agent()
         agent._observe()
 
         assert agent.current_state is not None
         vec = agent.current_state["state_vector"]
         assert isinstance(vec, np.ndarray)
-        assert vec.shape == (8,)
+        assert vec.shape == (12,)
 
     def test_observe_state_values_match_agent(self):
         """State vector values correspond to agent internal state."""
