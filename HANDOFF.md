@@ -126,10 +126,14 @@ Welcome. MIDGE is Mae differentiated for financial markets. Here is what you nee
 11. **`python midge_scan.py`** runs a full 7-phase market intelligence scan (no bootstrap needed). Reports go to `data/midge/scans/`, signal archives to `data/midge/signals/`. Use `--dry-run` to skip Qdrant.
 12. **`python test_live_apis.py`** tests all 8 API connections individually.
 13. **Triadic research** at `research/midge-prediction-optimization/deliverable.md` — prioritized modification plan with remaining Layer 5 items.
+14. **Data schema** at `data/midge/SCHEMA.md` — canonical reference for all signal types, predictions, outcomes, Thompson distributions, and convergence alerts.
 
 ---
 
 ## Previous Sessions
+
+### Bug Fixes + Schema (2026-02-22)
+Fixed 10b5-1 plan sale detection (3-layer: models.py, client.py XML+HTML, signal.py), NaN ticker guard (house_stock_watcher.py), legacy prediction format (outcome_tracker.py). Created `data/midge/SCHEMA.md` — canonical reference for all MIDGE data types. Verified with 3 live scans.
 
 ### Triadic Prediction Optimization (2026-02-22)
 Full triadic analysis + Phase A-E implementation. 13 modifications: outcome dedup, contract ticker, display fix, 10b5-1 filter, congressional $50K, Bonferroni, per-ticker convergence, VelocityDetector, FilingTimeAnalyzer, outcome collector, multi-timeframe convergence, decay rate calibration, log-linear strength. Pipeline expanded from 6 to 7 phases with outcome tracking. Research at `research/midge-prediction-optimization/`.
