@@ -81,11 +81,21 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
     qdrant_url = getattr(ctx, "qdrant_url", "http://localhost:6333")
     failures = 0
 
-    # --- API clients (Market Sensing) ---
+    # --- Create MarketDataProvider first (injected into all API clients) ---
+    provider = None
+    try:
+        from mae_core.market.apis.market_data_provider import MarketDataProvider
+        provider = MarketDataProvider()
+        ctx.market_data_provider = provider
+    except Exception:
+        logger.debug("Market: market_data_provider failed to construct", exc_info=True)
+        ctx.market_data_provider = None
+
+    # --- API clients (Market Sensing) — provider injected for gateway routing ---
 
     try:
         from mae_core.market.apis.sec_edgar.client import SECEdgarClient
-        ctx.sec_edgar_client = SECEdgarClient()
+        ctx.sec_edgar_client = SECEdgarClient(provider=provider)
     except Exception:
         logger.debug("Market: sec_edgar_client failed to construct", exc_info=True)
         ctx.sec_edgar_client = None
@@ -93,7 +103,7 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
 
     try:
         from mae_core.market.apis.price_fetcher import PriceFetcher
-        ctx.price_fetcher = PriceFetcher()
+        ctx.price_fetcher = PriceFetcher(provider=provider)
     except Exception:
         logger.debug("Market: price_fetcher failed to construct", exc_info=True)
         ctx.price_fetcher = None
@@ -101,7 +111,7 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
 
     try:
         from mae_core.market.apis.house_stock_watcher import HouseStockWatcherClient
-        ctx.house_stock_watcher = HouseStockWatcherClient()
+        ctx.house_stock_watcher = HouseStockWatcherClient(provider=provider)
     except Exception:
         logger.debug("Market: house_stock_watcher failed to construct", exc_info=True)
         ctx.house_stock_watcher = None
@@ -109,7 +119,7 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
 
     try:
         from mae_core.market.apis.job_tracker import JobTracker
-        ctx.job_tracker = JobTracker()
+        ctx.job_tracker = JobTracker(provider=provider)
     except Exception:
         logger.debug("Market: job_tracker failed to construct", exc_info=True)
         ctx.job_tracker = None
@@ -117,7 +127,7 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
 
     try:
         from mae_core.market.apis.usa_spending import USASpendingClient
-        ctx.usa_spending_client = USASpendingClient()
+        ctx.usa_spending_client = USASpendingClient(provider=provider)
     except Exception:
         logger.debug("Market: usa_spending_client failed to construct", exc_info=True)
         ctx.usa_spending_client = None
@@ -125,7 +135,7 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
 
     try:
         from mae_core.market.apis.sam_gov import SAMGovClient
-        ctx.sam_gov_client = SAMGovClient()
+        ctx.sam_gov_client = SAMGovClient(provider=provider)
     except Exception:
         logger.debug("Market: sam_gov_client failed to construct", exc_info=True)
         ctx.sam_gov_client = None
@@ -238,17 +248,11 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
 
     # --- Register MarketDataProvider with ApiGateway ---
     gateway = getattr(ctx, "api_gateway", None)
-    if gateway is not None:
+    if gateway is not None and ctx.market_data_provider is not None:
         try:
-            from mae_core.market.apis.market_data_provider import MarketDataProvider
-            provider = MarketDataProvider()
-            gateway.register_provider("market_data", provider)
-            ctx.market_data_provider = provider
+            gateway.register_provider("market_data", ctx.market_data_provider)
         except Exception:
             logger.debug("Could not register MarketDataProvider with ApiGateway", exc_info=True)
-            ctx.market_data_provider = None
-    else:
-        ctx.market_data_provider = None
 
     logger.info(
         "Layer 33a - Market systems instantiated: %d systems (construction failures: %d)",
