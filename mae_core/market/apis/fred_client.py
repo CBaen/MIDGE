@@ -338,7 +338,7 @@ class FREDClient:
             List of MacroIndicator objects, sorted oldest-first.
             Empty list on failure or if no API key is configured.
         """
-        from datetime import timedelta
+        from datetime import datetime, timedelta
 
         start_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
 
