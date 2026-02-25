@@ -237,7 +237,10 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
 
     try:
         from mae_core.market.intelligence.convergence_alerter import ConvergenceAlerter
-        ctx.convergence_alerter = ConvergenceAlerter(min_domains=3)
+        ctx.convergence_alerter = ConvergenceAlerter(
+            min_domains=3,
+            thompson_sampler=getattr(ctx, "thompson_sampler", None),
+        )
     except Exception:
         logger.debug("Market: convergence_alerter failed to construct", exc_info=True)
         ctx.convergence_alerter = None

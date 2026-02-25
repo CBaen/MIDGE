@@ -417,11 +417,7 @@ class ConvergenceAlerter:
 
         # Calculate overall strength and confidence
         avg_strength = sum(s.strength for s in converging_signals) / len(converging_signals)
-        avg_confidence = sum(s.confidence for s in converging_signals) / len(converging_signals)
-
-        # Boost confidence based on cross-domain agreement
-        confidence_boost = min(0.2, 0.05 * (cross_domain_count - 1))
-        final_confidence = min(0.95, avg_confidence + confidence_boost)
+        final_confidence = self._compute_confidence(converging_signals, cross_domain_count)
 
         # Determine urgency based on velocity
         avg_velocity = sum(abs(s.velocity) for s in converging_signals) / len(converging_signals)
@@ -543,10 +539,8 @@ class ConvergenceAlerter:
                     continue
 
                 avg_strength = sum(s.strength for s in converging) / len(converging)
-                avg_confidence = sum(s.confidence for s in converging) / len(converging)
                 cross_domain_count = len(categories_seen)
-                confidence_boost = min(0.2, 0.05 * (cross_domain_count - 1))
-                final_confidence = min(0.95, avg_confidence + confidence_boost)
+                final_confidence = self._compute_confidence(converging, cross_domain_count)
 
                 avg_velocity = sum(abs(s.velocity) for s in converging) / len(converging)
                 if avg_velocity > 0.1:
@@ -633,13 +627,17 @@ class ConvergenceAlerter:
         if len(bullish_domains) > len(bearish_domains) and len(bullish_categories) >= 2:
             recommendation = "bullish"
             avg_strength = bullish_strength / max(1, len(bullish_domains))
-            confidence = min(0.9, 0.5 + 0.1 * len(bullish_categories) + 0.1 * avg_strength)
-            reasoning = f"{len(bullish_domains)} domains ({len(bullish_categories)} categories) bullish"
+            n_cats = len(bullish_categories)
+            diversity = 1.0 + 0.10 * math.log1p(n_cats)
+            confidence = min(0.85, avg_strength * diversity)
+            reasoning = f"{len(bullish_domains)} domains ({n_cats} categories) bullish"
         elif len(bearish_domains) > len(bullish_domains) and len(bearish_categories) >= 2:
             recommendation = "bearish"
             avg_strength = bearish_strength / max(1, len(bearish_domains))
-            confidence = min(0.9, 0.5 + 0.1 * len(bearish_categories) + 0.1 * avg_strength)
-            reasoning = f"{len(bearish_domains)} domains ({len(bearish_categories)} categories) bearish"
+            n_cats = len(bearish_categories)
+            diversity = 1.0 + 0.10 * math.log1p(n_cats)
+            confidence = min(0.85, avg_strength * diversity)
+            reasoning = f"{len(bearish_domains)} domains ({n_cats} categories) bearish"
         else:
             recommendation = "neutral"
             confidence = 0.3
