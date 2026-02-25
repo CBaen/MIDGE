@@ -106,12 +106,14 @@ class OutcomeCollector:
             direction = {"bullish": "up", "bearish": "down"}.get(sig.direction, "")
             window = OUTCOME_WINDOWS.get(sig.source, 14)
 
+            sig_ts = sig.timestamp.isoformat() if sig.timestamp else ""
             self.tracker.record_prediction(
                 source=sig.source,
                 symbol=sig.symbol,
                 direction=direction,
                 outcome_window_days=window,
                 metadata={"original_signal_id": sig.signal_id},
+                timestamp=sig_ts,
             )
             self._registered.add(sig.signal_id)
             count += 1
@@ -171,6 +173,7 @@ class OutcomeCollector:
                             direction=direction,
                             outcome_window_days=window,
                             metadata={"original_signal_id": signal_id, "archive": jsonl_file.name},
+                            timestamp=record.get("timestamp", ""),
                         )
                         self._registered.add(signal_id)
                         count += 1
