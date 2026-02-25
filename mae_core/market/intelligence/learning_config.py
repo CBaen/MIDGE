@@ -68,6 +68,7 @@ LEARNING_CONFIG = {
         "finnhub_earnings": 0.80,
         "fred_macro": 0.70,
         "session_sweep": 0.55,
+        "yfinance_price": 0.50,
     },
 
     # Confidence calibration

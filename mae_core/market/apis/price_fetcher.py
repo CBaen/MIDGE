@@ -168,6 +168,62 @@ class PriceFetcher:
             logger.warning(f"Historical price error for {symbol}: {e}")
             return None
 
+    def get_daily_history(self, symbol: str, days: int = 90) -> List[PriceData]:
+        """
+        Fetch daily OHLCV history for a symbol using yfinance.
+
+        Returns one PriceData per trading day with change_pct calculated as
+        intraday (close - open) / open * 100. Used by the backfill script
+        to populate signal archives with price action data.
+
+        Args:
+            symbol: Stock ticker (e.g. "AAPL")
+            days: Calendar days of history to fetch
+
+        Returns:
+            List of PriceData sorted oldest-first. Empty on failure.
+        """
+        if not YFINANCE_AVAILABLE:
+            return []
+
+        try:
+            start = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+            end = datetime.now().strftime("%Y-%m-%d")
+
+            ticker = yf.Ticker(symbol)
+            df = ticker.history(start=start, end=end)
+
+            if df.empty:
+                return []
+
+            results: List[PriceData] = []
+            for idx, row in df.iterrows():
+                # Handle timezone-aware DatetimeIndex
+                if hasattr(idx, 'tz') and idx.tz is not None:
+                    idx = idx.tz_localize(None)
+
+                open_price = float(row["Open"])
+                close_price = float(row["Close"])
+                change_pct = ((close_price - open_price) / open_price * 100) if open_price != 0 else 0.0
+
+                results.append(PriceData(
+                    symbol=symbol,
+                    price=close_price,
+                    timestamp=idx.strftime("%Y-%m-%d"),
+                    source="yfinance_history",
+                    open=open_price,
+                    high=float(row["High"]),
+                    low=float(row["Low"]),
+                    volume=int(row["Volume"]),
+                    change_pct=change_pct,
+                ))
+
+            return results
+
+        except Exception as e:
+            logger.warning("Daily history error for %s: %s", symbol, e)
+            return []
+
     def get_multiple_prices(self, symbols: List[str]) -> Dict[str, Optional[PriceData]]:
         """
         Get current prices for multiple symbols efficiently.

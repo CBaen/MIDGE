@@ -877,3 +877,58 @@ def from_macro_indicator(indicator) -> MarketSignal:
             "signal_type": indicator.signal_type,
         },
     )
+
+
+def from_price_data(data, move_threshold: float = 1.5) -> Optional[MarketSignal]:
+    """Convert a PriceData object to a MarketSignal.
+
+    Only produces a signal when the intraday move exceeds move_threshold%.
+    Returns None for sub-threshold moves to avoid flooding with noise.
+
+    Price signals are supporting context — they tell the lag-correlation
+    analyzer and convergence alerter what the market actually DID, so it
+    can learn which other signals predicted the move.
+
+    Args:
+        data: PriceData from price_fetcher.py
+        move_threshold: Minimum |change_pct| to emit a signal (default 1.5%)
+
+    Returns:
+        MarketSignal or None if the move is below threshold
+    """
+    if abs(data.change_pct) < move_threshold:
+        return None
+
+    direction = "bullish" if data.change_pct > 0 else "bearish"
+    # 5% move = full strength. 1.5% = 0.30. 3% = 0.60.
+    strength = min(1.0, abs(data.change_pct) / 5.0)
+
+    event_dt = _ensure_datetime(data.timestamp)
+
+    symbol = data.symbol or ""
+    signal_id = f"price_move:{symbol}:{data.timestamp}"
+
+    return MarketSignal(
+        signal_id=signal_id,
+        source="yfinance_price",
+        symbol=symbol,
+        asset_class="stock",
+        domain="price",
+        direction=direction,
+        strength=strength,
+        confidence=0.50,
+        decay_rate=0.15,
+        timestamp=event_dt,
+        received_at=datetime.now(),
+        outcome_symbol=symbol,
+        raw_id="",
+        raw_type="PriceData",
+        metadata={
+            "open": data.open,
+            "high": data.high,
+            "low": data.low,
+            "close": data.price,
+            "volume": data.volume,
+            "change_pct": data.change_pct,
+        },
+    )

@@ -1,50 +1,50 @@
 {
   "sec_edgar": {
     "default": {
-      "alpha": 1.3636880119367225,
+      "alpha": 1.2968537305197356,
       "beta": 1.0
     }
   },
   "13f_filing": {
     "default": {
-      "alpha": 1.291914958676895,
+      "alpha": 1.228598271018697,
       "beta": 1.0
     }
   },
   "form_4": {
     "default": {
-      "alpha": 1.291914958676895,
+      "alpha": 1.228598271018697,
       "beta": 1.0
     }
   },
   "capitol_trades": {
     "default": {
-      "alpha": 1.2201419054170675,
+      "alpha": 1.1603428115176582,
       "beta": 1.0
     }
   },
   "unusual_whales": {
     "default": {
-      "alpha": 1.1483688521572395,
-      "beta": 1.0
+      "alpha": 1.6,
+      "beta": 0.3999999999999999
     }
   },
   "polygon": {
     "default": {
-      "alpha": 1.3636880119367225,
+      "alpha": 1.2968537305197356,
       "beta": 1.0
     }
   },
   "twitter_verified": {
     "default": {
-      "alpha": 1.0,
+      "alpha": 1.1761199999999998,
       "beta": 1.0
     }
   },
   "reddit": {
     "default": {
       "alpha": 1.0,
-      "beta": 1.0048227456375844
+      "beta": 1.37214
     }
   },
   "stocktwits": {
@@ -55,26 +55,122 @@
   },
   "gemini": {
     "default": {
-      "alpha": 1.076595798897412,
+      "alpha": 1.4701499999999998,
       "beta": 1.0
     }
   },
   "deepseek": {
     "default": {
-      "alpha": 1.0048227456375844,
+      "alpha": 1.37214,
       "beta": 1.0
     }
   },
   "unknown": {
     "default": {
       "alpha": 1.0,
-      "beta": 4.431924358580646
+      "beta": 4.214715966919634
     }
   },
   "session_sweep": {
     "default": {
       "alpha": 1.1,
-      "beta": 0.9
+      "beta": 0.8999999999999999
+    }
+  },
+  "sec_form4": {
+    "default": {
+      "alpha": 1.37214,
+      "beta": 1.0
+    }
+  },
+  "sec_form8k": {
+    "default": {
+      "alpha": 1.27413,
+      "beta": 1.0
+    }
+  },
+  "sec_efts": {
+    "default": {
+      "alpha": 1.37214,
+      "beta": 1.0
+    }
+  },
+  "congressional": {
+    "default": {
+      "alpha": 1.4701499999999998,
+      "beta": 1.0
+    }
+  },
+  "senate": {
+    "default": {
+      "alpha": 1.4701499999999998,
+      "beta": 1.0
+    }
+  },
+  "insider_cluster": {
+    "default": {
+      "alpha": 1.66617,
+      "beta": 1.0
+    }
+  },
+  "contract_award": {
+    "default": {
+      "alpha": 1.4701499999999998,
+      "beta": 1.0
+    }
+  },
+  "contract_prediction": {
+    "default": {
+      "alpha": 1.1761199999999998,
+      "beta": 1.0
+    }
+  },
+  "hiring_tracker": {
+    "default": {
+      "alpha": 1.1761199999999998,
+      "beta": 1.0
+    }
+  },
+  "sam_gov": {
+    "default": {
+      "alpha": 1.0,
+      "beta": 1.1761199999999998
+    }
+  },
+  "social_sentiment": {
+    "default": {
+      "alpha": 1.0,
+      "beta": 1.37214
+    }
+  },
+  "finra_short": {
+    "default": {
+      "alpha": 1.27413,
+      "beta": 1.0
+    }
+  },
+  "finnhub_news": {
+    "default": {
+      "alpha": 1.1761199999999998,
+      "beta": 1.0
+    }
+  },
+  "finnhub_earnings": {
+    "default": {
+      "alpha": 1.56816,
+      "beta": 1.0
+    }
+  },
+  "fred_macro": {
+    "default": {
+      "alpha": 1.37214,
+      "beta": 1.0
+    }
+  },
+  "yfinance_price": {
+    "default": {
+      "alpha": 1.0,
+      "beta": 1.0
     }
   }
 }
