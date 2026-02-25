@@ -77,6 +77,7 @@ class OutcomeTracker:
         direction: str = "",
         outcome_window_days: int = 14,
         metadata: dict = None,
+        timestamp: str = "",
     ) -> str:
         """
         Record a prediction for later outcome evaluation.
@@ -91,6 +92,8 @@ class OutcomeTracker:
             direction: "up", "down", or "" (direction-agnostic)
             outcome_window_days: Days to wait before evaluating
             metadata: Optional extra context
+            timestamp: ISO timestamp override (for archive backfill).
+                       Uses datetime.now() if empty.
 
         Returns:
             signal_id (UUID) for tracking
@@ -101,7 +104,7 @@ class OutcomeTracker:
             "source": source,
             "symbol": symbol.upper(),
             "direction": direction,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": timestamp or datetime.now().isoformat(),
             "outcome_window_days": outcome_window_days,
             "outcome_symbol": symbol.upper(),
         }
