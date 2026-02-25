@@ -2,6 +2,30 @@
 
 ## What Happened
 
+### Bayesian Confidence Engine (2026-02-25)
+
+Resolved Alpha's standing dissent: replaced the structurally wrong additive confidence formula in the convergence alerter with a Thompson-weighted geometric mean. This was the last architectural gap — the Thompson Sampler was completely disconnected from confidence calculations.
+
+**What changed:**
+
+1. **Unified `_compute_confidence()` method** — replaces 3 separate additive formulas in `convergence_alerter.py` (`_check_direction_convergence`, `check_ticker_convergence`, `get_actionable_summary`). Uses Thompson-weighted geometric mean: `exp(sum(w_i * log(c_i)) / sum(w_i))` with a multiplicative diversity bonus `1 + 0.12 * log1p(domains - 1)`.
+
+2. **Thompson Sampler wired into convergence alerter** — `ConvergenceAlerter.__init__()` now accepts optional `thompson_sampler` and `regime_classifier`. The `_get_thompson_weight()` method maps signal sources to Thompson distribution keys and returns a reliability weight in [0.5, 1.5]. Thin data (< 5 observations) blends toward neutral weight 1.0.
+
+3. **Signal source tracking** — `Signal` dataclass gained `source: str = ""` field. `record_signal()` passes `source` through. `sensing_hook.py` now sends `source=sig.source` to the alerter. This lets Thompson look up per-source reliability.
+
+4. **Bootstrap wiring** — `market.py` passes `thompson_sampler` to the main convergence alerter. Two-phase regime_classifier injection (constructed after alerter). Somatic dependency list updated.
+
+5. **15 new Thompson distribution seeds** — `learning_config.py` gains signal-source-level keys matching `MarketSignal.source` values from `signal.py`.
+
+**Behavioral change:**
+- Old: 3 domains at avg confidence 0.65 → `0.65 + 0.10 = 0.75`
+- New: 3 domains at avg confidence 0.65 → `0.65 * 1.13 = 0.73` (more conservative)
+- As Thompson accumulates real outcomes, unreliable sources (social sentiment) get down-weighted, reliable sources (SEC filings) get up-weighted automatically.
+- Tiered alerters (tactical/strategic/thematic) retain arithmetic fallback — no Thompson injection.
+
+**Alpha's dissent status:** RESOLVED. The additive formula is gone. The Bayesian combination correctly handles correlated signals without inflating confidence.
+
 ### Agent-Based Market Sensing (2026-02-22)
 
 Wired MIDGE's market intelligence through Mae's agent system. Previously, market data only flowed through the standalone `midge_scan.py` script — agents ran with empty convergence buffers. Now the 33-layer bootstrap creates a MarketSensingHook that feeds live data into agents during normal operation.

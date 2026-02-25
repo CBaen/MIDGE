@@ -207,6 +207,7 @@ class MarketSensingHook:
                 velocity=sig.velocity,
                 timestamp=sig.timestamp,
                 metadata={**sig.metadata, "symbol": sig.symbol},
+                source=sig.source,
             )
             # Global alerter
             if self._convergence_alerter is not None:

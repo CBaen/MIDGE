@@ -272,6 +272,11 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         ctx.regime_classifier = None
         failures += 1
 
+    # Wire regime classifier into convergence alerter (two-phase init —
+    # regime_classifier is constructed after convergence_alerter)
+    if getattr(ctx, "convergence_alerter", None) is not None and ctx.regime_classifier is not None:
+        ctx.convergence_alerter._regime_classifier = ctx.regime_classifier
+
     # --- Feedback loop (requires price_fetcher + thompson_sampler) ---
 
     try:
@@ -341,7 +346,7 @@ def _register_market_somatic(ctx: SimpleNamespace) -> None:
         "filing_time_analyzer": ("FilingTimeAnalyzer", []),
         "contract_predictor": ("ContractPredictor", ["job_tracker", "sam_gov_client"]),
         "thompson_sampler": ("ThompsonSampler", []),
-        "convergence_alerter": ("ConvergenceAlerter", ["thompson_sampler", "velocity_detector"]),
+        "convergence_alerter": ("ConvergenceAlerter", ["thompson_sampler", "velocity_detector", "regime_classifier"]),
         "velocity_detector": ("VelocityDetector", []),
         "correlation_tracker": ("CorrelationTracker", []),
         "outcome_tracker": ("OutcomeTracker", ["price_fetcher", "thompson_sampler"]),

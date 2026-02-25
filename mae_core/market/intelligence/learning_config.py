@@ -38,6 +38,7 @@ LEARNING_CONFIG = {
     # Source reliability defaults
     # Can be adjusted based on observed accuracy
     "source_reliability": {
+        # Legacy keys (retained for backward compatibility with existing distributions)
         "sec_edgar": 0.95,
         "13f_filing": 0.90,
         "form_4": 0.90,
@@ -50,6 +51,22 @@ LEARNING_CONFIG = {
         "gemini": 0.75,
         "deepseek": 0.70,
         "unknown": 0.50,
+        # Signal-source-level keys (match MarketSignal.source values from signal.py)
+        "sec_form4": 0.70,
+        "sec_form8k": 0.65,
+        "sec_efts": 0.70,
+        "congressional": 0.75,
+        "senate": 0.75,
+        "insider_cluster": 0.85,
+        "contract_award": 0.75,
+        "contract_prediction": 0.60,
+        "hiring_tracker": 0.60,
+        "sam_gov": 0.40,
+        "social_sentiment": 0.30,
+        "finra_short": 0.65,
+        "finnhub_news": 0.60,
+        "finnhub_earnings": 0.80,
+        "fred_macro": 0.70,
     },
 
     # Confidence calibration
