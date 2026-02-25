@@ -125,7 +125,7 @@ Fixed 3 bugs found in live scan output, defined data schema:
 
 - **2473 tests pass, 0 failures**
 - **108 systems** (92 core + 16 market), **127 holons**, **336 connections** (211 core + 47 fractal + 55 bootstrap + 23 market)
-- **31 market files** in `mae_core/market/` (bootstrapped as Layer 33 + 6 new API clients: senate, apewisdom, finra, efts, finnhub, fred)
+- **32 market files** in `mae_core/market/` (bootstrapped as Layer 33 + 6 API clients + form8k_sentiment)
 - **33-layer bootstrap** runs cleanly (Layers 33a-33i)
 - **Agent-based market sensing active** — 3 agents differentiated (SEC_WATCHER, CONTRACT_TRACKER, MARKET_ANALYST)
 - **7-phase scan pipeline** still available as standalone (`midge_scan.py`)
@@ -169,7 +169,7 @@ Phase 7/7: Report — markdown intelligence report with all sections
 |------------|-------|---------|
 | `apis/sec_edgar/` | 4 (models, client, efts, __init__) | SEC insider trades + material events + full-text search |
 | `apis/` | 13 (price_fetcher, house_stock_watcher, senate_stock_watcher, job_tracker, usa_spending, sam_gov, apewisdom, finra_short_interest, finnhub_client, fred_client, ticker_resolver, market_data_provider) | 14 data sources + utilities |
-| `edge/` | 4 (cluster_detector, politician_tracker, filing_time_analyzer, contract_predictor) | Pattern recognition |
+| `edge/` | 5 (cluster_detector, politician_tracker, filing_time_analyzer, contract_predictor, form8k_sentiment) | Pattern recognition + text analysis |
 | `intelligence/` | 7 (thompson_sampler, velocity_detector, correlation_tracker, convergence_alerter, learning_config, regime_classifier, outcome_collector) | Bayesian learning + feedback loop |
 | `root` | 5 (signal.py, channels.py, outcome_tracker.py, memory.py, sensing_hook.py) | Integration layer + sensing + Qdrant persistence |
 
@@ -182,8 +182,8 @@ Phase 7/7: Report — markdown intelligence report with all sections
 Roadmap at `C:\Users\baenb\.claude\plans\delegated-leaping-map.md`. Items below ordered by priority.
 
 **Ready to build (no dependencies):**
-1. **Compressed cluster detector** (time-spread scoring within insider clusters — ~30 lines in cluster_detector.py)
-2. **8-K text sentiment via Ollama** (classify 8-K document text, enrich existing sec_form8k signals)
+1. ~~Compressed cluster detector~~ DONE 2026-02-25
+2. ~~8-K text sentiment via Ollama~~ DONE 2026-02-25
 3. **Options flow via Unusual Whales** ($35/mo API — needs Guiding Light approval on spend)
 
 **Data-gated (need calendar time):**
