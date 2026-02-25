@@ -112,9 +112,14 @@ class ClusterSignal:
     def to_plain_language(self) -> str:
         """Format for dashboard display."""
         c_suite_note = " (including C-suite)" if self.has_csuite else ""
+        compression_note = ""
+        if self.compression_score >= 0.8:
+            compression_note = " [TIGHT cluster]"
+        elif self.compression_score >= 0.5:
+            compression_note = " [moderate spread]"
         return (
             f"{self.insider_count} insiders bought {self.symbol} "
-            f"within {self.window_days} days{c_suite_note}. "
+            f"within {self.window_days} days{c_suite_note}{compression_note}. "
             f"Total value: ${self.total_value:,.0f}. "
             f"Confidence: {self.confidence:.0%}"
         )
@@ -368,17 +373,36 @@ class ClusterDetector:
         insider_count = len(insiders_data)
         avg_conviction = total_conviction / insider_count if insider_count > 0 else 0
 
+        # --- Time-compression scoring ---
+        # 5 insiders buying within 3 days = much stronger than spread over 28 days
+        # compression_score: 1.0 = all within 48h, 0.0 = spread across full window
+        trade_dates = []
+        for ins in insiders_data:
+            td = ins.get("trade_date", "")
+            if td:
+                try:
+                    trade_dates.append(datetime.fromisoformat(td.replace("Z", "")))
+                except (ValueError, TypeError):
+                    pass
+
+        compression_score = 0.0
+        if len(trade_dates) >= 2:
+            span_days = (max(trade_dates) - min(trade_dates)).total_seconds() / 86400
+            compression_score = max(0.0, 1.0 - span_days / max(1, window_days))
+
         # Calculate confidence
         # Base: 0.70 for 3 insiders
         # +0.05 per additional insider (up to 0.85)
         # +0.05 if C-suite present
         # +0.05 if avg conviction > 40%
+        # +0.10 * compression (tight cluster = up to +10%)
         confidence = 0.70
         confidence += min(0.15, (insider_count - 3) * 0.05)  # Extra insiders
         if has_csuite:
             confidence += 0.05
         if avg_conviction > 0.4:
             confidence += 0.05
+        confidence += compression_score * 0.10  # Tight cluster bonus
         confidence = min(0.95, confidence)  # Cap at 95%
 
         return ClusterSignal(
@@ -390,7 +414,8 @@ class ClusterDetector:
             weighted_score=total_weighted_score,
             avg_conviction=avg_conviction,
             has_csuite=has_csuite,
-            confidence=confidence
+            confidence=confidence,
+            compression_score=round(compression_score, 3),
         )
 
 
