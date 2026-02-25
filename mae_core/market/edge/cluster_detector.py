@@ -98,6 +98,7 @@ class ClusterSignal:
     avg_conviction: float = 0.0
     has_csuite: bool = False
     confidence: float = 0.70
+    compression_score: float = 0.0  # 1.0 = all trades within 48h, 0.0 = spread across full window
     detected_at: str = ""
     signal_source: str = "insider_cluster"
     decay_rate: float = 0.025  # ~28 day half-life (clusters persist longer, Alldredge 2019)

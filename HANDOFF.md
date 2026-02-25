@@ -169,20 +169,23 @@ Phase 7/7: Report — markdown intelligence report with all sections
 
 ## What's Next
 
-### Layer 5: Expansion (after 50+ Thompson outcomes)
+### Layer 5: Expansion
 
-These items from the triadic deliverable are deferred until the outcome collector has produced enough calibrated results:
+Roadmap at `C:\Users\baenb\.claude\plans\delegated-leaping-map.md`. Items below ordered by priority.
 
-1. **Options flow via Unusual Whales** ($35/mo API, "options" domain, sweep orders >$100K)
-2. **8-K text sentiment via Ollama** (local model classifies 8-K text)
-3. **Thompson-weighted convergence** (weight signal contribution by sampled reliability)
-4. **Lag-correlation analysis** (which signals genuinely lead others)
-5. **Compressed cluster detector** (time-spread scoring within insider clusters)
-6. **Position sizing** (Kelly criterion after 100+ outcomes)
+**Ready to build (no dependencies):**
+1. **Compressed cluster detector** (time-spread scoring within insider clusters — ~30 lines in cluster_detector.py)
+2. **8-K text sentiment via Ollama** (classify 8-K document text, enrich existing sec_form8k signals)
+3. **Options flow via Unusual Whales** ($35/mo API — needs Guiding Light approval on spend)
 
-### Alpha's Standing Dissent
+**Data-gated (need calendar time):**
+4. **Lag-correlation analysis** (needs 30+ days of signal archives — currently 2 days)
+5. **Thompson weight tuning** (confidence engine wired, needs 50+ outcomes to validate — currently 26)
+6. **Position sizing / Kelly criterion** (needs 100+ calibrated outcomes)
 
-The convergence alerter's additive confidence formula (`0.5 + 0.1 * categories + 0.1 * strength`) is structurally wrong — two 70% signals combined additively produce 0.90 but joint probability is 0.49. Should be replaced with multiplicative/Bayesian combination. Deferred to Layer 5 item 4 (Thompson-weighted convergence). See `research/midge-prediction-optimization/deliverable.md` Dissenting Notes.
+### Resolved Dissents
+
+**Alpha's additive confidence dissent** — RESOLVED 2026-02-25. Replaced with Thompson-weighted geometric mean. See "Bayesian Confidence Engine" section above.
 
 ---
 
