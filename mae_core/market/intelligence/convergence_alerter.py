@@ -47,6 +47,7 @@ class Signal:
     metadata: dict = field(default_factory=dict)
     velocity: float = 0.0  # Rate of change
     confidence: float = 0.5  # Reliability estimate
+    source: str = ""  # Original source type for Thompson key lookup
 
 
 @dataclass
@@ -91,14 +92,42 @@ class ConvergenceAlerter:
     - Crypto domain: Whales accumulating (bullish)
     - Government domain: Contract awarded (bullish)
     → CONVERGENCE ALERT: 3 domains bullish = high confidence
+
+    Confidence is computed via Thompson-weighted geometric mean when
+    a ThompsonSampler is provided. This replaces the original additive
+    formula (Alpha's standing dissent — see deliverable.md).
     """
+
+    # Maps MarketSignal.source values -> ThompsonSampler distribution keys.
+    # signal.py uses descriptive source names, Thompson uses shorter keys
+    # from learning_config.py source_reliability dict.
+    _SOURCE_TO_THOMPSON_KEY = {
+        "sec_form4": "sec_form4",
+        "sec_form8k": "sec_form8k",
+        "sec_efts": "sec_efts",
+        "congressional": "congressional",
+        "senate": "senate",
+        "insider_cluster": "insider_cluster",
+        "politician_correlation": "congressional",
+        "contract_award": "contract_award",
+        "contract_prediction": "contract_prediction",
+        "hiring_tracker": "hiring_tracker",
+        "sam_gov": "sam_gov",
+        "social_sentiment": "social_sentiment",
+        "finra_short": "finra_short",
+        "finnhub_news": "finnhub_news",
+        "finnhub_earnings": "finnhub_earnings",
+        "fred_macro": "fred_macro",
+    }
 
     def __init__(
         self,
         min_domains: int = 3,
         min_strength: float = 0.6,
         convergence_window_hours: int = 72,
-        persistence_path: str = None
+        persistence_path: str = None,
+        thompson_sampler=None,
+        regime_classifier=None,
     ):
         """
         Initialize convergence alerter.
@@ -108,11 +137,16 @@ class ConvergenceAlerter:
             min_strength: Minimum average signal strength
             convergence_window_hours: How recent signals must be
             persistence_path: Path for alert history
+            thompson_sampler: Optional ThompsonSampler for reliability weights
+            regime_classifier: Optional RegimeClassifier for regime-aware Thompson queries
         """
         self.min_domains = min_domains
         self.min_strength = min_strength
         self.convergence_window = timedelta(hours=convergence_window_hours)
         self.persistence_path = Path(persistence_path) if persistence_path else None
+        self._thompson = thompson_sampler
+        self._regime_classifier = regime_classifier
+        self._cached_regime = ("default", 0.0)  # (regime_str, timestamp)
 
         # Recent signals by domain
         self.signals: Dict[str, List[Signal]] = defaultdict(list)
@@ -154,7 +188,8 @@ class ConvergenceAlerter:
         confidence: float = 0.5,
         velocity: float = 0.0,
         timestamp: datetime = None,
-        metadata: dict = None
+        metadata: dict = None,
+        source: str = "",
     ):
         """
         Record a signal observation.
@@ -168,6 +203,7 @@ class ConvergenceAlerter:
             velocity: Rate of change (from VelocityDetector)
             timestamp: When observed
             metadata: Additional context
+            source: Original source type (e.g. "sec_form4") for Thompson lookup
         """
         # Input validation — clamp to valid ranges
         strength = max(0.0, min(1.0, strength))
@@ -186,7 +222,8 @@ class ConvergenceAlerter:
             timestamp=timestamp,
             metadata=metadata,
             velocity=velocity,
-            confidence=confidence
+            confidence=confidence,
+            source=source,
         )
 
         self.signals[domain].append(signal)
@@ -203,6 +240,94 @@ class ConvergenceAlerter:
                 s for s in self.signals[domain]
                 if s.timestamp >= cutoff
             ]
+
+    def _get_regime(self) -> str:
+        """Get current market regime with 60s cache to avoid repeated calls."""
+        if self._regime_classifier is None:
+            return "default"
+        now = time.monotonic()
+        regime, cached_at = self._cached_regime
+        if now - cached_at < 60.0:
+            return regime
+        try:
+            regime = self._regime_classifier.classify()
+        except Exception:
+            regime = "default"
+        self._cached_regime = (regime, now)
+        return regime
+
+    def _get_thompson_weight(self, signal: Signal, regime: str) -> float:
+        """Return Thompson-blended reliability weight for a signal.
+
+        Returns a weight in [0.5, 1.5]:
+        - 1.0 = neutral (trust signal's own confidence as-is)
+        - >1.0 = Thompson says this source is more reliable than average
+        - <1.0 = Thompson says this source is less reliable than average
+
+        When Thompson is not configured or has no data, returns 1.0 (neutral).
+        """
+        if self._thompson is None:
+            return 1.0
+
+        thompson_key = self._SOURCE_TO_THOMPSON_KEY.get(
+            signal.source, signal.source or "unknown"
+        )
+
+        try:
+            dist = self._thompson.get_distribution(thompson_key, regime)
+            observations = dist.samples  # alpha + beta - 2
+
+            if observations < 5:
+                # Thin data: blend toward 1.0 (neutral) proportional to obs count
+                blend = observations / 5.0
+                raw_weight = 0.5 + dist.mean  # map [0,1] -> [0.5, 1.5]
+                return 1.0 * (1.0 - blend) + raw_weight * blend
+            else:
+                # Mature data: use Thompson posterior mean as weight
+                return 0.5 + dist.mean
+        except Exception:
+            return 1.0
+
+    def _compute_confidence(
+        self,
+        signals: list,
+        cross_domain_count: int,
+    ) -> float:
+        """Compute convergence confidence via Thompson-weighted geometric mean.
+
+        Replaces the additive formula (Alpha's standing dissent). The geometric
+        mean correctly handles correlated signals without blowing up confidence
+        the way additive or log-odds combination does.
+
+        With thin Thompson data, weights are ~1.0 so the result approximates
+        arithmetic mean. As Thompson accumulates outcomes, unreliable sources
+        are down-weighted and reliable sources are up-weighted automatically.
+        """
+        if not signals:
+            return 0.5
+
+        regime = self._get_regime()
+
+        log_sum = 0.0
+        weight_sum = 0.0
+
+        for sig in signals:
+            # Clamp confidence to prevent log(0)
+            c = max(0.01, min(0.99, sig.confidence))
+            w = self._get_thompson_weight(sig, regime)
+
+            log_sum += w * math.log(c)
+            weight_sum += w
+
+        # Weighted geometric mean of per-signal confidences
+        geo_mean = math.exp(log_sum / weight_sum) if weight_sum > 0 else 0.5
+
+        # Cross-domain diversity bonus (multiplicative, log-saturating)
+        # 1 domain=0%, 2=~8%, 3=~13%, 4=~17%, saturates near 25%
+        diversity_factor = 1.0 + 0.12 * math.log1p(max(0, cross_domain_count - 1))
+        boosted = geo_mean * diversity_factor
+
+        return min(0.95, max(0.05, boosted))
 
     def check_convergence(
         self,
