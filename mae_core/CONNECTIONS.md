@@ -45,7 +45,7 @@ Last updated: 2026-02-22
 | 5.8 Temporal | TemporalMemory, WorldlinePlanner | 6 | 6 (EventBus) | 4 (cross-system stubs) |
 | 5.8+ Enforcement | TriadEnforcer, Watchdog, Auditor, Registry | 10 | 10 (EventBus) | 0 |
 | 5.8++ Holon | HolonRegistry, HolonMixin, HolonProxy, AwarenessPulse | 2 | 36 (proxy injection) + 1 (bootstrap) | 0 |
-| 5.8+++ Connection | ConnectionRegistry | 4 | 339 (211 core + 47 fractal + 55 bootstrap + 26 market, all witnessed, 0 bare dyads) | 0 |
+| 5.8+++ Connection | ConnectionRegistry | 4 | 351 (211 core + 47 fractal + 55 bootstrap + 38 market, all witnessed, 0 bare dyads) | 0 |
 | **5.9 Integration** | **API, Dashboard, Domain Config** | **0** | **0** | **20+ (all stubs need wiring)** |
 
 ---
@@ -99,10 +99,29 @@ These require code changes in the consuming system.
 
 ## Market Connections (Group 14 — Layer 33) — additions
 
-The following 3 connections were added with the Session Sweep Detector (total market connections: 26):
+The following 3 connections were added with the Session Sweep Detector (total market connections before Group 15: 26):
 
 | Connection | Type | Witness | Notes |
 |-----------|------|---------|-------|
 | session_sweep_detector ↔ event_bus | eventbus_pubsub | convergence_alerter | Publishes sweep signals to CH_MARKET_SIGNAL |
 | convergence_alerter ↔ event_bus (session_sweep channel) | eventbus_pubsub | session_sweep_detector | Receives session sweep signals for multi-domain synthesis |
 | session_sweep_detector ↔ price_fetcher | direct_reference | convergence_alerter | Fetches intraday price data to confirm sweep patterns |
+
+## Market Connections (Group 15 — Layer 33) — lag/calibration/sizing
+
+12 connections for 4 new intelligence systems (total market connections: 38):
+
+| Connection | Type | Witness | Notes |
+|-----------|------|---------|-------|
+| signal_archive_reader ↔ event_bus | eventbus_pubsub | lag_correlation_analyzer | Publishes archive load events |
+| lag_correlation_analyzer ↔ event_bus | eventbus_pubsub | signal_archive_reader | Publishes lag findings to CH_LAG_FINDING |
+| lag_correlation_analyzer ↔ signal_archive_reader | direct_reference | convergence_alerter | Reads archived signals for cross-correlation |
+| thompson_calibrator ↔ event_bus | eventbus_pubsub | thompson_sampler | Publishes calibration stats to CH_THOMPSON_STATS |
+| thompson_calibrator ↔ thompson_sampler | direct_reference | convergence_alerter | Seeds missing distribution keys, reads priors |
+| thompson_calibrator ↔ convergence_alerter | data_flow | thompson_sampler | Calibration informs confidence adjustments |
+| kelly_position_sizer ↔ event_bus | eventbus_pubsub | thompson_sampler | Publishes sizing recommendations to CH_KELLY_SIZING |
+| kelly_position_sizer ↔ thompson_sampler | direct_reference | convergence_alerter | Reads p_win from Thompson distribution means |
+| kelly_position_sizer ↔ convergence_alerter | data_flow | thompson_sampler | Triggered by per-ticker convergence alerts |
+| signal_archive_reader ↔ convergence_alerter | data_flow | lag_correlation_analyzer | Archive data enriches convergence context |
+| lag_correlation_analyzer ↔ convergence_alerter | data_flow | thompson_calibrator | Lag findings inform cross-domain synthesis |
+| kelly_position_sizer ↔ lag_correlation_analyzer | data_flow | convergence_alerter | Leading indicators inform position timing |

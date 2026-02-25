@@ -91,6 +91,10 @@ class TestBootstrap:
             "contract_predictor", "thompson_sampler", "convergence_alerter",
             "velocity_detector", "correlation_tracker", "outcome_tracker",
             "session_sweep_detector",
+            "signal_archive_reader",
+            "lag_correlation_analyzer",
+            "thompson_calibrator",
+            "kelly_position_sizer",
         ]
         for key in market_keys:
             assert key in systems, f"Missing market system: {key}"

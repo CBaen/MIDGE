@@ -15,6 +15,8 @@ CH_VELOCITY_ANOMALY = "market.intel.velocity_anomaly"
 CH_CONVERGENCE = "market.intel.convergence"
 CH_ACTIONABLE = "market.intel.actionable"
 CH_THOMPSON_STATS = "market.intel.thompson_stats"
+CH_LAG_FINDING = "market.intel.lag_finding"
+CH_KELLY_SIZING = "market.intel.kelly_sizing"
 
 # Market Sensing channels (ingest and feedback)
 CH_SIGNAL_RECEIVED = "market.sensing.signal_received"

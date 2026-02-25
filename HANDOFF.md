@@ -2,6 +2,20 @@
 
 ## What Happened
 
+### Self-Calibrating Decision Engine (2026-02-25)
+
+Four new intelligence systems that turn MIDGE from a pattern detector into a self-calibrating decision engine. Infrastructure is built; results improve as data accumulates.
+
+1. **Signal archive reader** — `mae_core/market/intelligence/signal_archive_reader.py`. Read-only interface over existing date-partitioned signal archives (`data/midge/signals/YYYY-MM-DD.jsonl`). `ArchiveRecord` with `__slots__` for memory efficiency. Provides `load_range()`, `query_source()`, `query_symbol()`, `get_timeseries()` for lag-correlation input.
+
+2. **Lag-correlation analyzer** — `mae_core/market/intelligence/lag_correlation_analyzer.py`. Cross-correlates signal sources across time lags 1-90 days. Answers "does congressional buying today predict a price move in 3 weeks?" Pure-Python Pearson r + Fisher Z p-value (no scipy). Persists findings to `data/market/lag_correlations.json`. Step hook cadence: every 500 steps.
+
+3. **Thompson calibrator** — `mae_core/market/intelligence/thompson_calibrator.py`. Two jobs: (a) **Seed fix** — the 15 signal-source-level keys in `learning_config.py` were never seeded into `thompson_distributions.json`, causing every lookup to fall through to uninformative Beta(1,1). Now seeds them from `source_reliability` values at bootstrap. Idempotent. (b) **Calibration diagnostic** — joins predictions.jsonl to outcomes.jsonl, computes per-source Brier scores, 5 calibration buckets, over/under-confidence detection. Step hook cadence: every 1000 steps.
+
+4. **Kelly position sizer** — `mae_core/market/intelligence/kelly_position_sizer.py`. Kelly criterion: `f = (b*p - q) / b` where p = Thompson distribution mean, b = historical win/loss ratio from outcomes.jsonl. Always half-Kelly (f/2), capped at 5%. Confidence tiers: "low" (< 10 outcomes), "medium" (10-49), "high" (50+). Triggers on per-ticker convergence alerts, not every step.
+
+**Bootstrap wiring:** 4 new systems instantiated in `_instantiate_market_systems()`, 12 new triadic connections (Group 15), 4 holons, 4 somatic entries, 4 fractal extras, 3 step hooks (lag/500, calibration/1000, Kelly on convergence at step%50).
+
 ### Analytical Improvements (2026-02-25)
 
 Two edge detector upgrades from the Layer 5 roadmap:
@@ -123,9 +137,9 @@ Fixed 3 bugs found in live scan output, defined data schema:
 
 ## Current State
 
-- **2527 tests pass, 0 failures**
-- **109 systems** (92 core + 17 market), **128 holons**, **339 connections** (211 core + 47 fractal + 55 bootstrap + 26 market)
-- **32 market files** in `mae_core/market/` (bootstrapped as Layer 33 + 6 API clients + form8k_sentiment)
+- **2605 tests pass, 0 failures**
+- **113 systems** (92 core + 21 market), **132 holons**, **351 connections** (211 core + 47 fractal + 55 bootstrap + 38 market)
+- **36 market files** in `mae_core/market/` (bootstrapped as Layer 33 + 6 API clients + form8k_sentiment)
 - **33-layer bootstrap** runs cleanly (Layers 33a-33i)
 - **Agent-based market sensing active** — 3 agents differentiated (SEC_WATCHER, CONTRACT_TRACKER, MARKET_ANALYST)
 - **7-phase scan pipeline** still available as standalone (`midge_scan.py`)
@@ -170,7 +184,7 @@ Phase 7/7: Report — markdown intelligence report with all sections
 | `apis/sec_edgar/` | 4 (models, client, efts, __init__) | SEC insider trades + material events + full-text search |
 | `apis/` | 13 (price_fetcher, house_stock_watcher, senate_stock_watcher, job_tracker, usa_spending, sam_gov, apewisdom, finra_short_interest, finnhub_client, fred_client, ticker_resolver, market_data_provider) | 14 data sources + utilities |
 | `edge/` | 6 (cluster_detector, politician_tracker, filing_time_analyzer, contract_predictor, form8k_sentiment, session_sweep_detector) | Pattern recognition + text analysis |
-| `intelligence/` | 7 (thompson_sampler, velocity_detector, correlation_tracker, convergence_alerter, learning_config, regime_classifier, outcome_collector) | Bayesian learning + feedback loop |
+| `intelligence/` | 11 (thompson_sampler, velocity_detector, correlation_tracker, convergence_alerter, learning_config, regime_classifier, outcome_collector, signal_archive_reader, lag_correlation_analyzer, thompson_calibrator, kelly_position_sizer) | Bayesian learning + feedback loop + calibration + sizing |
 | `root` | 5 (signal.py, channels.py, outcome_tracker.py, memory.py, sensing_hook.py) | Integration layer + sensing + Qdrant persistence |
 
 ---
@@ -181,16 +195,21 @@ Phase 7/7: Report — markdown intelligence report with all sections
 
 Roadmap at `C:\Users\baenb\.claude\plans\delegated-leaping-map.md`. Items below ordered by priority.
 
-**Ready to build (no dependencies):**
+**Completed:**
 1. ~~Compressed cluster detector~~ DONE 2026-02-25
 2. ~~8-K text sentiment via Ollama~~ DONE 2026-02-25
 3. ~~Session sweep detector~~ DONE 2026-02-25
-4. **Options flow via Unusual Whales** ($35/mo API — needs Guiding Light approval on spend)
+4. ~~Lag-correlation analysis~~ DONE 2026-02-25 — infrastructure built, results improve as archives accumulate
+5. ~~Thompson calibration~~ DONE 2026-02-25 — seed fix + Brier score calibration pipeline
+6. ~~Position sizing / Kelly criterion~~ DONE 2026-02-25 — half-Kelly with 5% cap, win/loss from outcomes
 
-**Data-gated (need calendar time):**
-4. **Lag-correlation analysis** (needs 30+ days of signal archives — currently 2 days)
-5. **Thompson weight tuning** (confidence engine wired, needs 50+ outcomes to validate — currently 26)
-6. **Position sizing / Kelly criterion** (needs 100+ calibrated outcomes)
+**Data-gated (infrastructure built, awaiting data maturation):**
+- Lag-correlation findings: needs 30+ days of signal archives (currently 3 days)
+- Thompson calibration accuracy: needs 50+ outcomes (currently 26)
+- Kelly sizing confidence: needs 100+ calibrated outcomes
+
+**Back burner:**
+- **Options flow via Unusual Whales** ($35/mo API — needs Guiding Light approval on spend)
 
 ### Resolved Dissents
 
@@ -202,14 +221,14 @@ Roadmap at `C:\Users\baenb\.claude\plans\delegated-leaping-map.md`. Items below 
 
 Welcome. MIDGE is Mae differentiated for financial markets. Here is what you need to know:
 
-1. **MIDGE = mae-core + market intelligence.** 109 systems, same 8 laws, 33-layer bootstrap. Market organ is Layer 33 (33a-33i).
+1. **MIDGE = mae-core + market intelligence.** 113 systems, same 8 laws, 33-layer bootstrap. Market organ is Layer 33 (33a-33i).
 2. **Mae-core is upstream.** Changes to Mae's genome should be made in `C:\Users\baenb\projects\mae-core` and pulled here. Market-specific changes stay here.
 3. **Agents actively sense the market.** MarketSensingHook (Layer 33h) fetches data on cadence and feeds convergence_alerter. Three agents are differentiated into market roles (Layer 33i). Endocrine coupling and market advisory carry signals to all agents.
 4. **The crown jewel is `convergence_alerter.py`** — synthesizes signals across ALL domains (insider + congressional + contract + hiring + velocity) into actionable alerts. Now with per-ticker and multi-timeframe convergence.
 5. **Thompson Sampling** uses Bayesian explore/exploit. Learned distributions in `data/market/thompson_distributions.json`. Bayesian forgetting prevents stale evidence.
 6. **OutcomeCollector** closes the feedback loop: scan signals → register_signals() → per-type windows → price check → Thompson update. Success threshold: 5%.
 7. **All 8 Mathematical Laws are satisfied.** See implementation plan Section 12 for compliance map.
-8. **2527 tests must keep passing.** Zero regressions.
+8. **2605 tests must keep passing.** Zero regressions.
 9. **Deep memory runs on Qdrant** container (port 6333). Start with `docker compose up -d`.
 10. **API keys** needed: RAPIDAPI_KEY (job tracker, congressional trades), ALPHA_VANTAGE_KEY (price fallback), SAM_GOV_API_KEY, MAE_TAVILY_API_KEY, MAE_FINNHUB_API_KEY (news sentiment + earnings), FRED_API_KEY (macro indicators). Free/no-key: SEC EDGAR, yfinance, USASpending, Senate Stock Watcher, ApeWisdom, FINRA short volume, SEC EFTS.
 11. **`python main.py --agents 6 --steps 500`** runs MIDGE with agents sensing the market. Requires 6 agents (K3 general + K3 market per Law 2).

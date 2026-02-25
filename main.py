@@ -208,6 +208,10 @@ def _build_systems_dict(ctx) -> dict:
         "correlation_tracker":      getattr(ctx, "correlation_tracker", None),
         "outcome_tracker":          getattr(ctx, "outcome_tracker", None),
         "session_sweep_detector":   getattr(ctx, "session_sweep_detector", None),
+        "signal_archive_reader":    getattr(ctx, "signal_archive_reader", None),
+        "lag_correlation_analyzer":  getattr(ctx, "lag_correlation_analyzer", None),
+        "thompson_calibrator":      getattr(ctx, "thompson_calibrator", None),
+        "kelly_position_sizer":     getattr(ctx, "kelly_position_sizer", None),
     }
 
 

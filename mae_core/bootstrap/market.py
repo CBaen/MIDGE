@@ -1,7 +1,7 @@
 """Bootstrap Layer 33: Market Intelligence Organ.
 
-Creates 17 market systems, registers holons, wires fractal hierarchy,
-registers triadic connections (Group 14), wires EventBus channels,
+Creates 21 market systems, registers holons, wires fractal hierarchy,
+registers triadic connections (Group 14 + Group 15), wires EventBus channels,
 and hooks into the step lifecycle.
 
 Biological analogy: Growing a new sensory organ specialized for
@@ -28,7 +28,7 @@ logger = logging.getLogger("mae.bootstrap")
 
 
 def bootstrap_market(ctx: SimpleNamespace) -> None:
-    """Wire Layer 33: Market Intelligence organ (17 systems, 26 connections)."""
+    """Wire Layer 33: Market Intelligence organ (21 systems, 38 connections)."""
     _instantiate_market_systems(ctx)
     _register_market_somatic(ctx)
     _register_market_holons(ctx)
@@ -49,6 +49,8 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
         "thompson_sampler", "convergence_alerter",
         "velocity_detector", "correlation_tracker", "outcome_tracker",
         "regime_classifier",
+        "signal_archive_reader", "lag_correlation_analyzer",
+        "thompson_calibrator", "kelly_position_sizer",
     ]
     active = sum(1 for a in market_attrs if getattr(ctx, a, None) is not None)
     holon_count = len([
@@ -60,11 +62,13 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
                     "contract_predictor", "session_sweep_detector",
                     "thompson_sampler", "convergence_alerter",
                     "velocity_detector", "correlation_tracker", "outcome_tracker",
-                    "regime_classifier")
+                    "regime_classifier",
+                    "signal_archive_reader", "lag_correlation_analyzer",
+                    "thompson_calibrator", "kelly_position_sizer")
     ])
 
     logger.info(
-        "Layer 33  - Market Intelligence organ complete: %d systems, %d holons, 26 connections",
+        "Layer 33  - Market Intelligence organ complete: %d systems, %d holons, 38 connections",
         active, holon_count,
     )
     logger.info(
@@ -81,7 +85,7 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
 # =========================================================================
 
 def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
-    """Create all 17 market system objects on ctx."""
+    """Create all 21 market system objects on ctx."""
     import os
     qdrant_url = getattr(ctx, "qdrant_url", "http://localhost:6333")
     failures = 0
@@ -301,6 +305,50 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         ctx.outcome_tracker = None
         failures += 1
 
+    # --- Phase 4: Signal archive, lag-correlation, calibration, Kelly ---
+    # (placed after intelligence layer so thompson_sampler is already set)
+
+    try:
+        from mae_core.market.intelligence.signal_archive_reader import SignalArchiveReader
+        ctx.signal_archive_reader = SignalArchiveReader()
+    except Exception:
+        logger.debug("Market: signal_archive_reader failed to construct", exc_info=True)
+        ctx.signal_archive_reader = None
+        failures += 1
+
+    try:
+        from mae_core.market.intelligence.lag_correlation_analyzer import LagCorrelationAnalyzer
+        ctx.lag_correlation_analyzer = (
+            LagCorrelationAnalyzer(archive_reader=ctx.signal_archive_reader)
+            if ctx.signal_archive_reader is not None else None
+        )
+    except Exception:
+        logger.debug("Market: lag_correlation_analyzer failed to construct", exc_info=True)
+        ctx.lag_correlation_analyzer = None
+        failures += 1
+
+    try:
+        from mae_core.market.intelligence.thompson_calibrator import ThompsonCalibrator
+        ctx.thompson_calibrator = (
+            ThompsonCalibrator(thompson_sampler=ctx.thompson_sampler)
+            if ctx.thompson_sampler is not None else None
+        )
+    except Exception:
+        logger.debug("Market: thompson_calibrator failed to construct", exc_info=True)
+        ctx.thompson_calibrator = None
+        failures += 1
+
+    try:
+        from mae_core.market.intelligence.kelly_position_sizer import KellyPositionSizer
+        ctx.kelly_position_sizer = (
+            KellyPositionSizer(thompson_sampler=ctx.thompson_sampler)
+            if ctx.thompson_sampler is not None else None
+        )
+    except Exception:
+        logger.debug("Market: kelly_position_sizer failed to construct", exc_info=True)
+        ctx.kelly_position_sizer = None
+        failures += 1
+
     # --- Trust registration with BoundaryMembrane ---
     market_sources = [
         ("sec_edgar", 0.90), ("yfinance", 0.75), ("alpha_vantage", 0.80),
@@ -327,7 +375,7 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
 
     logger.info(
         "Layer 33a - Market systems instantiated: %d systems (construction failures: %d)",
-        17 - failures, failures,
+        21 - failures, failures,
     )
     logger.info(
         "            Operational dependencies: Qdrant, RAPIDAPI_KEY, ALPHA_VANTAGE_KEY, "
@@ -363,6 +411,10 @@ def _register_market_somatic(ctx: SimpleNamespace) -> None:
         "correlation_tracker": ("CorrelationTracker", []),
         "outcome_tracker": ("OutcomeTracker", ["price_fetcher", "thompson_sampler"]),
         "regime_classifier": ("RegimeClassifier", ["price_fetcher"]),
+        "signal_archive_reader": ("SignalArchiveReader", []),
+        "lag_correlation_analyzer": ("LagCorrelationAnalyzer", ["signal_archive_reader"]),
+        "thompson_calibrator": ("ThompsonCalibrator", ["thompson_sampler"]),
+        "kelly_position_sizer": ("KellyPositionSizer", ["thompson_sampler"]),
     }
 
     for sys_id, (desc, deps) in market_systems.items():
@@ -393,6 +445,8 @@ def _register_market_holons(ctx: SimpleNamespace) -> None:
         "thompson_sampler", "convergence_alerter",
         "velocity_detector", "correlation_tracker", "outcome_tracker",
         "regime_classifier",
+        "signal_archive_reader", "lag_correlation_analyzer",
+        "thompson_calibrator", "kelly_position_sizer",
     ]
 
     registered = 0
@@ -455,6 +509,8 @@ def _register_market_fractal(ctx: SimpleNamespace) -> None:
         "session_sweep_detector",
         "usa_spending_client", "sam_gov_client", "correlation_tracker",
         "outcome_tracker", "regime_classifier",
+        "signal_archive_reader", "lag_correlation_analyzer",
+        "thompson_calibrator", "kelly_position_sizer",
     ]
     for sys_id in extras:
         if ctx.holon_registry.get_entry(sys_id) is not None:
@@ -477,7 +533,7 @@ def _register_market_fractal(ctx: SimpleNamespace) -> None:
 # =========================================================================
 
 def _register_market_connections(ctx: SimpleNamespace) -> None:
-    """Register 26 triadic connections for market systems (Group 14)."""
+    """Register 38 triadic connections for market systems (Group 14 + Group 15)."""
     from mae_core.backbone.connection_registry import (
         ConnectionType,
         ConnectionCriticality,
@@ -593,7 +649,51 @@ def _register_market_connections(ctx: SimpleNamespace) -> None:
         witnesses=["auditor", "connection_registry"],
         description="Thompson stats published periodically")
 
-    logger.info("Layer 33d - Market connections: 26 triadic connections registered (Group 14)")
+    # --- Group 15: Phase 4 — Signal Archive, Lag-Correlation, Calibration, Kelly ---
+    reg("signal_archive_reader", "lag_correlation_analyzer", dr,
+        witnesses=["thompson_calibrator", "auditor"],
+        description="Archive reader provides historical series to lag analyzer")
+    reg("lag_correlation_analyzer", "event_bus", eb,
+        channel="market.intel.lag_finding",
+        witnesses=["correlation_tracker", "auditor"],
+        description="Lag findings published to EventBus")
+    reg("thompson_calibrator", "signal_archive_reader", dr,
+        witnesses=["lag_correlation_analyzer", "auditor"],
+        description="Calibrator reads archives to validate distributions")
+
+    reg("thompson_calibrator", "thompson_sampler", dr,
+        witnesses=["signal_archive_reader", "auditor"],
+        description="Calibrator seeds and diagnoses Thompson distributions")
+    reg("thompson_calibrator", "event_bus", eb,
+        channel="market.intel.thompson_stats",
+        witnesses=["convergence_alerter", "auditor"],
+        description="Calibration report published to EventBus")
+    reg("convergence_alerter", "thompson_calibrator", dr,
+        witnesses=["thompson_sampler", "auditor"],
+        description="Convergence alerter uses calibration for confidence")
+
+    reg("kelly_position_sizer", "thompson_sampler", dr,
+        witnesses=["thompson_calibrator", "auditor"],
+        description="Kelly sizer queries Thompson mean for p parameter")
+    reg("convergence_alerter", "kelly_position_sizer", dr,
+        witnesses=["thompson_sampler", "auditor"],
+        description="Convergence alert triggers Kelly sizing recommendation")
+    reg("kelly_position_sizer", "event_bus", eb,
+        channel="market.intel.kelly_sizing",
+        witnesses=["convergence_alerter", "auditor"],
+        description="Kelly sizing recommendation published on convergence")
+
+    reg("lag_correlation_analyzer", "correlation_tracker", dr,
+        witnesses=["signal_archive_reader", "auditor"],
+        description="Lag findings feed leading-indicator pairs to tracker")
+    reg("lag_correlation_analyzer", "convergence_alerter", dr,
+        witnesses=["correlation_tracker", "auditor"],
+        description="Significant lag pairs update convergence domain weights")
+    reg("signal_archive_reader", "outcome_tracker", dr,
+        witnesses=["thompson_calibrator", "auditor"],
+        description="Archive reader provides historical signals to outcome tracker")
+
+    logger.info("Layer 33d - Market connections: 38 triadic connections registered (Group 14 + Group 15)")
 
 
 # =========================================================================
@@ -737,10 +837,66 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                 except Exception:
                     logger.debug("Thompson forgetting step failed", exc_info=True)
 
+        # Every 500 steps: lag-correlation analysis
+        if step % 500 == 0:
+            lag = getattr(ctx, "lag_correlation_analyzer", None)
+            if lag is not None:
+                try:
+                    findings = lag.analyze(lookback_days=90)
+                    if findings and hasattr(ctx, "bus"):
+                        ctx.bus.publish("market.intel.lag_finding", {
+                            "count": len(findings),
+                            "top": [
+                                {"a": f.source_a, "b": f.source_b,
+                                 "lag": f.lag_days, "r": f.correlation}
+                                for f in findings[:3]
+                            ],
+                        })
+                except Exception:
+                    logger.debug("Lag correlation step failed", exc_info=True)
+
+        # Every 1000 steps: Thompson calibration diagnostic
+        if step % 1000 == 0:
+            calibrator = getattr(ctx, "thompson_calibrator", None)
+            if calibrator is not None:
+                try:
+                    calibrator.calibrate()
+                except Exception:
+                    logger.debug("Thompson calibration step failed", exc_info=True)
+
+        # Kelly sizing: fires on per-ticker convergence alerts
+        if step % 50 == 0:
+            sizer = getattr(ctx, "kelly_position_sizer", None)
+            alerter = getattr(ctx, "convergence_alerter", None)
+            if sizer is not None and alerter is not None:
+                try:
+                    alerts = alerter.check_ticker_convergence(min_domains=2)
+                    for alert in alerts:
+                        # Extract symbol from alert signals' metadata
+                        symbols = set()
+                        for sig in alert.signals:
+                            sym = sig.metadata.get("symbol", "")
+                            if sym:
+                                symbols.add(sym)
+                        source = alert.signals[0].source if alert.signals else "unknown"
+                        for symbol in symbols:
+                            rec = sizer.recommend(source, symbol)
+                            if rec.kelly_capped > 0 and hasattr(ctx, "bus"):
+                                ctx.bus.publish("market.intel.kelly_sizing", {
+                                    "symbol": symbol,
+                                    "source": source,
+                                    "kelly_capped": rec.kelly_capped,
+                                    "p_win": rec.p_win,
+                                    "confidence": rec.confidence_in_sizing,
+                                })
+                except Exception:
+                    logger.debug("Kelly sizing step failed", exc_info=True)
+
     ctx.model.add_step_hook(_market_sense_hook)
     logger.info(
         "Layer 33g - Market step hooks: 1 sense hook registered "
-        "(cadence: convergence/1, stats/10, velocity/50, forgetting/100)"
+        "(cadence: convergence/1, stats/10, velocity/50, forgetting/100, "
+        "lag/500, calibration/1000)"
     )
 
 

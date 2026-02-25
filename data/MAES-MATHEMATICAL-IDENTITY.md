@@ -254,7 +254,7 @@ The original analogy — "fractal cortical columns internally, long-range axons 
 
 ### Current State
 
-Mae has 109 systems (92 core + 17 market), all wired, 2527 tests passing. 128 holons, 339 triadic connections (211 core + 47 fractal + 55 bootstrap + 26 market, 0 bare dyads). Complete autopoietic loop with FEP-compliant prediction and TaskPool environment. Progress:
+Mae has 113 systems (92 core + 21 market), all wired, 2605 tests passing. 132 holons, 351 triadic connections (211 core + 47 fractal + 55 bootstrap + 38 market, 0 bare dyads). Complete autopoietic loop with FEP-compliant prediction and TaskPool environment. Progress:
 - ~~Connections are dyadic~~ — DONE: 262+ triadic connections, 0 bare dyads (209 registered + fractal K3 + auto_healer self-healing + bidirectional awareness)
 - ~~Each system has its own interface~~ — DONE: Universal Holon Protocol (10 capabilities on every agent)
 - ~~Self-awareness exists at the top (SomaticMap) but not yet at every level~~ — DONE: HolonProxy on all 36 systems, AwarenessPulse active
@@ -302,7 +302,7 @@ The meta-review's central finding: Mae's architecture is structurally sound but 
 - The biological metaphors are correct and validated
 - The EventBus/substrate architecture IS the transfractal resolution
 - The existing systems work — this is about connecting them geometrically, not replacing them
-- 2527 tests must keep passing throughout
+- 2605 tests must keep passing throughout
 
 ---
 
