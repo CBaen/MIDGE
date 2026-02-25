@@ -33,6 +33,7 @@ LEARNING_CONFIG = {
         "politician": 0.04,    # Half-life: ~17 days
         "contract": 0.02,      # Half-life: ~35 days
         "research": 0.01,      # Half-life: ~69 days
+        "price": 0.15,         # Half-life: ~5 days
     },
 
     # Source reliability defaults

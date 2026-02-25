@@ -1,27 +1,35 @@
 #!/usr/bin/env python3
 """backfill_archives.py — Populate MIDGE signal archives with historical data.
 
-Downloads 90 days of market signals from free data sources (SEC EDGAR,
-Congressional trades, USASpending, EFTS keywords), converts them through
-the same signal.py adapters the live system uses, and writes them to
-data/midge/signals/YYYY-MM-DD.jsonl — one file per day.
+Downloads 90 days of market signals from all available free data sources:
+  - SEC EDGAR (Form 4 insider trades, EFTS keyword filings)
+  - Congressional trades (House + Senate)
+  - USASpending government contracts
+  - FINRA daily short volume (institutional flow)
+  - FRED macro indicators (yield curve, VIX, credit spreads, rates, employment)
+  - Finnhub earnings surprises
+  - yfinance price/volume (significant daily moves)
+
+Converts them through the same signal.py adapters the live system uses,
+and writes them to data/midge/signals/YYYY-MM-DD.jsonl — one file per day.
 
 This feeds the lag-correlation analyzer, Thompson calibrator, and Kelly
-position sizer with enough temporal data to produce meaningful results.
+position sizer with broad multi-domain temporal data.
 
 Usage:
     python backfill_archives.py                    # Default: 90 days, all sources
     python backfill_archives.py --days 180         # Override lookback
-    python backfill_archives.py --sources sec,congress  # Subset of sources
+    python backfill_archives.py --sources sec,finra,price  # Subset of sources
     python backfill_archives.py --dry-run          # Count signals, don't write
 """
 
 import argparse
 import json
 import logging
+import os
 import sys
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Set
 
@@ -63,7 +71,7 @@ BACKFILL_TICKERS = [
     "PANW", "CRWD",
 ]
 
-ALL_SOURCES = ["sec", "congress", "contracts", "efts"]
+ALL_SOURCES = ["sec", "congress", "contracts", "efts", "finra", "macro", "earnings", "price"]
 
 
 # ── Signal serialization (matches sensing_hook._store_signals) ────────────────
@@ -176,6 +184,132 @@ def fetch_efts_keywords(days: int) -> list:
         return hits
     except Exception as e:
         logger.warning("  EFTS keyword scan FAILED: %s", e)
+        return []
+
+
+def fetch_finra_short(tickers: List[str], days: int) -> list:
+    """Fetch FINRA daily short volume for watchlist tickers over date range."""
+    try:
+        from mae_core.market.apis.finra_short_interest import FINRAShortInterestClient
+    except ImportError:
+        logger.warning("FINRA client not available, skipping short interest")
+        return []
+
+    try:
+        client = FINRAShortInterestClient()
+        ticker_set = set(t.upper() for t in tickers)
+        all_records = []
+
+        # Iterate trading days and filter for our tickers
+        current = datetime.now()
+        end_date = current
+        start_date = current - timedelta(days=days)
+        check_date = end_date
+
+        days_fetched = 0
+        while check_date >= start_date:
+            # Skip weekends
+            if check_date.weekday() >= 5:
+                check_date -= timedelta(days=1)
+                continue
+
+            date_str = check_date.strftime("%Y-%m-%d")
+            day_records = client.get_daily_short_volume(date_str)
+
+            if day_records:
+                matched = [r for r in day_records if r.symbol in ticker_set]
+                all_records.extend(matched)
+                days_fetched += 1
+
+                if days_fetched % 10 == 0:
+                    logger.info("  FINRA short: %d trading days fetched, %d records so far",
+                                days_fetched, len(all_records))
+
+            check_date -= timedelta(days=1)
+
+        logger.info("  FINRA short interest: %d records across %d trading days",
+                     len(all_records), days_fetched)
+        return all_records
+    except Exception as e:
+        logger.warning("  FINRA short interest FAILED: %s", e)
+        return []
+
+
+def fetch_macro_history(days: int) -> list:
+    """Fetch FRED macro indicator history (yield curve, VIX, credit spreads, etc.)."""
+    if not os.environ.get("FRED_API_KEY"):
+        logger.warning("  FRED_API_KEY not set, skipping macro indicators")
+        return []
+
+    try:
+        from mae_core.market.apis.fred_client import FREDClient
+    except ImportError:
+        logger.warning("FRED client not available, skipping macro")
+        return []
+
+    try:
+        client = FREDClient()
+        series_ids = ["T10Y2Y", "BAMLH0A0HYM2", "VIXCLS", "DFF", "UNRATE"]
+        all_indicators = []
+
+        for series_id in series_ids:
+            indicators = client.get_historical_series(series_id, days=days)
+            all_indicators.extend(indicators)
+            logger.info("  FRED %s: %d observations", series_id, len(indicators))
+
+        logger.info("  FRED macro total: %d indicators", len(all_indicators))
+        return all_indicators
+    except Exception as e:
+        logger.warning("  FRED macro FAILED: %s", e)
+        return []
+
+
+def fetch_earnings_history(days: int) -> list:
+    """Fetch Finnhub reported earnings surprises."""
+    if not os.environ.get("MAE_FINNHUB_API_KEY"):
+        logger.warning("  MAE_FINNHUB_API_KEY not set, skipping earnings")
+        return []
+
+    try:
+        from mae_core.market.apis.finnhub_client import FinnhubClient
+    except ImportError:
+        logger.warning("Finnhub client not available, skipping earnings")
+        return []
+
+    try:
+        client = FinnhubClient()
+        events = client.get_recent_earnings_surprises(days=days)
+        logger.info("  Finnhub earnings: %d reported events", len(events))
+        return events
+    except Exception as e:
+        logger.warning("  Finnhub earnings FAILED: %s", e)
+        return []
+
+
+def fetch_price_history(tickers: List[str], days: int) -> list:
+    """Fetch daily OHLCV history for all tickers via yfinance."""
+    try:
+        from mae_core.market.apis.price_fetcher import PriceFetcher
+    except ImportError:
+        logger.warning("PriceFetcher not available, skipping price history")
+        return []
+
+    try:
+        fetcher = PriceFetcher()
+        all_prices = []
+
+        for i, ticker in enumerate(tickers):
+            logger.info("  Price history: %s (%d/%d)", ticker, i + 1, len(tickers))
+            try:
+                prices = fetcher.get_daily_history(ticker, days=days)
+                all_prices.extend(prices)
+            except Exception as e:
+                logger.warning("    -> FAILED: %s", e)
+
+        logger.info("  Price history total: %d daily records", len(all_prices))
+        return all_prices
+    except Exception as e:
+        logger.warning("  Price history FAILED: %s", e)
         return []
 
 
