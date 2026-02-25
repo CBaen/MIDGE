@@ -118,6 +118,7 @@ class ConvergenceAlerter:
         "finnhub_news": "finnhub_news",
         "finnhub_earnings": "finnhub_earnings",
         "fred_macro": "fred_macro",
+        "session_sweep": "session_sweep",
     }
 
     def __init__(

@@ -8,6 +8,7 @@ CH_CLUSTER_DETECTED = "market.edge.cluster_detected"
 CH_POLITICIAN_TRADE = "market.edge.politician_trade"
 CH_FILING_ANOMALY = "market.edge.filing_anomaly"
 CH_CONTRACT_PREDICTED = "market.edge.contract_predicted"
+CH_SESSION_SWEEP = "market.edge.session_sweep"
 
 # Market Intel channels (published by intelligence layer)
 CH_VELOCITY_ANOMALY = "market.intel.velocity_anomaly"

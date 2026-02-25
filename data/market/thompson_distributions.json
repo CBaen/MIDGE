@@ -70,5 +70,11 @@
       "alpha": 1.0,
       "beta": 4.431924358580646
     }
+  },
+  "session_sweep": {
+    "default": {
+      "alpha": 1.1,
+      "beta": 0.9
+    }
   }
 }

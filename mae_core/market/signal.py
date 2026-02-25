@@ -498,6 +498,56 @@ def from_correlation_signal(correlation: CorrelationSignal) -> MarketSignal:
 
 
 # ---------------------------------------------------------------------------
+# Price-action adapters (Layer 5 Phase 3 expansion)
+# ---------------------------------------------------------------------------
+
+
+def from_session_sweep(sweep) -> MarketSignal:
+    """Convert a SessionSweepSignal to a MarketSignal.
+
+    ICT session liquidity sweep → tactical signal. Decay is hourly-scale
+    (~18h half-life). Outcome checked by next session (1 day).
+    """
+    event_dt = _ensure_datetime(sweep.detected_at)
+
+    signal_id = (
+        f"session_sweep:{sweep.symbol}:{sweep.session_swept}:"
+        f"{sweep.sweep_type}:{sweep.detected_at}"
+    )
+
+    return MarketSignal(
+        signal_id=signal_id,
+        source="session_sweep",
+        symbol=sweep.symbol,
+        asset_class="futures",
+        domain="technical",
+        direction=sweep.direction,
+        strength=sweep.strength,
+        confidence=sweep.confidence,
+        decay_rate=sweep.decay_rate,
+        timestamp=event_dt,
+        received_at=datetime.now(),
+        outcome_symbol=sweep.symbol,
+        outcome_window_days=1,
+        raw_id=sweep.sweep_id or "",
+        raw_type="SessionSweepSignal",
+        metadata={
+            "sweep_type": sweep.sweep_type,
+            "session_swept": sweep.session_swept,
+            "sweep_level": sweep.sweep_level,
+            "fvg_top": sweep.fvg_top,
+            "fvg_bottom": sweep.fvg_bottom,
+            "entry_zone_top": sweep.entry_zone_top,
+            "entry_zone_bottom": sweep.entry_zone_bottom,
+            "stop_level": sweep.stop_level,
+            "target_level": sweep.target_level,
+            "rr_ratio": sweep.rr_ratio,
+            "kill_zone": sweep.kill_zone,
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
 # New source adapters (Phase 2 expansion)
 # ---------------------------------------------------------------------------
 

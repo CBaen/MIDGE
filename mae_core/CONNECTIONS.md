@@ -45,7 +45,7 @@ Last updated: 2026-02-22
 | 5.8 Temporal | TemporalMemory, WorldlinePlanner | 6 | 6 (EventBus) | 4 (cross-system stubs) |
 | 5.8+ Enforcement | TriadEnforcer, Watchdog, Auditor, Registry | 10 | 10 (EventBus) | 0 |
 | 5.8++ Holon | HolonRegistry, HolonMixin, HolonProxy, AwarenessPulse | 2 | 36 (proxy injection) + 1 (bootstrap) | 0 |
-| 5.8+++ Connection | ConnectionRegistry | 4 | 336 (211 core + 47 fractal + 55 bootstrap + 23 market, all witnessed, 0 bare dyads) | 0 |
+| 5.8+++ Connection | ConnectionRegistry | 4 | 339 (211 core + 47 fractal + 55 bootstrap + 26 market, all witnessed, 0 bare dyads) | 0 |
 | **5.9 Integration** | **API, Dashboard, Domain Config** | **0** | **0** | **20+ (all stubs need wiring)** |
 
 ---
@@ -94,3 +94,15 @@ These require code changes in the consuming system.
 8. **SomaticMap must know about every system** - register on init, heartbeat periodically
 9. **Triad enforcement covers every process** - register via triad_registry
 10. **`Any`-typed stubs are intentional** - they prevent circular imports while marking ready connections
+
+---
+
+## Market Connections (Group 14 — Layer 33) — additions
+
+The following 3 connections were added with the Session Sweep Detector (total market connections: 26):
+
+| Connection | Type | Witness | Notes |
+|-----------|------|---------|-------|
+| session_sweep_detector ↔ event_bus | eventbus_pubsub | convergence_alerter | Publishes sweep signals to CH_MARKET_SIGNAL |
+| convergence_alerter ↔ event_bus (session_sweep channel) | eventbus_pubsub | session_sweep_detector | Receives session sweep signals for multi-domain synthesis |
+| session_sweep_detector ↔ price_fetcher | direct_reference | convergence_alerter | Fetches intraday price data to confirm sweep patterns |

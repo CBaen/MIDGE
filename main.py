@@ -204,9 +204,10 @@ def _build_systems_dict(ctx) -> dict:
         "contract_predictor":   getattr(ctx, "contract_predictor", None),
         "thompson_sampler":     getattr(ctx, "thompson_sampler", None),
         "convergence_alerter":  getattr(ctx, "convergence_alerter", None),
-        "velocity_detector":    getattr(ctx, "velocity_detector", None),
-        "correlation_tracker":  getattr(ctx, "correlation_tracker", None),
-        "outcome_tracker":      getattr(ctx, "outcome_tracker", None),
+        "velocity_detector":        getattr(ctx, "velocity_detector", None),
+        "correlation_tracker":      getattr(ctx, "correlation_tracker", None),
+        "outcome_tracker":          getattr(ctx, "outcome_tracker", None),
+        "session_sweep_detector":   getattr(ctx, "session_sweep_detector", None),
     }
 
 

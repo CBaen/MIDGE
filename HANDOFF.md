@@ -123,8 +123,8 @@ Fixed 3 bugs found in live scan output, defined data schema:
 
 ## Current State
 
-- **2473 tests pass, 0 failures**
-- **108 systems** (92 core + 16 market), **127 holons**, **336 connections** (211 core + 47 fractal + 55 bootstrap + 23 market)
+- **2527 tests pass, 0 failures**
+- **109 systems** (92 core + 17 market), **128 holons**, **339 connections** (211 core + 47 fractal + 55 bootstrap + 26 market)
 - **32 market files** in `mae_core/market/` (bootstrapped as Layer 33 + 6 API clients + form8k_sentiment)
 - **33-layer bootstrap** runs cleanly (Layers 33a-33i)
 - **Agent-based market sensing active** — 3 agents differentiated (SEC_WATCHER, CONTRACT_TRACKER, MARKET_ANALYST)
@@ -169,7 +169,7 @@ Phase 7/7: Report — markdown intelligence report with all sections
 |------------|-------|---------|
 | `apis/sec_edgar/` | 4 (models, client, efts, __init__) | SEC insider trades + material events + full-text search |
 | `apis/` | 13 (price_fetcher, house_stock_watcher, senate_stock_watcher, job_tracker, usa_spending, sam_gov, apewisdom, finra_short_interest, finnhub_client, fred_client, ticker_resolver, market_data_provider) | 14 data sources + utilities |
-| `edge/` | 5 (cluster_detector, politician_tracker, filing_time_analyzer, contract_predictor, form8k_sentiment) | Pattern recognition + text analysis |
+| `edge/` | 6 (cluster_detector, politician_tracker, filing_time_analyzer, contract_predictor, form8k_sentiment, session_sweep_detector) | Pattern recognition + text analysis |
 | `intelligence/` | 7 (thompson_sampler, velocity_detector, correlation_tracker, convergence_alerter, learning_config, regime_classifier, outcome_collector) | Bayesian learning + feedback loop |
 | `root` | 5 (signal.py, channels.py, outcome_tracker.py, memory.py, sensing_hook.py) | Integration layer + sensing + Qdrant persistence |
 
@@ -184,7 +184,8 @@ Roadmap at `C:\Users\baenb\.claude\plans\delegated-leaping-map.md`. Items below 
 **Ready to build (no dependencies):**
 1. ~~Compressed cluster detector~~ DONE 2026-02-25
 2. ~~8-K text sentiment via Ollama~~ DONE 2026-02-25
-3. **Options flow via Unusual Whales** ($35/mo API — needs Guiding Light approval on spend)
+3. ~~Session sweep detector~~ DONE 2026-02-25
+4. **Options flow via Unusual Whales** ($35/mo API — needs Guiding Light approval on spend)
 
 **Data-gated (need calendar time):**
 4. **Lag-correlation analysis** (needs 30+ days of signal archives — currently 2 days)
@@ -201,14 +202,14 @@ Roadmap at `C:\Users\baenb\.claude\plans\delegated-leaping-map.md`. Items below 
 
 Welcome. MIDGE is Mae differentiated for financial markets. Here is what you need to know:
 
-1. **MIDGE = mae-core + market intelligence.** 108 systems, same 8 laws, 33-layer bootstrap. Market organ is Layer 33 (33a-33i).
+1. **MIDGE = mae-core + market intelligence.** 109 systems, same 8 laws, 33-layer bootstrap. Market organ is Layer 33 (33a-33i).
 2. **Mae-core is upstream.** Changes to Mae's genome should be made in `C:\Users\baenb\projects\mae-core` and pulled here. Market-specific changes stay here.
 3. **Agents actively sense the market.** MarketSensingHook (Layer 33h) fetches data on cadence and feeds convergence_alerter. Three agents are differentiated into market roles (Layer 33i). Endocrine coupling and market advisory carry signals to all agents.
 4. **The crown jewel is `convergence_alerter.py`** — synthesizes signals across ALL domains (insider + congressional + contract + hiring + velocity) into actionable alerts. Now with per-ticker and multi-timeframe convergence.
 5. **Thompson Sampling** uses Bayesian explore/exploit. Learned distributions in `data/market/thompson_distributions.json`. Bayesian forgetting prevents stale evidence.
 6. **OutcomeCollector** closes the feedback loop: scan signals → register_signals() → per-type windows → price check → Thompson update. Success threshold: 5%.
 7. **All 8 Mathematical Laws are satisfied.** See implementation plan Section 12 for compliance map.
-8. **2473 tests must keep passing.** Zero regressions.
+8. **2527 tests must keep passing.** Zero regressions.
 9. **Deep memory runs on Qdrant** container (port 6333). Start with `docker compose up -d`.
 10. **API keys** needed: RAPIDAPI_KEY (job tracker, congressional trades), ALPHA_VANTAGE_KEY (price fallback), SAM_GOV_API_KEY, MAE_TAVILY_API_KEY, MAE_FINNHUB_API_KEY (news sentiment + earnings), FRED_API_KEY (macro indicators). Free/no-key: SEC EDGAR, yfinance, USASpending, Senate Stock Watcher, ApeWisdom, FINRA short volume, SEC EFTS.
 11. **`python main.py --agents 6 --steps 500`** runs MIDGE with agents sensing the market. Requires 6 agents (K3 general + K3 market per Law 2).

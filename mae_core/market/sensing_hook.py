@@ -51,6 +51,7 @@ TIER_ROUTING = {
     "contract_award": "thematic",
     "social_sentiment": "thematic",
     "fred_macro": "thematic",
+    "session_sweep": "tactical",
 }
 
 # Source names for rotation — 12 sources, full cycle every 600 steps
@@ -67,6 +68,7 @@ SOURCE_ROTATION = [
     "sec_efts",
     "finnhub",
     "fred_macro",
+    "session_sweep",
 ]
 
 
@@ -95,6 +97,7 @@ class MarketSensingHook:
         velocity_detector: Any = None,
         filing_analyzer: Any = None,
         form8k_sentiment: Any = None,
+        session_sweep_detector: Any = None,
         outcome_collector: Any = None,
         memory: Any = None,
         tiered_alerters: Optional[dict] = None,
@@ -121,6 +124,7 @@ class MarketSensingHook:
         self._velocity_detector = velocity_detector
         self._filing_analyzer = filing_analyzer
         self._form8k_sentiment = form8k_sentiment
+        self._session_sweep_detector = session_sweep_detector
         self._outcome_collector = outcome_collector
         self._memory = memory
 
@@ -269,6 +273,7 @@ class MarketSensingHook:
             from_news_sentiment,
             from_earnings_event,
             from_macro_indicator,
+            from_session_sweep,
         )
 
         signals = []
@@ -308,6 +313,9 @@ class MarketSensingHook:
 
         elif source_name == "fred_macro":
             signals = self._fetch_fred(from_macro_indicator)
+
+        elif source_name == "session_sweep":
+            signals = self._fetch_session_sweep(from_session_sweep)
 
         return signals
 
@@ -550,6 +558,48 @@ class MarketSensingHook:
                     pass
         except Exception as e:
             logger.debug("FRED macro fetch failed: %s", e)
+        return signals
+
+    def _fetch_session_sweep(self, converter) -> list:
+        """Fetch ICT session sweep signals for futures.
+
+        Kill-zone time guard: returns early if not within 90 min of a
+        kill zone window. Prevents wasting yfinance rate limit during
+        dead hours.
+        """
+        if self._session_sweep_detector is None:
+            return []
+
+        # Time-of-day guard (Eastern time)
+        try:
+            from zoneinfo import ZoneInfo
+            from datetime import time as _time
+            now_et = datetime.now(ZoneInfo("America/New_York")).time()
+            # Kill zone windows with ±90 min buffer
+            kz_windows = [
+                (_time(18, 30), _time(23, 59)),  # Asia buffer (evening)
+                (_time(0, 0), _time(6, 30)),     # Asia + London buffer
+                (_time(5, 30), _time(11, 30)),   # NY kill zone buffer
+            ]
+            in_window = any(s <= now_et <= e for s, e in kz_windows)
+            if not in_window:
+                logger.debug("Session sweep: outside kill zone window, skipping")
+                return []
+        except Exception:
+            pass  # If timezone check fails, proceed anyway
+
+        signals = []
+        futures_symbols = ["ES=F", "NQ=F"]
+        for symbol in futures_symbols:
+            try:
+                sweeps = self._session_sweep_detector.detect_sweeps(symbol)
+                for sweep in sweeps:
+                    try:
+                        signals.append(converter(sweep))
+                    except Exception:
+                        pass
+            except Exception as e:
+                logger.debug("Session sweep fetch failed for %s: %s", symbol, e)
         return signals
 
     # ------------------------------------------------------------------

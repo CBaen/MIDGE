@@ -90,6 +90,7 @@ class TestBootstrap:
             "cluster_detector", "politician_tracker", "filing_time_analyzer",
             "contract_predictor", "thompson_sampler", "convergence_alerter",
             "velocity_detector", "correlation_tracker", "outcome_tracker",
+            "session_sweep_detector",
         ]
         for key in market_keys:
             assert key in systems, f"Missing market system: {key}"

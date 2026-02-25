@@ -94,6 +94,36 @@ class PriceFetcher:
 
         return price
 
+    def get_intraday_candles(
+        self,
+        symbol: str,
+        interval: str = "1m",
+        period: str = "5d",
+    ):
+        """Fetch intraday OHLCV candles for a symbol.
+
+        Args:
+            symbol: Ticker (e.g., "ES=F", "NQ=F", "AAPL")
+            interval: Bar interval (1m, 2m, 5m, 15m, 30m, 60m, 1h)
+            period: Lookback period. For 1m: max 7 days (use "5d" for safety).
+
+        Returns:
+            DataFrame with lowercase columns (open, high, low, close, volume)
+            indexed by datetime. Returns None on failure.
+        """
+        if not YFINANCE_AVAILABLE:
+            return None
+        try:
+            ticker = yf.Ticker(symbol)
+            df = ticker.history(interval=interval, period=period)
+            if df.empty:
+                return None
+            df.columns = [c.lower() for c in df.columns]
+            return df
+        except Exception as e:
+            logger.warning("Intraday candles error for %s: %s", symbol, e)
+            return None
+
     def get_historical_price(self, symbol: str, date: str) -> Optional[PriceData]:
         """
         Get closing price for a specific date.

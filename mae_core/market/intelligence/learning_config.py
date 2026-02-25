@@ -67,6 +67,7 @@ LEARNING_CONFIG = {
         "finnhub_news": 0.60,
         "finnhub_earnings": 0.80,
         "fred_macro": 0.70,
+        "session_sweep": 0.55,
     },
 
     # Confidence calibration

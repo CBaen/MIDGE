@@ -1,6 +1,6 @@
 """Bootstrap Layer 33: Market Intelligence Organ.
 
-Creates 16 market systems, registers holons, wires fractal hierarchy,
+Creates 17 market systems, registers holons, wires fractal hierarchy,
 registers triadic connections (Group 14), wires EventBus channels,
 and hooks into the step lifecycle.
 
@@ -28,7 +28,7 @@ logger = logging.getLogger("mae.bootstrap")
 
 
 def bootstrap_market(ctx: SimpleNamespace) -> None:
-    """Wire Layer 33: Market Intelligence organ (16 systems, 23 connections)."""
+    """Wire Layer 33: Market Intelligence organ (17 systems, 26 connections)."""
     _instantiate_market_systems(ctx)
     _register_market_somatic(ctx)
     _register_market_holons(ctx)
@@ -45,7 +45,8 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
         "sec_edgar_client", "price_fetcher", "house_stock_watcher",
         "job_tracker", "usa_spending_client", "sam_gov_client",
         "cluster_detector", "politician_tracker", "filing_time_analyzer",
-        "contract_predictor", "thompson_sampler", "convergence_alerter",
+        "contract_predictor", "session_sweep_detector",
+        "thompson_sampler", "convergence_alerter",
         "velocity_detector", "correlation_tracker", "outcome_tracker",
         "regime_classifier",
     ]
@@ -56,13 +57,14 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
         or hid in ("sec_edgar_client", "price_fetcher", "house_stock_watcher",
                     "job_tracker", "usa_spending_client", "sam_gov_client",
                     "cluster_detector", "politician_tracker", "filing_time_analyzer",
-                    "contract_predictor", "thompson_sampler", "convergence_alerter",
+                    "contract_predictor", "session_sweep_detector",
+                    "thompson_sampler", "convergence_alerter",
                     "velocity_detector", "correlation_tracker", "outcome_tracker",
                     "regime_classifier")
     ])
 
     logger.info(
-        "Layer 33  - Market Intelligence organ complete: %d systems, %d holons, 23 connections",
+        "Layer 33  - Market Intelligence organ complete: %d systems, %d holons, 26 connections",
         active, holon_count,
     )
     logger.info(
@@ -79,7 +81,7 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
 # =========================================================================
 
 def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
-    """Create all 16 market system objects on ctx."""
+    """Create all 17 market system objects on ctx."""
     import os
     qdrant_url = getattr(ctx, "qdrant_url", "http://localhost:6333")
     failures = 0
@@ -225,6 +227,14 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         ctx.contract_predictor = None
         failures += 1
 
+    try:
+        from mae_core.market.edge.session_sweep_detector import SessionSweepDetector
+        ctx.session_sweep_detector = SessionSweepDetector()
+    except Exception:
+        logger.debug("Market: session_sweep_detector failed to construct", exc_info=True)
+        ctx.session_sweep_detector = None
+        failures += 1
+
     # --- Intelligence layer ---
 
     try:
@@ -297,6 +307,7 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         ("rapidapi", 0.65), ("usa_spending", 0.85), ("sam_gov", 0.80),
         ("senate_free", 0.80), ("apewisdom", 0.45), ("finra_short", 0.85),
         ("sec_efts", 0.90), ("finnhub", 0.75), ("fred_macro", 0.95),
+        ("session_sweep", 0.60),
     ]
     if getattr(ctx, "boundary_membrane", None) is not None:
         for source_name, trust in market_sources:
@@ -316,7 +327,7 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
 
     logger.info(
         "Layer 33a - Market systems instantiated: %d systems (construction failures: %d)",
-        16 - failures, failures,
+        17 - failures, failures,
     )
     logger.info(
         "            Operational dependencies: Qdrant, RAPIDAPI_KEY, ALPHA_VANTAGE_KEY, "
@@ -345,6 +356,7 @@ def _register_market_somatic(ctx: SimpleNamespace) -> None:
         "politician_tracker": ("PoliticianTracker", ["sec_edgar_client", "usa_spending_client"]),
         "filing_time_analyzer": ("FilingTimeAnalyzer", []),
         "contract_predictor": ("ContractPredictor", ["job_tracker", "sam_gov_client"]),
+        "session_sweep_detector": ("SessionSweepDetector", ["price_fetcher"]),
         "thompson_sampler": ("ThompsonSampler", []),
         "convergence_alerter": ("ConvergenceAlerter", ["thompson_sampler", "velocity_detector", "regime_classifier"]),
         "velocity_detector": ("VelocityDetector", []),
@@ -377,7 +389,8 @@ def _register_market_holons(ctx: SimpleNamespace) -> None:
         "sec_edgar_client", "price_fetcher", "house_stock_watcher",
         "job_tracker", "usa_spending_client", "sam_gov_client",
         "cluster_detector", "politician_tracker", "filing_time_analyzer",
-        "contract_predictor", "thompson_sampler", "convergence_alerter",
+        "contract_predictor", "session_sweep_detector",
+        "thompson_sampler", "convergence_alerter",
         "velocity_detector", "correlation_tracker", "outcome_tracker",
         "regime_classifier",
     ]
@@ -439,6 +452,7 @@ def _register_market_fractal(ctx: SimpleNamespace) -> None:
     # Register remaining systems individually (advisory non-triadic)
     extras = [
         "house_stock_watcher", "filing_time_analyzer",
+        "session_sweep_detector",
         "usa_spending_client", "sam_gov_client", "correlation_tracker",
         "outcome_tracker", "regime_classifier",
     ]
@@ -463,7 +477,7 @@ def _register_market_fractal(ctx: SimpleNamespace) -> None:
 # =========================================================================
 
 def _register_market_connections(ctx: SimpleNamespace) -> None:
-    """Register 23 triadic connections for market systems (Group 14)."""
+    """Register 26 triadic connections for market systems (Group 14)."""
     from mae_core.backbone.connection_registry import (
         ConnectionType,
         ConnectionCriticality,
@@ -525,6 +539,10 @@ def _register_market_connections(ctx: SimpleNamespace) -> None:
         channel="market.edge.filing_anomaly",
         witnesses=["threat_detector", "auditor"],
         description="Filing time anomaly published")
+    reg("session_sweep_detector", "event_bus", eb,
+        channel="market.edge.session_sweep",
+        witnesses=["threat_detector", "auditor"],
+        description="Session sweep signal published")
 
     # --- Cross-subsystem: EventBus subscribe ---
     reg("convergence_alerter", "event_bus", cb,
@@ -539,6 +557,10 @@ def _register_market_connections(ctx: SimpleNamespace) -> None:
         channel="market.edge.contract_predicted",
         witnesses=["thompson_sampler", "auditor"],
         description="Convergence subscribes to contract predictions")
+    reg("convergence_alerter", "event_bus", cb,
+        channel="market.edge.session_sweep",
+        witnesses=["thompson_sampler", "auditor"],
+        description="Convergence subscribes to session sweep signals")
 
     # --- Integration connections ---
     reg("convergence_alerter", "thompson_sampler", dr,
@@ -558,6 +580,9 @@ def _register_market_connections(ctx: SimpleNamespace) -> None:
         witnesses=["input_validator", "threat_detector"],
         criticality=ConnectionCriticality.IMPORTANT,
         description="Price fetcher validated through boundary membrane")
+    reg("session_sweep_detector", "price_fetcher", dr,
+        witnesses=["convergence_alerter", "auditor"],
+        description="Session sweep reads intraday price data via yfinance")
 
     # --- Step hook + periodic ---
     reg("convergence_alerter", "model", sh,
@@ -568,7 +593,7 @@ def _register_market_connections(ctx: SimpleNamespace) -> None:
         witnesses=["auditor", "connection_registry"],
         description="Thompson stats published periodically")
 
-    logger.info("Layer 33d - Market connections: 23 triadic connections registered (Group 14)")
+    logger.info("Layer 33d - Market connections: 26 triadic connections registered (Group 14)")
 
 
 # =========================================================================
@@ -801,6 +826,7 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
             velocity_detector=getattr(ctx, "velocity_detector", None),
             filing_analyzer=getattr(ctx, "filing_time_analyzer", None),
             form8k_sentiment=form8k_sentiment,
+            session_sweep_detector=getattr(ctx, "session_sweep_detector", None),
             outcome_collector=outcome_collector,
             memory=memory,
             tiered_alerters=tiered_alerters,
