@@ -336,3 +336,122 @@ class TestConvertAll:
         )
 
         assert signals == []
+
+    def test_convert_all_with_short_interest(self):
+        """ShortInterestData records must produce finra_short signals."""
+        import backfill_archives
+        from mae_core.market.apis.finra_short_interest import ShortInterestData
+
+        si = ShortInterestData(
+            symbol="NVDA",
+            date="2026-01-15",
+            short_volume=5_000_000,
+            total_volume=8_000_000,
+            short_ratio=0.625,
+        )
+
+        signals = backfill_archives.convert_all(
+            form4_trades=[], house_trades=[], senate_trades=[],
+            contracts=[], efts_hits=[], short_interest=[si],
+        )
+
+        assert len(signals) == 1
+        assert signals[0].source == "finra_short"
+        assert signals[0].symbol == "NVDA"
+        assert signals[0].domain == "institutional"
+
+    def test_convert_all_with_macro_indicators(self):
+        """MacroIndicator records must produce fred_macro signals."""
+        import backfill_archives
+        from mae_core.market.apis.fred_client import MacroIndicator
+
+        mi = MacroIndicator(
+            series_id="T10Y2Y",
+            series_name="10Y-2Y Treasury Spread",
+            value=-0.15,
+            date="2026-01-10",
+            signal_type="yield_curve",
+            direction="bearish",
+        )
+
+        signals = backfill_archives.convert_all(
+            form4_trades=[], house_trades=[], senate_trades=[],
+            contracts=[], efts_hits=[], macro_indicators=[mi],
+        )
+
+        assert len(signals) == 1
+        assert signals[0].source == "fred_macro"
+        assert signals[0].domain == "macro"
+        assert signals[0].direction == "bearish"
+
+    def test_convert_all_with_price_above_threshold(self):
+        """PriceData with |change_pct| > 1.5% must produce a price signal."""
+        import backfill_archives
+        from mae_core.market.apis.price_fetcher import PriceData
+
+        pd = PriceData(
+            symbol="AAPL",
+            price=185.0,
+            timestamp="2026-01-15",
+            source="yfinance_history",
+            open=180.0,
+            high=186.0,
+            low=179.0,
+            volume=50_000_000,
+            change_pct=2.78,
+        )
+
+        signals = backfill_archives.convert_all(
+            form4_trades=[], house_trades=[], senate_trades=[],
+            contracts=[], efts_hits=[], price_history=[pd],
+        )
+
+        assert len(signals) == 1
+        assert signals[0].source == "yfinance_price"
+        assert signals[0].domain == "price"
+        assert signals[0].direction == "bullish"
+        assert signals[0].strength == pytest.approx(2.78 / 5.0, abs=0.01)
+
+    def test_convert_all_with_price_below_threshold(self):
+        """PriceData with |change_pct| < 1.5% must be filtered out (no signal)."""
+        import backfill_archives
+        from mae_core.market.apis.price_fetcher import PriceData
+
+        pd = PriceData(
+            symbol="AAPL",
+            price=180.5,
+            timestamp="2026-01-15",
+            source="yfinance_history",
+            open=180.0,
+            change_pct=0.28,
+        )
+
+        signals = backfill_archives.convert_all(
+            form4_trades=[], house_trades=[], senate_trades=[],
+            contracts=[], efts_hits=[], price_history=[pd],
+        )
+
+        assert len(signals) == 0, "Sub-threshold price moves should be filtered out"
+
+    def test_fetch_finra_handles_import_error(self):
+        """If FINRA client import fails, fetch_finra_short must return []."""
+        import backfill_archives
+
+        with patch.dict("sys.modules", {"mae_core.market.apis.finra_short_interest": None}):
+            # Force reimport to trigger ImportError
+            import importlib
+            importlib.reload(backfill_archives)
+            result = backfill_archives.fetch_finra_short(["AAPL"], 30)
+
+        assert result == []
+        # Reload normally to not break other tests
+        importlib.reload(backfill_archives)
+
+    def test_fetch_macro_skips_without_key(self):
+        """If FRED_API_KEY is not set, fetch_macro_history must return []."""
+        import backfill_archives
+
+        with patch.dict("os.environ", {}, clear=True):
+            result = backfill_archives.fetch_macro_history(30)
+
+        assert result == []

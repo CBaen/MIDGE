@@ -321,6 +321,10 @@ def convert_all(
     senate_trades: list,
     contracts: list,
     efts_hits: list,
+    short_interest: list = None,
+    macro_indicators: list = None,
+    earnings_events: list = None,
+    price_history: list = None,
 ) -> list:
     """Convert raw API results to MarketSignal objects, deduped by signal_id."""
     from mae_core.market.signal import (
@@ -329,6 +333,10 @@ def convert_all(
         from_senate_trade,
         from_government_contract,
         from_filing_keyword,
+        from_short_interest,
+        from_macro_indicator,
+        from_earnings_event,
+        from_price_data,
     )
 
     signals = []
@@ -366,6 +374,32 @@ def convert_all(
     for hit in efts_hits:
         try:
             _add(from_filing_keyword(hit))
+        except Exception:
+            pass
+
+    for si in (short_interest or []):
+        try:
+            _add(from_short_interest(si))
+        except Exception:
+            pass
+
+    for mi in (macro_indicators or []):
+        try:
+            _add(from_macro_indicator(mi))
+        except Exception:
+            pass
+
+    for ee in (earnings_events or []):
+        try:
+            _add(from_earnings_event(ee))
+        except Exception:
+            pass
+
+    for pd in (price_history or []):
+        try:
+            sig = from_price_data(pd)
+            if sig is not None:
+                _add(sig)
         except Exception:
             pass
 
@@ -453,7 +487,7 @@ def main():
     parser = argparse.ArgumentParser(description="Backfill MIDGE signal archives")
     parser.add_argument("--days", type=int, default=90, help="Days of history (default: 90)")
     parser.add_argument("--sources", type=str, default="all",
-                        help="Comma-separated sources: sec,congress,contracts,efts (default: all)")
+                        help="Comma-separated sources: sec,congress,contracts,efts,finra,macro,earnings,price (default: all)")
     parser.add_argument("--dry-run", action="store_true", help="Count signals without writing")
     args = parser.parse_args()
 
@@ -475,6 +509,10 @@ def main():
     senate_trades = []
     contracts = []
     efts_hits = []
+    short_interest = []
+    macro_indicators = []
+    earnings_events = []
+    price_history = []
 
     if "sec" in sources:
         form4_trades = fetch_sec_form4(tickers, args.days)
@@ -489,7 +527,21 @@ def main():
     if "efts" in sources:
         efts_hits = fetch_efts_keywords(args.days)
 
-    raw_total = len(form4_trades) + len(house_trades) + len(senate_trades) + len(contracts) + len(efts_hits)
+    if "finra" in sources:
+        short_interest = fetch_finra_short(tickers, args.days)
+
+    if "macro" in sources:
+        macro_indicators = fetch_macro_history(args.days)
+
+    if "earnings" in sources:
+        earnings_events = fetch_earnings_history(args.days)
+
+    if "price" in sources:
+        price_history = fetch_price_history(tickers, args.days)
+
+    raw_total = (len(form4_trades) + len(house_trades) + len(senate_trades)
+                 + len(contracts) + len(efts_hits) + len(short_interest)
+                 + len(macro_indicators) + len(earnings_events) + len(price_history))
     logger.info("")
     logger.info("Phase 1 complete: %d raw records fetched", raw_total)
 
@@ -500,7 +552,13 @@ def main():
     # Phase 2: Convert
     logger.info("")
     logger.info("Phase 2: Converting to MarketSignal format...")
-    signals = convert_all(form4_trades, house_trades, senate_trades, contracts, efts_hits)
+    signals = convert_all(
+        form4_trades, house_trades, senate_trades, contracts, efts_hits,
+        short_interest=short_interest,
+        macro_indicators=macro_indicators,
+        earnings_events=earnings_events,
+        price_history=price_history,
+    )
     logger.info("Phase 2 complete: %d unique signals (deduped from %d raw)", len(signals), raw_total)
 
     # Source breakdown
