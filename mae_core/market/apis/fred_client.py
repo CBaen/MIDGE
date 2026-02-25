@@ -320,6 +320,73 @@ class FREDClient:
         )
         return indicator
 
+    def get_historical_series(
+        self, series_id: str, days: int = 90
+    ) -> List[MacroIndicator]:
+        """
+        Fetch multiple observations for a FRED series over a date range.
+
+        Unlike get_series() which returns only the latest observation, this
+        returns one MacroIndicator per valid observation within the lookback
+        window. Used by the backfill script to populate signal archives.
+
+        Args:
+            series_id: FRED series ID (e.g. "T10Y2Y", "VIXCLS")
+            days: Number of calendar days to look back
+
+        Returns:
+            List of MacroIndicator objects, sorted oldest-first.
+            Empty list on failure or if no API key is configured.
+        """
+        from datetime import timedelta
+
+        start_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+
+        self._rate_limit()
+
+        data = self._request(
+            "/series/observations",
+            params={
+                "series_id": series_id,
+                "sort_order": "asc",
+                "observation_start": start_date,
+            },
+        )
+
+        if data is None:
+            return []
+
+        observations = data.get("observations", [])
+        if not observations:
+            logger.warning("FRED returned no observations for %s (days=%d)", series_id, days)
+            return []
+
+        series_name, signal_type = FRED_SERIES.get(series_id, (series_id, "macro"))
+        results: List[MacroIndicator] = []
+
+        for obs in observations:
+            raw_value = obs.get("value", "")
+            if raw_value in (".", ""):
+                continue
+
+            try:
+                value = float(raw_value)
+            except ValueError:
+                continue
+
+            direction = _determine_direction(series_id, value)
+            results.append(MacroIndicator(
+                series_id=series_id,
+                series_name=series_name,
+                value=value,
+                date=obs.get("date", ""),
+                signal_type=signal_type,
+                direction=direction,
+            ))
+
+        logger.info("FRED %s: %d observations over %d days", series_id, len(results), days)
+        return results
+
     def get_macro_snapshot(self) -> List[MacroIndicator]:
         """
         Fetch the latest reading for all key macro series.
