@@ -47,9 +47,9 @@ def main():
     # Initialize dependencies
     print("\nInitializing components...")
     price_fetcher = PriceFetcher()
-    thompson = ThompsonSampler(data_dir=data_dir)
+    thompson = ThompsonSampler(persistence_path=data_dir / "thompson_distributions.json")
 
-    print(f"  Thompson distributions loaded: {len(thompson._distributions)} sources")
+    print(f"  Thompson distributions loaded: {len(thompson.distributions)} sources")
     print(f"  Signal archive: {signals_dir}")
 
     # Create collector
@@ -85,7 +85,7 @@ def main():
 
     # Phase 3: Show updated Thompson distributions
     print(f"\nPhase 3: Thompson distribution state after updates:")
-    for source_key, regimes in sorted(thompson._distributions.items()):
+    for source_key, regimes in sorted(thompson.distributions.items()):
         default = regimes.get("default", {})
         alpha = default.get("alpha", 1.0)
         beta = default.get("beta", 1.0)
