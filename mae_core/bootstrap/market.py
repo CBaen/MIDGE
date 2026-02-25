@@ -774,6 +774,14 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
     except Exception:
         logger.debug("SignalMemory construction failed", exc_info=True)
 
+    # --- 8-K text sentiment via Ollama ---
+    form8k_sentiment = None
+    try:
+        from mae_core.market.edge.form8k_sentiment import Form8KSentimentAnalyzer
+        form8k_sentiment = Form8KSentimentAnalyzer()
+    except Exception:
+        logger.debug("Form8KSentimentAnalyzer construction failed", exc_info=True)
+
     # --- Instantiate the sensing hook ---
     try:
         hook = MarketSensingHook(
@@ -792,6 +800,7 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
             convergence_alerter=getattr(ctx, "convergence_alerter", None),
             velocity_detector=getattr(ctx, "velocity_detector", None),
             filing_analyzer=getattr(ctx, "filing_time_analyzer", None),
+            form8k_sentiment=form8k_sentiment,
             outcome_collector=outcome_collector,
             memory=memory,
             tiered_alerters=tiered_alerters,

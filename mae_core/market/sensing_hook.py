@@ -94,6 +94,7 @@ class MarketSensingHook:
         convergence_alerter: Any = None,
         velocity_detector: Any = None,
         filing_analyzer: Any = None,
+        form8k_sentiment: Any = None,
         outcome_collector: Any = None,
         memory: Any = None,
         tiered_alerters: Optional[dict] = None,
@@ -119,6 +120,7 @@ class MarketSensingHook:
         self._convergence_alerter = convergence_alerter
         self._velocity_detector = velocity_detector
         self._filing_analyzer = filing_analyzer
+        self._form8k_sentiment = form8k_sentiment
         self._outcome_collector = outcome_collector
         self._memory = memory
 
@@ -576,6 +578,22 @@ class MarketSensingHook:
                     form_type="4" if sig.source == "sec_form4" else "8-K",
                 )
                 sig.confidence = max(0.0, min(1.0, sig.confidence + fta_signal.confidence_modifier))
+            except Exception:
+                pass
+
+        # Apply 8-K text sentiment via Ollama (enriches beyond rule-based item codes)
+        if self._form8k_sentiment is not None and sig.source == "sec_form8k":
+            try:
+                event_text = sig.metadata.get("event_summary", "")
+                item_code = sig.metadata.get("item_code", "")
+                result = self._form8k_sentiment.classify(event_text, item_code)
+                if result is not None:
+                    # Override direction if sentiment disagrees with rule-based
+                    if result.direction != "neutral":
+                        sig.direction = result.direction
+                    sig.confidence = max(0.0, min(1.0, sig.confidence + result.confidence_modifier))
+                    sig.metadata["ollama_sentiment"] = result.direction
+                    sig.metadata["ollama_raw"] = result.raw_response[:200]
             except Exception:
                 pass
 

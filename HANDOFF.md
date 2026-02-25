@@ -2,6 +2,14 @@
 
 ## What Happened
 
+### Analytical Improvements (2026-02-25)
+
+Two edge detector upgrades from the Layer 5 roadmap:
+
+1. **Compressed cluster detector** — `cluster_detector.py` gained time-compression scoring. Computes span between first and last trade in a cluster: `compression_score = max(0, 1 - span/window_days)`. Tight clusters (all trades within days) get up to +10% confidence boost. `ClusterSignal` gained `compression_score` field and `to_plain_language()` labels tight clusters. Previously, 5 insiders buying within 3 days scored the same as 5 insiders spread over 28 days.
+
+2. **8-K text sentiment via Ollama** — New `mae_core/market/edge/form8k_sentiment.py`. Classifies 8-K filing text using local Ollama LLM (llama3.2:3b). Returns direction override + confidence modifier (-0.15 to +0.15). Wired into `sensing_hook.py:_enrich_signal()` for `sec_form8k` signals. Degrades gracefully when Ollama is offline (returns None, falls back to rule-based item codes). Bootstrap constructs `Form8KSentimentAnalyzer` in `_wire_sensing_hook()` and passes to `MarketSensingHook`.
+
 ### Bayesian Confidence Engine (2026-02-25)
 
 Resolved Alpha's standing dissent: replaced the structurally wrong additive confidence formula in the convergence alerter with a Thompson-weighted geometric mean. This was the last architectural gap — the Thompson Sampler was completely disconnected from confidence calculations.
