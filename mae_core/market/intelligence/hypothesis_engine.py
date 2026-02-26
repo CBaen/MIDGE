@@ -28,6 +28,7 @@ from typing import Any, Optional
 from mae_core.market.intelligence.hypothesis import (
     Hypothesis,
     HypothesisStatus,
+    SourceType,
 )
 from mae_core.market.intelligence.hypothesis_registry import HypothesisRegistry
 from mae_core.market.intelligence.hypothesis_generator import HypothesisGenerator

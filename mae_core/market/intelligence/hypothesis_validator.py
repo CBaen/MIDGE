@@ -35,6 +35,7 @@ from mae_core.market.intelligence.hypothesis import (
     Hypothesis,
     HypothesisStats,
     HypothesisStatus,
+    SourceType,
 )
 
 logger = logging.getLogger(__name__)
@@ -111,6 +112,11 @@ class HypothesisValidator:
         self._dsr_trials_tracked += 1
         self._save_dsr_trials()
 
+        # BACKTEST_DERIVED hypotheses have pre-computed stats from
+        # historical trades. Use them directly — the backtest IS the evidence.
+        if hypothesis.source_type == SourceType.BACKTEST_DERIVED:
+            return self._validate_from_precomputed(hypothesis)
+
         # Find historical trigger events
         trigger_events = self._find_trigger_events(
             hypothesis, lookback_days
@@ -186,6 +192,82 @@ class HypothesisValidator:
 
         logger.info(
             "Validated %s: %d/%d wins (%.1f%%), SR=%.3f, DSR=%.3f → %s",
+            hypothesis.name, wins, total, win_rate * 100,
+            sharpe, dsr,
+            "PROMOTE" if recommend_promote else
+            ("RETIRE" if recommend_retire else "HOLD"),
+        )
+
+        return result
+
+    def _validate_from_precomputed(
+        self,
+        hypothesis: Hypothesis,
+    ) -> ValidationResult:
+        """Validate using pre-populated stats (BACKTEST_DERIVED only).
+
+        The backtest already computed wins, losses, and Sharpe from real
+        historical trades. We trust these numbers and only compute DSR
+        (which requires the global trial counter) here.
+
+        No archive scanning. No outcome matching. The data is already there.
+        """
+        wins = hypothesis.stats.wins
+        losses = hypothesis.stats.losses
+        total = hypothesis.stats.total_observations
+
+        if total == 0:
+            return ValidationResult(
+                hypothesis_id=hypothesis.hypothesis_id,
+            )
+
+        win_rate = wins / total
+        sharpe = hypothesis.stats.sharpe_ratio
+        dsr = self._compute_dsr(sharpe, total)
+
+        has_real_causal_story = (
+            hypothesis.causal_story
+            and "REQUIRES MANUAL REVIEW" not in hypothesis.causal_story
+        )
+
+        recommend_promote = (
+            total >= MIN_OBSERVATIONS
+            and win_rate > PROMOTE_WIN_RATE
+            and dsr > PROMOTE_DSR
+            and has_real_causal_story
+        )
+
+        recommend_retire = False
+        retire_reason = ""
+        if total >= MIN_OBSERVATIONS:
+            if win_rate < RETIRE_WIN_RATE:
+                recommend_retire = True
+                retire_reason = (
+                    f"Backtest win rate {win_rate:.3f} < {RETIRE_WIN_RATE} "
+                    f"over {total} historical trades"
+                )
+            elif dsr < RETIRE_DSR:
+                recommend_retire = True
+                retire_reason = (
+                    f"DSR {dsr:.3f} < 0 after multiple-testing correction "
+                    f"({self._dsr_trials_tracked} trials tracked)"
+                )
+
+        result = ValidationResult(
+            hypothesis_id=hypothesis.hypothesis_id,
+            wins=wins,
+            losses=losses,
+            total_observations=total,
+            win_rate=win_rate,
+            sharpe_ratio=sharpe,
+            deflated_sharpe_ratio=dsr,
+            recommend_promote=recommend_promote,
+            recommend_retire=recommend_retire,
+            retire_reason=retire_reason,
+        )
+
+        logger.info(
+            "Validated (backtest) %s: %d/%d wins (%.1f%%), SR=%.3f, DSR=%.3f → %s",
             hypothesis.name, wins, total, win_rate * 100,
             sharpe, dsr,
             "PROMOTE" if recommend_promote else
