@@ -119,6 +119,7 @@ class ConvergenceAlerter:
         "finnhub_earnings": "finnhub_earnings",
         "fred_macro": "fred_macro",
         "session_sweep": "session_sweep",
+        "session_sweep_ifvg": "session_sweep_ifvg",
         "ta_rsi": "ta_rsi",
         "ta_macd": "ta_macd",
         "ta_bollinger": "ta_bollinger",

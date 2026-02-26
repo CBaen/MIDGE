@@ -1057,5 +1057,240 @@ class TestFullPipelineIntegration(unittest.TestCase):
         self.assertEqual(result, [])
 
 
+# ---------------------------------------------------------------------------
+# TestIFVGDetection — Phase 2 pattern stacking
+# ---------------------------------------------------------------------------
+
+class TestIFVGDetection(unittest.TestCase):
+    """Tests for IFVG detection (prior-trend FVG mitigation)."""
+
+    def setUp(self):
+        self.detector = SessionSweepDetector()
+
+    def test_ifvg_detected_when_bearish_fvg_mitigated_by_bullish_displacement(self):
+        """Bearish FVG filled from below after low sweep = bullish IFVG."""
+        # Build: bearish FVG at indices 5-7, then sweep at idx 20, then fill at idx 22
+        candles = []
+        base = 5800.0
+        # Indices 0-4: trending down
+        for i in range(5):
+            p = base - i * 2
+            candles.append((p, p + 1, p - 3, p - 2))
+        # Index 5-7: bearish FVG (c7.high < c5.low => gap down)
+        candles.append((5790, 5791, 5787, 5788))  # c5
+        candles.append((5788, 5789, 5784, 5785))  # c6 (engine)
+        candles.append((5785, 5786, 5780, 5781))  # c7: high=5786 < c5.low=5787 => bearish FVG
+        # Indices 8-19: sideways
+        for i in range(12):
+            candles.append((5782, 5784, 5780, 5781))
+        # Index 20: sweep low (sweep_idx)
+        candles.append((5781, 5782, 5775, 5780))
+        # Index 21: reversal starts
+        candles.append((5780, 5790, 5779, 5789))
+        # Index 22: displacement fills the bearish FVG (close > fvg top = 5787)
+        candles.append((5789, 5795, 5788, 5793))
+
+        ohlc = make_ohlc(candles)
+        result = self.detector._find_ifvg(ohlc, sweep_idx=20, direction="bullish")
+        self.assertTrue(result)
+
+    def test_no_ifvg_when_fvg_not_filled(self):
+        """If displacement doesn't reach the FVG, no IFVG."""
+        candles = []
+        base = 5800.0
+        for i in range(5):
+            p = base - i * 2
+            candles.append((p, p + 1, p - 3, p - 2))
+        # Bearish FVG at 5-7
+        candles.append((5790, 5791, 5787, 5788))
+        candles.append((5788, 5789, 5784, 5785))
+        candles.append((5785, 5786, 5780, 5781))
+        # Sideways
+        for i in range(12):
+            candles.append((5782, 5784, 5780, 5781))
+        # Sweep
+        candles.append((5781, 5782, 5775, 5780))
+        # Weak reversal — doesn't reach FVG top (5787)
+        candles.append((5780, 5783, 5779, 5782))
+        candles.append((5782, 5784, 5781, 5783))
+
+        ohlc = make_ohlc(candles)
+        result = self.detector._find_ifvg(ohlc, sweep_idx=20, direction="bullish")
+        self.assertFalse(result)
+
+    def test_no_ifvg_when_no_prior_fvgs(self):
+        """No prior FVGs = no IFVG possible."""
+        # All candles overlapping (no gaps)
+        candles = [(5800, 5802, 5798, 5800)] * 25
+        ohlc = make_ohlc(candles)
+        result = self.detector._find_ifvg(ohlc, sweep_idx=20, direction="bullish")
+        self.assertFalse(result)
+
+
+# ---------------------------------------------------------------------------
+# TestPatternStackingScores
+# ---------------------------------------------------------------------------
+
+class TestPatternStackingScores(unittest.TestCase):
+    """Tests for displacement, ATR, kill zone, and composite scoring."""
+
+    def setUp(self):
+        self.detector = SessionSweepDetector()
+
+    def test_displacement_score_strong_reversal(self):
+        """Strong bullish candles after sweep → high displacement score."""
+        candles = [(5800, 5802, 5798, 5799)] * 5  # Pre-sweep
+        # Sweep candle
+        candles.append((5799, 5800, 5790, 5795))
+        # Strong bullish reversal candles (big body, small wicks)
+        for _ in range(5):
+            candles.append((5795, 5800, 5794, 5799))  # body=4, range=6, ratio=0.67
+        ohlc = make_ohlc(candles)
+        score = self.detector._score_displacement(ohlc, sweep_idx=5, direction="bullish")
+        self.assertGreater(score, 0.60)
+
+    def test_displacement_score_weak_reversal(self):
+        """Doji-like candles → low displacement score."""
+        candles = [(5800, 5802, 5798, 5799)] * 5
+        candles.append((5799, 5800, 5790, 5795))
+        # Dojis: tiny body, large wicks
+        for _ in range(5):
+            candles.append((5797, 5802, 5792, 5798))  # body=1, range=10, ratio=0.1
+        ohlc = make_ohlc(candles)
+        score = self.detector._score_displacement(ohlc, sweep_idx=5, direction="bullish")
+        self.assertLess(score, 0.20)
+
+    def test_displacement_score_no_reversal_candles(self):
+        """No reversal-direction candles → 0.0."""
+        candles = [(5800, 5802, 5798, 5799)] * 5
+        candles.append((5799, 5800, 5790, 5795))
+        # All bearish candles after bullish sweep
+        for _ in range(5):
+            candles.append((5799, 5800, 5794, 5795))  # bearish body
+        ohlc = make_ohlc(candles)
+        score = self.detector._score_displacement(ohlc, sweep_idx=5, direction="bullish")
+        self.assertEqual(score, 0.0)
+
+    def test_atr_computation(self):
+        """ATR should be reasonable for known candle data."""
+        candles = []
+        for i in range(20):
+            # Each candle has range of 10 points
+            candles.append((5800 + i, 5805 + i, 5795 + i, 5800 + i))
+        ohlc = make_ohlc(candles)
+        atr = self.detector._compute_atr(ohlc, idx=19, period=14)
+        self.assertGreater(atr, 5.0)
+        self.assertLess(atr, 15.0)
+
+    def test_atr_zero_for_insufficient_data(self):
+        """ATR at index 0 with no preceding candles → 0.0."""
+        candles = [(5800, 5805, 5795, 5800)]
+        ohlc = make_ohlc(candles)
+        atr = self.detector._compute_atr(ohlc, idx=0, period=14)
+        self.assertEqual(atr, 0.0)
+
+    def test_kill_zone_score_ny(self):
+        """NY open (7:00-10:00 ET) → 1.0."""
+        dt = datetime(2026, 2, 25, 8, 30, tzinfo=EASTERN)
+        score = self.detector._get_kill_zone_score(dt)
+        self.assertEqual(score, 1.0)
+
+    def test_kill_zone_score_london(self):
+        """London (2:00-5:00 ET) → 0.85."""
+        dt = datetime(2026, 2, 25, 3, 0, tzinfo=EASTERN)
+        score = self.detector._get_kill_zone_score(dt)
+        self.assertEqual(score, 0.85)
+
+    def test_kill_zone_score_asia(self):
+        """Asia (20:00+ ET) → 0.70."""
+        dt = datetime(2026, 2, 25, 21, 0, tzinfo=EASTERN)
+        score = self.detector._get_kill_zone_score(dt)
+        self.assertEqual(score, 0.70)
+
+    def test_kill_zone_score_outside(self):
+        """12:00 ET (mid-session, no kill zone) → 0.0."""
+        dt = datetime(2026, 2, 25, 12, 0, tzinfo=EASTERN)
+        score = self.detector._get_kill_zone_score(dt)
+        self.assertEqual(score, 0.0)
+
+    def test_composite_quality_formula(self):
+        """Verify composite = 0.4*disp + 0.35*min(1,fvg_atr/1.5) + 0.25*kz."""
+        quality = self.detector._compute_quality(
+            displacement=0.70, fvg_atr=1.2, kz=1.0,
+        )
+        expected = 0.70 * 0.4 + min(1.0, 1.2 / 1.5) * 0.35 + 1.0 * 0.25
+        self.assertAlmostEqual(quality, expected, places=3)
+
+    def test_composite_quality_zero_inputs(self):
+        """All zero inputs → 0.0."""
+        quality = self.detector._compute_quality(0.0, 0.0, 0.0)
+        self.assertEqual(quality, 0.0)
+
+
+# ---------------------------------------------------------------------------
+# TestIFVGSignalAdapter
+# ---------------------------------------------------------------------------
+
+class TestIFVGSignalAdapter(unittest.TestCase):
+    """Tests for IFVG propagation through from_session_sweep()."""
+
+    def test_ifvg_signal_gets_ifvg_source(self):
+        """IFVG sweep signals should route to session_sweep_ifvg Thompson key."""
+        sig = SessionSweepSignal(
+            sweep_id="test-123",
+            symbol="ES=F",
+            sweep_type="low_sweep",
+            direction="bullish",
+            session_swept="asia",
+            confidence=0.70,
+            strength=0.60,
+            detected_at="2026-02-25T08:00:00",
+            is_ifvg=True,
+            displacement_score=0.65,
+            fvg_atr_ratio=1.1,
+            quality_score=0.72,
+        )
+        market_sig = from_session_sweep(sig)
+        self.assertEqual(market_sig.source, "session_sweep_ifvg")
+
+    def test_non_ifvg_signal_keeps_session_sweep_source(self):
+        """Non-IFVG sweep signals keep the original session_sweep source."""
+        sig = SessionSweepSignal(
+            sweep_id="test-456",
+            symbol="NQ=F",
+            sweep_type="high_sweep",
+            direction="bearish",
+            session_swept="london",
+            confidence=0.55,
+            strength=0.50,
+            detected_at="2026-02-25T03:00:00",
+            is_ifvg=False,
+        )
+        market_sig = from_session_sweep(sig)
+        self.assertEqual(market_sig.source, "session_sweep")
+
+    def test_ifvg_metadata_propagated(self):
+        """IFVG quality scores should appear in signal metadata."""
+        sig = SessionSweepSignal(
+            sweep_id="test-789",
+            symbol="ES=F",
+            sweep_type="low_sweep",
+            direction="bullish",
+            session_swept="new_york",
+            confidence=0.75,
+            strength=0.65,
+            detected_at="2026-02-25T09:00:00",
+            is_ifvg=True,
+            displacement_score=0.70,
+            fvg_atr_ratio=1.2,
+            quality_score=0.68,
+        )
+        market_sig = from_session_sweep(sig)
+        self.assertTrue(market_sig.metadata["is_ifvg"])
+        self.assertAlmostEqual(market_sig.metadata["displacement_score"], 0.70)
+        self.assertAlmostEqual(market_sig.metadata["fvg_atr_ratio"], 1.2)
+        self.assertAlmostEqual(market_sig.metadata["quality_score"], 0.68)
+
+
 if __name__ == "__main__":
     unittest.main()
