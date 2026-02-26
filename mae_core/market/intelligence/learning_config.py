@@ -70,6 +70,11 @@ LEARNING_CONFIG = {
         "fred_macro": 0.70,
         "session_sweep": 0.55,
         "yfinance_price": 0.50,
+        "ta_rsi": 0.60,
+        "ta_macd": 0.53,
+        "ta_bollinger": 0.55,
+        "ta_structure": 0.55,
+        "ta_candle": 0.55,
     },
 
     # Confidence calibration

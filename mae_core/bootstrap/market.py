@@ -53,6 +53,7 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
         "thompson_calibrator", "kelly_position_sizer",
         "hypothesis_registry", "hypothesis_generator",
         "hypothesis_validator", "hypothesis_engine",
+        "ta_indicators",
     ]
     active = sum(1 for a in market_attrs if getattr(ctx, a, None) is not None)
     holon_count = len([
@@ -68,7 +69,8 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
                     "signal_archive_reader", "lag_correlation_analyzer",
                     "thompson_calibrator", "kelly_position_sizer",
                     "hypothesis_registry", "hypothesis_generator",
-                    "hypothesis_validator", "hypothesis_engine")
+                    "hypothesis_validator", "hypothesis_engine",
+                    "ta_indicators")
     ])
 
     logger.info(
@@ -241,6 +243,15 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
     except Exception:
         logger.debug("Market: session_sweep_detector failed to construct", exc_info=True)
         ctx.session_sweep_detector = None
+        failures += 1
+
+    # TA indicators (pure computation — no constructor args needed)
+    try:
+        from mae_core.market.edge import ta_indicators as _ta_mod
+        ctx.ta_indicators = _ta_mod  # Module reference — compute_all() is the entry point
+    except Exception:
+        logger.debug("Market: ta_indicators failed to import", exc_info=True)
+        ctx.ta_indicators = None
         failures += 1
 
     # --- Intelligence layer ---
@@ -469,6 +480,7 @@ def _register_market_somatic(ctx: SimpleNamespace) -> None:
         "hypothesis_generator": ("HypothesisGenerator", ["hypothesis_registry"]),
         "hypothesis_validator": ("HypothesisValidator", []),
         "hypothesis_engine": ("HypothesisEngine", ["hypothesis_registry", "hypothesis_generator", "hypothesis_validator"]),
+        "ta_indicators": ("TAIndicators", ["price_fetcher"]),
     }
 
     for sys_id, (desc, deps) in market_systems.items():
@@ -1130,6 +1142,7 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
             filing_analyzer=getattr(ctx, "filing_time_analyzer", None),
             form8k_sentiment=form8k_sentiment,
             session_sweep_detector=getattr(ctx, "session_sweep_detector", None),
+            ta_indicators=getattr(ctx, "ta_indicators", None),
             outcome_collector=outcome_collector,
             memory=memory,
             tiered_alerters=tiered_alerters,
