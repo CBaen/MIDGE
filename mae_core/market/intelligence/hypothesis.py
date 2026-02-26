@@ -34,6 +34,7 @@ class SourceType(Enum):
     LAG_CORRELATION = "lag_correlation"     # From lag_correlation_analyzer findings
     MANUAL = "manual"                      # Human-specified
     AGENT_DISCOVERED = "agent_discovered"  # Discovered by HYPOTHESIS_EXPLORER agent
+    BACKTEST_DERIVED = "backtest_derived"  # From historical backtest performance analysis
 
 
 @dataclass
