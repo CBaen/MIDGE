@@ -52,7 +52,45 @@ def bootstrap_wiring(ctx: SimpleNamespace) -> None:
     ctx.model.add_step_hook(ctx.capability_discovery.step if hasattr(ctx.capability_discovery, "step") else lambda: None)
     ctx.model.add_step_hook(ctx.physarum.step)
     ctx.model.add_step_hook(ctx.pearl_defense.step)
-    logger.info("Layer 14 - Step hooks registered for PredictiveField, AutoHealer, CapabilityDiscovery, Physarum, PearlDefense")
+
+    # GNN RoutingOptimizer: cadenced edge weight optimization (Fibonacci 21)
+    _gnn_opt_counter = [0]
+
+    def _gnn_optimize_hook() -> None:
+        _gnn_opt_counter[0] += 1
+        if _gnn_opt_counter[0] % 21 == 0:
+            optimizer = getattr(ctx.gnn_comm, "_optimizer", None)
+            graph = getattr(ctx.gnn_comm, "_graph", None)
+            if optimizer is not None and graph is not None:
+                updated = optimizer.optimize_graph(graph, min_samples=5)
+                if updated > 0:
+                    logger.debug(
+                        "GNN RoutingOptimizer: %d edges updated at step %d",
+                        updated, _gnn_opt_counter[0],
+                    )
+                    # Circuit C: Push GNN edge weights → FRL peer trust
+                    frl_engines = getattr(ctx, "frl_engines", None)
+                    if frl_engines and hasattr(graph, "edges"):
+                        trust_updates = 0
+                        for (src, tgt), edge in graph.edges.items():
+                            src_key = int(src) if isinstance(src, str) and src.isdigit() else src
+                            src_frl = frl_engines.get(src_key)
+                            if src_frl is not None:
+                                try:
+                                    src_frl.update_peer_trust(
+                                        str(tgt), edge.weight, 0.0,
+                                    )
+                                    trust_updates += 1
+                                except Exception:
+                                    pass
+                        if trust_updates > 0:
+                            logger.debug(
+                                "GNN->FRL trust: %d peer trust updates at step %d",
+                                trust_updates, _gnn_opt_counter[0],
+                            )
+
+    ctx.model.add_step_hook(_gnn_optimize_hook)
+    logger.info("Layer 14 - Step hooks registered for PredictiveField, AutoHealer, CapabilityDiscovery, Physarum, PearlDefense, GNN RoutingOptimizer")
 
     # =================================================================
     # Layer 15: EventBus cross-wiring (orphan channels get subscribers)

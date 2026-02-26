@@ -109,6 +109,29 @@ def bootstrap_organs(ctx: SimpleNamespace) -> None:
     ctx.model.add_step_hook(lambda s=ctx.nociception: s.step(current_step=int(ctx.model.time)))
     ctx.model.add_step_hook(lambda s=ctx.proprioception: s.step(current_step=int(ctx.model.time)))
 
+    # Wire metacognition into Tier 2 persistence (created here at Layer 27,
+    # after _tier2_refs was built at Layer 12 in agents.py)
+    if hasattr(ctx.model, "_tier2_refs") and "shared_systems" in ctx.model._tier2_refs:
+        ctx.model._tier2_refs["shared_systems"]["metacognition"] = ctx.metacognition
+
+    # Restore metacognition from prior run (must happen here, after creation)
+    metacog_meta = ctx.model.load_subsystem_metadata("subsystem:shared:metacognition")
+    if metacog_meta:
+        ctx.metacognition.restore(metacog_meta)
+        logger.info("Layer 27 - Metacognition: restored %d decisions from prior run",
+                     len(ctx.metacognition._decision_history))
+
+    # Wire theory_of_mind into Tier 2 persistence
+    if hasattr(ctx.model, "_tier2_refs") and "shared_systems" in ctx.model._tier2_refs:
+        ctx.model._tier2_refs["shared_systems"]["theory_of_mind"] = ctx.theory_of_mind
+
+    # Restore theory_of_mind from prior run
+    tom_meta = ctx.model.load_subsystem_metadata("subsystem:shared:theory_of_mind")
+    if tom_meta:
+        ctx.theory_of_mind.restore(tom_meta)
+        logger.info("Layer 27 - TheoryOfMind: restored %d agent models from prior run",
+                     len(ctx.theory_of_mind._agent_models))
+
     logger.info(
         "Layer 27 - Social Cognition + Sensory: 5 systems created "
         "(emotions, theory-of-mind, metacognition, nociception, proprioception)"
@@ -344,9 +367,37 @@ def bootstrap_organs(ctx: SimpleNamespace) -> None:
 
     ctx.bus.register_callback("emergent.rejuvenation_needed", _senescence_to_healing)
 
+    # 4. MetacognitionMonitor -> VDN + WorldModel: adaptive learning rates.
+    # Biological basis: prefrontal executive modulation of learning speed.
+    def _metacognition_to_learning_rate(channel, message) -> None:
+        try:
+            monitor = getattr(ctx, "metacognition", None)
+            if monitor is None:
+                return
+            multiplier = monitor.should_adjust_learning_rate()
+            if multiplier is None:
+                return
+            for agent in ctx.agents:
+                vdn = getattr(agent, "_vdn_engine", None)
+                if vdn is not None:
+                    new_lr = float(vdn._lr) * multiplier
+                    vdn._lr = max(0.001, min(0.1, new_lr))
+                wm = getattr(agent, "world_model", None)
+                if wm is not None:
+                    new_lr = float(wm._config.learning_rate) * multiplier
+                    wm._config.learning_rate = max(1e-5, min(1e-2, new_lr))
+            logger.debug(
+                "Metacognition LR bridge: multiplier=%.2f applied to %d agents",
+                multiplier, len(ctx.agents),
+            )
+        except Exception:
+            pass
+
+    ctx.bus.register_callback("cognition.metacognition_alert", _metacognition_to_learning_rate)
+
     logger.info(
-        "Layer 29a/b - OrganismState created + 3 cross-system wires "
-        "(pain->emotion, leptin->satiation, senescence->healing)"
+        "Layer 29a/b - OrganismState created + 4 cross-system wires "
+        "(pain->emotion, leptin->satiation, senescence->healing, metacognition->learning_rate)"
     )
 
     # -- 29c: Inject references into agents --
@@ -358,9 +409,11 @@ def bootstrap_organs(ctx: SimpleNamespace) -> None:
         agent._morphogenesis = ctx.morph_coordinator
         # Theory of Mind created at Layer 27 — inject now that it exists
         agent._theory_of_mind = ctx.theory_of_mind
+        # Metacognition created at Layer 27 — inject for prediction pipeline
+        agent._metacognition = ctx.metacognition
 
     logger.info(
-        "Layer 29c - Agent injection: organism_state + 4 dormant system refs "
+        "Layer 29c - Agent injection: organism_state + 5 dormant system refs "
         "injected into %d agents",
         len(ctx.agents),
     )

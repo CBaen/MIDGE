@@ -179,11 +179,30 @@ def bootstrap_foundation(ctx: SimpleNamespace) -> None:
     # =================================================================
     # Layer 10: Morphogenesis (shared)
     # =================================================================
-    ctx.organ_builder = OrganBuilder(
-        agent_factory=lambda m=None, agent_type=None, organ_id=None, model=None, **kw: MycelialAgent(
-            model or m, agent_type=agent_type, agent_config={"organ_id": organ_id, **kw},
-        ),
-    )
+    def _morphogenesis_factory(
+        m=None, agent_type=None, organ_id=None, model=None, **kw,
+    ):
+        """Lazy factory: reads shared systems from ctx at invocation time.
+
+        Layer 10 runs before shared systems exist. By the time
+        MorphogenesisCoordinator calls this (Layer 29+ or runtime),
+        all shared systems are populated. Mirrors mitosis.py pattern.
+        """
+        return MycelialAgent(
+            model or m,
+            agent_type=agent_type,
+            agent_config={"organ_id": organ_id, **kw},
+            signal_bus=getattr(ctx, "signal_bus", None),
+            stigmergy_env=getattr(ctx, "stigmergy", None),
+            gnn_communicator=getattr(ctx, "gnn_comm", None),
+            knowledge_base=getattr(ctx, "knowledge_base", None),
+            transfer_engine=getattr(ctx, "transfer_engine", None),
+            maml_learner=getattr(ctx, "maml_learner", None),
+            holon_registry=getattr(ctx, "holon_registry", None),
+            somatic_map=getattr(ctx, "somatic_map", None),
+        )
+
+    ctx.organ_builder = OrganBuilder(agent_factory=_morphogenesis_factory)
     ctx.morph_coordinator = MorphogenesisCoordinator(
         event_bus=ctx.bus,
         organ_builder=ctx.organ_builder,
