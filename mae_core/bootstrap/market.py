@@ -1,7 +1,7 @@
 """Bootstrap Layer 33: Market Intelligence Organ.
 
-Creates 26 market systems, registers holons, wires fractal hierarchy,
-registers triadic connections (Group 14 + Group 15 + Group 16),
+Creates 27 market systems, registers holons, wires fractal hierarchy,
+registers triadic connections (Group 14 + Group 15 + Group 16 + Group 17),
 wires EventBus channels, and hooks into the step lifecycle.
 
 Biological analogy: Growing a new sensory organ specialized for
@@ -28,7 +28,7 @@ logger = logging.getLogger("mae.bootstrap")
 
 
 def bootstrap_market(ctx: SimpleNamespace) -> None:
-    """Wire Layer 33: Market Intelligence organ (26 systems, 41 connections)."""
+    """Wire Layer 33: Market Intelligence organ (27 systems, 51 connections)."""
     _instantiate_market_systems(ctx)
     _register_market_somatic(ctx)
     _register_market_holons(ctx)
@@ -53,6 +53,7 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
         "thompson_calibrator", "kelly_position_sizer",
         "hypothesis_registry", "hypothesis_generator",
         "hypothesis_validator", "hypothesis_engine",
+        "backtest_analyzer",
         "ta_indicators",
     ]
     active = sum(1 for a in market_attrs if getattr(ctx, a, None) is not None)
@@ -92,7 +93,7 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
 # =========================================================================
 
 def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
-    """Create all 26 market system objects on ctx."""
+    """Create all 27 market system objects on ctx."""
     import os
     qdrant_url = getattr(ctx, "qdrant_url", "http://localhost:6333")
     failures = 0
@@ -392,6 +393,16 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         ctx.hypothesis_validator = None
 
     try:
+        from mae_core.market.intelligence.backtest_analyzer import BacktestAnalyzer
+        ctx.backtest_analyzer = (
+            BacktestAnalyzer(registry=ctx.hypothesis_registry)
+            if ctx.hypothesis_registry is not None else None
+        )
+    except Exception:
+        logger.debug("Market: backtest_analyzer failed to construct", exc_info=True)
+        ctx.backtest_analyzer = None
+
+    try:
         from mae_core.market.intelligence.hypothesis_engine import HypothesisEngine
         ctx.hypothesis_engine = (
             HypothesisEngine(
@@ -401,6 +412,7 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
                 bus=ctx.bus,
                 regime_classifier=getattr(ctx, "regime_classifier", None),
                 thompson_sampler=getattr(ctx, "thompson_sampler", None),
+                backtest_analyzer=getattr(ctx, "backtest_analyzer", None),
             )
             if (ctx.hypothesis_registry is not None
                 and ctx.hypothesis_generator is not None
@@ -481,6 +493,7 @@ def _register_market_somatic(ctx: SimpleNamespace) -> None:
         "hypothesis_generator": ("HypothesisGenerator", ["hypothesis_registry"]),
         "hypothesis_validator": ("HypothesisValidator", []),
         "hypothesis_engine": ("HypothesisEngine", ["hypothesis_registry", "hypothesis_generator", "hypothesis_validator"]),
+        "backtest_analyzer": ("BacktestAnalyzer", ["hypothesis_registry"]),
         "ta_indicators": ("TAIndicators", ["price_fetcher"]),
     }
 
@@ -516,6 +529,7 @@ def _register_market_holons(ctx: SimpleNamespace) -> None:
         "thompson_calibrator", "kelly_position_sizer",
         "hypothesis_registry", "hypothesis_generator",
         "hypothesis_validator", "hypothesis_engine",
+        "backtest_analyzer",
         "ta_indicators",
     ]
 
@@ -589,7 +603,7 @@ def _register_market_fractal(ctx: SimpleNamespace) -> None:
         "outcome_tracker", "regime_classifier",
         "signal_archive_reader", "lag_correlation_analyzer",
         "thompson_calibrator", "kelly_position_sizer",
-        "hypothesis_registry",
+        "hypothesis_registry", "backtest_analyzer",
         "ta_indicators",
     ]
     for sys_id in extras:
@@ -820,7 +834,18 @@ def _register_market_connections(ctx: SimpleNamespace) -> None:
         witnesses=["hypothesis_registry", "auditor"],
         description="Engine subscribes to ingested signals for trigger matching")
 
-    logger.info("Layer 33d - Market connections: 48 triadic connections registered (Group 14 + Group 15 + Group 16)")
+    # --- Group 17: Backtest bridge (Bridge 1 — RSI Layer 2 self-reading) ---
+    reg("backtest_analyzer", "hypothesis_registry", dr,
+        witnesses=["hypothesis_validator", "auditor"],
+        description="Backtest analyzer registers derived hypotheses in registry")
+    reg("backtest_analyzer", "hypothesis_validator", dr,
+        witnesses=["hypothesis_registry", "auditor"],
+        description="Backtest hypotheses flow to validator for DSR evaluation")
+    reg("hypothesis_engine", "backtest_analyzer", dr,
+        witnesses=["hypothesis_generator", "auditor"],
+        description="Engine drives backtest analysis on generation cadence")
+
+    logger.info("Layer 33d - Market connections: 51 triadic connections registered (Group 14 + Group 15 + Group 16 + Group 17)")
 
 
 # =========================================================================
