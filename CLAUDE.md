@@ -70,6 +70,7 @@ mae_core/market/
     politician_tracker.py       # Congress member trade + committee + contract correlation
     filing_time_analyzer.py     # SEC filing behavioral signals (late filing = bad news)
     contract_predictor.py       # Pre-announcement winner prediction (hiring + insider + bid)
+    ta_indicators.py            # RSI, MACD, Bollinger, Market Structure, Candlestick patterns
   intelligence/                 # Learning layer (Mae's Bayesian brain)
     thompson_sampler.py         # Beta distribution Thompson Sampling (explore/exploit)
     velocity_detector.py        # Rate-of-change anomaly detection
