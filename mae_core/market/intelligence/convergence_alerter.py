@@ -98,6 +98,9 @@ class ConvergenceAlerter:
     formula (Alpha's standing dissent — see deliverable.md).
     """
 
+    # Sweep sources eligible for granular Thompson cascade (Bridge 2).
+    _SWEEP_SOURCES = {"session_sweep", "session_sweep_ifvg"}
+
     # Maps MarketSignal.source values -> ThompsonSampler distribution keys.
     # signal.py uses descriptive source names, Thompson uses shorter keys
     # from learning_config.py source_reliability dict.
