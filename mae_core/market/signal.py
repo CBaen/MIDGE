@@ -554,9 +554,13 @@ def from_session_sweep(sweep) -> MarketSignal:
         f"{sweep.sweep_type}:{sweep.detected_at}"
     )
 
+    # IFVG signals get separate Thompson tracking
+    is_ifvg = getattr(sweep, "is_ifvg", False)
+    source = "session_sweep_ifvg" if is_ifvg else "session_sweep"
+
     return MarketSignal(
         signal_id=signal_id,
-        source="session_sweep",
+        source=source,
         symbol=sweep.symbol,
         asset_class="futures",
         domain="technical",
@@ -582,6 +586,10 @@ def from_session_sweep(sweep) -> MarketSignal:
             "target_level": sweep.target_level,
             "rr_ratio": sweep.rr_ratio,
             "kill_zone": sweep.kill_zone,
+            "is_ifvg": is_ifvg,
+            "displacement_score": getattr(sweep, "displacement_score", 0.0),
+            "fvg_atr_ratio": getattr(sweep, "fvg_atr_ratio", 0.0),
+            "quality_score": getattr(sweep, "quality_score", 0.0),
         },
     )
 

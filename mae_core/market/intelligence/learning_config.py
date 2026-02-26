@@ -69,6 +69,7 @@ LEARNING_CONFIG = {
         "finnhub_earnings": 0.80,
         "fred_macro": 0.70,
         "session_sweep": 0.55,
+        "session_sweep_ifvg": 0.58,
         "yfinance_price": 0.50,
         "ta_rsi": 0.60,
         "ta_macd": 0.53,

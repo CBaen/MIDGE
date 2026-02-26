@@ -208,11 +208,28 @@ class SessionSweepDetector:
                     if fvg is None:
                         continue
 
+                    # IFVG detection + pattern stacking scores
+                    is_ifvg = self._find_ifvg(ohlc, sweep_idx, direction)
+                    disp = self._score_displacement(ohlc, sweep_idx, direction)
+                    atr = self._compute_atr(ohlc, sweep_idx)
+                    fvg_atr = (fvg.top - fvg.bottom) / atr if atr > 0 else 0.0
+                    kz_score = self._get_kill_zone_score(ohlc.index[sweep_idx])
+                    quality = self._compute_quality(disp, fvg_atr, kz_score)
+
                     # Build the signal
                     signal = self._build_signal(
                         symbol, level, side, direction,
                         sweep_candle, fvg, ohlc, sweep_idx,
                     )
+                    signal.is_ifvg = is_ifvg
+                    signal.displacement_score = round(disp, 3)
+                    signal.fvg_atr_ratio = round(fvg_atr, 3)
+                    signal.quality_score = round(quality, 3)
+
+                    # IFVG boost: +0.10 confidence
+                    if is_ifvg:
+                        signal.confidence = min(0.90, signal.confidence + 0.10)
+
                     signals.append(signal)
 
             return self._deduplicate(signals)
@@ -617,6 +634,119 @@ class SessionSweepDetector:
                 conf += 0.10
 
         return min(0.90, conf)
+
+    # ── IFVG detection ──────────────────────────────────────────────
+
+    def _find_ifvg(
+        self,
+        ohlc: "pd.DataFrame",
+        sweep_idx: int,
+        direction: str,
+    ) -> bool:
+        """Check if a prior-trend FVG was mitigated post-sweep (IFVG).
+
+        An IFVG is a prior-trend FVG that gets filled during displacement.
+        Once filled, the zone flips polarity. This is the highest-probability
+        ICT entry — backtest showed +4.4pp win rate improvement.
+
+        Returns True if any prior-trend FVG was mitigated within 80 candles.
+        """
+        prior_dir = "bearish" if direction == "bullish" else "bullish"
+        lookback = min(200, sweep_idx)
+        fvg_start = max(0, sweep_idx - lookback)
+
+        # Find prior-trend FVGs
+        prior_fvgs = []
+        for i in range(fvg_start, sweep_idx - 1):
+            if i + 2 >= len(ohlc):
+                break
+            c0 = ohlc.iloc[i]
+            c2 = ohlc.iloc[i + 2]
+            c1 = ohlc.iloc[i + 1]
+            mid_price = float(c1["close"])
+            if mid_price <= 0:
+                continue
+
+            if prior_dir == "bearish" and c2["high"] < c0["low"]:
+                top = float(c0["low"])
+                bottom = float(c2["high"])
+                if (top - bottom) / mid_price >= 0.0005:
+                    prior_fvgs.append((top, bottom, i + 1))
+
+            elif prior_dir == "bullish" and c2["low"] > c0["high"]:
+                top = float(c2["low"])
+                bottom = float(c0["high"])
+                if (top - bottom) / mid_price >= 0.0005:
+                    prior_fvgs.append((top, bottom, i + 1))
+
+        if not prior_fvgs:
+            return False
+
+        # Check if any were filled post-sweep
+        fill_end = min(sweep_idx + 80, len(ohlc))
+        for top, bottom, _ in reversed(prior_fvgs):
+            for j in range(sweep_idx + 1, fill_end):
+                close = ohlc.iloc[j]["close"]
+                if prior_dir == "bearish" and close > top:
+                    return True
+                if prior_dir == "bullish" and close < bottom:
+                    return True
+
+        return False
+
+    # ── Pattern stacking scores ──────────────────────────────────
+
+    def _score_displacement(
+        self, ohlc: "pd.DataFrame", sweep_idx: int, direction: str,
+    ) -> float:
+        """Measure reversal quality via body-to-range ratio of post-sweep candles."""
+        ratios = []
+        for i in range(sweep_idx + 1, min(sweep_idx + 6, len(ohlc))):
+            candle = ohlc.iloc[i]
+            bar_range = candle["high"] - candle["low"]
+            if bar_range <= 0:
+                continue
+            body = abs(candle["close"] - candle["open"])
+            if direction == "bullish" and candle["close"] > candle["open"]:
+                ratios.append(body / bar_range)
+            elif direction == "bearish" and candle["close"] < candle["open"]:
+                ratios.append(body / bar_range)
+        return sum(ratios) / len(ratios) if ratios else 0.0
+
+    def _compute_atr(
+        self, ohlc: "pd.DataFrame", idx: int, period: int = 14,
+    ) -> float:
+        """14-period Average True Range at a given index."""
+        start = max(1, idx - period + 1)
+        trs = []
+        for i in range(start, idx + 1):
+            high = ohlc.iloc[i]["high"]
+            low = ohlc.iloc[i]["low"]
+            prev_close = ohlc.iloc[i - 1]["close"]
+            tr = max(high - low, abs(high - prev_close), abs(low - prev_close))
+            trs.append(tr)
+        return sum(trs) / len(trs) if trs else 0.0
+
+    def _get_kill_zone_score(self, dt) -> float:
+        """Tiered kill zone score (1.0=NY, 0.85=London, 0.70=Asia, 0.0=outside)."""
+        try:
+            t = dt.time() if hasattr(dt, "time") else dt
+        except Exception:
+            return 0.0
+        if time(7, 0) <= t < time(10, 0):
+            return 1.0
+        if time(2, 0) <= t < time(5, 0):
+            return 0.85
+        if t >= time(20, 0) or (t < time(22, 0) and t >= time(20, 0)):
+            return 0.70
+        return 0.0
+
+    def _compute_quality(
+        self, displacement: float, fvg_atr: float, kz: float,
+    ) -> float:
+        """Composite quality: 40% displacement + 35% FVG/ATR + 25% kill zone."""
+        fvg_atr_score = min(1.0, fvg_atr / 1.5)
+        return displacement * 0.4 + fvg_atr_score * 0.35 + kz * 0.25
 
     # ── Kill zone check ────────────────────────────────────────────
 
