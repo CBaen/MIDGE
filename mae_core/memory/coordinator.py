@@ -62,6 +62,7 @@ class MemoryCoordinator:
         enable_working: bool = True,
         enable_consolidation: bool = True,
         novelty_threshold: float = 0.7,
+        compression_threshold: int = 200,
     ) -> None:
         self._bus = event_bus
         self._agent_id = agent_id
@@ -94,6 +95,7 @@ class MemoryCoordinator:
             self.generative = GenerativeReplayMemory(
                 state_dim=state_dim,
                 action_dim=action_dim,
+                compression_threshold=compression_threshold,
             )
 
         # Consolidator

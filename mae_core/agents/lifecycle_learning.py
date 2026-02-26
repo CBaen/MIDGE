@@ -37,6 +37,19 @@ class LearningLifecycleMixin:
             except Exception:
                 logger.debug("organism outcome report failed", exc_info=True)
 
+        # --- Feed prediction vs reality to metacognition (biological: RPE signal) ---
+        metacog = getattr(self, "_metacognition", None)
+        if metacog is not None:
+            try:
+                predicted = float(getattr(self, "_predicted_reward", 0.0))
+                metacog.record_decision(
+                    step=self.step_count,
+                    predicted=predicted,
+                    actual=float(reward),
+                )
+            except Exception:
+                logger.debug("metacognition record_decision failed", exc_info=True)
+
         # Intrinsic curiosity reward (biological: dopaminergic novelty signal)
         # CuriosityDrive adds exploration bonus to sparse extrinsic rewards
         prev = getattr(self, "_prev_state_vector", None)
@@ -77,10 +90,17 @@ class LearningLifecycleMixin:
             self.consolidate_memory()
 
         # Generative Replay: sample synthetic experiences alongside real replay
+        # Circuit B: Dream more when struggling (metacognition-driven amplification)
         gen = getattr(self, "generative_memory", None)
-        if gen is not None and hasattr(gen, "sample") and self.step_count % 13 == 0:
+        dream_cadence = 13
+        dream_batch = 4
+        metacog_dream = getattr(self, "_metacognition", None)
+        if metacog_dream is not None and not metacog_dream.is_performing_well():
+            dream_cadence = 5
+            dream_batch = 8
+        if gen is not None and hasattr(gen, "sample") and self.step_count % dream_cadence == 0:
             try:
-                synthetic_batch = gen.sample(batch_size=4, synthetic_ratio=0.5)
+                synthetic_batch = gen.sample(batch_size=dream_batch, synthetic_ratio=0.5)
                 if synthetic_batch:
                     synthetic_weights = np.ones(len(synthetic_batch), dtype=np.float32)
                     self._learn_from_batch(synthetic_batch, synthetic_weights)
@@ -112,20 +132,40 @@ class LearningLifecycleMixin:
         # FIX-4: Activate 5 passive learning subsystems
         # (engines were created but never invoked from agent lifecycle)
 
-        # -- Federated Reinforcement Learning (every 10 steps) --
+        # -- Federated Reinforcement Learning (dynamic cadence) --
+        # Circuit A: Share more often when struggling (metacognition-driven)
         frl = getattr(self, "_frl_engine", None)
-        if frl is not None and self.step_count % 10 == 0:
+        frl_freq = getattr(frl, "_share_frequency", 10) if frl is not None else 10
+        metacog_frl = getattr(self, "_metacognition", None)
+        if metacog_frl is not None and not metacog_frl.is_performing_well():
+            frl_freq = max(3, frl_freq // 2)
+        if frl is not None and self.step_count % frl_freq == 0:
             try:
-                if hasattr(frl, "learn"):
-                    frl.learn(
-                        agent_id=str(self.unique_id),
-                        action=action,
-                        reward=reward,
-                        state=prev,
-                        next_state=curr,
+                vdn_snap = getattr(self, "_vdn_engine", None)
+                if vdn_snap is not None:
+                    policy_state = {
+                        "q_table_size": len(getattr(vdn_snap, "_q_table", {})),
+                        "lr": float(getattr(vdn_snap, "_lr", 0.01)),
+                    }
+                else:
+                    policy_state = {
+                        "action": str(action),
+                        "reward": float(reward),
+                        "step": self.step_count,
+                    }
+                frl.share_policy_update(
+                    policy_state=policy_state,
+                    performance=float(reward),
+                    metadata={"agent_id": str(self.unique_id), "step": self.step_count},
+                )
+                peer_updates = frl.receive_policy_updates(max_updates=5)
+                if peer_updates:
+                    frl.aggregate_policy_updates(
+                        local_policy=policy_state,
+                        peer_updates=peer_updates,
                     )
             except Exception:
-                logger.debug("Agent %s: FRL learn failed", self.unique_id, exc_info=True)
+                logger.debug("Agent %s: FRL share/aggregate failed", self.unique_id, exc_info=True)
 
         # -- Value Decomposition Networks (every 10 steps) --
         vdn = getattr(self, "_vdn_engine", None)

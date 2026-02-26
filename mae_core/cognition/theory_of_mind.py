@@ -268,8 +268,14 @@ class TheoryOfMind:
     # Tier 2 Persistence
     # ------------------------------------------------------------------
 
-    def serialize(self) -> dict[str, Any]:
-        """Serialize state for Tier 2 persistence."""
+    def serialize(self, persist_dir: Any = None) -> dict[str, Any]:
+        """Serialize state for Tier 2 persistence.
+
+        Args:
+            persist_dir: Accepted for compatibility with the shared-system
+                persistence loop in model.py. Ignored — all state fits
+                inline in the returned metadata dict.
+        """
         models_data = {}
         for agent_id, model in self._agent_models.items():
             models_data[str(agent_id)] = {
@@ -288,8 +294,19 @@ class TheoryOfMind:
             "current_step": self._current_step,
         }
 
-    def restore(self, data: dict[str, Any]) -> None:
-        """Restore state from serialized data."""
+    def restore(self, persist_dir_or_data: Any = None, metadata: dict[str, Any] | None = None) -> None:
+        """Restore state from serialized data.
+
+        Supports two call styles:
+          - restore(data_dict)           — direct dict (unit tests)
+          - restore(persist_dir, meta)   — shared-system pattern (model.py)
+        """
+        if metadata is not None:
+            data = metadata
+        elif isinstance(persist_dir_or_data, dict):
+            data = persist_dir_or_data
+        else:
+            return  # nothing to restore
         self._observation_count = data.get("observation_count", 0)
         self._current_step = data.get("current_step", 0)
         self._agent_models.clear()

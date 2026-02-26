@@ -46,6 +46,12 @@ class SensingLifecycleMixin:
                 last_action = 0
             self._last_prediction = wm.predict(state, last_action)
 
+            # Predict reward for metacognition pipeline (biological: dopamine prediction)
+            try:
+                self._predicted_reward = float(wm.predict_reward(state, last_action))
+            except Exception:
+                self._predicted_reward = 0.0
+
             # Record imagination for validation (biological: predictive tagging)
             vi = getattr(self, "_validated_imagination", None)
             if vi is not None and self._last_prediction is not None:
@@ -56,7 +62,7 @@ class SensingLifecycleMixin:
                         state=state,
                         action=last_action,
                         predicted_next_state=self._last_prediction,
-                        predicted_reward=0.0,
+                        predicted_reward=self._predicted_reward,
                         confidence=1.0 - getattr(self, "_prediction_error", 0.0),
                     )
                 except Exception:

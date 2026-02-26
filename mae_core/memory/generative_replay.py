@@ -50,7 +50,7 @@ class GenerativeReplayMemory:
         state_dim: int,
         action_dim: int,
         latent_dim: int = 64,
-        compression_threshold: int = 5000,
+        compression_threshold: int = 200,
         synthetic_ratio: float = 0.7,
         keep_recent: int = 10,
         discrete_actions: bool = True,

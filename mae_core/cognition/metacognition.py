@@ -264,8 +264,14 @@ class MetacognitionMonitor:
     # Tier 2 Persistence
     # ------------------------------------------------------------------
 
-    def serialize(self) -> dict[str, Any]:
-        """Serialize state for Tier 2 persistence."""
+    def serialize(self, persist_dir: Any = None) -> dict[str, Any]:
+        """Serialize state for Tier 2 persistence.
+
+        Args:
+            persist_dir: Accepted for compatibility with the shared-system
+                persistence loop in model.py. Ignored — all state fits
+                inline in the returned metadata dict.
+        """
         history = [
             {
                 "step": r.step,
@@ -285,8 +291,19 @@ class MetacognitionMonitor:
             "current_step": self._current_step,
         }
 
-    def restore(self, data: dict[str, Any]) -> None:
-        """Restore state from serialized data."""
+    def restore(self, persist_dir_or_data: Any = None, metadata: dict[str, Any] | None = None) -> None:
+        """Restore state from serialized data.
+
+        Supports two call styles:
+          - restore(data_dict)           — direct dict (unit tests)
+          - restore(persist_dir, meta)   — shared-system pattern (model.py)
+        """
+        if metadata is not None:
+            data = metadata
+        elif isinstance(persist_dir_or_data, dict):
+            data = persist_dir_or_data
+        else:
+            return  # nothing to restore
         self._baseline_performance = data.get("baseline_performance", 0.5)
         self._confidence_calibration = data.get("confidence_calibration", 1.0)
         self._degradation_threshold = data.get(
