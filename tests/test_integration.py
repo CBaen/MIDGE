@@ -95,6 +95,10 @@ class TestBootstrap:
             "lag_correlation_analyzer",
             "thompson_calibrator",
             "kelly_position_sizer",
+            "hypothesis_registry",
+            "hypothesis_generator",
+            "hypothesis_validator",
+            "hypothesis_engine",
         ]
         for key in market_keys:
             assert key in systems, f"Missing market system: {key}"

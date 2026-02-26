@@ -2,6 +2,26 @@
 
 ## What Happened
 
+### Hypothesis Generation Loop — RSI Layer 2 (2026-02-25)
+
+MIDGE's recursive self-improvement loop. Discovers patterns, formalizes them as testable hypotheses, validates adversarially, promotes or retires based on evidence. The system now improves itself.
+
+**5 new files:**
+1. `mae_core/market/intelligence/hypothesis.py` — Hypothesis dataclass with trigger pattern, lifecycle status, causal story, DSR stats
+2. `mae_core/market/intelligence/hypothesis_registry.py` — Event-sourced lifecycle management (probation → active → hibernated → retired). Persists to `data/market/hypotheses.jsonl`
+3. `mae_core/market/intelligence/hypothesis_generator.py` — Converts lag-correlation findings into formal hypotheses. 11 causal story templates for known source pairs. Unknown pairs flagged "REQUIRES MANUAL REVIEW" (blocks promotion)
+4. `mae_core/market/intelligence/hypothesis_validator.py` — Adversarial validation with Deflated Sharpe Ratio (Bailey & Lopez de Prado 2014). Global trial counter penalizes multiple testing. Promotion bars: obs >= 20, win_rate > 0.52, DSR > 0.5, real causal story
+5. `mae_core/market/intelligence/hypothesis_engine.py` — Orchestrator: generation every 500 steps, validation every 1000 steps, regime check every 100 steps. Subscribes to CH_SIGNAL_INGESTED, matches incoming signals against active hypothesis triggers
+
+**Modified files:**
+- `mae_core/market/channels.py` — 5 new channel constants (CH_SIGNAL_INGESTED, CH_HYPOTHESIS_DISCOVERED/PROMOTED/RETIRED/FIRED)
+- `mae_core/market/sensing_hook.py` — EventBus bridge: publishes CH_SIGNAL_INGESTED per signal in `_collect_results()`
+- `mae_core/agents/stem_cell.py` — 2 new role profiles (HYPOTHESIS_EXPLORER: high exploration 0.7; HYPOTHESIS_VALIDATOR: adversarial, satisfaction 0.92)
+- `mae_core/bootstrap/market.py` — Full wiring: 4 systems, 10 connections (Group 16), 4 holons, 1 fractal K3 subsystem, endocrine coupling (dopamine on promote, cortisol on unexpected retire), EventBus subscriptions, step hooks, agent differentiation at 12+ agents
+- `mae_core/market/market_awareness.py` — HYPOTHESIS_EXPLORER and HYPOTHESIS_VALIDATOR added to _MARKET_ROLES, hypothesis stats in router context
+
+**4 new test files, 40 tests.** Systems: 117 (92+25). Connections: 361 (48 market). Holons: 136.
+
 ### Self-Calibrating Decision Engine (2026-02-25)
 
 Four new intelligence systems that turn MIDGE from a pattern detector into a self-calibrating decision engine. Infrastructure is built; results improve as data accumulates.
