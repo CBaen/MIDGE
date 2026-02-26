@@ -1141,7 +1141,7 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
     # --- Market advisory dict (Channel B: supplements endocrine Channel A) ---
     # Separate from _latest_advisory which PatternCortex overwrites every step.
     # Market-role agents read this in their decision cascade.
-    ctx._market_advisory = {"alert": None, "updated_step": 0}
+    ctx._market_advisory = {"alert": None, "updated_step": 0, "active_hypotheses": 0}
 
     # Wire convergence alerts into the advisory dict
     _sensing_step_counter = [0]

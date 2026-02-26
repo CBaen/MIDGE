@@ -155,6 +155,16 @@ def get_market_context_for_router(agent: Any) -> dict[str, Any]:
         except Exception:
             pass
 
+    # Hypothesis engine stats (for hypothesis-role agents)
+    hyp_registry = getattr(agent, "_hypothesis_registry_ref", None)
+    if hyp_registry is not None:
+        try:
+            hyp_stats = hyp_registry.get_statistics()
+            context["active_hypotheses"] = hyp_stats.get("active_count", 0)
+            context["best_hypothesis_win_rate"] = hyp_stats.get("best_active_win_rate", 0.0)
+        except Exception:
+            pass
+
     return context
 
 
