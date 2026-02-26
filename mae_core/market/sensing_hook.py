@@ -52,6 +52,7 @@ TIER_ROUTING = {
     "social_sentiment": "thematic",
     "fred_macro": "thematic",
     "session_sweep": "tactical",
+    "session_sweep_ifvg": "tactical",
     "ta_rsi": "tactical",
     "ta_macd": "tactical",
     "ta_bollinger": "tactical",

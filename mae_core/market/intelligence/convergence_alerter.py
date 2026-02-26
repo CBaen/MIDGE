@@ -266,6 +266,50 @@ class ConvergenceAlerter:
         self._cached_regime = (regime, now)
         return regime
 
+    def _resolve_thompson_key(self, signal: Signal) -> str:
+        """Resolve the Thompson distribution key for a signal.
+
+        For sweep sources, runs a most-specific-wins cascade through
+        granular backtest-derived keys (Bridge 2):
+          sweep_bt:{symbol}:{direction} → sweep_bt:{symbol} →
+          sweep_bt:{direction} → generic session_sweep fallback.
+
+        Only selects a granular key if it has >= 5 samples (mature data).
+        Non-sweep sources use the static _SOURCE_TO_THOMPSON_KEY map.
+        """
+        if signal.source not in self._SWEEP_SOURCES or self._thompson is None:
+            return self._SOURCE_TO_THOMPSON_KEY.get(
+                signal.source, signal.source or "unknown"
+            )
+
+        symbol = signal.metadata.get("symbol", "")
+        direction = signal.direction or ""
+        regime = self._get_regime()
+
+        # Cascade: most specific → least specific
+        candidates = []
+        if symbol and direction:
+            candidates.append(f"sweep_bt:{symbol}:{direction}")
+        if symbol:
+            candidates.append(f"sweep_bt:{symbol}")
+        if direction:
+            candidates.append(f"sweep_bt:{direction}")
+
+        for key in candidates:
+            try:
+                dist = self._thompson.get_distribution(key, regime)
+                if dist.samples >= 5:
+                    logger.debug("Thompson cascade: %s → %s (n=%d)",
+                                 signal.source, key, dist.samples)
+                    return key
+            except Exception:
+                continue
+
+        # Fallback to generic key
+        return self._SOURCE_TO_THOMPSON_KEY.get(
+            signal.source, signal.source or "unknown"
+        )
+
     def _get_thompson_weight(self, signal: Signal, regime: str) -> float:
         """Return Thompson-blended reliability weight for a signal.
 
@@ -279,9 +323,7 @@ class ConvergenceAlerter:
         if self._thompson is None:
             return 1.0
 
-        thompson_key = self._SOURCE_TO_THOMPSON_KEY.get(
-            signal.source, signal.source or "unknown"
-        )
+        thompson_key = self._resolve_thompson_key(signal)
 
         try:
             dist = self._thompson.get_distribution(thompson_key, regime)
