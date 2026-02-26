@@ -166,6 +166,11 @@ class FinnhubClient:
         self._sentiment_cache: Dict[str, Tuple[NewsSentiment, float]] = {}
         self._earnings_cache: Dict[str, Tuple[List[EarningsEvent], float]] = {}
 
+        # Blocked endpoints: { endpoint: blocked_until_unix }
+        # Endpoints returning 403 are blocked for 1 hour to prevent spam
+        self._blocked_endpoints: Dict[str, float] = {}
+        self._block_duration: float = 60 * 60  # 1 hour
+
     # ------------------------------------------------------------------
     # Public interface
     # ------------------------------------------------------------------
