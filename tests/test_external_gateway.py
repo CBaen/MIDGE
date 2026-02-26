@@ -556,6 +556,8 @@ class TestBootstrapExternal:
             import os
             for key in (
                 "MAE_CLAUDE_API_KEY", "MAE_GROQ_API_KEY",
+                "MAE_GROQ_API_KEY_2", "MAE_GROQ_API_KEY_3",
+                "MAE_GROQ_API_KEY_4", "MAE_GROQ_API_KEY_5",
                 "MAE_MISTRAL_API_KEY", "MAE_DEEPSEEK_API_KEY",
                 "MAE_MARKETAUX_API_KEY", "MAE_FINNHUB_API_KEY",
                 "MAE_ALPHAVANTAGE_API_KEY", "MAE_TAVILY_API_KEY",
