@@ -217,6 +217,8 @@ def _build_systems_dict(ctx) -> dict:
         "hypothesis_generator":     getattr(ctx, "hypothesis_generator", None),
         "hypothesis_validator":     getattr(ctx, "hypothesis_validator", None),
         "hypothesis_engine":        getattr(ctx, "hypothesis_engine", None),
+        # Technical analysis (Trades by Sci indicators)
+        "ta_indicators":            getattr(ctx, "ta_indicators", None),
     }
 
 
