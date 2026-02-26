@@ -25,7 +25,7 @@ from .experience_vae import ExperienceVAE, VAEConfig
 logger = logging.getLogger(__name__)
 
 # Threshold for switching from gzip to VAE compression
-_VAE_THRESHOLD = 1000
+_VAE_THRESHOLD = 500
 
 
 class GenerativeReplayMemory:

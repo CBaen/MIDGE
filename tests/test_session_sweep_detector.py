@@ -1076,10 +1076,10 @@ class TestIFVGDetection(unittest.TestCase):
         for i in range(5):
             p = base - i * 2
             candles.append((p, p + 1, p - 3, p - 2))
-        # Index 5-7: bearish FVG (c7.high < c5.low => gap down)
-        candles.append((5790, 5791, 5787, 5788))  # c5
-        candles.append((5788, 5789, 5784, 5785))  # c6 (engine)
-        candles.append((5785, 5786, 5780, 5781))  # c7: high=5786 < c5.low=5787 => bearish FVG
+        # Index 5-7: bearish FVG (c7.high < c5.low => gap down, size > 0.0005)
+        candles.append((5790, 5791, 5787, 5788))  # c5: low=5787
+        candles.append((5788, 5789, 5780, 5781))  # c6 (engine)
+        candles.append((5781, 5782, 5775, 5776))  # c7: high=5782 < c5.low=5787 => FVG=5pt
         # Indices 8-19: sideways
         for i in range(12):
             candles.append((5782, 5784, 5780, 5781))
@@ -1101,18 +1101,18 @@ class TestIFVGDetection(unittest.TestCase):
         for i in range(5):
             p = base - i * 2
             candles.append((p, p + 1, p - 3, p - 2))
-        # Bearish FVG at 5-7
+        # Bearish FVG at 5-7 (same gap as above: top=5787, bottom=5782)
         candles.append((5790, 5791, 5787, 5788))
-        candles.append((5788, 5789, 5784, 5785))
-        candles.append((5785, 5786, 5780, 5781))
+        candles.append((5788, 5789, 5780, 5781))
+        candles.append((5781, 5782, 5775, 5776))
         # Sideways
         for i in range(12):
-            candles.append((5782, 5784, 5780, 5781))
+            candles.append((5778, 5780, 5776, 5777))
         # Sweep
-        candles.append((5781, 5782, 5775, 5780))
+        candles.append((5777, 5778, 5770, 5775))
         # Weak reversal — doesn't reach FVG top (5787)
-        candles.append((5780, 5783, 5779, 5782))
-        candles.append((5782, 5784, 5781, 5783))
+        candles.append((5775, 5778, 5774, 5777))
+        candles.append((5777, 5779, 5776, 5778))
 
         ohlc = make_ohlc(candles)
         result = self.detector._find_ifvg(ohlc, sweep_idx=20, direction="bullish")
