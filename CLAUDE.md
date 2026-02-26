@@ -84,6 +84,7 @@ mae_core/market/
     hypothesis_generator.py     # Lag findings → formal hypotheses with causal stories
     hypothesis_validator.py     # Adversarial validation + Deflated Sharpe Ratio
     hypothesis_engine.py        # RSI Layer 2 orchestrator (generation/validation cadence)
+    backtest_analyzer.py        # Bridge 1: backtest results → formal hypotheses (RSI Layer 2)
 ```
 
 ### Market Data Files
@@ -101,7 +102,7 @@ mae_core/market/
 
 ### Integration Status
 
-Market modules are **fully bootstrapped as Layer 33** — wired into EventBus, ConnectionRegistry, HolonRegistry, fractal hierarchy, endocrine coupling, and step hooks. 22 systems, 41 triadic connections, 26 holons.
+Market modules are **fully bootstrapped as Layer 33** — wired into EventBus, ConnectionRegistry, HolonRegistry, fractal hierarchy, endocrine coupling, and step hooks. 27 systems, 51 triadic connections, 27 holons.
 
 **Phase 2 complete:** CorrelationTracker deque persistence, discovery_log reader, KNOWN_POLITICIANS expansion (437 members), TickerResolver service, MarketDataProvider registered with ApiGateway, ContractPredictor retained (entity-level, complements ConvergenceAlerter), regime-aware Thompson Sampling, client migration to MarketDataProvider.
 
@@ -143,7 +144,7 @@ grep -rn "PREVIOUS_COUNT" --include="*.md" --include="*.py"
 
 - **Mesa 3.4** foundation, pure Python infrastructure
 - **33-layer bootstrap** in `mae_core/bootstrap/` (orchestrated by `main.py`)
-- **118 systems** (92 core + 26 market), **2715 tests**, **137 holons**, **367 connections**
+- **119 systems** (92 core + 27 market), **2754 tests**, **138 holons**, **370 connections**
 - **31 market intelligence files** in `mae_core/market/` (bootstrapped as Layer 33)
 - **14 mixins** on MycelialAgent (10 capability + 4 lifecycle, HolonMixin is 10th capability)
 - **Fractal architecture:** All 5 steps complete (Holon Protocol, Triadic Connections, Bidirectional Awareness, Fractal Generator, Stem Cell)
