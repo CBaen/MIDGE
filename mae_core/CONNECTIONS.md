@@ -45,7 +45,7 @@ Last updated: 2026-02-22
 | 5.8 Temporal | TemporalMemory, WorldlinePlanner | 6 | 6 (EventBus) | 4 (cross-system stubs) |
 | 5.8+ Enforcement | TriadEnforcer, Watchdog, Auditor, Registry | 10 | 10 (EventBus) | 0 |
 | 5.8++ Holon | HolonRegistry, HolonMixin, HolonProxy, AwarenessPulse | 2 | 36 (proxy injection) + 1 (bootstrap) | 0 |
-| 5.8+++ Connection | ConnectionRegistry | 4 | 361 (211 core + 47 fractal + 55 bootstrap + 48 market, all witnessed, 0 bare dyads) | 0 |
+| 5.8+++ Connection | ConnectionRegistry | 4 | 364 (211 core + 47 fractal + 55 bootstrap + 51 market, all witnessed, 0 bare dyads) | 0 |
 | **5.9 Integration** | **API, Dashboard, Domain Config** | **0** | **0** | **20+ (all stubs need wiring)** |
 
 ---
@@ -125,3 +125,13 @@ The following 3 connections were added with the Session Sweep Detector (total ma
 | signal_archive_reader ↔ convergence_alerter | data_flow | lag_correlation_analyzer | Archive data enriches convergence context |
 | lag_correlation_analyzer ↔ convergence_alerter | data_flow | thompson_calibrator | Lag findings inform cross-domain synthesis |
 | kelly_position_sizer ↔ lag_correlation_analyzer | data_flow | convergence_alerter | Leading indicators inform position timing |
+
+## Market Connections (Group 16 — Layer 33) — TA indicators
+
+3 connections for the TA indicators edge module (total market connections: 51):
+
+| Connection | Type | Witness | Notes |
+|-----------|------|---------|-------|
+| ta_indicators → price_fetcher | direct_reference | convergence_alerter, auditor | TA indicators compute RSI/MACD/Bollinger from daily OHLCV |
+| convergence_alerter → ta_indicators | direct_reference | thompson_sampler, auditor | Convergence subscribes to TA indicator signals |
+| ta_indicators → thompson_sampler | data_flow | convergence_alerter, auditor | Thompson learns TA indicator reliability from outcomes |
