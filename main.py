@@ -212,6 +212,11 @@ def _build_systems_dict(ctx) -> dict:
         "lag_correlation_analyzer":  getattr(ctx, "lag_correlation_analyzer", None),
         "thompson_calibrator":      getattr(ctx, "thompson_calibrator", None),
         "kelly_position_sizer":     getattr(ctx, "kelly_position_sizer", None),
+        # Hypothesis loop (RSI Layer 2)
+        "hypothesis_registry":      getattr(ctx, "hypothesis_registry", None),
+        "hypothesis_generator":     getattr(ctx, "hypothesis_generator", None),
+        "hypothesis_validator":     getattr(ctx, "hypothesis_validator", None),
+        "hypothesis_engine":        getattr(ctx, "hypothesis_engine", None),
     }
 
 
