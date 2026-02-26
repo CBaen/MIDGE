@@ -89,7 +89,7 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
 # =========================================================================
 
 def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
-    """Create all 21 market system objects on ctx."""
+    """Create all 25 market system objects on ctx."""
     import os
     qdrant_url = getattr(ctx, "qdrant_url", "http://localhost:6333")
     failures = 0
@@ -425,7 +425,7 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
 
     logger.info(
         "Layer 33a - Market systems instantiated: %d systems (construction failures: %d)",
-        21 - failures, failures,
+        25 - failures, failures,
     )
     logger.info(
         "            Operational dependencies: Qdrant, RAPIDAPI_KEY, ALPHA_VANTAGE_KEY, "
@@ -851,7 +851,43 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
             logger.debug("Endocrine coupling failed for convergence alert", exc_info=True)
 
     ctx.bus.register_callback(CH_CONVERGENCE, _on_market_convergence)
-    logger.info("Layer 33f - Market EventBus: convergence -> endocrine coupling wired")
+
+    # --- Hypothesis lifecycle endocrine coupling ---
+    from mae_core.market.channels import CH_HYPOTHESIS_PROMOTED, CH_HYPOTHESIS_RETIRED
+
+    def _on_hypothesis_promoted(channel, data):
+        endocrine = getattr(ctx, "endocrine", None)
+        if endocrine is None:
+            return
+        try:
+            from mae_core.coordination.endocrine_system import HormoneType
+            endocrine.release_hormone(HormoneType.DOPAMINE, 0.3, "hypothesis_promoted")
+        except Exception:
+            pass
+
+    def _on_hypothesis_retired(channel, data):
+        msg = json.loads(data) if isinstance(data, str) else data
+        if not msg.get("was_active", False):
+            return  # Only cortisol if it was actively being used
+        endocrine = getattr(ctx, "endocrine", None)
+        if endocrine is None:
+            return
+        try:
+            from mae_core.coordination.endocrine_system import HormoneType
+            endocrine.release_hormone(HormoneType.CORTISOL, 0.15, "hypothesis_retired_unexpectedly")
+        except Exception:
+            pass
+
+    ctx.bus.register_callback(CH_HYPOTHESIS_PROMOTED, _on_hypothesis_promoted)
+    ctx.bus.register_callback(CH_HYPOTHESIS_RETIRED, _on_hypothesis_retired)
+
+    # --- Hypothesis engine signal ingestion subscription ---
+    engine = getattr(ctx, "hypothesis_engine", None)
+    if engine is not None:
+        from mae_core.market.channels import CH_SIGNAL_INGESTED
+        ctx.bus.register_callback(CH_SIGNAL_INGESTED, engine.on_signal_ingested)
+
+    logger.info("Layer 33f - Market EventBus: convergence + hypothesis -> endocrine coupling wired")
 
 
 # =========================================================================
@@ -966,6 +1002,14 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                     calibrator.calibrate()
                 except Exception:
                     logger.debug("Thompson calibration step failed", exc_info=True)
+
+        # Every step: hypothesis engine (manages its own cadence internally)
+        hyp_engine = getattr(ctx, "hypothesis_engine", None)
+        if hyp_engine is not None:
+            try:
+                hyp_engine.step()
+            except Exception:
+                logger.debug("Hypothesis engine step failed", exc_info=True)
 
         # Kelly sizing: fires on per-ticker convergence alerts
         if step % 50 == 0:
@@ -1126,6 +1170,9 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
     # Register the wrapped step hook
     ctx.model.add_step_hook(_sensing_step_with_advisory)
 
+    # Inject EventBus for signal bridge (Phase 1 of hypothesis loop)
+    hook._bus = ctx.bus
+
     # Store hook reference on ctx for monitoring
     ctx._market_sensing_hook = hook
 
@@ -1216,10 +1263,42 @@ def _differentiate_market_agents(ctx: SimpleNamespace) -> None:
             except Exception:
                 logger.debug("Failed to differentiate agent[%d] as %s", idx, role, exc_info=True)
 
-    triads = 1 + (1 if len(agents) >= 6 else 0) + (1 if len(agents) >= 9 else 0)
+    # --- K3 Hypothesis: agents 9, 10, 11 (only when 12+ agents) ---
+    if len(agents) >= 12:
+        hyp_roles = [
+            ("HYPOTHESIS_EXPLORER", 9),
+            ("HYPOTHESIS_VALIDATOR", 10),
+            ("MARKET_ANALYST", 11),  # Third member of the hypothesis triad
+        ]
+        for role, idx in hyp_roles:
+            try:
+                agent = agents[idx]
+                redifferentiate(agent, role, registry=registry, step=0)
+                if market_advisory is not None:
+                    agent._market_advisory_ref = market_advisory
+                agent._convergence_alerter_ref = getattr(ctx, "convergence_alerter", None)
+                agent._regime_classifier_ref = getattr(ctx, "regime_classifier", None)
+                # Attach hypothesis engine/registry refs for direct interaction
+                agent._hypothesis_engine_ref = getattr(ctx, "hypothesis_engine", None)
+                agent._hypothesis_registry_ref = getattr(ctx, "hypothesis_registry", None)
+                differentiated += 1
+                logger.info(
+                    "Hypothesis differentiation: agent %s → %s",
+                    getattr(agent, "unique_id", id(agent)), role,
+                )
+            except Exception:
+                logger.debug("Failed to differentiate agent[%d] as %s", idx, role, exc_info=True)
+
+    triads = (
+        1
+        + (1 if len(agents) >= 6 else 0)
+        + (1 if len(agents) >= 9 else 0)
+        + (1 if len(agents) >= 12 else 0)
+    )
     logger.info(
         "Layer 33i - Agent differentiation: %d agents across %d K3 triads "
         "(general + %s)",
         differentiated, triads,
-        "market + intelligence" if len(agents) >= 9 else "market",
+        "market + intelligence + hypothesis" if len(agents) >= 12
+        else ("market + intelligence" if len(agents) >= 9 else "market"),
     )
