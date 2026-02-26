@@ -119,6 +119,9 @@ class MarketSensingHook:
         self._finnhub = finnhub
         self._fred = fred
 
+        # EventBus (injected by bootstrap for signal bridge)
+        self._bus = None
+
         # Intelligence layer
         self._convergence_alerter = convergence_alerter
         self._velocity_detector = velocity_detector
@@ -236,6 +239,25 @@ class MarketSensingHook:
             "Market sensing: fed %d signals from [%s] (total: %d)",
             len(signals), self._last_fetch_source, self._total_signals_fed,
         )
+
+        # Publish each signal to EventBus (hypothesis engine subscribes here)
+        if self._bus is not None:
+            from mae_core.market.channels import CH_SIGNAL_INGESTED
+            for sig in signals:
+                try:
+                    self._bus.publish(CH_SIGNAL_INGESTED, {
+                        "signal_id": sig.signal_id,
+                        "source": sig.source,
+                        "symbol": sig.symbol,
+                        "domain": sig.domain,
+                        "direction": sig.direction,
+                        "strength": sig.strength,
+                        "confidence": sig.confidence,
+                        "velocity": sig.velocity,
+                        "timestamp": sig.timestamp.isoformat(),
+                    })
+                except Exception:
+                    logger.debug("Failed to publish signal to EventBus", exc_info=True)
 
         # Store to Qdrant + JSONL
         self._store_signals(signals)
