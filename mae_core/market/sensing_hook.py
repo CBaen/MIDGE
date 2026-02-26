@@ -52,9 +52,14 @@ TIER_ROUTING = {
     "social_sentiment": "thematic",
     "fred_macro": "thematic",
     "session_sweep": "tactical",
+    "ta_rsi": "tactical",
+    "ta_macd": "tactical",
+    "ta_bollinger": "tactical",
+    "ta_structure": "tactical",
+    "ta_candle": "tactical",
 }
 
-# Source names for rotation — 12 sources, full cycle every 600 steps
+# Source names for rotation — 14 sources, full cycle every 700 steps
 SOURCE_ROTATION = [
     "sec_form4",
     "sec_form8k",
@@ -69,6 +74,7 @@ SOURCE_ROTATION = [
     "finnhub",
     "fred_macro",
     "session_sweep",
+    "ta_indicators",
 ]
 
 
@@ -98,6 +104,7 @@ class MarketSensingHook:
         filing_analyzer: Any = None,
         form8k_sentiment: Any = None,
         session_sweep_detector: Any = None,
+        ta_indicators: Any = None,
         outcome_collector: Any = None,
         memory: Any = None,
         tiered_alerters: Optional[dict] = None,
@@ -128,6 +135,7 @@ class MarketSensingHook:
         self._filing_analyzer = filing_analyzer
         self._form8k_sentiment = form8k_sentiment
         self._session_sweep_detector = session_sweep_detector
+        self._ta_indicators = ta_indicators
         self._outcome_collector = outcome_collector
         self._memory = memory
 
@@ -296,6 +304,7 @@ class MarketSensingHook:
             from_earnings_event,
             from_macro_indicator,
             from_session_sweep,
+            from_ta_signal,
         )
 
         signals = []
@@ -338,6 +347,9 @@ class MarketSensingHook:
 
         elif source_name == "session_sweep":
             signals = self._fetch_session_sweep(from_session_sweep)
+
+        elif source_name == "ta_indicators":
+            signals = self._fetch_ta_indicators(from_ta_signal)
 
         return signals
 
@@ -622,6 +634,34 @@ class MarketSensingHook:
                         pass
             except Exception as e:
                 logger.debug("Session sweep fetch failed for %s: %s", symbol, e)
+        return signals
+
+    def _fetch_ta_indicators(self, converter) -> list:
+        """Compute technical analysis indicators for watchlist tickers.
+
+        Uses price_fetcher.get_daily_history() for OHLCV data, then runs
+        RSI, MACD, Bollinger, Market Structure, and Candlestick detection.
+        Pure local computation — no external API calls beyond yfinance history.
+        """
+        if self._ta_indicators is None or self._price_fetcher is None:
+            return []
+
+        from mae_core.market.edge.ta_indicators import compute_all
+
+        signals = []
+        for ticker in self._watchlist.get("tickers", []):
+            try:
+                history = self._price_fetcher.get_daily_history(ticker, days=90)
+                if not history:
+                    continue
+                ta_signals = compute_all(ticker, history)
+                for ta_sig in ta_signals:
+                    try:
+                        signals.append(converter(ta_sig))
+                    except Exception:
+                        pass
+            except Exception as e:
+                logger.debug("TA indicators failed for %s: %s", ticker, e)
         return signals
 
     # ------------------------------------------------------------------
