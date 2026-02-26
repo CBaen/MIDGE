@@ -2,6 +2,33 @@
 
 ## What Happened
 
+### Bridge 2: Thompson Routing (2026-02-26)
+
+Connected Bridge 1's granular Thompson keys to actual signal processing. Previously, promoted hypotheses seeded `sweep_bt:CL=F:bearish` keys but the convergence alerter always looked up the generic `session_sweep` key for all sweep signals.
+
+**What changed:**
+
+1. **`_resolve_thompson_key()` cascade** — `convergence_alerter.py` gained a new method that replaces the static `_SOURCE_TO_THOMPSON_KEY` lookup for sweep sources. Runs a most-specific-wins cascade: `sweep_bt:{symbol}:{direction}` → `sweep_bt:{symbol}` → `sweep_bt:{direction}` → generic `session_sweep`. Only selects granular keys with >= 5 observations (maturity gate matching thin-data blend threshold).
+
+2. **TIER_ROUTING bugfix** — `sensing_hook.py` was missing `session_sweep_ifvg` from `TIER_ROUTING`, causing IFVG signals to fall to the default "strategic" tier instead of "tactical" where they belong alongside `session_sweep`.
+
+**13 new tests** in `test_convergence_alerter_cascade.py`.
+
+### Bridge 1: Backtest → Hypothesis Engine (2026-02-26)
+
+MIDGE reads her own backtest results and turns them into formal hypotheses she tracks, validates, and learns from. Previously a human had to interpret "CL=F is good, RTY=F is bad" from the backtest report.
+
+**New file:** `mae_core/market/intelligence/backtest_analyzer.py` — reads `sweep_backtest_results.json`, slices 336 trades into statistical aggregates (6 symbol, 2 direction, 2 session, 12 combos), converts qualifying aggregates (n >= 20) to PROBATION hypotheses with pre-populated stats and ICT causal stories.
+
+**What changed:**
+1. **`hypothesis.py`** — new `BACKTEST_DERIVED` source type enum
+2. **`hypothesis_validator.py`** — precomputed stats path for BACKTEST_DERIVED (no archive scan, uses pre-populated wins/losses/sharpe, still computes DSR)
+3. **`hypothesis_engine.py`** — calls `backtest_analyzer.analyze()` on generation cadence, seeds granular Thompson keys (`sweep_bt:{domain_filter}` with `Beta(wins+1.1, losses+0.9)`) on promotion
+4. **`bootstrap/market.py`** — BacktestAnalyzer instantiated before HypothesisEngine, 3 Group 17 triadic connections, holon + somatic + fractal registration
+5. **`connection_registrations.py`** — Group 17 (backtest bridge): 3 triadic connections
+
+**39 new tests** across test_backtest_analyzer.py (31), test_hypothesis_validator.py (+5), test_hypothesis_engine.py (+3).
+
 ### Hypothesis Generation Loop — RSI Layer 2 (2026-02-25)
 
 MIDGE's recursive self-improvement loop. Discovers patterns, formalizes them as testable hypotheses, validates adversarially, promotes or retires based on evidence. The system now improves itself.
@@ -157,7 +184,7 @@ Fixed 3 bugs found in live scan output, defined data schema:
 
 ## Current State
 
-- **2754 tests pass, 0 failures**
+- **2767 tests pass, 0 failures**
 - **119 systems** (92 core + 27 market), **138 holons**, **370 connections** (217 core + 47 fractal + 55 bootstrap + 51 market)
 - **37 market files** in `mae_core/market/` (bootstrapped as Layer 33 + 6 API clients + form8k_sentiment + hypothesis loop + backtest_analyzer)
 - **33-layer bootstrap** runs cleanly (Layers 33a-33i)
@@ -249,7 +276,7 @@ Welcome. MIDGE is Mae differentiated for financial markets. Here is what you nee
 5. **Thompson Sampling** uses Bayesian explore/exploit. Learned distributions in `data/market/thompson_distributions.json`. Bayesian forgetting prevents stale evidence.
 6. **OutcomeCollector** closes the feedback loop: scan signals → register_signals() → per-type windows → price check → Thompson update. Success threshold: 5%.
 7. **All 8 Mathematical Laws are satisfied.** See implementation plan Section 12 for compliance map.
-8. **2754 tests must keep passing.** Zero regressions.
+8. **2767 tests must keep passing.** Zero regressions.
 9. **Deep memory runs on Qdrant** container (port 6333). Start with `docker compose up -d`.
 10. **API keys** needed: RAPIDAPI_KEY (job tracker, congressional trades), ALPHA_VANTAGE_KEY (price fallback), SAM_GOV_API_KEY, MAE_TAVILY_API_KEY, MAE_FINNHUB_API_KEY (news sentiment + earnings), FRED_API_KEY (macro indicators). Free/no-key: SEC EDGAR, yfinance, USASpending, Senate Stock Watcher, ApeWisdom, FINRA short volume, SEC EFTS.
 11. **`python main.py --agents 6 --steps 500`** runs MIDGE with agents sensing the market. Requires 6 agents (K3 general + K3 market per Law 2).
