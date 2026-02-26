@@ -320,6 +320,14 @@ class FinnhubClient:
             logger.warning("Finnhub request skipped — no API key configured.")
             return None
 
+        # Check if endpoint is blocked (403 cooldown)
+        if endpoint in self._blocked_endpoints:
+            if time.time() < self._blocked_endpoints[endpoint]:
+                return None  # Silently skip — already logged on first 403
+            else:
+                del self._blocked_endpoints[endpoint]
+                logger.info("Finnhub endpoint %s unblocked — retrying", endpoint)
+
         all_params = dict(params or {})
         all_params["token"] = self._api_key
 
@@ -340,6 +348,14 @@ class FinnhubClient:
             )
             if resp.status == ApiResponseStatus.SUCCESS:
                 return resp.payload
+            # Detect 403 in error message and block the endpoint
+            if resp.error_message and "403" in str(resp.error_message):
+                self._blocked_endpoints[endpoint] = time.time() + self._block_duration
+                logger.warning(
+                    "Finnhub 403 on %s — blocked for %.0f min (upgrade API tier to access)",
+                    endpoint, self._block_duration / 60,
+                )
+                return None
             logger.warning("Finnhub provider error [%s]: %s", endpoint, resp.error_message)
             return None
 
@@ -347,6 +363,13 @@ class FinnhubClient:
             response = self._session.get(url, params=all_params, timeout=10)
             if response.status_code == 200:
                 return response.json()
+            if response.status_code == 403:
+                self._blocked_endpoints[endpoint] = time.time() + self._block_duration
+                logger.warning(
+                    "Finnhub 403 on %s — blocked for %.0f min (upgrade API tier to access)",
+                    endpoint, self._block_duration / 60,
+                )
+                return None
             if response.status_code == 429:
                 logger.warning("Finnhub rate limited (429) — back off and retry.")
             else:
