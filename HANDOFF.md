@@ -232,7 +232,7 @@ Phase 7/7: Report — markdown intelligence report with all sections
 | `apis/sec_edgar/` | 4 (models, client, efts, __init__) | SEC insider trades + material events + full-text search |
 | `apis/` | 13 (price_fetcher, house_stock_watcher, senate_stock_watcher, job_tracker, usa_spending, sam_gov, apewisdom, finra_short_interest, finnhub_client, fred_client, ticker_resolver, market_data_provider) | 14 data sources + utilities |
 | `edge/` | 7 (cluster_detector, politician_tracker, filing_time_analyzer, contract_predictor, form8k_sentiment, session_sweep_detector, ta_indicators) | Pattern recognition + text analysis |
-| `intelligence/` | 11 (thompson_sampler, velocity_detector, correlation_tracker, convergence_alerter, learning_config, regime_classifier, outcome_collector, signal_archive_reader, lag_correlation_analyzer, thompson_calibrator, kelly_position_sizer) | Bayesian learning + feedback loop + calibration + sizing |
+| `intelligence/` | 12 (thompson_sampler, velocity_detector, correlation_tracker, convergence_alerter, learning_config, regime_classifier, outcome_collector, signal_archive_reader, lag_correlation_analyzer, thompson_calibrator, kelly_position_sizer, backtest_analyzer) | Bayesian learning + feedback loop + calibration + sizing + backtest bridge |
 | `root` | 5 (signal.py, channels.py, outcome_tracker.py, memory.py, sensing_hook.py) | Integration layer + sensing + Qdrant persistence |
 
 ---
@@ -250,11 +250,18 @@ Roadmap at `C:\Users\baenb\.claude\plans\delegated-leaping-map.md`. Items below 
 4. ~~Lag-correlation analysis~~ DONE 2026-02-25 — infrastructure built, results improve as archives accumulate
 5. ~~Thompson calibration~~ DONE 2026-02-25 — seed fix + Brier score calibration pipeline
 6. ~~Position sizing / Kelly criterion~~ DONE 2026-02-25 — half-Kelly with 5% cap, win/loss from outcomes
+7. ~~Bridge 1: Backtest → Hypothesis Engine~~ DONE 2026-02-26 — MIDGE reads backtest results, creates formal hypotheses
+8. ~~Bridge 2: Thompson Routing~~ DONE 2026-02-26 — sweep signals routed to granular backtest-derived Thompson keys
 
 **Data-gated (infrastructure built, awaiting data maturation):**
 - Lag-correlation findings: needs 30+ days of signal archives (currently 3 days)
 - Thompson calibration accuracy: needs 50+ outcomes (currently 26)
 - Kelly sizing confidence: needs 100+ calibrated outcomes
+
+**Potential next bridges:**
+- **Bridge 3:** Autonomous backtest scheduling — step-hook cadence triggers yfinance fetches + backtest reruns
+- **Bridge 4:** Dynamic quality gates — adjust promotion/retirement thresholds based on hypothesis performance
+- **Bridge 5:** Meta-learning (RSI Layer 3) — improve the discovery algorithm itself
 
 **Back burner:**
 - **Options flow via Unusual Whales** ($35/mo API — needs Guiding Light approval on spend)
