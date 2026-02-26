@@ -24,7 +24,10 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 # Market roles from stem_cell.py ROLE_PROFILES
-_MARKET_ROLES = frozenset({"SEC_WATCHER", "CONTRACT_TRACKER", "MARKET_ANALYST"})
+_MARKET_ROLES = frozenset({
+    "SEC_WATCHER", "CONTRACT_TRACKER", "MARKET_ANALYST",
+    "HYPOTHESIS_EXPLORER", "HYPOTHESIS_VALIDATOR",
+})
 
 # Regime → float encoding (normalized 0-1 range for state vector)
 _REGIME_ENCODING = {
