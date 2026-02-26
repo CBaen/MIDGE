@@ -226,6 +226,32 @@ ROLE_PROFILES: dict[str, dict[str, Any]] = {
         "quorum_sensing_enabled": True,
         "capabilities": frozenset({"market_analyze", "convergence_detect", "signal_synthesize"}),
     },
+    # --- Hypothesis loop roles (RSI Layer 2: triadic explorer + validator + analyst) ---
+    "HYPOTHESIS_EXPLORER": {
+        "exploration_bonus": 0.7,
+        "novelty_threshold": 0.4,
+        "sensing_radius": 18.0,
+        "trail_following": True,
+        "transfer_enabled": True,
+        "maml_enabled": True,
+        "replay_enabled": True,
+        "semantic_search_enabled": True,
+        "world_model_enabled": True,
+        "planning_horizon": 7,
+        "capabilities": frozenset({"hypothesis_explore", "pattern_discover", "market_sense"}),
+    },
+    "HYPOTHESIS_VALIDATOR": {
+        "exploration_bonus": 0.05,
+        "satisfaction_threshold": 0.92,
+        "convergence_threshold": 0.005,
+        "max_learning_iterations": 400,
+        "replay_enabled": True,
+        "consolidation_enabled": True,
+        "semantic_search_enabled": True,
+        "world_model_enabled": True,
+        "planning_horizon": 14,
+        "capabilities": frozenset({"hypothesis_validate", "backtest", "adversarial_review"}),
+    },
 }
 
 
