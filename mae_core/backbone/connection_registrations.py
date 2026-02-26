@@ -851,6 +851,20 @@ def register_all_connections(
          criticality=ConnectionCriticality.IMPORTANT,
          description="Aging triggers healing assessment -- cleanup + body awareness peers verify")
 
+    # Layer 29b: metacognition -> VDN learning rate modulation (organs.py)
+    _reg("metacognition", "vdn", eb,
+         channel="cognition.metacognition_alert",
+         witnesses=["organism_state", "arousal_regulator"],
+         criticality=ConnectionCriticality.IMPORTANT,
+         description="Performance degradation adjusts VDN learning rate -- organism awareness + arousal peers verify")
+
+    # Layer 29b: metacognition -> world_model learning rate modulation (organs.py)
+    _reg("metacognition", "shared_world_model", eb,
+         channel="cognition.metacognition_alert",
+         witnesses=["organism_state", "arousal_regulator"],
+         criticality=ConnectionCriticality.IMPORTANT,
+         description="Performance degradation adjusts WorldModel learning rate -- organism awareness + arousal peers verify")
+
     # Layer 15: prediction error -> healing (wiring.py)
     _reg("predictive_field", "auto_healer", eb,
          channel="signal.PREDICTION_ERROR",
@@ -1023,6 +1037,12 @@ def register_all_connections(
          criticality=ConnectionCriticality.IMPORTANT,
          description="GNN votes feed quorum consensus -- Law 7 enforcement + audit peers verify")
 
+    # Cadenced RoutingOptimizer step hook (Layer 14b, Fibonacci 21)
+    sh_gnn = ConnectionType.STEP_HOOK
+    _reg("gnn_communicator", "model", sh_gnn,
+         witnesses=["substrate", "metacognition"],
+         description="GNN routing optimizer updates edge weights every 21 steps -- topology + cognitive quality peers verify")
+
     # =====================================================================
     # Group 10: Auto-Redifferentiation Trigger (Layer 29a2)
     #
@@ -1124,6 +1144,24 @@ def register_all_connections(
          channel="closure.organism",
          witnesses=["holon_registry", "somatic_map"],
          description="Organism closure report -- structural peers witness health")
+
+    # =====================================================================
+    # Group 14: Emergent Cross-System Circuits (mae-core 2026-02-25b)
+    #
+    # Metacognition-driven adaptive behavior + GNN→FRL trust bridge.
+    # =====================================================================
+    _reg("metacognition", "frl_engine", eb,
+         channel="cognition.metacognition_update",
+         witnesses=["organism_state", "vdn_engine"],
+         description="Metacognition drives FRL sharing cadence -- share more when struggling")
+    _reg("metacognition", "generative_replay", eb,
+         channel="cognition.metacognition_update",
+         witnesses=["world_model", "memory_coordinator"],
+         description="Metacognition drives dream replay intensity -- dream more when struggling")
+    _reg("gnn_communicator", "frl_engine", eb,
+         channel="gnn_communicator.step_hook",
+         witnesses=["metacognition", "substrate"],
+         description="GNN edge weights feed FRL peer trust -- communication quality informs policy trust")
 
     logger.info(
         "ConnectionRegistry: %d connections registered "
