@@ -8,6 +8,7 @@ import pytest
 from mae_core.market.intelligence.hypothesis import (
     Hypothesis,
     HypothesisStats,
+    SourceType,
     TriggerPattern,
 )
 from mae_core.market.intelligence.hypothesis_validator import (
@@ -136,3 +137,76 @@ class TestValidation:
         v._dsr_trials_tracked = 42
         stats = v.get_statistics()
         assert stats["dsr_trials_tracked"] == 42
+
+
+class TestBacktestDerivedValidation:
+    """Tests for BACKTEST_DERIVED hypotheses — pre-populated stats path."""
+
+    def _make_backtest_hypothesis(self, wins=15, losses=10, sharpe=1.5,
+                                  causal_story="ICT session sweep pattern."):
+        return Hypothesis(
+            name="Sweep:CL=F:bearish (60% win, n=25)",
+            trigger=TriggerPattern(
+                source_a="session_sweep", source_b="price_outcome",
+                lag_days=0, direction="bearish",
+                domain_filter="CL=F:bearish",
+            ),
+            stats=HypothesisStats(
+                wins=wins,
+                losses=losses,
+                total_observations=wins + losses,
+                sharpe_ratio=sharpe,
+            ),
+            causal_story=causal_story,
+            source_type=SourceType.BACKTEST_DERIVED,
+        )
+
+    def test_precomputed_path_used(self, tmp_data_dir, signals_dir):
+        """BACKTEST_DERIVED skips archive scanning — uses pre-populated stats."""
+        v = HypothesisValidator(signals_dir=signals_dir, data_dir=tmp_data_dir)
+        hyp = self._make_backtest_hypothesis(wins=15, losses=10, sharpe=1.5)
+        result = v.validate(hyp)
+        assert result.wins == 15
+        assert result.losses == 10
+        assert result.total_observations == 25
+
+    def test_dsr_computed_from_global_counter(self, tmp_data_dir, signals_dir):
+        """DSR uses the global trial counter even for BACKTEST_DERIVED."""
+        v = HypothesisValidator(signals_dir=signals_dir, data_dir=tmp_data_dir)
+        v._dsr_trials_tracked = 5
+        hyp = self._make_backtest_hypothesis(wins=15, losses=10, sharpe=1.5)
+        result = v.validate(hyp)
+        assert result.deflated_sharpe_ratio != 0.0
+        # Counter should have incremented
+        assert v._dsr_trials_tracked == 6
+
+    def test_promotes_strong_backtest(self, tmp_data_dir, signals_dir):
+        """High win rate + positive DSR + real story → promote."""
+        v = HypothesisValidator(signals_dir=signals_dir, data_dir=tmp_data_dir)
+        v._dsr_trials_tracked = 1  # Low penalty = easy promotion
+        hyp = self._make_backtest_hypothesis(wins=18, losses=7, sharpe=3.0)
+        result = v.validate(hyp)
+        assert result.recommend_promote is True
+
+    def test_retires_weak_backtest(self, tmp_data_dir, signals_dir):
+        """Low win rate → retire."""
+        v = HypothesisValidator(signals_dir=signals_dir, data_dir=tmp_data_dir)
+        hyp = self._make_backtest_hypothesis(wins=5, losses=20, sharpe=0.1)
+        result = v.validate(hyp)
+        assert result.recommend_retire is True
+        assert "win rate" in result.retire_reason.lower() or "Win rate" in result.retire_reason
+
+    def test_no_archive_scan(self, tmp_data_dir, signals_dir):
+        """Even with signals in the archive, BACKTEST_DERIVED doesn't scan them."""
+        # Write some signals that would match if scanning happened
+        sig_file = signals_dir / "2025-12-01.jsonl"
+        sig_file.write_text(json.dumps({
+            "source": "session_sweep", "symbol": "CL=F",
+            "timestamp": "2025-12-01T10:00:00",
+        }) + "\n")
+        v = HypothesisValidator(signals_dir=signals_dir, data_dir=tmp_data_dir)
+        hyp = self._make_backtest_hypothesis(wins=0, losses=0, sharpe=0.0)
+        hyp.stats.total_observations = 0
+        result = v.validate(hyp)
+        # Zero observations because precomputed stats had 0
+        assert result.total_observations == 0

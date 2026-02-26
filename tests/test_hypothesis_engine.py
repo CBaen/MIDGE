@@ -8,7 +8,9 @@ import pytest
 
 from mae_core.market.intelligence.hypothesis import (
     Hypothesis,
+    HypothesisStats,
     HypothesisStatus,
+    SourceType,
     TriggerPattern,
 )
 from mae_core.market.intelligence.hypothesis_registry import HypothesisRegistry
@@ -194,3 +196,63 @@ class TestEventBusIntegration:
         bus.publish.assert_called()
         call_args = bus.publish.call_args
         assert "hypothesis.fired" in call_args[0][0]
+
+
+class TestBacktestAnalyzerIntegration:
+    """Tests for Bridge 1 — backtest_analyzer wiring in HypothesisEngine."""
+
+    def test_backtest_analyzer_called_in_generation(self, registry):
+        mock_analyzer = MagicMock()
+        mock_analyzer.analyze.return_value = []
+        engine = HypothesisEngine(
+            registry=registry,
+            generator=MagicMock(generate=MagicMock(return_value=[])),
+            validator=MagicMock(),
+            backtest_analyzer=mock_analyzer,
+        )
+        engine._run_generation()
+        mock_analyzer.analyze.assert_called_once()
+
+    def test_granular_thompson_key_on_promote(self, registry):
+        mock_sampler = MagicMock()
+        mock_sampler.distributions = {}
+        engine = HypothesisEngine(
+            registry=registry,
+            generator=MagicMock(),
+            validator=MagicMock(),
+            thompson_sampler=mock_sampler,
+        )
+        hyp = Hypothesis(
+            name="Sweep:CL=F:bearish",
+            trigger=TriggerPattern(
+                source_a="session_sweep", source_b="price_outcome",
+                lag_days=0, direction="bearish",
+                domain_filter="CL=F:bearish",
+            ),
+            stats=HypothesisStats(wins=13, losses=9, total_observations=22),
+            causal_story="ICT session sweep pattern.",
+            source_type=SourceType.BACKTEST_DERIVED,
+        )
+        registry.register(hyp)
+        engine._promote(hyp)
+        # Thompson key should be granular: sweep_bt:CL=F:bearish
+        assert "sweep_bt:CL=F:bearish" in mock_sampler.distributions
+        dist = mock_sampler.distributions["sweep_bt:CL=F:bearish"]["default"]
+        assert dist["alpha"] == 13 + 1.1  # wins + conservative prior
+        assert dist["beta"] == 9 + 0.9    # losses + conservative prior
+
+    def test_lag_correlation_path_unchanged(self, registry):
+        """Existing lag-correlation generation still works with backtest_analyzer present."""
+        mock_generator = MagicMock()
+        mock_generator.generate.return_value = []
+        mock_analyzer = MagicMock()
+        mock_analyzer.analyze.return_value = []
+        engine = HypothesisEngine(
+            registry=registry,
+            generator=mock_generator,
+            validator=MagicMock(),
+            backtest_analyzer=mock_analyzer,
+        )
+        engine._run_generation()
+        mock_generator.generate.assert_called_once()
+        mock_analyzer.analyze.assert_called_once()
