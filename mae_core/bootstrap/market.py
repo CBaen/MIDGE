@@ -1,8 +1,8 @@
 """Bootstrap Layer 33: Market Intelligence Organ.
 
-Creates 21 market systems, registers holons, wires fractal hierarchy,
-registers triadic connections (Group 14 + Group 15), wires EventBus channels,
-and hooks into the step lifecycle.
+Creates 25 market systems, registers holons, wires fractal hierarchy,
+registers triadic connections (Group 14 + Group 15 + Group 16),
+wires EventBus channels, and hooks into the step lifecycle.
 
 Biological analogy: Growing a new sensory organ specialized for
 financial market signals. Like an immune system evolved to detect
@@ -28,7 +28,7 @@ logger = logging.getLogger("mae.bootstrap")
 
 
 def bootstrap_market(ctx: SimpleNamespace) -> None:
-    """Wire Layer 33: Market Intelligence organ (21 systems, 38 connections)."""
+    """Wire Layer 33: Market Intelligence organ (25 systems, 48 connections)."""
     _instantiate_market_systems(ctx)
     _register_market_somatic(ctx)
     _register_market_holons(ctx)
@@ -51,6 +51,8 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
         "regime_classifier",
         "signal_archive_reader", "lag_correlation_analyzer",
         "thompson_calibrator", "kelly_position_sizer",
+        "hypothesis_registry", "hypothesis_generator",
+        "hypothesis_validator", "hypothesis_engine",
     ]
     active = sum(1 for a in market_attrs if getattr(ctx, a, None) is not None)
     holon_count = len([
@@ -64,7 +66,9 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
                     "velocity_detector", "correlation_tracker", "outcome_tracker",
                     "regime_classifier",
                     "signal_archive_reader", "lag_correlation_analyzer",
-                    "thompson_calibrator", "kelly_position_sizer")
+                    "thompson_calibrator", "kelly_position_sizer",
+                    "hypothesis_registry", "hypothesis_generator",
+                    "hypothesis_validator", "hypothesis_engine")
     ])
 
     logger.info(
@@ -461,6 +465,10 @@ def _register_market_somatic(ctx: SimpleNamespace) -> None:
         "lag_correlation_analyzer": ("LagCorrelationAnalyzer", ["signal_archive_reader"]),
         "thompson_calibrator": ("ThompsonCalibrator", ["thompson_sampler"]),
         "kelly_position_sizer": ("KellyPositionSizer", ["thompson_sampler"]),
+        "hypothesis_registry": ("HypothesisRegistry", []),
+        "hypothesis_generator": ("HypothesisGenerator", ["hypothesis_registry"]),
+        "hypothesis_validator": ("HypothesisValidator", []),
+        "hypothesis_engine": ("HypothesisEngine", ["hypothesis_registry", "hypothesis_generator", "hypothesis_validator"]),
     }
 
     for sys_id, (desc, deps) in market_systems.items():
@@ -493,6 +501,8 @@ def _register_market_holons(ctx: SimpleNamespace) -> None:
         "regime_classifier",
         "signal_archive_reader", "lag_correlation_analyzer",
         "thompson_calibrator", "kelly_position_sizer",
+        "hypothesis_registry", "hypothesis_generator",
+        "hypothesis_validator", "hypothesis_engine",
     ]
 
     registered = 0
@@ -549,6 +559,14 @@ def _register_market_fractal(ctx: SimpleNamespace) -> None:
         parent_id="organ-cluster-cognitive",
     )
 
+    # Hypothesis K3 subsystem (RSI Layer 2: generator + validator + engine)
+    fg.generate_triad(
+        name="market-hypothesis",
+        holon_type="subsystem",
+        children_ids=["hypothesis_generator", "hypothesis_validator", "hypothesis_engine"],
+        parent_id="market-intelligence-system",
+    )
+
     # Register remaining systems individually (advisory non-triadic)
     extras = [
         "house_stock_watcher", "filing_time_analyzer",
@@ -557,6 +575,7 @@ def _register_market_fractal(ctx: SimpleNamespace) -> None:
         "outcome_tracker", "regime_classifier",
         "signal_archive_reader", "lag_correlation_analyzer",
         "thompson_calibrator", "kelly_position_sizer",
+        "hypothesis_registry",
     ]
     for sys_id in extras:
         if ctx.holon_registry.get_entry(sys_id) is not None:
@@ -739,7 +758,42 @@ def _register_market_connections(ctx: SimpleNamespace) -> None:
         witnesses=["thompson_calibrator", "auditor"],
         description="Archive reader provides historical signals to outcome tracker")
 
-    logger.info("Layer 33d - Market connections: 38 triadic connections registered (Group 14 + Group 15)")
+    # --- Group 16: Hypothesis loop (RSI Layer 2) ---
+    reg("hypothesis_generator", "hypothesis_registry", dr,
+        witnesses=["hypothesis_validator", "auditor"],
+        description="Generator registers new hypotheses in the registry")
+    reg("hypothesis_validator", "hypothesis_registry", dr,
+        witnesses=["hypothesis_generator", "auditor"],
+        description="Validator reads hypotheses for adversarial testing")
+    reg("hypothesis_engine", "hypothesis_generator", dr,
+        witnesses=["hypothesis_validator", "auditor"],
+        description="Engine drives generation on cadence")
+    reg("hypothesis_engine", "hypothesis_validator", dr,
+        witnesses=["hypothesis_generator", "auditor"],
+        description="Engine drives validation on cadence")
+    reg("hypothesis_engine", "hypothesis_registry", dr,
+        witnesses=["hypothesis_generator", "auditor"],
+        description="Engine manages lifecycle transitions (promote/retire)")
+    reg("hypothesis_generator", "lag_correlation_analyzer", dr,
+        witnesses=["hypothesis_registry", "auditor"],
+        description="Generator reads lag findings to create hypotheses")
+    reg("hypothesis_engine", "thompson_sampler", dr,
+        witnesses=["hypothesis_validator", "auditor"],
+        description="Engine registers Thompson key on hypothesis promotion")
+    reg("hypothesis_engine", "event_bus", eb,
+        channel="market.hypothesis.discovered",
+        witnesses=["hypothesis_registry", "auditor"],
+        description="Engine publishes hypothesis discoveries")
+    reg("hypothesis_engine", "event_bus", eb,
+        channel="market.hypothesis.promoted",
+        witnesses=["hypothesis_registry", "auditor"],
+        description="Engine publishes hypothesis promotions")
+    reg("hypothesis_engine", "event_bus", cb,
+        channel="market.sensing.signal_ingested",
+        witnesses=["hypothesis_registry", "auditor"],
+        description="Engine subscribes to ingested signals for trigger matching")
+
+    logger.info("Layer 33d - Market connections: 48 triadic connections registered (Group 14 + Group 15 + Group 16)")
 
 
 # =========================================================================
@@ -750,7 +804,10 @@ def _register_market_stem_roles(ctx: SimpleNamespace) -> None:
     """Verify market stem cell roles are available."""
     from mae_core.agents.stem_cell import ROLE_PROFILES
 
-    market_roles = ["SEC_WATCHER", "CONTRACT_TRACKER", "MARKET_ANALYST"]
+    market_roles = [
+        "SEC_WATCHER", "CONTRACT_TRACKER", "MARKET_ANALYST",
+        "HYPOTHESIS_EXPLORER", "HYPOTHESIS_VALIDATOR",
+    ]
     for role in market_roles:
         if role not in ROLE_PROFILES:
             logger.warning("Market stem cell role %s not found in ROLE_PROFILES", role)
