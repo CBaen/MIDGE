@@ -135,11 +135,11 @@ class SweepBacktester:
         self,
         interval: str = "5m",
         days: int = 59,
-        min_fvg_pct: float = 0.005,  # Min FVG size as % of price
+        min_fvg_pct: float = 0.0005, # Min FVG size as % of price (~$2.90 on ES at 5800)
         sweep_confirm_candles: int = 3,
-        fvg_lookback: int = 100,     # How far back to search for prior FVGs
-        fill_lookforward: int = 50,  # How far forward to check for FVG mitigation
-        entry_timeout: int = 80,     # Max candles to wait for pullback to IFVG
+        fvg_lookback: int = 200,     # How far back to search for prior FVGs
+        fill_lookforward: int = 80,  # How far forward to check for FVG mitigation
+        entry_timeout: int = 100,    # Max candles to wait for pullback to IFVG
         trade_timeout: int = 200,    # Max candles for trade to resolve
     ):
         self.interval = interval
