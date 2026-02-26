@@ -318,9 +318,9 @@ class TestCandlestickPatterns:
 
     def test_shooting_star(self):
         # Small body at bottom, long upper shadow, minimal lower shadow
-        # Open 101, Close 100, High 106, Low 99.8 (upper shadow >> body)
-        prev = make_price(0, 100, 102, 99, 101)
-        curr = make_price(1, 101, 106, 99.8, 100)
+        # Previous candle must NOT be engulfed by current (same direction avoids engulfing)
+        prev = make_price(0, 99, 102, 98, 101)   # green candle
+        curr = make_price(1, 101, 106, 100.5, 100.5)  # tiny red body, long upper wick
         signal = compute_candlestick_patterns("TEST", [prev, curr])
         if signal is not None:
             assert signal.pattern == "shooting_star"
@@ -328,7 +328,8 @@ class TestCandlestickPatterns:
 
     def test_doji_needs_context(self):
         # Doji without 5+ bars of context returns None
-        prev = make_price(0, 100, 102, 98, 100)
+        # Previous candle same direction/size so engulfing won't match
+        prev = make_price(0, 100, 102, 98, 100.02)
         curr = make_price(1, 100.0, 102, 98, 100.05)  # Almost no body
         signal = compute_candlestick_patterns("TEST", [prev, curr])
         # Should be None because doji needs 5+ bars for trend context

@@ -498,6 +498,45 @@ def from_correlation_signal(correlation: CorrelationSignal) -> MarketSignal:
 
 
 # ---------------------------------------------------------------------------
+# Technical analysis adapters (Trades by Sci indicators)
+# ---------------------------------------------------------------------------
+
+
+def from_ta_signal(signal) -> MarketSignal:
+    """Convert a TASignalBase (RSI, MACD, Bollinger, Structure, Candle) to MarketSignal.
+
+    All TA indicators share the same adapter — they differ only in source key
+    and metadata. The indicator type is encoded in signal.indicator.
+    """
+    event_dt = _ensure_datetime(signal.detected_at)
+
+    # Source key = "ta_{indicator}" for Thompson key lookup
+    source = f"ta_{signal.indicator}"
+
+    # Outcome window: structure/candle are faster-acting than oscillators
+    outcome_days = 7 if signal.indicator in ("structure", "candle") else 14
+
+    return MarketSignal(
+        signal_id=signal.signal_id,
+        source=source,
+        symbol=signal.symbol,
+        asset_class="stock",
+        domain="technical",
+        direction=signal.direction,
+        strength=signal.strength,
+        confidence=signal.confidence,
+        decay_rate=signal.decay_rate,
+        timestamp=event_dt,
+        received_at=datetime.now(),
+        outcome_symbol=signal.symbol,
+        outcome_window_days=outcome_days,
+        raw_id=signal.signal_id,
+        raw_type=type(signal).__name__,
+        metadata=signal.metadata,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Price-action adapters (Layer 5 Phase 3 expansion)
 # ---------------------------------------------------------------------------
 
