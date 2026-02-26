@@ -1,0 +1,362 @@
+[
+  {
+    "source_a": "finra_short",
+    "source_b": "fred_macro",
+    "lag_days": 57,
+    "correlation": -0.5045,
+    "p_value_approx": 0.018476,
+    "n_pairs": 21,
+    "direction": "negative",
+    "last_updated": "2026-02-25T17:33:24.839695"
+  },
+  {
+    "source_a": "yfinance_price",
+    "source_b": "sec_form4",
+    "lag_days": 32,
+    "correlation": 0.4936,
+    "p_value_approx": 0.018393,
+    "n_pairs": 22,
+    "direction": "positive",
+    "last_updated": "2026-02-25T17:33:24.992522"
+  },
+  {
+    "source_a": "finra_short",
+    "source_b": "yfinance_price",
+    "lag_days": 56,
+    "correlation": -0.4883,
+    "p_value_approx": 0.023519,
+    "n_pairs": 21,
+    "direction": "negative",
+    "last_updated": "2026-02-25T17:33:24.882693"
+  },
+  {
+    "source_a": "sec_form4",
+    "source_b": "yfinance_price",
+    "lag_days": 22,
+    "correlation": 0.4811,
+    "p_value_approx": 0.019002,
+    "n_pairs": 23,
+    "direction": "positive",
+    "last_updated": "2026-02-25T17:33:24.988558"
+  },
+  {
+    "source_a": "finra_short",
+    "source_b": "yfinance_price",
+    "lag_days": 26,
+    "correlation": -0.4637,
+    "p_value_approx": 0.028659,
+    "n_pairs": 22,
+    "direction": "negative",
+    "last_updated": "2026-02-25T17:33:24.881250"
+  },
+  {
+    "source_a": "sec_efts",
+    "source_b": "finra_short",
+    "lag_days": 10,
+    "correlation": -0.4529,
+    "p_value_approx": 0.016749,
+    "n_pairs": 27,
+    "direction": "negative",
+    "last_updated": "2026-02-25T17:33:24.862698"
+  },
+  {
+    "source_a": "sec_efts",
+    "source_b": "sec_form4",
+    "lag_days": 12,
+    "correlation": -0.4512,
+    "p_value_approx": 0.017213,
+    "n_pairs": 27,
+    "direction": "negative",
+    "last_updated": "2026-02-25T17:33:24.964520"
+  },
+  {
+    "source_a": "finra_short",
+    "source_b": "sec_form4",
+    "lag_days": 5,
+    "correlation": -0.4412,
+    "p_value_approx": 0.017866,
+    "n_pairs": 28,
+    "direction": "negative",
+    "last_updated": "2026-02-25T17:33:24.868365"
+  },
+  {
+    "source_a": "yfinance_price",
+    "source_b": "sec_efts",
+    "lag_days": 20,
+    "correlation": 0.4362,
+    "p_value_approx": 0.010448,
+    "n_pairs": 33,
+    "direction": "positive",
+    "last_updated": "2026-02-25T17:33:24.980870"
+  },
+  {
+    "source_a": "yfinance_price",
+    "source_b": "sec_form4",
+    "lag_days": 48,
+    "correlation": -0.431,
+    "p_value_approx": 0.044426,
+    "n_pairs": 22,
+    "direction": "negative",
+    "last_updated": "2026-02-25T17:33:24.993281"
+  },
+  {
+    "source_a": "yfinance_price",
+    "source_b": "sec_efts",
+    "lag_days": 42,
+    "correlation": -0.4288,
+    "p_value_approx": 0.019397,
+    "n_pairs": 29,
+    "direction": "negative",
+    "last_updated": "2026-02-25T17:33:24.981937"
+  },
+  {
+    "source_a": "sec_efts",
+    "source_b": "sec_form4",
+    "lag_days": 35,
+    "correlation": -0.4129,
+    "p_value_approx": 0.025161,
+    "n_pairs": 29,
+    "direction": "negative",
+    "last_updated": "2026-02-25T17:33:24.965792"
+  },
+  {
+    "source_a": "sec_efts",
+    "source_b": "sec_form4",
+    "lag_days": 15,
+    "correlation": 0.4102,
+    "p_value_approx": 0.016968,
+    "n_pairs": 33,
+    "direction": "positive",
+    "last_updated": "2026-02-25T17:33:24.964703"
+  },
+  {
+    "source_a": "yfinance_price",
+    "source_b": "finra_short",
+    "lag_days": 20,
+    "correlation": 0.4098,
+    "p_value_approx": 0.019058,
+    "n_pairs": 32,
+    "direction": "positive",
+    "last_updated": "2026-02-25T17:33:24.884912"
+  },
+  {
+    "source_a": "finra_short",
+    "source_b": "sec_form4",
+    "lag_days": 9,
+    "correlation": 0.4065,
+    "p_value_approx": 0.022456,
+    "n_pairs": 31,
+    "direction": "positive",
+    "last_updated": "2026-02-25T17:33:24.868594"
+  },
+  {
+    "source_a": "finra_short",
+    "source_b": "sec_form4",
+    "lag_days": 12,
+    "correlation": -0.3962,
+    "p_value_approx": 0.036112,
+    "n_pairs": 28,
+    "direction": "negative",
+    "last_updated": "2026-02-25T17:33:24.868751"
+  },
+  {
+    "source_a": "fred_macro",
+    "source_b": "sec_efts",
+    "lag_days": 40,
+    "correlation": 0.3957,
+    "p_value_approx": 0.017902,
+    "n_pairs": 35,
+    "direction": "positive",
+    "last_updated": "2026-02-25T17:33:24.901844"
+  },
+  {
+    "source_a": "finra_short",
+    "source_b": "sec_form4",
+    "lag_days": 20,
+    "correlation": 0.3928,
+    "p_value_approx": 0.023003,
+    "n_pairs": 33,
+    "direction": "positive",
+    "last_updated": "2026-02-25T17:33:24.869167"
+  },
+  {
+    "source_a": "fred_macro",
+    "source_b": "sec_efts",
+    "lag_days": 30,
+    "correlation": -0.3829,
+    "p_value_approx": 0.01413,
+    "n_pairs": 40,
+    "direction": "negative",
+    "last_updated": "2026-02-25T17:33:24.901082"
+  },
+  {
+    "source_a": "finra_short",
+    "source_b": "yfinance_price",
+    "lag_days": 42,
+    "correlation": 0.3823,
+    "p_value_approx": 0.039999,
+    "n_pairs": 29,
+    "direction": "positive",
+    "last_updated": "2026-02-25T17:33:24.881975"
+  },
+  {
+    "source_a": "yfinance_price",
+    "source_b": "finra_short",
+    "lag_days": 9,
+    "correlation": 0.3813,
+    "p_value_approx": 0.040598,
+    "n_pairs": 29,
+    "direction": "positive",
+    "last_updated": "2026-02-25T17:33:24.884356"
+  },
+  {
+    "source_a": "sec_efts",
+    "source_b": "sec_form4",
+    "lag_days": 13,
+    "correlation": -0.3787,
+    "p_value_approx": 0.026472,
+    "n_pairs": 34,
+    "direction": "negative",
+    "last_updated": "2026-02-25T17:33:24.964590"
+  },
+  {
+    "source_a": "fred_macro",
+    "source_b": "sec_efts",
+    "lag_days": 33,
+    "correlation": 0.3784,
+    "p_value_approx": 0.016883,
+    "n_pairs": 39,
+    "direction": "positive",
+    "last_updated": "2026-02-25T17:33:24.901315"
+  },
+  {
+    "source_a": "fred_macro",
+    "source_b": "sec_form4",
+    "lag_days": 47,
+    "correlation": 0.3744,
+    "p_value_approx": 0.034062,
+    "n_pairs": 32,
+    "direction": "positive",
+    "last_updated": "2026-02-25T17:33:24.916327"
+  },
+  {
+    "source_a": "fred_macro",
+    "source_b": "sec_efts",
+    "lag_days": 23,
+    "correlation": -0.372,
+    "p_value_approx": 0.014678,
+    "n_pairs": 42,
+    "direction": "negative",
+    "last_updated": "2026-02-25T17:33:24.900527"
+  },
+  {
+    "source_a": "fred_macro",
+    "source_b": "sec_efts",
+    "lag_days": 43,
+    "correlation": -0.3655,
+    "p_value_approx": 0.039035,
+    "n_pairs": 32,
+    "direction": "negative",
+    "last_updated": "2026-02-25T17:33:24.902076"
+  },
+  {
+    "source_a": "sec_efts",
+    "source_b": "finra_short",
+    "lag_days": 15,
+    "correlation": 0.3631,
+    "p_value_approx": 0.031376,
+    "n_pairs": 35,
+    "direction": "positive",
+    "last_updated": "2026-02-25T17:33:24.863228"
+  },
+  {
+    "source_a": "fred_macro",
+    "source_b": "sec_efts",
+    "lag_days": 26,
+    "correlation": 0.354,
+    "p_value_approx": 0.022555,
+    "n_pairs": 41,
+    "direction": "positive",
+    "last_updated": "2026-02-25T17:33:24.900772"
+  },
+  {
+    "source_a": "finra_short",
+    "source_b": "yfinance_price",
+    "lag_days": 20,
+    "correlation": -0.3504,
+    "p_value_approx": 0.048796,
+    "n_pairs": 32,
+    "direction": "negative",
+    "last_updated": "2026-02-25T17:33:24.880866"
+  },
+  {
+    "source_a": "yfinance_price",
+    "source_b": "finra_short",
+    "lag_days": 21,
+    "correlation": 0.3494,
+    "p_value_approx": 0.028642,
+    "n_pairs": 39,
+    "direction": "positive",
+    "last_updated": "2026-02-25T17:33:24.884971"
+  },
+  {
+    "source_a": "fred_macro",
+    "source_b": "sec_efts",
+    "lag_days": 16,
+    "correlation": -0.3486,
+    "p_value_approx": 0.015784,
+    "n_pairs": 47,
+    "direction": "negative",
+    "last_updated": "2026-02-25T17:33:24.899906"
+  },
+  {
+    "source_a": "fred_macro",
+    "source_b": "sec_efts",
+    "lag_days": 7,
+    "correlation": 0.3481,
+    "p_value_approx": 0.009486,
+    "n_pairs": 54,
+    "direction": "positive",
+    "last_updated": "2026-02-25T17:33:24.898958"
+  },
+  {
+    "source_a": "fred_macro",
+    "source_b": "finra_short",
+    "lag_days": 9,
+    "correlation": 0.2958,
+    "p_value_approx": 0.032795,
+    "n_pairs": 52,
+    "direction": "positive",
+    "last_updated": "2026-02-25T17:33:24.841826"
+  },
+  {
+    "source_a": "fred_macro",
+    "source_b": "sec_efts",
+    "lag_days": 19,
+    "correlation": 0.2922,
+    "p_value_approx": 0.048461,
+    "n_pairs": 46,
+    "direction": "positive",
+    "last_updated": "2026-02-25T17:33:24.900162"
+  },
+  {
+    "source_a": "fred_macro",
+    "source_b": "sec_efts",
+    "lag_days": 6,
+    "correlation": 0.2844,
+    "p_value_approx": 0.034975,
+    "n_pairs": 55,
+    "direction": "positive",
+    "last_updated": "2026-02-25T17:33:24.898870"
+  },
+  {
+    "source_a": "fred_macro",
+    "source_b": "sec_efts",
+    "lag_days": 2,
+    "correlation": -0.2662,
+    "p_value_approx": 0.045007,
+    "n_pairs": 57,
+    "direction": "negative",
+    "last_updated": "2026-02-25T17:33:24.898504"
+  }
+]
