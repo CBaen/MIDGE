@@ -20,5 +20,12 @@ CH_KELLY_SIZING = "market.intel.kelly_sizing"
 
 # Market Sensing channels (ingest and feedback)
 CH_SIGNAL_RECEIVED = "market.sensing.signal_received"
+CH_SIGNAL_INGESTED = "market.sensing.signal_ingested"
 CH_OUTCOME_OBSERVED = "market.sensing.outcome_observed"
 CH_PREDICTION_RESULT = "market.sensing.prediction_result"
+
+# Hypothesis lifecycle channels (RSI Layer 2)
+CH_HYPOTHESIS_DISCOVERED = "market.hypothesis.discovered"
+CH_HYPOTHESIS_PROMOTED = "market.hypothesis.promoted"
+CH_HYPOTHESIS_RETIRED = "market.hypothesis.retired"
+CH_HYPOTHESIS_FIRED = "market.hypothesis.fired"
