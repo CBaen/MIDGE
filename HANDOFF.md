@@ -137,11 +137,12 @@ Fixed 3 bugs found in live scan output, defined data schema:
 
 ## Current State
 
-- **2605 tests pass, 0 failures**
-- **113 systems** (92 core + 21 market), **132 holons**, **351 connections** (211 core + 47 fractal + 55 bootstrap + 38 market)
-- **36 market files** in `mae_core/market/` (bootstrapped as Layer 33 + 6 API clients + form8k_sentiment)
+- **2666 tests pass, 0 failures**
+- **117 systems** (92 core + 25 market), **136 holons**, **361 connections** (211 core + 47 fractal + 55 bootstrap + 48 market)
+- **35 market files** in `mae_core/market/` (bootstrapped as Layer 33 + 6 API clients + form8k_sentiment + hypothesis loop)
 - **33-layer bootstrap** runs cleanly (Layers 33a-33i)
-- **Agent-based market sensing active** — 3 agents differentiated (SEC_WATCHER, CONTRACT_TRACKER, MARKET_ANALYST)
+- **Agent-based market sensing active** — 3+ agents differentiated (SEC_WATCHER, CONTRACT_TRACKER, MARKET_ANALYST, + HYPOTHESIS_EXPLORER + HYPOTHESIS_VALIDATOR at 12+ agents)
+- **Hypothesis generation loop active** — RSI Layer 2: lag findings → hypotheses → adversarial validation → DSR gate → promote/retire
 - **7-phase scan pipeline** still available as standalone (`midge_scan.py`)
 - **Git:** Remote at `github.com/CBaen/MIDGE`
 
@@ -221,7 +222,7 @@ Roadmap at `C:\Users\baenb\.claude\plans\delegated-leaping-map.md`. Items below 
 
 Welcome. MIDGE is Mae differentiated for financial markets. Here is what you need to know:
 
-1. **MIDGE = mae-core + market intelligence.** 113 systems, same 8 laws, 33-layer bootstrap. Market organ is Layer 33 (33a-33i).
+1. **MIDGE = mae-core + market intelligence.** 117 systems, same 8 laws, 33-layer bootstrap. Market organ is Layer 33 (33a-33i).
 2. **Mae-core is upstream.** Changes to Mae's genome should be made in `C:\Users\baenb\projects\mae-core` and pulled here. Market-specific changes stay here.
 3. **Agents actively sense the market.** MarketSensingHook (Layer 33h) fetches data on cadence and feeds convergence_alerter. Three agents are differentiated into market roles (Layer 33i). Endocrine coupling and market advisory carry signals to all agents.
 4. **The crown jewel is `convergence_alerter.py`** — synthesizes signals across ALL domains (insider + congressional + contract + hiring + velocity) into actionable alerts. Now with per-ticker and multi-timeframe convergence.
