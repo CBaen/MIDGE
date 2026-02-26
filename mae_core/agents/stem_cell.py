@@ -191,7 +191,7 @@ ROLE_PROFILES: dict[str, dict[str, Any]] = {
     },
     # --- MIDGE market roles (Law 5: same genome, market-specialized epigenome) ---
     "SEC_WATCHER": {
-        "api_call_enabled": True,
+        "api_call_enabled": False,
         "llm_prompt_quality": 0.6,
         "replay_enabled": True,
         "consolidation_enabled": True,

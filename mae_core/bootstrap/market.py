@@ -515,6 +515,7 @@ def _register_market_holons(ctx: SimpleNamespace) -> None:
         "thompson_calibrator", "kelly_position_sizer",
         "hypothesis_registry", "hypothesis_generator",
         "hypothesis_validator", "hypothesis_engine",
+        "ta_indicators",
     ]
 
     registered = 0
@@ -588,6 +589,7 @@ def _register_market_fractal(ctx: SimpleNamespace) -> None:
         "signal_archive_reader", "lag_correlation_analyzer",
         "thompson_calibrator", "kelly_position_sizer",
         "hypothesis_registry",
+        "ta_indicators",
     ]
     for sys_id in extras:
         if ctx.holon_registry.get_entry(sys_id) is not None:
@@ -716,6 +718,18 @@ def _register_market_connections(ctx: SimpleNamespace) -> None:
     reg("session_sweep_detector", "price_fetcher", dr,
         witnesses=["convergence_alerter", "auditor"],
         description="Session sweep reads intraday price data via yfinance")
+
+    # --- TA Indicators connections ---
+    reg("ta_indicators", "price_fetcher", dr,
+        witnesses=["convergence_alerter", "auditor"],
+        description="TA indicators compute RSI/MACD/Bollinger from daily OHLCV")
+    reg("convergence_alerter", "ta_indicators", dr,
+        channel="market.edge.ta_indicators",
+        witnesses=["thompson_sampler", "auditor"],
+        description="Convergence subscribes to TA indicator signals")
+    reg("ta_indicators", "thompson_sampler", dr,
+        witnesses=["convergence_alerter", "auditor"],
+        description="Thompson learns TA indicator reliability from outcomes")
 
     # --- Step hook + periodic ---
     reg("convergence_alerter", "model", sh,
