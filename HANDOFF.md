@@ -20,7 +20,7 @@ MIDGE's recursive self-improvement loop. Discovers patterns, formalizes them as 
 - `mae_core/bootstrap/market.py` — Full wiring: 4 systems, 10 connections (Group 16), 4 holons, 1 fractal K3 subsystem, endocrine coupling (dopamine on promote, cortisol on unexpected retire), EventBus subscriptions, step hooks, agent differentiation at 12+ agents
 - `mae_core/market/market_awareness.py` — HYPOTHESIS_EXPLORER and HYPOTHESIS_VALIDATOR added to _MARKET_ROLES, hypothesis stats in router context
 
-**4 new test files, 40 tests.** Systems: 117 (92+25). Connections: 361 (48 market). Holons: 136.
+**4 new test files, 40 tests.** Systems: 118 (92+26). Connections: 364 (51 market). Holons: 137.
 
 ### Self-Calibrating Decision Engine (2026-02-25)
 
