@@ -145,6 +145,7 @@ class SweepBacktester:
         fill_lookforward: int = 80,  # How far forward to check for FVG mitigation
         entry_timeout: int = 100,    # Max candles to wait for pullback to IFVG
         trade_timeout: int = 200,    # Max candles for trade to resolve
+        min_quality: float = 0.0,    # 0.0 = no filter (baseline), 0.35 = quality gate
     ):
         self.interval = interval
         self.days = days
@@ -154,6 +155,7 @@ class SweepBacktester:
         self.fill_lookforward = fill_lookforward
         self.entry_timeout = entry_timeout
         self.trade_timeout = trade_timeout
+        self.min_quality = min_quality
 
     # ── Data fetch ────────────────────────────────────────
 
@@ -380,6 +382,88 @@ class SweepBacktester:
 
         return None
 
+    # ── Scoring methods (pattern stacking) ────────────────
+
+    def _score_displacement(
+        self, df: "pd.DataFrame", sweep_idx: int, direction: str, n: int = 5,
+    ) -> float:
+        """Measure reversal quality after a sweep.
+
+        Strong displacement = big-bodied candles moving away from the sweep.
+        body_ratio = |close - open| / (high - low) for each candle.
+        Only counts candles moving in the reversal direction.
+
+        Returns:
+            Mean body ratio of reversal candles (0.0-1.0). Higher = stronger.
+        """
+        ratios = []
+        for i in range(sweep_idx + 1, min(sweep_idx + 1 + n, len(df))):
+            candle = df.iloc[i]
+            bar_range = candle["high"] - candle["low"]
+            if bar_range <= 0:
+                continue
+            body = abs(candle["close"] - candle["open"])
+            # Only count candles moving in the reversal direction
+            if direction == "bullish" and candle["close"] > candle["open"]:
+                ratios.append(body / bar_range)
+            elif direction == "bearish" and candle["close"] < candle["open"]:
+                ratios.append(body / bar_range)
+        if not ratios:
+            return 0.0
+        return sum(ratios) / len(ratios)
+
+    def _compute_atr(
+        self, df: "pd.DataFrame", idx: int, period: int = 14,
+    ) -> float:
+        """Compute Average True Range at a given index.
+
+        TR = max(high-low, |high-prev_close|, |low-prev_close|)
+        ATR = rolling mean of TR over period.
+        """
+        start = max(1, idx - period + 1)
+        trs = []
+        for i in range(start, idx + 1):
+            high = df.iloc[i]["high"]
+            low = df.iloc[i]["low"]
+            prev_close = df.iloc[i - 1]["close"]
+            tr = max(high - low, abs(high - prev_close), abs(low - prev_close))
+            trs.append(tr)
+        if not trs:
+            return 0.0
+        return sum(trs) / len(trs)
+
+    def _get_kill_zone_score(self, dt: datetime) -> float:
+        """Tiered kill zone score based on time of day (ET).
+
+        NY Open (7:00-10:00 ET):    1.0  — highest volume, most definitive
+        London (2:00-5:00 ET):      0.85 — reliable directional bias
+        Asia (20:00-22:00 ET):      0.70 — consistent range
+        Outside kill zone:          0.0
+        """
+        if hasattr(dt, 'tzinfo') and dt.tzinfo is not None:
+            dt_et = dt.astimezone(ET)
+        else:
+            dt_et = dt
+        t = dt_et.time()
+
+        if time(7, 0) <= t < time(10, 0):
+            return 1.0   # NY
+        if time(2, 0) <= t < time(5, 0):
+            return 0.85   # London
+        if t >= time(20, 0) or t < time(22, 0) and t >= time(20, 0):
+            return 0.70   # Asia (spans midnight but 20:00-22:00 is same day)
+        return 0.0
+
+    def _compute_quality(
+        self, displacement: float, fvg_atr: float, kz: float,
+    ) -> float:
+        """Composite quality score from 3 factors.
+
+        Weights: displacement 40%, FVG/ATR 35%, kill zone 25%.
+        """
+        fvg_atr_score = min(1.0, fvg_atr / 1.5)  # Normalize: 1.5 ATR = full credit
+        return displacement * 0.4 + fvg_atr_score * 0.35 + kz * 0.25
+
     # ── Trade simulation ──────────────────────────────────
 
     def simulate_trade(
@@ -516,6 +600,7 @@ class SweepBacktester:
         is_futures = symbol.endswith("=F")
         dates = sorted(set(df.index.date))
         trades = []
+        filtered_count = 0
         sweep_count = 0
         ifvg_count = 0
 
@@ -542,14 +627,31 @@ class SweepBacktester:
                 ifvg, mitigated_idx = result
                 ifvg_count += 1
 
+                # Score the setup BEFORE simulating the trade
+                disp = self._score_displacement(df, sweep.sweep_idx, sweep.direction)
+                atr = self._compute_atr(df, sweep.sweep_idx)
+                fvg_atr = (ifvg.top - ifvg.bottom) / atr if atr > 0 else 0.0
+                kz = self._get_kill_zone_score(df.index[sweep.sweep_idx])
+                quality = self._compute_quality(disp, fvg_atr, kz)
+
+                # Quality gate: skip low-quality setups
+                if self.min_quality > 0 and quality < self.min_quality:
+                    filtered_count += 1
+                    continue
+
                 trade = self.simulate_trade(df, sweep, ifvg, mitigated_idx)
                 if trade:
+                    trade.displacement_score = round(disp, 3)
+                    trade.fvg_atr_ratio = round(fvg_atr, 3)
+                    trade.kill_zone_score = round(kz, 2)
+                    trade.quality_score = round(quality, 3)
                     trades.append(trade)
 
+        filt_str = f" | {filtered_count:3d} filtered" if filtered_count else ""
         print(
             f"{len(df):6d} candles | {len(dates):3d} days | "
             f"{sweep_count:3d} sweeps | {ifvg_count:3d} IFVGs | "
-            f"{len(trades):3d} trades"
+            f"{len(trades):3d} trades{filt_str}"
         )
         return trades
 
