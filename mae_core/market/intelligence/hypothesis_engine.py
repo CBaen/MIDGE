@@ -54,6 +54,7 @@ class HypothesisEngine:
         bus: Any = None,
         regime_classifier: Any = None,
         thompson_sampler: Any = None,
+        backtest_analyzer: Any = None,
         generation_cadence: int = 500,
         validation_cadence: int = 1000,
         regime_cadence: int = 100,
@@ -64,6 +65,7 @@ class HypothesisEngine:
         self._bus = bus
         self._regime_classifier = regime_classifier
         self._thompson_sampler = thompson_sampler
+        self._backtest_analyzer = backtest_analyzer
 
         self._generation_cadence = generation_cadence
         self._validation_cadence = validation_cadence
@@ -124,36 +126,49 @@ class HypothesisEngine:
                         pass
 
     def _run_generation(self) -> None:
-        """Generate new hypotheses from lag-correlation findings."""
+        """Generate new hypotheses from lag findings + backtest results."""
+        all_new = []
+
+        # Path 1: Lag-correlation hypotheses
         try:
-            new_hypotheses = self._generator.generate()
-            self._hypotheses_generated += len(new_hypotheses)
-
-            if new_hypotheses and self._bus is not None:
-                from mae_core.market.channels import CH_HYPOTHESIS_DISCOVERED
-                for hyp in new_hypotheses:
-                    try:
-                        self._bus.publish(CH_HYPOTHESIS_DISCOVERED, {
-                            "hypothesis_id": hyp.hypothesis_id,
-                            "name": hyp.name,
-                            "source_a": hyp.trigger.source_a,
-                            "source_b": hyp.trigger.source_b,
-                            "lag_days": hyp.trigger.lag_days,
-                            "has_causal_story": bool(
-                                hyp.causal_story
-                                and "REQUIRES MANUAL REVIEW" not in hyp.causal_story
-                            ),
-                        })
-                    except Exception:
-                        pass
-
-            if new_hypotheses:
-                logger.info(
-                    "HypothesisEngine: generated %d new hypotheses",
-                    len(new_hypotheses),
-                )
+            lag_hypotheses = self._generator.generate()
+            all_new.extend(lag_hypotheses)
         except Exception:
-            logger.debug("Hypothesis generation failed", exc_info=True)
+            logger.debug("Lag-correlation generation failed", exc_info=True)
+
+        # Path 2: Backtest-derived hypotheses (Bridge 1)
+        if self._backtest_analyzer is not None:
+            try:
+                bt_hypotheses = self._backtest_analyzer.analyze()
+                all_new.extend(bt_hypotheses)
+            except Exception:
+                logger.debug("Backtest analysis failed", exc_info=True)
+
+        self._hypotheses_generated += len(all_new)
+
+        if all_new and self._bus is not None:
+            from mae_core.market.channels import CH_HYPOTHESIS_DISCOVERED
+            for hyp in all_new:
+                try:
+                    self._bus.publish(CH_HYPOTHESIS_DISCOVERED, {
+                        "hypothesis_id": hyp.hypothesis_id,
+                        "name": hyp.name,
+                        "source_a": hyp.trigger.source_a,
+                        "source_b": hyp.trigger.source_b,
+                        "lag_days": hyp.trigger.lag_days,
+                        "has_causal_story": bool(
+                            hyp.causal_story
+                            and "REQUIRES MANUAL REVIEW" not in hyp.causal_story
+                        ),
+                    })
+                except Exception:
+                    pass
+
+        if all_new:
+            logger.info(
+                "HypothesisEngine: generated %d new hypotheses",
+                len(all_new),
+            )
 
     def _run_validation(self) -> None:
         """Validate hypotheses in probation — promote or retire."""
@@ -214,14 +229,29 @@ class HypothesisEngine:
         # Register a Thompson key for the promoted hypothesis
         if self._thompson_sampler is not None:
             try:
-                key = f"hyp_{hyp.trigger.source_a}_{hyp.trigger.source_b}"
                 if not hasattr(self._thompson_sampler, 'distributions'):
                     pass
-                elif key not in self._thompson_sampler.distributions:
-                    self._thompson_sampler.distributions[key] = {
-                        "default": {"alpha": 1.0, "beta": 1.0}
-                    }
-                    self._thompson_sampler.save()
+                elif hyp.source_type == SourceType.BACKTEST_DERIVED:
+                    # Granular key encoding the specific pattern
+                    key = f"sweep_bt:{hyp.trigger.domain_filter}"
+                    if key not in self._thompson_sampler.distributions:
+                        # Seed with backtest evidence + conservative prior
+                        wins = hyp.stats.wins
+                        losses = hyp.stats.losses
+                        self._thompson_sampler.distributions[key] = {
+                            "default": {
+                                "alpha": wins + 1.1,
+                                "beta": losses + 0.9,
+                            }
+                        }
+                        self._thompson_sampler._save_distributions()
+                else:
+                    key = f"hyp_{hyp.trigger.source_a}_{hyp.trigger.source_b}"
+                    if key not in self._thompson_sampler.distributions:
+                        self._thompson_sampler.distributions[key] = {
+                            "default": {"alpha": 1.0, "beta": 1.0}
+                        }
+                        self._thompson_sampler._save_distributions()
             except Exception:
                 pass
 
