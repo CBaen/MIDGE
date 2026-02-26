@@ -99,6 +99,7 @@ class TestBootstrap:
             "hypothesis_generator",
             "hypothesis_validator",
             "hypothesis_engine",
+            "ta_indicators",
         ]
         for key in market_keys:
             assert key in systems, f"Missing market system: {key}"

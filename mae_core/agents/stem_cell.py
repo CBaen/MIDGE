@@ -203,7 +203,7 @@ ROLE_PROFILES: dict[str, dict[str, Any]] = {
         "capabilities": frozenset({"market_sense", "insider_track", "sec_watch"}),
     },
     "CONTRACT_TRACKER": {
-        "api_call_enabled": True,
+        "api_call_enabled": False,
         "llm_prompt_quality": 0.6,
         "quorum_sensing_enabled": True,
         "world_model_enabled": True,
@@ -213,7 +213,7 @@ ROLE_PROFILES: dict[str, dict[str, Any]] = {
         "capabilities": frozenset({"market_sense", "contract_track", "govt_monitor"}),
     },
     "MARKET_ANALYST": {
-        "api_call_enabled": True,
+        "api_call_enabled": False,
         "llm_prompt_quality": 0.85,
         "world_model_enabled": True,
         "planning_horizon": 10,
