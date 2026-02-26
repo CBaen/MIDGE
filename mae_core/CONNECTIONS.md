@@ -45,7 +45,7 @@ Last updated: 2026-02-22
 | 5.8 Temporal | TemporalMemory, WorldlinePlanner | 6 | 6 (EventBus) | 4 (cross-system stubs) |
 | 5.8+ Enforcement | TriadEnforcer, Watchdog, Auditor, Registry | 10 | 10 (EventBus) | 0 |
 | 5.8++ Holon | HolonRegistry, HolonMixin, HolonProxy, AwarenessPulse | 2 | 36 (proxy injection) + 1 (bootstrap) | 0 |
-| 5.8+++ Connection | ConnectionRegistry | 4 | 367 (217 core + 47 fractal + 55 bootstrap + 48 market, all witnessed, 0 bare dyads) | 0 |
+| 5.8+++ Connection | ConnectionRegistry | 4 | 370 (217 core + 47 fractal + 55 bootstrap + 51 market, all witnessed, 0 bare dyads) | 0 |
 | **5.9 Integration** | **API, Dashboard, Domain Config** | **0** | **0** | **20+ (all stubs need wiring)** |
 
 ---
@@ -128,10 +128,20 @@ The following 3 connections were added with the Session Sweep Detector (total ma
 
 ## Market Connections (Group 16 — Layer 33) — TA indicators
 
-3 connections for the TA indicators edge module (total market connections: 51):
+3 connections for the TA indicators edge module (total market connections: 48):
 
 | Connection | Type | Witness | Notes |
 |-----------|------|---------|-------|
 | ta_indicators → price_fetcher | direct_reference | convergence_alerter, auditor | TA indicators compute RSI/MACD/Bollinger from daily OHLCV |
 | convergence_alerter → ta_indicators | direct_reference | thompson_sampler, auditor | Convergence subscribes to TA indicator signals |
 | ta_indicators → thompson_sampler | data_flow | convergence_alerter, auditor | Thompson learns TA indicator reliability from outcomes |
+
+## Market Connections (Group 17 — Layer 33) — backtest bridge
+
+3 connections for the backtest-to-hypothesis bridge (total market connections: 51):
+
+| Connection | Type | Witness | Notes |
+|-----------|------|---------|-------|
+| backtest_analyzer → hypothesis_registry | direct_reference | hypothesis_validator, auditor | Registers backtest-derived hypotheses in registry |
+| backtest_analyzer → hypothesis_validator | direct_reference | hypothesis_registry, auditor | Backtest hypotheses flow to validator for DSR evaluation |
+| hypothesis_engine → backtest_analyzer | direct_reference | hypothesis_generator, auditor | Engine drives backtest analysis on generation cadence |

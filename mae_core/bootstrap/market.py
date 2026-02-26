@@ -76,7 +76,7 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
     ])
 
     logger.info(
-        "Layer 33  - Market Intelligence organ complete: %d systems, %d holons, 41 connections",
+        "Layer 33  - Market Intelligence organ complete: %d systems, %d holons, 51 connections",
         active, holon_count,
     )
     logger.info(
@@ -449,7 +449,7 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
 
     logger.info(
         "Layer 33a - Market systems instantiated: %d systems (construction failures: %d)",
-        25 - failures, failures,
+        26 - failures, failures,
     )
     logger.info(
         "            Operational dependencies: Qdrant, RAPIDAPI_KEY, ALPHA_VANTAGE_KEY, "
@@ -627,7 +627,7 @@ def _register_market_fractal(ctx: SimpleNamespace) -> None:
 # =========================================================================
 
 def _register_market_connections(ctx: SimpleNamespace) -> None:
-    """Register 38 triadic connections for market systems (Group 14 + Group 15)."""
+    """Register 51 triadic connections for market systems (Group 14-17)."""
     from mae_core.backbone.connection_registry import (
         ConnectionType,
         ConnectionCriticality,
