@@ -349,6 +349,52 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         ctx.kelly_position_sizer = None
         failures += 1
 
+    # --- Hypothesis loop (RSI Layer 2: generator + validator + engine) ---
+
+    try:
+        from mae_core.market.intelligence.hypothesis_registry import HypothesisRegistry
+        ctx.hypothesis_registry = HypothesisRegistry()
+    except Exception:
+        logger.debug("Market: hypothesis_registry failed to construct", exc_info=True)
+        ctx.hypothesis_registry = None
+
+    try:
+        from mae_core.market.intelligence.hypothesis_generator import HypothesisGenerator
+        ctx.hypothesis_generator = (
+            HypothesisGenerator(registry=ctx.hypothesis_registry)
+            if ctx.hypothesis_registry is not None else None
+        )
+    except Exception:
+        logger.debug("Market: hypothesis_generator failed to construct", exc_info=True)
+        ctx.hypothesis_generator = None
+
+    try:
+        from mae_core.market.intelligence.hypothesis_validator import HypothesisValidator
+        ctx.hypothesis_validator = HypothesisValidator()
+    except Exception:
+        logger.debug("Market: hypothesis_validator failed to construct", exc_info=True)
+        ctx.hypothesis_validator = None
+
+    try:
+        from mae_core.market.intelligence.hypothesis_engine import HypothesisEngine
+        ctx.hypothesis_engine = (
+            HypothesisEngine(
+                registry=ctx.hypothesis_registry,
+                generator=ctx.hypothesis_generator,
+                validator=ctx.hypothesis_validator,
+                bus=ctx.bus,
+                regime_classifier=getattr(ctx, "regime_classifier", None),
+                thompson_sampler=getattr(ctx, "thompson_sampler", None),
+            )
+            if (ctx.hypothesis_registry is not None
+                and ctx.hypothesis_generator is not None
+                and ctx.hypothesis_validator is not None)
+            else None
+        )
+    except Exception:
+        logger.debug("Market: hypothesis_engine failed to construct", exc_info=True)
+        ctx.hypothesis_engine = None
+
     # --- Trust registration with BoundaryMembrane ---
     market_sources = [
         ("sec_edgar", 0.90), ("yfinance", 0.75), ("alpha_vantage", 0.80),
