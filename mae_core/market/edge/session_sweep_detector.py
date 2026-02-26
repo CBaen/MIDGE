@@ -121,6 +121,12 @@ class SessionSweepSignal:
     strength: float = 0.50
     kill_zone: bool = False
 
+    # IFVG + pattern stacking scores
+    is_ifvg: bool = False
+    displacement_score: float = 0.0
+    fvg_atr_ratio: float = 0.0
+    quality_score: float = 0.0
+
     # Metadata
     signal_source: str = "session_sweep"
     decay_rate: float = 0.85     # Hourly-scale decay (~18h half-life)

@@ -777,6 +777,41 @@ def report(trades: List[Trade]) -> str:
             f"{s_wr:.1f}% WR, {s_avg:+.3f}R avg"
         )
 
+    # By quality tier (if scores are present)
+    has_quality = any(t.quality_score > 0 for t in trades)
+    if has_quality:
+        lines.append(f"\n--- By quality tier ---")
+        tiers = [
+            ("Elite (>0.60)", lambda t: t.quality_score > 0.60),
+            ("Good (0.40-0.60)", lambda t: 0.40 <= t.quality_score <= 0.60),
+            ("Marginal (0.20-0.39)", lambda t: 0.20 <= t.quality_score < 0.40),
+            ("Low (<0.20)", lambda t: t.quality_score < 0.20),
+        ]
+        for tier_name, tier_fn in tiers:
+            tier_trades = [t for t in trades if tier_fn(t)]
+            if not tier_trades:
+                lines.append(f"  {tier_name:22s}:   0 trades")
+                continue
+            tier_wins = [t for t in tier_trades if t.result == "win_2r"]
+            tier_wr = len(tier_wins) / len(tier_trades) * 100
+            tier_avg = sum(t.r_captured for t in tier_trades) / len(tier_trades)
+            tier_net = sum(t.r_captured for t in tier_trades)
+            lines.append(
+                f"  {tier_name:22s}: {len(tier_trades):3d} trades, "
+                f"{tier_wr:.1f}% WR, {tier_avg:+.3f}R avg, {tier_net:+.1f}R net"
+            )
+
+        # Score component averages
+        avg_disp = sum(t.displacement_score for t in trades) / len(trades)
+        avg_fvg_atr = sum(t.fvg_atr_ratio for t in trades) / len(trades)
+        avg_kz = sum(t.kill_zone_score for t in trades) / len(trades)
+        avg_quality = sum(t.quality_score for t in trades) / len(trades)
+        lines.append(f"\n  Score averages:")
+        lines.append(f"    Displacement:  {avg_disp:.3f}  (body ratio of reversal candles)")
+        lines.append(f"    FVG/ATR ratio: {avg_fvg_atr:.3f}  (FVG size / 14-period ATR)")
+        lines.append(f"    Kill zone:     {avg_kz:.3f}  (1.0=NY, 0.85=London, 0.70=Asia)")
+        lines.append(f"    Composite:     {avg_quality:.3f}  (40% disp + 35% fvg/atr + 25% kz)")
+
     # By symbol
     lines.append(f"\n--- By symbol ---")
     symbols = sorted(set(t.symbol for t in trades))
@@ -838,6 +873,10 @@ def main():
         "--days", type=int, default=59,
         help="Days of history (default: 59)",
     )
+    parser.add_argument(
+        "--min-quality", type=float, default=0.0,
+        help="Minimum quality score filter (default: 0.0 = no filter, try 0.35)",
+    )
     args = parser.parse_args()
 
     if not HAS_DEPS or not HAS_YF:
@@ -853,7 +892,9 @@ def main():
     else:
         symbols = FUTURES + EQUITIES
 
-    bt = SweepBacktester(interval=args.interval, days=args.days)
+    bt = SweepBacktester(
+        interval=args.interval, days=args.days, min_quality=args.min_quality,
+    )
     trades = bt.run(symbols)
     output = report(trades)
     print(output)
@@ -895,6 +936,10 @@ def main():
                     "r_captured": t.r_captured,
                     "hit_1r": t.hit_1r,
                     "risk_pts": t.risk_pts,
+                    "displacement_score": t.displacement_score,
+                    "fvg_atr_ratio": t.fvg_atr_ratio,
+                    "kill_zone_score": t.kill_zone_score,
+                    "quality_score": t.quality_score,
                 }
                 for t in trades
             ],
