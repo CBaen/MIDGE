@@ -120,6 +120,10 @@ class Trade:
     ifvg_top: float = 0.0
     ifvg_bottom: float = 0.0
     risk_pts: float = 0.0
+    displacement_score: float = 0.0
+    fvg_atr_ratio: float = 0.0
+    kill_zone_score: float = 0.0
+    quality_score: float = 0.0
 
 
 # ── Backtest Engine ───────────────────────────────────────────
