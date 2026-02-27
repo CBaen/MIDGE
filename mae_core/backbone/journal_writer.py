@@ -218,7 +218,7 @@ class JournalWriter:
                      self._journal_path, steps_completed, qdrant_ok)
 
     def _flush_qdrant_buffer(self) -> bool:
-        """Batch-flush buffered step narratives to Qdrant mae_narrative collection.
+        """Batch-flush buffered step narratives to Qdrant midge_narrative collection.
 
         Returns True if Qdrant stored successfully, False otherwise.
         """
@@ -227,7 +227,7 @@ class JournalWriter:
 
         try:
             result = self._deep_store.store_points_batch(
-                "mae_narrative", self._qdrant_buffer,
+                "midge_narrative", self._qdrant_buffer,
             )
             stored = result.get("stored", 0)
             failed = result.get("failed", 0)

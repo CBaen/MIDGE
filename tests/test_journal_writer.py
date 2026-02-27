@@ -215,7 +215,7 @@ class TestJournalFileOutput:
         jw = JournalWriter(output_dir=str(tmp_path))
         jw.begin_run(step_count=30, agent_count=3)
         content = (tmp_path / "midge-journal.md").read_text()
-        assert "Mae Run Journal" in content
+        assert "MIDGE Run Journal" in content
         assert "3 agents" in content
 
     def test_record_step_writes_step_header(self, tmp_path):
@@ -252,7 +252,7 @@ class TestJournalFileOutput:
         jw.end_run(steps_completed=1)
         assert (tmp_path / "journal-log.md").exists()
         log_content = (tmp_path / "journal-log.md").read_text()
-        assert "Mae Run Journal" in log_content
+        assert "MIDGE Run Journal" in log_content
         assert "1 steps completed" in log_content
 
     def test_multiple_runs_append_to_log(self, tmp_path):
@@ -263,7 +263,7 @@ class TestJournalFileOutput:
             jw.end_run(steps_completed=1)
         log_content = (tmp_path / "journal-log.md").read_text()
         # Should appear twice
-        assert log_content.count("Mae Run Journal") == 2
+        assert log_content.count("MIDGE Run Journal") == 2
 
     def test_journal_overwritten_each_run(self, tmp_path):
         # First run
@@ -277,7 +277,7 @@ class TestJournalFileOutput:
         jw2.end_run(steps_completed=0)
 
         content = (tmp_path / "midge-journal.md").read_text()
-        # Should only contain one "Mae Run Journal" header
-        assert content.count("Mae Run Journal") == 1
+        # Should only contain one "MIDGE Run Journal" header
+        assert content.count("MIDGE Run Journal") == 1
         # Should reflect second run's agent count
         assert "2 agents" in content
