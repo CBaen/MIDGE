@@ -166,7 +166,7 @@ WorldModel implements `serialize()` and `restore(data)` for persisting learned s
 |-----------|-------------------|
 | WorldModel | Ensemble weights, training history |
 
-Data flows to/from `data/mae/subsystems/agents/{agent_id}/` (per-agent WorldModel instances). Pickle is used for ensemble weights and numpy arrays. Missing files on restore cause the WorldModel to start fresh (graceful degradation).
+Data flows to/from `data/midge/subsystems/agents/{agent_id}/` (per-agent WorldModel instances). Pickle is used for ensemble weights and numpy arrays. Missing files on restore cause the WorldModel to start fresh (graceful degradation).
 
 ---
 

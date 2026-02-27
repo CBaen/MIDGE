@@ -209,12 +209,12 @@ class TestJournalFileOutput:
     def test_begin_run_creates_file(self, tmp_path):
         jw = JournalWriter(output_dir=str(tmp_path))
         jw.begin_run(step_count=30, agent_count=3)
-        assert (tmp_path / "mae-journal.md").exists()
+        assert (tmp_path / "midge-journal.md").exists()
 
     def test_journal_contains_header(self, tmp_path):
         jw = JournalWriter(output_dir=str(tmp_path))
         jw.begin_run(step_count=30, agent_count=3)
-        content = (tmp_path / "mae-journal.md").read_text()
+        content = (tmp_path / "midge-journal.md").read_text()
         assert "Mae Run Journal" in content
         assert "3 agents" in content
 
@@ -223,7 +223,7 @@ class TestJournalFileOutput:
         jw.begin_run(step_count=10, agent_count=1)
         agents = [_MockAgent(uid=1)]
         jw.record_step(step=1, agents=agents, systems={})
-        content = (tmp_path / "mae-journal.md").read_text()
+        content = (tmp_path / "midge-journal.md").read_text()
         assert "## Step 1" in content
 
     def test_record_step_writes_agent_section(self, tmp_path):
@@ -231,7 +231,7 @@ class TestJournalFileOutput:
         jw.begin_run(step_count=10, agent_count=1)
         agents = [_MockAgent(uid=42, role="COORDINATOR")]
         jw.record_step(step=1, agents=agents, systems={})
-        content = (tmp_path / "mae-journal.md").read_text()
+        content = (tmp_path / "midge-journal.md").read_text()
         assert "Agent 42" in content
         assert "COORDINATOR" in content
 
@@ -242,7 +242,7 @@ class TestJournalFileOutput:
         agent._inhibited_this_step = True
         agent._last_inhibit_reason = "INHIBIT: high surprise"
         jw.record_step(step=1, agents=[agent], systems={})
-        content = (tmp_path / "mae-journal.md").read_text()
+        content = (tmp_path / "midge-journal.md").read_text()
         assert "PAUSED" in content
 
     def test_end_run_appends_to_log(self, tmp_path):
@@ -276,7 +276,7 @@ class TestJournalFileOutput:
         jw2.begin_run(step_count=5, agent_count=2)
         jw2.end_run(steps_completed=0)
 
-        content = (tmp_path / "mae-journal.md").read_text()
+        content = (tmp_path / "midge-journal.md").read_text()
         # Should only contain one "Mae Run Journal" header
         assert content.count("Mae Run Journal") == 1
         # Should reflect second run's agent count

@@ -73,7 +73,7 @@ The following memory subsystems implement `serialize()` and `restore(data)` for 
 | MemoryConsolidator | Consolidation stats, schedule state |
 | MemoryCoordinator | Delegates serialize/restore to all child subsystems |
 
-Data flows to/from `data/mae/subsystems/agents/{agent_id}/` (per-agent) and `data/mae/subsystems/shared/` (shared systems). Pickle is used for heavy objects (SumTree, numpy arrays, experience buffers). Metadata is stored in StateStore. Missing files on restore cause the subsystem to start fresh (graceful degradation).
+Data flows to/from `data/midge/subsystems/agents/{agent_id}/` (per-agent) and `data/midge/subsystems/shared/` (shared systems). Pickle is used for heavy objects (SumTree, numpy arrays, experience buffers). Metadata is stored in StateStore. Missing files on restore cause the subsystem to start fresh (graceful degradation).
 
 ---
 

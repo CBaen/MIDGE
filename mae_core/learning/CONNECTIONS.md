@@ -47,7 +47,7 @@ The following learning subsystems implement `serialize()` and `restore(data)` fo
 | MAMLLearner | Meta-parameters, adaptation state |
 | KnowledgeBase | Shared skill repository |
 
-Data flows to/from `data/mae/subsystems/agents/{agent_id}/` (per-agent: VDN, FRL, MAML) and `data/mae/subsystems/shared/` (KnowledgeBase). FRL trust scores use JSON serialization; other subsystems use pickle for heavy objects. Missing files on restore cause the subsystem to start fresh (graceful degradation).
+Data flows to/from `data/midge/subsystems/agents/{agent_id}/` (per-agent: VDN, FRL, MAML) and `data/midge/subsystems/shared/` (KnowledgeBase). FRL trust scores use JSON serialization; other subsystems use pickle for heavy objects. Missing files on restore cause the subsystem to start fresh (graceful degradation).
 
 ---
 
