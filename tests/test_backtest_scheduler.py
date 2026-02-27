@@ -246,10 +246,10 @@ class TestRefreshProbation:
             causal_story="Test story",
             source_type=source_type,
         )
-        hyp = registry.register(hyp)
+        hyp_id = registry.register(hyp)
         if status == HypothesisStatus.ACTIVE:
-            registry.promote(hyp.hypothesis_id, reason="test_promote")
-        return hyp
+            registry.promote(hyp_id)
+        return hyp_id
 
     def test_retires_probation_backtest_derived(self, registry, tmp_path):
         from mae_core.market.intelligence.backtest_analyzer import BacktestAnalyzer
@@ -315,8 +315,8 @@ class TestDedupWithRetired:
             causal_story="Test story",
             source_type=SourceType.BACKTEST_DERIVED,
         )
-        hyp = registry.register(hyp)
-        registry.retire(hyp.hypothesis_id, reason="test_retire")
+        hyp_id = registry.register(hyp)
+        registry.retire(hyp_id, reason="test_retire")
 
         path = tmp_path / "bt.json"
         path.write_text(json.dumps({"run_time": "2026-01-01", "trades": []}))
@@ -332,7 +332,7 @@ class TestDedupWithRetired:
             causal_story="Test story",
             source_type=SourceType.BACKTEST_DERIVED,
         )
-        registry.register(hyp)
+        registry.register(hyp)  # returns ID, don't need it
 
         path = tmp_path / "bt.json"
         path.write_text(json.dumps({"run_time": "2026-01-01", "trades": []}))
