@@ -352,6 +352,12 @@ class MarketSensingHook:
         elif source_name == "ta_indicators":
             signals = self._fetch_ta_indicators(from_ta_signal)
 
+        # Enrich in background thread (velocity, filing-time, Ollama sentiment)
+        # Moved from _collect_results() so Ollama's 15s timeout doesn't block
+        # the main step loop. Thread-safe: only mutates signal objects.
+        for sig in signals:
+            self._enrich_signal(sig)
+
         return signals
 
     def _fetch_sec_form4(self, converter) -> list:
