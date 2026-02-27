@@ -53,7 +53,7 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
         "thompson_calibrator", "kelly_position_sizer",
         "hypothesis_registry", "hypothesis_generator",
         "hypothesis_validator", "hypothesis_engine",
-        "backtest_analyzer",
+        "backtest_analyzer", "backtest_scheduler",
         "ta_indicators",
     ]
     active = sum(1 for a in market_attrs if getattr(ctx, a, None) is not None)
