@@ -1127,7 +1127,7 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
     logger.info(
         "Layer 33g - Market step hooks: 1 sense hook registered "
         "(cadence: convergence/1, stats/10, velocity/50, forgetting/100, "
-        "lag/500, calibration/1000)"
+        "lag/500, calibration/1000, backtest/5000)"
     )
 
 
