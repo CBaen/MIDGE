@@ -10,7 +10,7 @@ MIDGE is a fork of [mae-core](https://github.com/CBaen/mae-core), the Mycelial A
 
 Same genome. Different epigenome. Law 5 at the project level.
 
-**Current state:** 119 systems (92 core + 27 market), 2767 passing tests, 370 triadic connections, 138 holons. 37 market intelligence files (9 API clients, 6 edge detectors, 16 intelligence/learning, 4 integration + session sweep + backtest_analyzer). Mae's full biological architecture + MIDGE's market senses + hypothesis generation loop (RSI Layer 2), fully bootstrapped as Layer 33.
+**Current state:** 120 systems (92 core + 28 market), 2796 passing tests, 372 triadic connections, 139 holons. 38 market intelligence files (9 API clients, 6 edge detectors, 18 intelligence/learning, 4 integration + session sweep). Mae's full biological architecture + MIDGE's market senses + hypothesis generation loop (RSI Layer 2) + autonomous backtest scheduling (Bridge 3), fully bootstrapped as Layer 33.
 
 ---
 

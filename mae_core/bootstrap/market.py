@@ -1,6 +1,6 @@
 """Bootstrap Layer 33: Market Intelligence Organ.
 
-Creates 27 market systems, registers holons, wires fractal hierarchy,
+Creates 28 market systems, registers holons, wires fractal hierarchy,
 registers triadic connections (Group 14 + Group 15 + Group 16 + Group 17),
 wires EventBus channels, and hooks into the step lifecycle.
 
@@ -28,7 +28,7 @@ logger = logging.getLogger("mae.bootstrap")
 
 
 def bootstrap_market(ctx: SimpleNamespace) -> None:
-    """Wire Layer 33: Market Intelligence organ (27 systems, 51 connections)."""
+    """Wire Layer 33: Market Intelligence organ (28 systems, 53 connections)."""
     _instantiate_market_systems(ctx)
     _register_market_somatic(ctx)
     _register_market_holons(ctx)
@@ -93,7 +93,7 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
 # =========================================================================
 
 def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
-    """Create all 27 market system objects on ctx."""
+    """Create all 28 market system objects on ctx."""
     import os
     qdrant_url = getattr(ctx, "qdrant_url", "http://localhost:6333")
     failures = 0
