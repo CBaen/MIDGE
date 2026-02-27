@@ -221,6 +221,8 @@ def _build_systems_dict(ctx) -> dict:
         "backtest_scheduler":       getattr(ctx, "backtest_scheduler", None),
         # Technical analysis (Trades by Sci indicators)
         "ta_indicators":            getattr(ctx, "ta_indicators", None),
+        # Performance metabolism monitoring
+        "step_timer":               getattr(ctx, "step_timer", None),
     }
 
 

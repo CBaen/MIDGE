@@ -102,6 +102,7 @@ class TestBootstrap:
             "backtest_analyzer",
             "backtest_scheduler",
             "ta_indicators",
+            "step_timer",
         ]
         for key in market_keys:
             assert key in systems, f"Missing market system: {key}"

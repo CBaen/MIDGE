@@ -1,7 +1,7 @@
 """Bootstrap Layer 33: Market Intelligence Organ.
 
-Creates 28 market systems, registers holons, wires fractal hierarchy,
-registers triadic connections (Group 14 + Group 15 + Group 16 + Group 17),
+Creates 29 market systems, registers holons, wires fractal hierarchy,
+registers triadic connections (Group 14-18),
 wires EventBus channels, and hooks into the step lifecycle.
 
 Biological analogy: Growing a new sensory organ specialized for
@@ -28,7 +28,7 @@ logger = logging.getLogger("mae.bootstrap")
 
 
 def bootstrap_market(ctx: SimpleNamespace) -> None:
-    """Wire Layer 33: Market Intelligence organ (28 systems, 53 connections)."""
+    """Wire Layer 33: Market Intelligence organ (29 systems, 55 connections)."""
     _instantiate_market_systems(ctx)
     _register_market_somatic(ctx)
     _register_market_holons(ctx)
@@ -1133,7 +1133,11 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
         hyp_engine = getattr(ctx, "hypothesis_engine", None)
         if hyp_engine is not None:
             try:
-                hyp_engine.step()
+                if _timer is not None:
+                    with _timer.track("hypothesis_engine"):
+                        hyp_engine.step()
+                else:
+                    hyp_engine.step()
             except Exception:
                 logger.debug("Hypothesis engine step failed", exc_info=True)
 
