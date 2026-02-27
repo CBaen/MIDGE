@@ -72,11 +72,11 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
                     "hypothesis_registry", "hypothesis_generator",
                     "hypothesis_validator", "hypothesis_engine",
                     "backtest_analyzer", "backtest_scheduler",
-                    "ta_indicators")
+                    "ta_indicators", "step_timer")
     ])
 
     logger.info(
-        "Layer 33  - Market Intelligence organ complete: %d systems, %d holons, 53 connections",
+        "Layer 33  - Market Intelligence organ complete: %d systems, %d holons, 55 connections",
         active, holon_count,
     )
     logger.info(
@@ -626,7 +626,7 @@ def _register_market_fractal(ctx: SimpleNamespace) -> None:
         "signal_archive_reader", "lag_correlation_analyzer",
         "thompson_calibrator", "kelly_position_sizer",
         "hypothesis_registry", "backtest_analyzer", "backtest_scheduler",
-        "ta_indicators",
+        "ta_indicators", "step_timer",
     ]
     for sys_id in extras:
         if ctx.holon_registry.get_entry(sys_id) is not None:
@@ -876,7 +876,16 @@ def _register_market_connections(ctx: SimpleNamespace) -> None:
         witnesses=["hypothesis_engine", "auditor"],
         description="Scheduler publishes refresh completion event")
 
-    logger.info("Layer 33d - Market connections: 53 triadic connections registered (Group 14 + Group 15 + Group 16 + Group 17)")
+    # --- Efficiency: Step timer (performance metabolism) ---
+    reg("step_timer", "convergence_alerter", dr,
+        witnesses=["hypothesis_engine", "auditor"],
+        description="StepTimer wraps convergence check to measure latency")
+    reg("step_timer", "event_bus", eb,
+        channel="market.intel.step_timing",
+        witnesses=["convergence_alerter", "auditor"],
+        description="StepTimer publishes timing statistics for health monitoring")
+
+    logger.info("Layer 33d - Market connections: 55 triadic connections registered (Group 14-18)")
 
 
 # =========================================================================
@@ -997,6 +1006,8 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                 pass
         return "default"
 
+    _timer = getattr(ctx, "step_timer", None)
+
     def _market_sense_hook():
         _step_counter[0] += 1
         step = _step_counter[0]
@@ -1005,7 +1016,11 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
         alerter = getattr(ctx, "convergence_alerter", None)
         if alerter is not None:
             try:
-                alerts = alerter.check_convergence()
+                if _timer is not None:
+                    with _timer.track("convergence_check"):
+                        alerts = alerter.check_convergence()
+                else:
+                    alerts = alerter.check_convergence()
                 _cached_alerts[0] = alerts  # Cache for advisory bridge (avoid duplicate call)
                 for alert in alerts:
                     alert_dict = alert.to_dict() if hasattr(alert, "to_dict") else {}
@@ -1033,8 +1048,13 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
             sampler = getattr(ctx, "thompson_sampler", None)
             if sampler is not None:
                 try:
-                    regime = _get_regime()
-                    stats = sampler.get_stats(regime)
+                    if _timer is not None:
+                        with _timer.track("thompson_stats"):
+                            regime = _get_regime()
+                            stats = sampler.get_stats(regime)
+                    else:
+                        regime = _get_regime()
+                        stats = sampler.get_stats(regime)
                     stats["regime"] = regime
                     ctx.bus.publish(CH_THOMPSON_STATS, stats)
                 except Exception:
@@ -1045,7 +1065,11 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
             vd = getattr(ctx, "velocity_detector", None)
             if vd is not None:
                 try:
-                    anomalies = vd.detect_velocity_anomalies()
+                    if _timer is not None:
+                        with _timer.track("velocity_scan"):
+                            anomalies = vd.detect_velocity_anomalies()
+                    else:
+                        anomalies = vd.detect_velocity_anomalies()
                     if anomalies:
                         ctx.bus.publish(CH_VELOCITY_ANOMALY,
                                         {"anomalies": len(anomalies)})
@@ -1066,7 +1090,11 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
             lag = getattr(ctx, "lag_correlation_analyzer", None)
             if lag is not None:
                 try:
-                    findings = lag.analyze(lookback_days=90)
+                    if _timer is not None:
+                        with _timer.track("lag_correlation"):
+                            findings = lag.analyze(lookback_days=90)
+                    else:
+                        findings = lag.analyze(lookback_days=90)
                     if findings and hasattr(ctx, "bus"):
                         ctx.bus.publish("market.intel.lag_finding", {
                             "count": len(findings),
@@ -1084,7 +1112,11 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
             calibrator = getattr(ctx, "thompson_calibrator", None)
             if calibrator is not None:
                 try:
-                    calibrator.calibrate()
+                    if _timer is not None:
+                        with _timer.track("thompson_calibration"):
+                            calibrator.calibrate()
+                    else:
+                        calibrator.calibrate()
                 except Exception:
                     logger.debug("Thompson calibration step failed", exc_info=True)
 
