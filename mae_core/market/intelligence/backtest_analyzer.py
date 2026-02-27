@@ -182,6 +182,7 @@ class BacktestAnalyzer:
         self._last_run_time: Optional[str] = None
         self._aggregates_built = 0
         self._hypotheses_created = 0
+        self._hypotheses_refreshed = 0
 
     # ── Public API ────────────────────────────────────────────────────
 
