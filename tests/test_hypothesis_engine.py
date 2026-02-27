@@ -94,6 +94,15 @@ class TestStepCadence:
         engine._run_validation = counting_val
         for _ in range(20):
             engine.step()
+        # Validation runs in background thread — wait for completion
+        if engine._validation_future is not None:
+            engine._validation_future.result(timeout=5)
+        # Collect so second launch isn't blocked
+        engine._collect_validation_results()
+        # One more step to trigger collection of the last future
+        engine.step()
+        if engine._validation_future is not None:
+            engine._validation_future.result(timeout=5)
         assert val_call_count[0] == 2
 
 

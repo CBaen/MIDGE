@@ -179,6 +179,24 @@ class HypothesisEngine:
                 len(all_new),
             )
 
+    def _launch_validation(self) -> None:
+        """Launch validation in background thread. Skip if already running."""
+        if self._validation_future is not None and not self._validation_future.done():
+            return  # Previous validation still running
+        self._validation_future = self._validation_executor.submit(
+            self._run_validation)
+
+    def _collect_validation_results(self) -> None:
+        """Check if background validation completed."""
+        if self._validation_future is None or not self._validation_future.done():
+            return
+        try:
+            self._validation_future.result()
+        except Exception:
+            logger.debug("Background validation failed", exc_info=True)
+        finally:
+            self._validation_future = None
+
     def _run_validation(self) -> None:
         """Validate hypotheses in probation — promote or retire."""
         probation = self._registry.get_probation()
@@ -339,5 +357,9 @@ class HypothesisEngine:
             "hypotheses_generated": self._hypotheses_generated,
             "hypotheses_promoted": self._hypotheses_promoted,
             "hypotheses_retired": self._hypotheses_retired,
+            "validation_in_progress": (
+                self._validation_future is not None
+                and not self._validation_future.done()
+            ),
             **registry_stats,
         }
