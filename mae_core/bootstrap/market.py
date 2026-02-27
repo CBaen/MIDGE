@@ -71,12 +71,12 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
                     "thompson_calibrator", "kelly_position_sizer",
                     "hypothesis_registry", "hypothesis_generator",
                     "hypothesis_validator", "hypothesis_engine",
-                    "backtest_analyzer",
+                    "backtest_analyzer", "backtest_scheduler",
                     "ta_indicators")
     ])
 
     logger.info(
-        "Layer 33  - Market Intelligence organ complete: %d systems, %d holons, 51 connections",
+        "Layer 33  - Market Intelligence organ complete: %d systems, %d holons, 53 connections",
         active, holon_count,
     )
     logger.info(
@@ -403,6 +403,19 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         ctx.backtest_analyzer = None
 
     try:
+        from mae_core.market.intelligence.backtest_scheduler import BacktestScheduler
+        ctx.backtest_scheduler = (
+            BacktestScheduler(
+                backtest_analyzer=ctx.backtest_analyzer,
+                bus=ctx.bus,
+            )
+            if ctx.backtest_analyzer is not None else None
+        )
+    except Exception:
+        logger.debug("Market: backtest_scheduler failed to construct", exc_info=True)
+        ctx.backtest_scheduler = None
+
+    try:
         from mae_core.market.intelligence.hypothesis_engine import HypothesisEngine
         ctx.hypothesis_engine = (
             HypothesisEngine(
@@ -494,6 +507,7 @@ def _register_market_somatic(ctx: SimpleNamespace) -> None:
         "hypothesis_validator": ("HypothesisValidator", []),
         "hypothesis_engine": ("HypothesisEngine", ["hypothesis_registry", "hypothesis_generator", "hypothesis_validator"]),
         "backtest_analyzer": ("BacktestAnalyzer", ["hypothesis_registry"]),
+        "backtest_scheduler": ("BacktestScheduler", ["backtest_analyzer"]),
         "ta_indicators": ("TAIndicators", ["price_fetcher"]),
     }
 
@@ -529,7 +543,7 @@ def _register_market_holons(ctx: SimpleNamespace) -> None:
         "thompson_calibrator", "kelly_position_sizer",
         "hypothesis_registry", "hypothesis_generator",
         "hypothesis_validator", "hypothesis_engine",
-        "backtest_analyzer",
+        "backtest_analyzer", "backtest_scheduler",
         "ta_indicators",
     ]
 
