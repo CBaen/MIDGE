@@ -100,6 +100,7 @@ class TestBootstrap:
             "hypothesis_validator",
             "hypothesis_engine",
             "backtest_analyzer",
+            "backtest_scheduler",
             "ta_indicators",
         ]
         for key in market_keys:

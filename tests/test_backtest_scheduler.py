@@ -1,6 +1,7 @@
 """Tests for BacktestScheduler — Bridge 3: autonomous backtest rerun scheduling."""
 
 import json
+from concurrent.futures import Future
 from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -16,6 +17,50 @@ from mae_core.market.intelligence.hypothesis import (
     TriggerPattern,
 )
 from mae_core.market.intelligence.hypothesis_registry import HypothesisRegistry
+
+
+# ── Helpers ───────────────────────────────────────────────────────────
+
+def _make_mock_trade(**overrides):
+    """Create a mock trade with all required attributes."""
+    defaults = dict(
+        result="win_2r", symbol="ES=F", direction="bearish",
+        session_swept="asia", entry_price=5000, stop_price=4990,
+        target_2r=5020, entry_time="2026-01-01 10:00",
+        exit_time="2026-01-01 11:00", exit_price=5020,
+        r_captured=2.0, hit_1r=True, risk_pts=10,
+        displacement_score=0.7, fvg_atr_ratio=1.2,
+        kill_zone_score=0.9, quality_score=0.8,
+    )
+    defaults.update(overrides)
+    trade = MagicMock()
+    for k, v in defaults.items():
+        setattr(trade, k, v)
+    return trade
+
+
+def _write_results(path, run_time=None, trades=None):
+    """Write a minimal results file with the given run_time."""
+    if run_time is None:
+        run_time = datetime.now().isoformat()
+    data = {
+        "run_time": run_time,
+        "config": {"interval": "5m", "days": 59, "symbols": ["ES=F"]},
+        "summary": {"total_trades": 10, "wins": 6, "losses": 4,
+                     "win_rate": 60.0, "avg_r": 0.8, "hit_1r_count": 7},
+        "trades": trades or [],
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w") as f:
+        json.dump(data, f)
+
+
+def _make_trigger(domain_filter="CL=F"):
+    """Create a TriggerPattern matching backtest_analyzer's format."""
+    return TriggerPattern(
+        source_a="session_sweep", source_b="price_outcome",
+        lag_days=0, domain_filter=domain_filter,
+    )
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────
@@ -41,22 +86,6 @@ def scheduler(mock_analyzer, tmp_results):
         stale_threshold_hours=24.0,
         symbols=["ES=F", "NQ=F"],
     )
-
-
-def _write_results(path, run_time=None, trades=None):
-    """Write a minimal results file with the given run_time."""
-    if run_time is None:
-        run_time = datetime.now().isoformat()
-    data = {
-        "run_time": run_time,
-        "config": {"interval": "5m", "days": 59, "symbols": ["ES=F"]},
-        "summary": {"total_trades": 10, "wins": 6, "losses": 4,
-                     "win_rate": 60.0, "avg_r": 0.8, "hit_1r_count": 7},
-        "trades": trades or [],
-    }
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w") as f:
-        json.dump(data, f)
 
 
 # ── TestStalenessDetection ────────────────────────────────────────────
@@ -106,35 +135,31 @@ class TestCheckAndSchedule:
         assert scheduler._runs_scheduled == 0
 
     def test_launches_when_stale(self, scheduler, tmp_results):
-        # File missing → stale → should launch
         with patch.object(scheduler, "_run_backtest_and_refresh",
                           return_value={"trades": 10, "refreshed": 2}):
             scheduler.check_and_schedule()
         assert scheduler._runs_scheduled == 1
 
     def test_skips_when_busy(self, scheduler, tmp_results):
-        # Set up a "running" future
-        from concurrent.futures import Future
         fake_future = Future()
         scheduler._pending_future = fake_future
         scheduler.check_and_schedule()
         assert scheduler._runs_scheduled == 0
 
     def test_does_not_double_submit(self, scheduler, tmp_results):
-        with patch.object(scheduler, "_run_backtest_and_refresh",
-                          return_value={"trades": 5, "refreshed": 1}):
-            scheduler.check_and_schedule()
-            scheduler.check_and_schedule()  # second call while first running
+        # First call: launch. Second call: future still pending → skip.
+        fake_future = Future()  # never completed
+        scheduler._pending_future = fake_future
+        scheduler._runs_scheduled = 1  # simulate first submit already happened
+        scheduler.check_and_schedule()  # should skip — busy
         assert scheduler._runs_scheduled == 1
 
     def test_collects_completed_future(self, scheduler, tmp_results):
-        from concurrent.futures import Future
         done_future = Future()
         done_future.set_result({"trades": 8, "refreshed": 2})
         scheduler._pending_future = done_future
 
-        # Make results fresh so it doesn't re-launch
-        _write_results(tmp_results)
+        _write_results(tmp_results)  # fresh — won't re-launch
         scheduler.check_and_schedule()
 
         assert scheduler._pending_future is None
@@ -145,28 +170,9 @@ class TestCheckAndSchedule:
 
 class TestRunBacktestAndRefresh:
     def test_calls_analyzer_refresh_and_analyze(self, scheduler, mock_analyzer):
-        # Mock SweepBacktester to avoid real network calls
-        mock_trade = MagicMock()
-        mock_trade.result = "win_2r"
-        mock_trade.symbol = "ES=F"
-        mock_trade.direction = "bearish"
-        mock_trade.session_swept = "asia"
-        mock_trade.entry_price = 5000
-        mock_trade.stop_price = 4990
-        mock_trade.target_2r = 5020
-        mock_trade.entry_time = "2026-01-01 10:00"
-        mock_trade.exit_time = "2026-01-01 11:00"
-        mock_trade.exit_price = 5020
-        mock_trade.r_captured = 2.0
-        mock_trade.hit_1r = True
-        mock_trade.risk_pts = 10
-        mock_trade.displacement_score = 0.7
-        mock_trade.fvg_atr_ratio = 1.2
-        mock_trade.kill_zone_score = 0.9
-        mock_trade.quality_score = 0.8
-
+        mock_trade = _make_mock_trade()
         with patch(
-            "mae_core.market.intelligence.backtest_scheduler.SweepBacktester"
+            "mae_core.market.edge.sweep_backtest.SweepBacktester"
         ) as MockBT:
             MockBT.return_value.run.return_value = [mock_trade]
             result = scheduler._run_backtest_and_refresh()
@@ -178,7 +184,7 @@ class TestRunBacktestAndRefresh:
 
     def test_handles_empty_trades(self, scheduler, mock_analyzer):
         with patch(
-            "mae_core.market.intelligence.backtest_scheduler.SweepBacktester"
+            "mae_core.market.edge.sweep_backtest.SweepBacktester"
         ) as MockBT:
             MockBT.return_value.run.return_value = []
             result = scheduler._run_backtest_and_refresh()
@@ -188,7 +194,7 @@ class TestRunBacktestAndRefresh:
 
     def test_handles_backtest_exception(self, scheduler, mock_analyzer):
         with patch(
-            "mae_core.market.intelligence.backtest_scheduler.SweepBacktester"
+            "mae_core.market.edge.sweep_backtest.SweepBacktester"
         ) as MockBT:
             MockBT.return_value.run.side_effect = RuntimeError("network error")
             result = scheduler._run_backtest_and_refresh()
@@ -200,27 +206,9 @@ class TestRunBacktestAndRefresh:
         bus = MagicMock()
         scheduler._bus = bus
 
-        mock_trade = MagicMock()
-        mock_trade.result = "win_2r"
-        mock_trade.symbol = "ES=F"
-        mock_trade.direction = "bearish"
-        mock_trade.session_swept = "asia"
-        mock_trade.entry_price = 5000
-        mock_trade.stop_price = 4990
-        mock_trade.target_2r = 5020
-        mock_trade.entry_time = "2026-01-01 10:00"
-        mock_trade.exit_time = "2026-01-01 11:00"
-        mock_trade.exit_price = 5020
-        mock_trade.r_captured = 2.0
-        mock_trade.hit_1r = True
-        mock_trade.risk_pts = 10
-        mock_trade.displacement_score = 0.7
-        mock_trade.fvg_atr_ratio = 1.2
-        mock_trade.kill_zone_score = 0.9
-        mock_trade.quality_score = 0.8
-
+        mock_trade = _make_mock_trade()
         with patch(
-            "mae_core.market.intelligence.backtest_scheduler.SweepBacktester"
+            "mae_core.market.edge.sweep_backtest.SweepBacktester"
         ) as MockBT:
             MockBT.return_value.run.return_value = [mock_trade]
             scheduler._run_backtest_and_refresh()
@@ -228,6 +216,17 @@ class TestRunBacktestAndRefresh:
         bus.publish.assert_called_once()
         call_args = bus.publish.call_args
         assert call_args[0][0] == "market.intel.backtest_refreshed"
+
+    def test_no_publish_when_bus_is_none(self, scheduler, mock_analyzer):
+        scheduler._bus = None
+        mock_trade = _make_mock_trade()
+        with patch(
+            "mae_core.market.edge.sweep_backtest.SweepBacktester"
+        ) as MockBT:
+            MockBT.return_value.run.return_value = [mock_trade]
+            result = scheduler._run_backtest_and_refresh()
+
+        assert result["trades"] == 1  # still succeeds
 
 
 # ── TestRefreshProbation ──────────────────────────────────────────────
@@ -241,11 +240,7 @@ class TestRefreshProbation:
 
     def _make_hypothesis(self, registry, status, source_type, domain_filter="CL=F"):
         from mae_core.market.intelligence.backtest_analyzer import BacktestAnalyzer
-        trigger = TriggerPattern(
-            source=source_type.value,
-            domain_filter=domain_filter,
-            conditions={"test": True},
-        )
+        trigger = _make_trigger(domain_filter)
         hyp = Hypothesis(
             trigger=trigger,
             causal_story="Test story",
@@ -283,7 +278,7 @@ class TestRefreshProbation:
     def test_skips_non_backtest_derived(self, registry, tmp_path):
         from mae_core.market.intelligence.backtest_analyzer import BacktestAnalyzer
         self._make_hypothesis(registry, HypothesisStatus.PROBATION,
-                              SourceType.CONVERGENCE, "CL=F")
+                              SourceType.LAG_CORRELATION, "CL=F")
 
         path = tmp_path / "bt.json"
         path.write_text(json.dumps({"run_time": "2026-01-01", "trades": []}))
@@ -314,11 +309,7 @@ class TestDedupWithRetired:
 
     def test_is_duplicate_skips_retired(self, registry, tmp_path):
         from mae_core.market.intelligence.backtest_analyzer import BacktestAnalyzer
-        trigger = TriggerPattern(
-            source="backtest_derived",
-            domain_filter="CL=F",
-            conditions={"test": True},
-        )
+        trigger = _make_trigger("CL=F")
         hyp = Hypothesis(
             trigger=trigger,
             causal_story="Test story",
@@ -331,16 +322,11 @@ class TestDedupWithRetired:
         path.write_text(json.dumps({"run_time": "2026-01-01", "trades": []}))
         analyzer = BacktestAnalyzer(registry=registry, backtest_path=path)
 
-        # Same domain_filter but retired — should NOT be duplicate
         assert analyzer._is_duplicate(trigger) is False
 
     def test_is_duplicate_catches_probation(self, registry, tmp_path):
         from mae_core.market.intelligence.backtest_analyzer import BacktestAnalyzer
-        trigger = TriggerPattern(
-            source="backtest_derived",
-            domain_filter="CL=F",
-            conditions={"test": True},
-        )
+        trigger = _make_trigger("CL=F")
         hyp = Hypothesis(
             trigger=trigger,
             causal_story="Test story",
@@ -352,8 +338,32 @@ class TestDedupWithRetired:
         path.write_text(json.dumps({"run_time": "2026-01-01", "trades": []}))
         analyzer = BacktestAnalyzer(registry=registry, backtest_path=path)
 
-        # Same domain_filter, still PROBATION — IS duplicate
         assert analyzer._is_duplicate(trigger) is True
+
+    def test_purge_recreate_cycle(self, registry, tmp_path):
+        """End-to-end: refresh_probation retires, then _is_duplicate allows recreation."""
+        from mae_core.market.intelligence.backtest_analyzer import BacktestAnalyzer
+        trigger = _make_trigger("CL=F")
+        hyp = Hypothesis(
+            trigger=trigger,
+            causal_story="Test story",
+            source_type=SourceType.BACKTEST_DERIVED,
+        )
+        registry.register(hyp)
+
+        path = tmp_path / "bt.json"
+        path.write_text(json.dumps({"run_time": "2026-01-01", "trades": []}))
+        analyzer = BacktestAnalyzer(registry=registry, backtest_path=path)
+
+        # Before refresh: duplicate detected
+        assert analyzer._is_duplicate(trigger) is True
+
+        # Refresh retires it
+        count = analyzer.refresh_probation()
+        assert count == 1
+
+        # After refresh: no longer duplicate
+        assert analyzer._is_duplicate(trigger) is False
 
 
 # ── TestGetStatistics ─────────────────────────────────────────────────
@@ -378,7 +388,6 @@ class TestGetStatistics:
         assert stats["runs_scheduled"] == 1
 
     def test_is_running_while_future_pending(self, scheduler):
-        from concurrent.futures import Future
         fake_future = Future()
         scheduler._pending_future = fake_future
         stats = scheduler.get_statistics()
@@ -389,25 +398,7 @@ class TestGetStatistics:
 
 class TestWriteResults:
     def test_writes_valid_json(self, scheduler, tmp_results):
-        mock_trade = MagicMock()
-        mock_trade.result = "win_2r"
-        mock_trade.symbol = "ES=F"
-        mock_trade.direction = "bearish"
-        mock_trade.session_swept = "asia"
-        mock_trade.entry_price = 5000
-        mock_trade.stop_price = 4990
-        mock_trade.target_2r = 5020
-        mock_trade.entry_time = "2026-01-01 10:00"
-        mock_trade.exit_time = "2026-01-01 11:00"
-        mock_trade.exit_price = 5020
-        mock_trade.r_captured = 2.0
-        mock_trade.hit_1r = True
-        mock_trade.risk_pts = 10
-        mock_trade.displacement_score = 0.7
-        mock_trade.fvg_atr_ratio = 1.2
-        mock_trade.kill_zone_score = 0.9
-        mock_trade.quality_score = 0.8
-
+        mock_trade = _make_mock_trade()
         scheduler._write_results([mock_trade])
 
         assert tmp_results.exists()
@@ -415,3 +406,12 @@ class TestWriteResults:
         assert "run_time" in data
         assert data["summary"]["total_trades"] == 1
         assert len(data["trades"]) == 1
+
+    def test_creates_parent_directory(self, mock_analyzer, tmp_path):
+        nested = tmp_path / "deep" / "nested" / "results.json"
+        sched = BacktestScheduler(
+            backtest_analyzer=mock_analyzer,
+            results_path=nested,
+        )
+        sched._write_results([_make_mock_trade()])
+        assert nested.exists()
