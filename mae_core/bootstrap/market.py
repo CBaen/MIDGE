@@ -998,6 +998,7 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
         if alerter is not None:
             try:
                 alerts = alerter.check_convergence()
+                _cached_alerts[0] = alerts  # Cache for advisory bridge (avoid duplicate call)
                 for alert in alerts:
                     alert_dict = alert.to_dict() if hasattr(alert, "to_dict") else {}
                     last = _last_convergence_state[0]
@@ -1238,18 +1239,16 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
         _sensing_step_counter[0] += 1
         original_step()
 
-        # After sensing, check if convergence produced alerts
-        alerter = getattr(ctx, "convergence_alerter", None)
-        if alerter is not None:
+        # Reuse cached convergence alerts (written by _market_sense_hook)
+        alerts = _cached_alerts[0] or []
+        if alerts:
             try:
-                alerts = alerter.check_convergence()
-                if alerts:
-                    strongest = max(alerts, key=lambda a: a.strength)
-                    ctx._market_advisory["alert"] = (
-                        strongest.to_dict() if hasattr(strongest, "to_dict")
-                        else {"direction": strongest.direction, "strength": strongest.strength}
-                    )
-                    ctx._market_advisory["updated_step"] = _sensing_step_counter[0]
+                strongest = max(alerts, key=lambda a: a.strength)
+                ctx._market_advisory["alert"] = (
+                    strongest.to_dict() if hasattr(strongest, "to_dict")
+                    else {"direction": strongest.direction, "strength": strongest.strength}
+                )
+                ctx._market_advisory["updated_step"] = _sensing_step_counter[0]
             except Exception:
                 logger.debug("Advisory bridge failed", exc_info=True)
 
