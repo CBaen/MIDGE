@@ -1021,7 +1021,7 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                         alerts = alerter.check_convergence()
                 else:
                     alerts = alerter.check_convergence()
-                _cached_alerts[0] = alerts  # Cache for advisory bridge (avoid duplicate call)
+                ctx._cached_alerts[0] = alerts  # Cache for advisory bridge (avoid duplicate call)
                 for alert in alerts:
                     alert_dict = alert.to_dict() if hasattr(alert, "to_dict") else {}
                     last = _last_convergence_state[0]
@@ -1284,7 +1284,7 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
         original_step()
 
         # Reuse cached convergence alerts (written by _market_sense_hook)
-        alerts = _cached_alerts[0] or []
+        alerts = ctx._cached_alerts[0] or []
         if alerts:
             try:
                 strongest = max(alerts, key=lambda a: a.strength)
