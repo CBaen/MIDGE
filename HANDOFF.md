@@ -184,7 +184,7 @@ Fixed 3 bugs found in live scan output, defined data schema:
 
 ## Current State
 
-- **2796 tests pass, 0 failures**
+- **2804 tests pass, 0 failures**
 - **121 systems** (92 core + 29 market), **140 holons**, **374 connections** (217 core + 47 fractal + 55 bootstrap + 55 market)
 - **39 market files** in `mae_core/market/` (bootstrapped as Layer 33 + 6 API clients + form8k_sentiment + hypothesis loop + backtest_analyzer + backtest_scheduler + step_timer)
 - **33-layer bootstrap** runs cleanly (Layers 33a-33i)
