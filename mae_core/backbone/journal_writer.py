@@ -1,11 +1,11 @@
-"""Mae Narrative Journal
+"""MIDGE Narrative Journal
 
-Writes a human-readable story of what Mae does each step.
+Writes a human-readable story of what MIDGE does each step.
 No technical jargon. Every action in plain English.
 
 Output files:
-  data/mae/mae-journal.md  — latest run only (overwritten each run)
-  data/mae/journal-log.md  — all runs accumulated (append-only)
+  data/midge/midge-journal.md  — latest run only (overwritten each run)
+  data/midge/journal-log.md    — all runs accumulated (append-only)
 
 Usage in main.py:
     journal = JournalWriter()
@@ -21,11 +21,11 @@ import logging
 import pathlib
 from typing import Any
 
-logger = logging.getLogger("mae.journal")
+logger = logging.getLogger("midge.journal")
 
 
 class JournalWriter:
-    """Narrates Mae's internal experience step by step in plain English."""
+    """Narrates MIDGE's internal experience step by step in plain English."""
 
     ACTION_DESC: dict[str, str] = {
         "explore":    "Explored (searched for new information)",

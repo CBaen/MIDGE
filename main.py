@@ -29,15 +29,15 @@ logging.basicConfig(
     format="%(asctime)s %(name)-30s %(levelname)-7s %(message)s",
     datefmt="%H:%M:%S",
 )
-logger = logging.getLogger("mae.bootstrap")
+logger = logging.getLogger("midge.bootstrap")
 
 
 def create_mae(
     num_agents: int = 5,
     cycle_length: int = 100,
-    persist_dir: str = "data/mae",
+    persist_dir: str = "data/midge",
 ) -> tuple:
-    """Create and wire a complete Mae organism (33-layer bootstrap).
+    """Create and wire a complete MIDGE organism (33-layer bootstrap).
 
     Instantiates ALL systems in biological order, injects subsystems
     into agents, registers step hooks, and wires EventBus channels.
@@ -63,7 +63,7 @@ def create_mae(
     systems = _build_systems_dict(ctx)
 
     logger.info("=" * 60)
-    logger.info("Mae is fully wired: %d shared systems, %d agents, %d per-agent systems, %d holons, %d connections",
+    logger.info("MIDGE is fully wired: %d shared systems, %d agents, %d per-agent systems, %d holons, %d connections",
                 41, ctx.num_agents, len(ctx.per_agent_systems) * 5, len(ctx.holon_registry.get_all_ids()),
                 ctx.connection_registry.get_statistics()["total_connections"])
     logger.info("=" * 60)
@@ -490,7 +490,7 @@ def run(
     import time as _time
 
     logger.info("=" * 60)
-    logger.info("Mae is waking up...")
+    logger.info("MIDGE is waking up...")
     logger.info("=" * 60)
 
     model, systems = create_mae(
@@ -506,8 +506,8 @@ def run(
     # Narrative journal — plain-English story of each step
     from mae_core.backbone.journal_writer import JournalWriter
     from mae_core.backbone.growth_tracker import GrowthTracker
-    journal = JournalWriter(output_dir="data/mae", deep_store=deep_store)
-    growth = GrowthTracker(output_dir="data/mae", deep_store=deep_store)
+    journal = JournalWriter(output_dir="data/midge", deep_store=deep_store)
+    growth = GrowthTracker(output_dir="data/midge", deep_store=deep_store)
 
     # Report collector (reset per round)
     report = RunReport()
@@ -595,7 +595,7 @@ def run(
             steps_done = stats["current_step"]
 
             # Per-round reports
-            report_path = "data/mae/run-log.md"
+            report_path = "data/midge/run-log.md"
             report.write(report_path, agents, systems)
 
             journal.end_run(steps_completed=steps_done)
@@ -613,18 +613,18 @@ def run(
         total_time = sum(round_times)
         logger.info("=" * 60)
         logger.info(
-            "Mae completed %d rounds in %.1fs (%.1fh). Avg %.1fs/round.",
+            "MIDGE completed %d rounds in %.1fs (%.1fh). Avg %.1fs/round.",
             len(round_times), total_time, total_time / 3600,
             total_time / max(1, len(round_times)),
         )
         logger.info("=" * 60)
 
         model.shutdown()
-        logger.info("Mae is resting.")
+        logger.info("MIDGE is resting.")
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Mae - Mycelial Agent Engine")
+    parser = argparse.ArgumentParser(description="MIDGE - Market Intelligence Driven by Generative Exploration")
     parser.add_argument("--agents", type=int, default=5, help="Number of agents (min 3)")
     parser.add_argument("--steps", type=int, default=100, help="Simulation steps")
     parser.add_argument("--cycle", type=int, default=100, help="Circadian cycle length")
