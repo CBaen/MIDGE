@@ -816,7 +816,8 @@ class MarketSensingHook:
             "total_fetches": self._total_fetches,
             "last_fetch_source": self._last_fetch_source,
             "fetch_cadence": self._fetch_cadence,
-            "pending_fetch": self._pending_future is not None and not self._pending_future.done(),
+            "pending_fetches": len([f for f in self._pending_futures.values() if not f.done()]),
+            "in_flight_sources": list(self._pending_futures.keys()),
         }
 
     def shutdown(self):

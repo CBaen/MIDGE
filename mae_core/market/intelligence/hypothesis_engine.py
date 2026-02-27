@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
+from concurrent.futures import Future, ThreadPoolExecutor
 from typing import Any, Optional
 
 from mae_core.market.intelligence.hypothesis import (
@@ -78,9 +79,17 @@ class HypothesisEngine:
         self._hypotheses_promoted = 0
         self._hypotheses_retired = 0
 
+        # Background validation — skip-if-busy pattern
+        self._validation_executor = ThreadPoolExecutor(
+            max_workers=1, thread_name_prefix="hyp-val")
+        self._validation_future: Optional[Future] = None
+
     def step(self) -> None:
         """Called every model step. Runs lifecycle operations on cadence."""
         self._step_counter += 1
+
+        # Check if background validation completed
+        self._collect_validation_results()
 
         if self._step_counter % self._regime_cadence == 0:
             self._check_regime()
@@ -89,7 +98,7 @@ class HypothesisEngine:
             self._run_generation()
 
         if self._step_counter % self._validation_cadence == 0:
-            self._run_validation()
+            self._launch_validation()
 
     def on_signal_ingested(self, channel: str, data: Any) -> None:
         """EventBus callback — match incoming signals against active triggers.
