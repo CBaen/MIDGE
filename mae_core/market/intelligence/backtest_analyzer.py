@@ -28,6 +28,7 @@ from typing import List, Optional
 from mae_core.market.intelligence.hypothesis import (
     Hypothesis,
     HypothesisStats,
+    HypothesisStatus,
     SourceType,
     TriggerPattern,
 )
@@ -228,6 +229,7 @@ class BacktestAnalyzer:
             "last_backtest_run_time": self._last_run_time or "",
             "aggregates_built": self._aggregates_built,
             "hypotheses_created": self._hypotheses_created,
+            "hypotheses_refreshed": self._hypotheses_refreshed,
             "backtest_file_exists": self._backtest_path.exists(),
         }
 
@@ -452,11 +454,34 @@ class BacktestAnalyzer:
     # ── Dedup ─────────────────────────────────────────────────────────
 
     def _is_duplicate(self, trigger: TriggerPattern) -> bool:
-        """Check if a BACKTEST_DERIVED hypothesis with this domain_filter exists."""
+        """Check if a non-retired BACKTEST_DERIVED hypothesis with this domain_filter exists."""
         for hyp in self._registry.get_all():
+            if hyp.status == HypothesisStatus.RETIRED:
+                continue
             if (
                 hyp.source_type == SourceType.BACKTEST_DERIVED
                 and hyp.trigger.domain_filter == trigger.domain_filter
             ):
                 return True
         return False
+
+    def refresh_probation(self) -> int:
+        """Retire all PROBATION BACKTEST_DERIVED hypotheses for fresh re-analysis.
+
+        Called before analyze() when backtest results have been refreshed.
+        PROBATION means 'not yet validated by real market outcomes' — retiring
+        and recreating with updated stats loses nothing of value. ACTIVE/RETIRED
+        hypotheses are never touched.
+
+        Returns count of hypotheses retired.
+        """
+        count = 0
+        for hyp in self._registry.get_probation():
+            if hyp.source_type == SourceType.BACKTEST_DERIVED:
+                self._registry.retire(
+                    hyp.hypothesis_id,
+                    reason="stale_backtest_refresh",
+                )
+                count += 1
+        self._hypotheses_refreshed += count
+        return count

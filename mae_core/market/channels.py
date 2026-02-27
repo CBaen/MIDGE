@@ -29,3 +29,6 @@ CH_HYPOTHESIS_DISCOVERED = "market.hypothesis.discovered"
 CH_HYPOTHESIS_PROMOTED = "market.hypothesis.promoted"
 CH_HYPOTHESIS_RETIRED = "market.hypothesis.retired"
 CH_HYPOTHESIS_FIRED = "market.hypothesis.fired"
+
+# Backtest bridge channels
+CH_BACKTEST_REFRESHED = "market.intel.backtest_refreshed"
