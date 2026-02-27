@@ -16,7 +16,7 @@ from __future__ import annotations
 import logging
 from types import SimpleNamespace
 
-logger = logging.getLogger("mae.bootstrap")
+logger = logging.getLogger("midge.bootstrap")
 
 
 def bootstrap_k4_tetrahedra(ctx: SimpleNamespace) -> None:

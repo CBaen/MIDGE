@@ -240,7 +240,7 @@ Each subsystem implements two methods:
 ### Directory Layout
 
 ```
-data/mae/subsystems/
+data/midge/subsystems/
   agents/{agent_id}/       # per-agent subsystem state
   shared/                  # shared systems (KnowledgeBase, etc.)
 ```

@@ -1,11 +1,11 @@
-"""Market Sensing Hook — Async market data fetcher for Mae's step loop.
+"""Market Sensing Hook — Async market data fetcher for MIDGE's step loop.
 
 Biological analogy: The autonomic nervous system. Automatically gathers
 sensory data on a cadence without conscious agent involvement. Agents
 then process the gathered signals through their lifecycle.
 
 Replaces the monolithic midge_scan.py pipeline with incremental sensing
-that runs inside Mae's 33-layer bootstrap. Each model step, the hook:
+that runs inside MIDGE's 33-layer bootstrap. Each model step, the hook:
 1. Collects results from any completed async fetch
 2. Feeds signals into convergence_alerter + tiered alerters
 3. Launches the next async fetch (on cadence, rotating through sources)
@@ -26,7 +26,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-logger = logging.getLogger("mae.market.sensing")
+logger = logging.getLogger("midge.market.sensing")
 
 # Data paths
 DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "midge"

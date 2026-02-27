@@ -27,7 +27,7 @@ import logging
 from typing import Any
 from types import SimpleNamespace
 
-logger = logging.getLogger("mae.bootstrap")
+logger = logging.getLogger("midge.bootstrap")
 
 # Minimum counts below which a validator reports degraded.
 # Generous floors — partial registration is normal; 0 is a failure.

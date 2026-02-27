@@ -17,6 +17,7 @@ catalogue.db
 
 # Runtime persistence data
 data/mae/
+data/midge/
 data/test_persist/
 
 # Temp file artifacts

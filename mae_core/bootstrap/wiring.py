@@ -14,7 +14,7 @@ from types import SimpleNamespace
 
 import numpy as np
 
-logger = logging.getLogger("mae.bootstrap")
+logger = logging.getLogger("midge.bootstrap")
 
 
 def _register_somatic_systems(somatic_map, systems: dict) -> None:

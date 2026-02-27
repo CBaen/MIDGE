@@ -24,7 +24,7 @@ import logging
 from pathlib import Path
 from types import SimpleNamespace
 
-logger = logging.getLogger("mae.bootstrap")
+logger = logging.getLogger("midge.bootstrap")
 
 
 def bootstrap_market(ctx: SimpleNamespace) -> None:
