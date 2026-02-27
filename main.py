@@ -1,4 +1,4 @@
-"""Mae Bootstrap - Wakes the organism.
+"""MIDGE Bootstrap - Wakes the organism.
 
 python main.py              # Run with defaults (5 agents, 100 steps)
 python main.py --agents 10  # More agents
