@@ -24,7 +24,7 @@ from collections import deque
 from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("mae.market.sensing")
 
@@ -146,9 +146,9 @@ class MarketSensingHook:
         # Watchlist
         self._watchlist = watchlist or self._load_watchlist()
 
-        # Async fetch state
-        self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="mkt-sense")
-        self._pending_future: Optional[Future] = None
+        # Async fetch state — 3 concurrent workers for parallel senses
+        self._executor = ThreadPoolExecutor(max_workers=3, thread_name_prefix="mkt-sense")
+        self._pending_futures: Dict[str, Future] = {}  # source_name -> future
         self._fetch_queue = deque(SOURCE_ROTATION)
         self._step_counter = 0
         self._fetch_cadence = fetch_cadence
@@ -182,37 +182,48 @@ class MarketSensingHook:
     # ------------------------------------------------------------------
 
     def _launch_next_fetch(self):
-        """Start async fetch from next source in rotation."""
-        if self._pending_future is not None and not self._pending_future.done():
-            return  # Previous fetch still running — skip this cadence
+        """Fill up to 3 concurrent fetch slots from source rotation."""
+        # Collect any completed futures first
+        self._collect_results()
 
-        source = self._fetch_queue[0]
-        self._fetch_queue.rotate(-1)
-        self._last_fetch_source = source
-        self._total_fetches += 1
+        # Fill available slots (3 max concurrent)
+        attempts = 0
+        while len(self._pending_futures) < 3 and attempts < len(SOURCE_ROTATION):
+            source = self._fetch_queue[0]
+            self._fetch_queue.rotate(-1)
+            attempts += 1
 
-        logger.info("Market sensing: launching async fetch [%s] (cycle %d)", source, self._total_fetches)
-        self._pending_future = self._executor.submit(self._fetch_source, source)
+            if source in self._pending_futures:
+                continue  # Already in-flight
+
+            self._total_fetches += 1
+            logger.info("Market sensing: launching async fetch [%s] (cycle %d)", source, self._total_fetches)
+            self._pending_futures[source] = self._executor.submit(self._fetch_source, source)
 
     def _collect_results(self):
-        """Check if async fetch completed. Feed signals into convergence engine."""
-        if self._pending_future is None or not self._pending_future.done():
+        """Check for completed futures and process their signals."""
+        done = [k for k, f in self._pending_futures.items() if f.done()]
+        for source_name in done:
+            self._collect_one(source_name)
+
+    def _collect_one(self, source_name: str):
+        """Process signals from a single completed fetch."""
+        future = self._pending_futures.pop(source_name, None)
+        if future is None:
             return
 
         try:
-            signals = self._pending_future.result()
+            signals = future.result()
         except Exception:
-            logger.warning("Market sensing: fetch failed", exc_info=True)
+            logger.warning("Market sensing: fetch [%s] failed", source_name, exc_info=True)
             signals = []
-        finally:
-            self._pending_future = None
 
         if not signals:
             return
 
-        # Enrich signals with velocity and filing-time modifiers
-        for sig in signals:
-            self._enrich_signal(sig)
+        self._last_fetch_source = source_name
+
+        # Signals arrive pre-enriched from background thread (_fetch_source)
 
         # Feed into convergence engine (global + tiered)
         for sig in signals:
@@ -246,7 +257,7 @@ class MarketSensingHook:
         self._total_signals_fed += len(signals)
         logger.info(
             "Market sensing: fed %d signals from [%s] (total: %d)",
-            len(signals), self._last_fetch_source, self._total_signals_fed,
+            len(signals), source_name, self._total_signals_fed,
         )
 
         # Publish each signal to EventBus (hypothesis engine subscribes here)
