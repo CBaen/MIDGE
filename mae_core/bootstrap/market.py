@@ -54,7 +54,7 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
         "hypothesis_registry", "hypothesis_generator",
         "hypothesis_validator", "hypothesis_engine",
         "backtest_analyzer", "backtest_scheduler",
-        "ta_indicators",
+        "ta_indicators", "step_timer",
     ]
     active = sum(1 for a in market_attrs if getattr(ctx, a, None) is not None)
     holon_count = len([
@@ -436,6 +436,13 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         logger.debug("Market: hypothesis_engine failed to construct", exc_info=True)
         ctx.hypothesis_engine = None
 
+    # --- StepTimer (performance metabolism monitoring) ---
+    try:
+        from mae_core.market.step_timer import StepTimer
+        ctx.step_timer = StepTimer()
+    except Exception:
+        ctx.step_timer = None
+
     # --- Trust registration with BoundaryMembrane ---
     market_sources = [
         ("sec_edgar", 0.90), ("yfinance", 0.75), ("alpha_vantage", 0.80),
@@ -509,6 +516,7 @@ def _register_market_somatic(ctx: SimpleNamespace) -> None:
         "backtest_analyzer": ("BacktestAnalyzer", ["hypothesis_registry"]),
         "backtest_scheduler": ("BacktestScheduler", ["backtest_analyzer"]),
         "ta_indicators": ("TAIndicators", ["price_fetcher"]),
+        "step_timer": ("StepTimer", []),
     }
 
     for sys_id, (desc, deps) in market_systems.items():
@@ -544,7 +552,7 @@ def _register_market_holons(ctx: SimpleNamespace) -> None:
         "hypothesis_registry", "hypothesis_generator",
         "hypothesis_validator", "hypothesis_engine",
         "backtest_analyzer", "backtest_scheduler",
-        "ta_indicators",
+        "ta_indicators", "step_timer",
     ]
 
     registered = 0
