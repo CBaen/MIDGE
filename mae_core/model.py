@@ -52,7 +52,7 @@ class MycelialModel(mesa.Model):
         super().__init__()
 
         # Persistence directory
-        self._persist_dir = Path(persist_dir) if persist_dir else Path("data/mae")
+        self._persist_dir = Path(persist_dir) if persist_dir else Path("data/midge")
 
         # Initialize backbone (no external servers needed)
         self.event_bus = event_bus or EventBus()

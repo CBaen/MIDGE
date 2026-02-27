@@ -48,12 +48,12 @@ class JournalWriter:
 
     def __init__(
         self,
-        output_dir: str = "data/mae",
+        output_dir: str = "data/midge",
         compact: bool = True,
         deep_store: Any = None,
     ) -> None:
         self._output_dir = pathlib.Path(output_dir)
-        self._journal_path = self._output_dir / "mae-journal.md"
+        self._journal_path = self._output_dir / "midge-journal.md"
         self._log_path = self._output_dir / "journal-log.md"
         self._run_lines: list[str] = []
         self._run_start = ""
@@ -77,7 +77,7 @@ class JournalWriter:
         w = self._run_lines.append
 
         round_tag = f" (Round {round_num})" if round_num > 0 else ""
-        w(f"# Mae Run Journal — {self._run_start}{round_tag}")
+        w(f"# MIDGE Run Journal — {self._run_start}{round_tag}")
         w(f"")
         w(f"*{agent_count} agents, up to {step_count} steps.*")
         w(f"")

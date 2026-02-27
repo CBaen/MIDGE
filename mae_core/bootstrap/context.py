@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from types import SimpleNamespace
 
-logger = logging.getLogger("mae.bootstrap")
+logger = logging.getLogger("midge.bootstrap")
 
 # Minimum agents enforced by Rule of 3
 MIN_AGENTS = 3
@@ -14,7 +14,7 @@ MIN_AGENTS = 3
 def create_context(
     num_agents: int = 5,
     cycle_length: int = 100,
-    persist_dir: str = "data/mae",
+    persist_dir: str = "data/midge",
 ) -> SimpleNamespace:
     """Create the initial bootstrap context with configuration."""
     if num_agents < MIN_AGENTS:

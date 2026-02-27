@@ -1,11 +1,11 @@
-"""Mae Growth Tracker
+"""MIDGE Growth Tracker
 
-Appends one compact metrics row per run to data/mae/growth-tracker.md.
+Appends one compact metrics row per run to data/midge/growth-tracker.md.
 Lets you see learning trajectory at a glance without digging through
 multiple log files.
 
 Usage in main.py:
-    tracker = GrowthTracker(output_dir="data/mae")
+    tracker = GrowthTracker(output_dir="data/midge")
     # ... after run completes ...
     tracker.record_run(agents, systems, run_report)
 """
@@ -16,13 +16,13 @@ import logging
 import pathlib
 from typing import Any
 
-logger = logging.getLogger("mae.growth")
+logger = logging.getLogger("midge.growth")
 
 
 class GrowthTracker:
     """Appends one metrics row per run to a persistent markdown table."""
 
-    def __init__(self, output_dir: str = "data/mae", deep_store: Any = None) -> None:
+    def __init__(self, output_dir: str = "data/midge", deep_store: Any = None) -> None:
         self._path = pathlib.Path(output_dir) / "growth-tracker.md"
         self._deep_store = deep_store
 
@@ -103,7 +103,7 @@ class GrowthTracker:
         self._path.parent.mkdir(parents=True, exist_ok=True)
         with open(self._path, "a", encoding="utf-8") as f:
             if is_new:
-                f.write("# Mae Growth Tracker\n\n")
+                f.write("# MIDGE Growth Tracker\n\n")
                 f.write("One row per run. Watch the numbers change over time.\n\n")
                 f.write("| When | Steps | Agents | Run Reward | Lifetime Reward "
                         "| Memories | Policies | Oracle Calls | Self-Sufficient "
@@ -131,7 +131,7 @@ class GrowthTracker:
         if self._deep_store is not None:
             try:
                 summary_text = (
-                    f"Mae run round {round_num}: {steps_completed} steps, "
+                    f"MIDGE run round {round_num}: {steps_completed} steps, "
                     f"{agent_count} agents. "
                     f"Run reward {run_reward:+.2f}, lifetime {cumulative_reward:.1f}. "
                     f"{total_memories} memories, {total_policies} policies. "
