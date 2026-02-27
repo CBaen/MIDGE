@@ -617,7 +617,7 @@ def _register_market_fractal(ctx: SimpleNamespace) -> None:
         "outcome_tracker", "regime_classifier",
         "signal_archive_reader", "lag_correlation_analyzer",
         "thompson_calibrator", "kelly_position_sizer",
-        "hypothesis_registry", "backtest_analyzer",
+        "hypothesis_registry", "backtest_analyzer", "backtest_scheduler",
         "ta_indicators",
     ]
     for sys_id in extras:
@@ -859,7 +859,16 @@ def _register_market_connections(ctx: SimpleNamespace) -> None:
         witnesses=["hypothesis_generator", "auditor"],
         description="Engine drives backtest analysis on generation cadence")
 
-    logger.info("Layer 33d - Market connections: 51 triadic connections registered (Group 14 + Group 15 + Group 16 + Group 17)")
+    # --- Bridge 3: Autonomous backtest scheduling ---
+    reg("backtest_scheduler", "backtest_analyzer", dr,
+        witnesses=["hypothesis_engine", "auditor"],
+        description="Scheduler triggers backtest rerun and refreshes analyzer")
+    reg("backtest_scheduler", "event_bus", eb,
+        channel="market.intel.backtest_refreshed",
+        witnesses=["hypothesis_engine", "auditor"],
+        description="Scheduler publishes refresh completion event")
+
+    logger.info("Layer 33d - Market connections: 53 triadic connections registered (Group 14 + Group 15 + Group 16 + Group 17)")
 
 
 # =========================================================================
@@ -1068,6 +1077,15 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                     calibrator.calibrate()
                 except Exception:
                     logger.debug("Thompson calibration step failed", exc_info=True)
+
+        # Every 5000 steps: backtest scheduler staleness check
+        if step % 5000 == 0:
+            scheduler = getattr(ctx, "backtest_scheduler", None)
+            if scheduler is not None:
+                try:
+                    scheduler.check_and_schedule()
+                except Exception:
+                    logger.debug("Backtest scheduler check failed", exc_info=True)
 
         # Every step: hypothesis engine (manages its own cadence internally)
         hyp_engine = getattr(ctx, "hypothesis_engine", None)
