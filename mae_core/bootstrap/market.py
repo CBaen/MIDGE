@@ -977,6 +977,7 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
 
     _step_counter = [0]
     _last_convergence_state = [None]  # {"direction": str, "strength": float}
+    _cached_alerts = [None]  # Shared: written by _market_sense_hook, read by advisory bridge
 
     def _get_regime():
         """Get current market regime (cached daily, essentially free)."""
