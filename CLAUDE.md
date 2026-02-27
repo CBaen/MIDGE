@@ -102,7 +102,7 @@ mae_core/market/
 
 ### Integration Status
 
-Market modules are **fully bootstrapped as Layer 33** — wired into EventBus, ConnectionRegistry, HolonRegistry, fractal hierarchy, endocrine coupling, and step hooks. 27 systems, 51 triadic connections, 27 holons.
+Market modules are **fully bootstrapped as Layer 33** — wired into EventBus, ConnectionRegistry, HolonRegistry, fractal hierarchy, endocrine coupling, and step hooks. 29 systems, 55 triadic connections, 29 holons.
 
 **Phase 2 complete:** CorrelationTracker deque persistence, discovery_log reader, KNOWN_POLITICIANS expansion (437 members), TickerResolver service, MarketDataProvider registered with ApiGateway, ContractPredictor retained (entity-level, complements ConvergenceAlerter), regime-aware Thompson Sampling, client migration to MarketDataProvider.
 
@@ -144,8 +144,8 @@ grep -rn "PREVIOUS_COUNT" --include="*.md" --include="*.py"
 
 - **Mesa 3.4** foundation, pure Python infrastructure
 - **33-layer bootstrap** in `mae_core/bootstrap/` (orchestrated by `main.py`)
-- **120 systems** (92 core + 28 market), **2796 tests**, **139 holons**, **372 connections**
-- **38 market intelligence files** in `mae_core/market/` (bootstrapped as Layer 33)
+- **121 systems** (92 core + 29 market), **2796 tests**, **140 holons**, **374 connections**
+- **39 market intelligence files** in `mae_core/market/` (bootstrapped as Layer 33)
 - **14 mixins** on MycelialAgent (10 capability + 4 lifecycle, HolonMixin is 10th capability)
 - **Fractal architecture:** All 5 steps complete (Holon Protocol, Triadic Connections, Bidirectional Awareness, Fractal Generator, Stem Cell)
 - **Advisory enforcement:** Triads and connections observe/report, never block

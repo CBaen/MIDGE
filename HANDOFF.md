@@ -47,7 +47,7 @@ MIDGE's recursive self-improvement loop. Discovers patterns, formalizes them as 
 - `mae_core/bootstrap/market.py` — Full wiring: 4 systems, 10 connections (Group 16), 4 holons, 1 fractal K3 subsystem, endocrine coupling (dopamine on promote, cortisol on unexpected retire), EventBus subscriptions, step hooks, agent differentiation at 12+ agents
 - `mae_core/market/market_awareness.py` — HYPOTHESIS_EXPLORER and HYPOTHESIS_VALIDATOR added to _MARKET_ROLES, hypothesis stats in router context
 
-**4 new test files, 40 tests.** Systems: 120 (92+28). Connections: 372 (53 market). Holons: 139.
+**4 new test files, 40 tests.** Systems: 121 (92+29). Connections: 374 (55 market). Holons: 140.
 
 ### Self-Calibrating Decision Engine (2026-02-25)
 
@@ -185,8 +185,8 @@ Fixed 3 bugs found in live scan output, defined data schema:
 ## Current State
 
 - **2796 tests pass, 0 failures**
-- **120 systems** (92 core + 28 market), **139 holons**, **372 connections** (217 core + 47 fractal + 55 bootstrap + 53 market)
-- **38 market files** in `mae_core/market/` (bootstrapped as Layer 33 + 6 API clients + form8k_sentiment + hypothesis loop + backtest_analyzer + backtest_scheduler)
+- **121 systems** (92 core + 29 market), **140 holons**, **374 connections** (217 core + 47 fractal + 55 bootstrap + 55 market)
+- **39 market files** in `mae_core/market/` (bootstrapped as Layer 33 + 6 API clients + form8k_sentiment + hypothesis loop + backtest_analyzer + backtest_scheduler + step_timer)
 - **33-layer bootstrap** runs cleanly (Layers 33a-33i)
 - **Agent-based market sensing active** — 3+ agents differentiated (SEC_WATCHER, CONTRACT_TRACKER, MARKET_ANALYST, + HYPOTHESIS_EXPLORER + HYPOTHESIS_VALIDATOR at 12+ agents)
 - **Hypothesis generation loop active** — RSI Layer 2: lag findings → hypotheses → adversarial validation → DSR gate → promote/retire
@@ -233,7 +233,7 @@ Phase 7/7: Report — markdown intelligence report with all sections
 | `apis/` | 13 (price_fetcher, house_stock_watcher, senate_stock_watcher, job_tracker, usa_spending, sam_gov, apewisdom, finra_short_interest, finnhub_client, fred_client, ticker_resolver, market_data_provider) | 14 data sources + utilities |
 | `edge/` | 7 (cluster_detector, politician_tracker, filing_time_analyzer, contract_predictor, form8k_sentiment, session_sweep_detector, ta_indicators) | Pattern recognition + text analysis |
 | `intelligence/` | 12 (thompson_sampler, velocity_detector, correlation_tracker, convergence_alerter, learning_config, regime_classifier, outcome_collector, signal_archive_reader, lag_correlation_analyzer, thompson_calibrator, kelly_position_sizer, backtest_analyzer) | Bayesian learning + feedback loop + calibration + sizing + backtest bridge |
-| `root` | 5 (signal.py, channels.py, outcome_tracker.py, memory.py, sensing_hook.py) | Integration layer + sensing + Qdrant persistence |
+| `root` | 6 (signal.py, channels.py, outcome_tracker.py, memory.py, sensing_hook.py, step_timer.py) | Integration layer + sensing + Qdrant persistence + performance timing |
 
 ---
 
@@ -276,7 +276,7 @@ Roadmap at `C:\Users\baenb\.claude\plans\delegated-leaping-map.md`. Items below 
 
 Welcome. MIDGE is Mae differentiated for financial markets. Here is what you need to know:
 
-1. **MIDGE = mae-core + market intelligence.** 120 systems, same 8 laws, 33-layer bootstrap. Market organ is Layer 33 (33a-33i).
+1. **MIDGE = mae-core + market intelligence.** 121 systems, same 8 laws, 33-layer bootstrap. Market organ is Layer 33 (33a-33i).
 2. **Mae-core is upstream.** Changes to Mae's genome should be made in `C:\Users\baenb\projects\mae-core` and pulled here. Market-specific changes stay here.
 3. **Agents actively sense the market.** MarketSensingHook (Layer 33h) fetches data on cadence and feeds convergence_alerter. Three agents are differentiated into market roles (Layer 33i). Endocrine coupling and market advisory carry signals to all agents.
 4. **The crown jewel is `convergence_alerter.py`** — synthesizes signals across ALL domains (insider + congressional + contract + hiring + velocity) into actionable alerts. Now with per-ticker and multi-timeframe convergence.
