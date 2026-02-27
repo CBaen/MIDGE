@@ -1,6 +1,6 @@
 """Deep Memory - Qdrant-backed permanent memory layer.
 
-Provides the bridge between Mae's numerical experiences and
+Provides the bridge between MIDGE's numerical experiences and
 Qdrant's text-embedding search. Handles collection management,
 embedding via Ollama, and triadic storage verification.
 
@@ -8,9 +8,9 @@ Biological analogy: Long-term memory consolidation from
 hippocampus to neocortex during sleep.
 
 Three Qdrant collections (Rule of Three):
-  - mae_narrative: Individual agent episode narratives
-  - mae_ancestral: Distilled cross-agent patterns
-  - mae_meta: Memory about memory (strange loop)
+  - midge_narrative: Individual agent episode narratives
+  - midge_ancestral: Distilled cross-agent patterns
+  - midge_meta: Memory about memory (strange loop)
 """
 
 from __future__ import annotations
@@ -32,9 +32,9 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 # Collection names
-COLLECTION_NARRATIVE = "mae_narrative"
-COLLECTION_ANCESTRAL = "mae_ancestral"
-COLLECTION_META = "mae_meta"
+COLLECTION_NARRATIVE = "midge_narrative"
+COLLECTION_ANCESTRAL = "midge_ancestral"
+COLLECTION_META = "midge_meta"
 
 ALL_COLLECTIONS = [COLLECTION_NARRATIVE, COLLECTION_ANCESTRAL, COLLECTION_META]
 

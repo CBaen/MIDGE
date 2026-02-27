@@ -127,7 +127,7 @@ class GrowthTracker:
                 f"|\n"
             )
 
-        # Store run metrics in Qdrant mae_meta collection
+        # Store run metrics in Qdrant midge_meta collection
         if self._deep_store is not None:
             try:
                 summary_text = (
@@ -139,11 +139,11 @@ class GrowthTracker:
                     f"Phi {phi:.3f}. Actions: {action_dist}."
                 )
                 self._deep_store.store_point(
-                    "mae_meta",
+                    "midge_meta",
                     text=summary_text,
                     payload={
                         "type": "run_metrics",
-                        "describes_collection": "mae_narrative",
+                        "describes_collection": "midge_narrative",
                         "round": round_num,
                         "steps": steps_completed,
                         "agents": agent_count,
