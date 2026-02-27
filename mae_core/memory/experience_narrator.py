@@ -281,7 +281,7 @@ class ExperienceNarrator:
             "peer_count": agent_context.get("peer_count", 0),
             "witness_hash": witness_hash,
             "consolidation_id": consolidation_id,
-            "primary_store": "mae_narrative",
+            "primary_store": "midge_narrative",
             "verification_store": "pickle",
-            "balance_store": "mae_ancestral",
+            "balance_store": "midge_ancestral",
         }

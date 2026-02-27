@@ -259,9 +259,9 @@ class TestBuildPayload:
         assert payload["action_taken"] == 0
         assert payload["witness_hash"] == "abc123"
         assert payload["consolidation_id"] == 7
-        assert payload["primary_store"] == "mae_narrative"
+        assert payload["primary_store"] == "midge_narrative"
         assert payload["verification_store"] == "pickle"
-        assert payload["balance_store"] == "mae_ancestral"
+        assert payload["balance_store"] == "midge_ancestral"
 
     def test_payload_negative_reward(self, narrator, negative_experience, agent_context):
         payload = narrator.build_payload(negative_experience, agent_context)

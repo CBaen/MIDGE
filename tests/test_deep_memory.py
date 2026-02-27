@@ -96,9 +96,9 @@ class TestAvailability:
     def test_graceful_degradation_when_unavailable(self, config):
         store = DeepMemoryStore(config=config)
         store._available = False
-        assert store.search("mae_narrative", "test") == []
-        assert store.store_point("mae_narrative", "test", {}) is None
-        assert store.store_points_batch("mae_narrative", [{"text": "t", "payload": {}}]) == {
+        assert store.search("midge_narrative", "test") == []
+        assert store.store_point("midge_narrative", "test", {}) is None
+        assert store.store_points_batch("midge_narrative", [{"text": "t", "payload": {}}]) == {
             "stored": 0, "failed": 1, "total": 1,
         }
 
