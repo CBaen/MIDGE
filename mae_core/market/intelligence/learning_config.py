@@ -113,6 +113,42 @@ LEARNING_CONFIG = {
         "curiosity_weight": 0.3,         # Weight for curiosity in total reward
         "exploration_bonus": 0.1,        # Bonus for exploring new states
     },
+
+    # Bridge 4: Dynamic hypothesis promotion/retirement gates
+    # These replace the hardcoded constants in hypothesis_validator.py.
+    # Adjustable at runtime via update_config(). _bounds prevent runaway drift.
+    "hypothesis_gates": {
+        "min_observations":  20,
+        "promote_win_rate":  0.52,
+        "promote_dsr":       0.5,
+        "retire_win_rate":   0.45,
+        "retire_dsr":        0.0,
+        "_bounds": {
+            "min_observations":  [10, 50],
+            "promote_win_rate":  [0.50, 0.65],
+            "promote_dsr":       [0.2, 0.8],
+            "retire_win_rate":   [0.35, 0.50],
+            "retire_dsr":        [-0.2, 0.1],
+        },
+        "_regime_deltas": {
+            "volatile": {"promote_win_rate": 0.03, "promote_dsr": 0.1},
+            "bear":     {"promote_win_rate": 0.02},
+            "bull":     {"promote_win_rate": -0.01},
+            "sideways": {},
+            "default":  {},
+        },
+    },
+
+    # Bridge 5: Generator thresholds for hypothesis creation
+    # Adjustable by meta-learning based on retirement rate.
+    "generator_thresholds": {
+        "min_correlation": 0.6,
+        "min_pairs":       10,
+        "_bounds": {
+            "min_correlation": [0.4, 0.85],
+            "min_pairs":       [5, 30],
+        },
+    },
 }
 
 
