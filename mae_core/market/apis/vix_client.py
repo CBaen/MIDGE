@@ -18,7 +18,7 @@ import time
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import List, Optional
 
 import requests
 
@@ -128,6 +128,80 @@ class VIXClient:
             logger.warning("VIX parse error: %s", exc)
             return None
 
+    def get_vix_history(self, days: int = 365) -> List[VIXSignal]:
+        """
+        Get VIX history for the last N days — all daily rows, not just latest.
+
+        Downloads the same CBOE CSV but returns one VIXSignal per day.
+        Ideal for backfilling archives.
+
+        Args:
+            days: Number of days of history to return.
+
+        Returns:
+            List of VIXSignal objects, one per trading day, newest first.
+        """
+        self._rate_limit()
+        text = self._fetch_text(VIX_CURRENT_URL)
+        if not text:
+            return []
+
+        try:
+            reader = csv.DictReader(io.StringIO(text))
+            rows = []
+            for row in reader:
+                try:
+                    close = float(row.get("CLOSE", row.get("Close", 0)))
+                    date_str = row.get("DATE", row.get("Date", ""))
+                    if close > 0 and date_str:
+                        rows.append({"date": date_str.strip()[:10], "close": close})
+                except (ValueError, TypeError):
+                    continue
+
+            if not rows:
+                return []
+
+            rows.sort(key=lambda r: r["date"], reverse=True)
+            rows = rows[:days]  # Limit to requested window
+
+            # Build VIXSignals with rolling averages for term structure
+            signals = []
+            for i, current in enumerate(rows):
+                vix_spot = current["close"]
+
+                # Rolling averages for term structure estimate
+                vix_1m = None
+                vix_3m = None
+                if i + 20 <= len(rows):
+                    vix_1m = sum(r["close"] for r in rows[i:i + 20]) / 20
+                if i + 60 <= len(rows):
+                    vix_3m = sum(r["close"] for r in rows[i:i + 60]) / 60
+
+                term_spread = (vix_1m - vix_spot) if vix_1m else 0.0
+
+                if term_spread > 1.0:
+                    structure_type = "contango"
+                elif term_spread < -1.0:
+                    structure_type = "backwardation"
+                else:
+                    structure_type = "flat"
+
+                signals.append(VIXSignal(
+                    vix_spot=round(vix_spot, 2),
+                    vix_1m=round(vix_1m, 2) if vix_1m else None,
+                    vix_3m=round(vix_3m, 2) if vix_3m else None,
+                    term_spread=round(term_spread, 2),
+                    structure_type=structure_type,
+                    date=current["date"],
+                ))
+
+            logger.info("VIX history: %d daily readings", len(signals))
+            return signals
+
+        except Exception as exc:
+            logger.warning("VIX history parse error: %s", exc)
+            return []
+
     def _parse_vix_csv(self, text: str) -> Optional[VIXSignal]:
         """Parse CBOE VIX history CSV and extract most recent data."""
         reader = csv.DictReader(io.StringIO(text))
@@ -193,6 +267,11 @@ class VIXClient:
 def get_vix_structure() -> Optional[VIXSignal]:
     """Convenience function for one-shot VIX data fetch."""
     return VIXClient().get_vix_structure()
+
+
+def get_vix_history(days: int = 365) -> List[VIXSignal]:
+    """Convenience function for VIX history backfill."""
+    return VIXClient().get_vix_history(days)
 
 
 if __name__ == "__main__":

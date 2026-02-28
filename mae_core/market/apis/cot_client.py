@@ -138,6 +138,126 @@ class COTClient:
             logger.warning("COT fetch failed: %s", exc)
             return []
 
+    def get_all_positions(
+        self, symbols: Optional[List[str]] = None, years: Optional[List[int]] = None
+    ) -> List[COTSignal]:
+        """
+        Get ALL weekly COT positions for futures contracts across multiple years.
+
+        Unlike get_latest_positions() which returns only the most recent row per
+        contract, this returns every weekly report — ideal for backfilling archives.
+
+        Args:
+            symbols: List of MIDGE futures tickers. If None, returns all mapped.
+            years: List of years to fetch (e.g. [2025, 2026]). Defaults to current year.
+
+        Returns:
+            List of COTSignal objects, one per contract per weekly report.
+        """
+        self._rate_limit()
+
+        try:
+            import cot_reports as cot
+        except ImportError:
+            logger.warning("cot-reports library not installed. pip install cot-reports")
+            return []
+
+        if years is None:
+            years = [datetime.now().year]
+
+        all_signals = []
+        for year in years:
+            try:
+                df = cot.cot_year(year=year, cot_report_type="legacy_fut")
+                if df is None or df.empty:
+                    logger.warning("COT: no data for year %d", year)
+                    continue
+                signals = self._parse_all_rows(df, symbols)
+                all_signals.extend(signals)
+                logger.info("COT: %d positions from year %d", len(signals), year)
+            except Exception as exc:
+                logger.warning("COT fetch failed for year %d: %s", year, exc)
+
+        return all_signals
+
+    def _parse_all_rows(
+        self, df, symbols: Optional[List[str]] = None
+    ) -> List[COTSignal]:
+        """Parse ALL rows from cot-reports DataFrame (not just latest)."""
+        results = []
+        target_tickers = symbols or list(TICKER_TO_CFTC.keys())
+
+        # Find column names
+        name_col = None
+        for col in ["Market and Exchange Names", "Market_and_Exchange_Names"]:
+            if col in df.columns:
+                name_col = col
+                break
+        if name_col is None:
+            return results
+
+        date_col = None
+        for col in ["As of Date in Form YYYY-MM-DD", "As_of_Date_In_Form_YYYY-MM-DD", "Report_Date_as_YYYY-MM-DD"]:
+            if col in df.columns:
+                date_col = col
+                break
+
+        for ticker in target_tickers:
+            cftc_name = TICKER_TO_CFTC.get(ticker)
+            if not cftc_name:
+                continue
+
+            mask = df[name_col].str.contains(cftc_name, case=False, na=False)
+            contract_df = df[mask]
+            if contract_df.empty:
+                continue
+
+            for _, row in contract_df.iterrows():
+                try:
+                    def _get(col_variants, default=0):
+                        for v in col_variants:
+                            if v in row.index:
+                                val = row[v]
+                                try:
+                                    return int(float(val))
+                                except (ValueError, TypeError):
+                                    continue
+                        return default
+
+                    comm_long = _get(["Comm_Positions_Long_All", "Commercial Long", "Comm_Positions_Long_Old"])
+                    comm_short = _get(["Comm_Positions_Short_All", "Commercial Short", "Comm_Positions_Short_Old"])
+                    noncomm_long = _get(["NonComm_Positions_Long_All", "Noncommercial Long", "NonComm_Positions-Long_All"])
+                    noncomm_short = _get(["NonComm_Positions_Short_All", "Noncommercial Short", "NonComm_Positions-Short_All"])
+                    oi = _get(["Open_Interest_All", "Open Interest", "Open_Interest_Old"], default=1)
+
+                    comm_net = comm_long - comm_short
+                    noncomm_net = noncomm_long - noncomm_short
+                    small_net = oi - (comm_long + comm_short + noncomm_long + noncomm_short)
+                    pct_comm = comm_long / max(1, oi)
+
+                    report_date = str(row.get(date_col, "")) if date_col else ""
+                    if hasattr(report_date, "strftime"):
+                        report_date = report_date.strftime("%Y-%m-%d")
+
+                    results.append(COTSignal(
+                        ticker=ticker,
+                        contract_name=cftc_name,
+                        commercial_long=comm_long,
+                        commercial_short=comm_short,
+                        commercial_net=comm_net,
+                        noncommercial_long=noncomm_long,
+                        noncommercial_short=noncomm_short,
+                        noncommercial_net=noncomm_net,
+                        small_trader_net=small_net,
+                        open_interest=oi,
+                        pct_commercial_long=round(pct_comm, 4),
+                        report_date=report_date[:10] if report_date else "",
+                    ))
+                except Exception as exc:
+                    logger.debug("COT: failed to parse row for %s: %s", ticker, exc)
+
+        return results
+
     def _parse_dataframe(
         self, df, symbols: Optional[List[str]] = None
     ) -> List[COTSignal]:

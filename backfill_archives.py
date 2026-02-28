@@ -71,7 +71,10 @@ BACKFILL_TICKERS = [
     "PANW", "CRWD",
 ]
 
-ALL_SOURCES = ["sec", "congress", "contracts", "efts", "finra", "macro", "earnings", "price"]
+ALL_SOURCES = [
+    "sec", "congress", "contracts", "efts", "finra", "macro", "earnings", "price",
+    "cot", "vix", "stocktwits", "trends", "finnhub_economic", "finnhub_analyst", "finnhub_earnings_cal",
+]
 
 
 # ── Signal serialization (matches sensing_hook._store_signals) ────────────────
