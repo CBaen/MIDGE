@@ -72,6 +72,7 @@ class HypothesisEngine:
         self._validation_cadence = validation_cadence
         self._regime_cadence = regime_cadence
         self._step_counter = 0
+        self._last_generation_step = 0
 
         # Signal match tracking
         self._signals_matched = 0
@@ -96,6 +97,7 @@ class HypothesisEngine:
 
         if self._step_counter % self._generation_cadence == 0:
             self._run_generation()
+            self._last_generation_step = self._step_counter
 
         if self._step_counter % self._validation_cadence == 0:
             self._launch_validation()

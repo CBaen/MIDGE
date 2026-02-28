@@ -1477,6 +1477,11 @@ def _differentiate_market_agents(ctx: SimpleNamespace) -> None:
             "ctx": ctx,
         })
 
+    # Register market-aware reflexes on differentiated agents' routers.
+    # These give market agents instinctive reactions to market stimuli
+    # (convergence:strong → exploit, hypothesis:empty → explore, etc.)
+    _register_market_reflexes(agents, differentiated)
+
     triads = (
         1
         + (1 if len(agents) >= 6 else 0)

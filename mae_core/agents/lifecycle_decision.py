@@ -307,10 +307,17 @@ class DecisionActionLifecycleMixin:
         if state_vec is not None:
             context["state"] = state_vec
 
-        # Enrich with market context for market-role agents
+        # Enrich with market context for market-role agents.
+        # Market agents use market_stimulus for routing — their decisions
+        # should be driven by market state, not generic pattern cortex.
         from mae_core.market.market_awareness import get_market_context_for_router, is_market_agent
         if is_market_agent(self):
-            context.update(get_market_context_for_router(self))
+            market_ctx = get_market_context_for_router(self)
+            context.update(market_ctx)
+            # Override stimulus with market-state encoding for reflex matching
+            market_stim = market_ctx.get("market_stimulus")
+            if market_stim:
+                stimulus = market_stim
 
         # Enrich context with organism body state (interoceptive awareness)
         body = getattr(self, "_body_state", None)

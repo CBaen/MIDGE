@@ -165,6 +165,22 @@ def get_market_context_for_router(agent: Any) -> dict[str, Any]:
         except Exception:
             pass
 
+    # Market stimulus encoding for DecisionRouter reflex matching.
+    # Encodes current market state as a string the router's reflex
+    # patterns can match, enabling market-aware routing.
+    conv_str = context.get("convergence_strength", 0.0)
+    conv_dir = context.get("convergence_direction", "neutral")
+    active_hyp = context.get("active_hypotheses", -1)  # -1 = no registry
+
+    if conv_str > 0.8:
+        context["market_stimulus"] = f"convergence:strong:{conv_dir}"
+    elif conv_str > 0.5:
+        context["market_stimulus"] = f"convergence:moderate:{conv_dir}"
+    elif active_hyp == 0:
+        context["market_stimulus"] = "hypothesis:empty"
+    else:
+        context["market_stimulus"] = "market:ambient"
+
     return context
 
 
