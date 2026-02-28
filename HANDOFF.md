@@ -27,7 +27,7 @@ MIDGE gained 5 new FREE data sources, expanding her sensing from 14 to 19 source
 
 **New dependencies:** `pip install cot-reports pytrends`
 
-**171 new tests:** test_new_sources.py (120 tests — clients + converters) + test_new_source_wiring.py (51 tests — pipeline integration). **3057 total tests, 0 failures.**
+**171 new tests:** test_new_sources.py (120 tests — clients + converters) + test_new_source_wiring.py (51 tests — pipeline integration). **3,119 total tests, 0 failures** (62 additional decomposition wiring tests added 2026-02-28).
 
 ### Bridge 4+5: Dynamic Gates + Meta-Learning / RSI Layer 3 (2026-02-27)
 

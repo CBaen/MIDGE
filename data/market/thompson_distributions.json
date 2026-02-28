@@ -1,50 +1,50 @@
 {
   "sec_edgar": {
     "default": {
-      "alpha": 1.86219,
+      "alpha": 1.4927884675337157,
       "beta": 1.0
     }
   },
   "13f_filing": {
     "default": {
-      "alpha": 1.6777176262325821,
+      "alpha": 1.3449097697968733,
       "beta": 1.0
     }
   },
   "form_4": {
     "default": {
-      "alpha": 1.6777176262325821,
+      "alpha": 1.3449097697968733,
       "beta": 1.0
     }
   },
   "capitol_trades": {
     "default": {
-      "alpha": 1.4917857390982454,
+      "alpha": 1.1958610814992678,
       "beta": 1.0
     }
   },
   "unusual_whales": {
     "default": {
-      "alpha": 1.3218697981369383,
+      "alpha": 1.5524784,
       "beta": 1.0
     }
   },
   "polygon": {
     "default": {
-      "alpha": 1.86219,
+      "alpha": 1.4927884675337157,
       "beta": 1.0
     }
   },
   "twitter_verified": {
     "default": {
-      "alpha": 1.1643587999999998,
+      "alpha": 1.1527152119999997,
       "beta": 1.0
     }
   },
   "reddit": {
     "default": {
       "alpha": 1.0,
-      "beta": 1.1336190155097616
+      "beta": 1.1801204707374973
     }
   },
   "stocktwits": {
@@ -55,20 +55,20 @@
   },
   "gemini": {
     "default": {
-      "alpha": 1.2145918023318873,
+      "alpha": 1.3295773075741937,
       "beta": 1.0
     }
   },
   "deepseek": {
     "default": {
-      "alpha": 1.1336190155097616,
+      "alpha": 1.1801204707374973,
       "beta": 1.0
     }
   },
   "unknown": {
     "default": {
       "alpha": 1.0,
-      "beta": 3.4820660902478684
+      "beta": 2.7913306927393187
     }
   },
   "session_sweep": {
@@ -79,8 +79,12 @@
   },
   "sec_form4": {
     "default": {
-      "alpha": 10.221473877701213,
-      "beta": 18.175709724382905
+      "alpha": 8.193846130539578,
+      "beta": 14.570204901647635
+    },
+    "sideways": {
+      "alpha": 1.6358138751944613,
+      "beta": 1.6358138751944613
     }
   },
   "sec_form8k": {
@@ -91,86 +95,102 @@
   },
   "sec_efts": {
     "default": {
-      "alpha": 1.1336190155097616,
+      "alpha": 1.1801204707374973,
       "beta": 1.0
     }
   },
   "congressional": {
     "default": {
-      "alpha": 12.780952536030098,
-      "beta": 65.26732128301133
+      "alpha": 10.245602516328367,
+      "beta": 52.32028123773467
     }
   },
   "senate": {
     "default": {
-      "alpha": 1.2145918023318873,
+      "alpha": 1.3295773075741937,
       "beta": 1.0
     }
   },
   "insider_cluster": {
     "default": {
-      "alpha": 1.3765373759761392,
+      "alpha": 1.1034744682262838,
       "beta": 1.0
     }
   },
   "contract_award": {
     "default": {
-      "alpha": 9.47627804068775,
-      "beta": 52.048623301641946
+      "alpha": 7.596474352392435,
+      "beta": 41.723768581990946
     }
   },
   "contract_prediction": {
     "default": {
-      "alpha": 1.1643587999999998,
+      "alpha": 1.1527152119999997,
       "beta": 1.0
     }
   },
   "hiring_tracker": {
     "default": {
-      "alpha": 1.1643587999999998,
+      "alpha": 1.1527152119999997,
       "beta": 1.0
     }
   },
   "sam_gov": {
     "default": {
       "alpha": 1.0,
-      "beta": 1.1643587999999998
+      "beta": 1.1527152119999997
     }
   },
   "social_sentiment": {
     "default": {
       "alpha": 1.0,
-      "beta": 1.1336190155097616
+      "beta": 1.1801204707374973
+    },
+    "sideways": {
+      "alpha": 1.0,
+      "beta": 1.0
     }
   },
   "finra_short": {
     "default": {
-      "alpha": 1011.4568731796103,
-      "beta": 1815.9186351906192
+      "alpha": 810.8147695402911,
+      "beta": 1455.695926082796
+    },
+    "sideways": {
+      "alpha": 10.632790188763996,
+      "beta": 40.077439942264306
     }
   },
   "finnhub_news": {
     "default": {
-      "alpha": 1.1643587999999998,
+      "alpha": 1.1527152119999997,
       "beta": 1.0
     }
   },
   "finnhub_earnings": {
     "default": {
-      "alpha": 42.60399578093335,
-      "beta": 117.31594458465331
+      "alpha": 34.15266625458862,
+      "beta": 94.04404981972564
+    },
+    "sideways": {
+      "alpha": 51.528137068625526,
+      "beta": 93.24139088608429
     }
   },
   "fred_macro": {
     "default": {
-      "alpha": 1.1336190155097616,
+      "alpha": 1.1801204707374973,
       "beta": 1.0
     }
   },
   "yfinance_price": {
     "default": {
-      "alpha": 190.01878348218492,
-      "beta": 637.8021776010726
+      "alpha": 152.32486942631616,
+      "beta": 511.281735639635
+    },
+    "sideways": {
+      "alpha": 2.453720812791692,
+      "beta": 27.808835878305842
     }
   },
   "ta_rsi": {
@@ -195,18 +215,90 @@
     "default": {
       "alpha": 1.1,
       "beta": 0.8999999999999999
+    },
+    "sideways": {
+      "alpha": 1.0,
+      "beta": 1.0
     }
   },
   "ta_candle": {
     "default": {
       "alpha": 1.1,
       "beta": 0.8999999999999999
+    },
+    "sideways": {
+      "alpha": 1.0,
+      "beta": 1.0
     }
   },
   "session_sweep_ifvg": {
     "default": {
-      "alpha": 1.1483999999999999,
+      "alpha": 1.1142913715999998,
       "beta": 1.0
+    },
+    "sideways": {
+      "alpha": 1.0,
+      "beta": 1.0
+    }
+  },
+  "sweep_bt:NQ=F:bearish": {
+    "sideways": {
+      "alpha": 1.0,
+      "beta": 1.0
+    }
+  },
+  "sweep_bt:NQ=F": {
+    "sideways": {
+      "alpha": 1.0,
+      "beta": 1.0
+    }
+  },
+  "sweep_bt:bearish": {
+    "sideways": {
+      "alpha": 1.0,
+      "beta": 1.0
+    }
+  },
+  "cot_positioning": {
+    "default": {
+      "alpha": 1.1,
+      "beta": 0.8999999999999999
+    }
+  },
+  "stocktwits_sentiment": {
+    "default": {
+      "alpha": 1.0,
+      "beta": 1.0
+    }
+  },
+  "vix_term_structure": {
+    "default": {
+      "alpha": 1.1527152119999997,
+      "beta": 1.0
+    }
+  },
+  "google_trends": {
+    "default": {
+      "alpha": 0.9,
+      "beta": 1.1
+    }
+  },
+  "finnhub_economic": {
+    "default": {
+      "alpha": 1.1,
+      "beta": 0.8999999999999999
+    }
+  },
+  "finnhub_analyst": {
+    "default": {
+      "alpha": 1.0,
+      "beta": 1.0
+    }
+  },
+  "finnhub_earnings_calendar": {
+    "default": {
+      "alpha": 1.1,
+      "beta": 0.8999999999999999
     }
   }
 }
