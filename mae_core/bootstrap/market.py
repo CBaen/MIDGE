@@ -989,6 +989,85 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
     logger.info("Layer 33f - Market EventBus: convergence + hypothesis -> endocrine coupling wired")
 
 
+def _write_convergence_heartbeat(ctx: SimpleNamespace, step: int) -> None:
+    """Overwrite data/midge/convergence_state.json with current snapshot.
+
+    Called every 100 steps. Single JSON file (not append) — always
+    current, cheap to read for monitoring. Never blocks step loop.
+    """
+    import json as _json
+    from datetime import datetime as _dt
+
+    try:
+        heartbeat: dict = {"step": step, "ts": _dt.now().isoformat(timespec="seconds")}
+
+        # Regime
+        rc = getattr(ctx, "regime_classifier", None)
+        heartbeat["regime"] = rc.classify() if rc is not None else "unknown"
+
+        # Global convergence
+        adv = getattr(ctx, "_market_advisory", None)
+        if adv is not None:
+            alert = adv.get("alert")
+            if alert is not None and isinstance(alert, dict):
+                heartbeat["global"] = {
+                    "direction": alert.get("direction", "neutral"),
+                    "strength": alert.get("strength", 0.0),
+                    "domains": len(alert.get("domains", [])),
+                }
+            else:
+                heartbeat["global"] = None
+
+            heartbeat["tactical"] = adv.get("tactical")
+            heartbeat["strategic"] = adv.get("strategic")
+        else:
+            heartbeat["global"] = None
+
+        # Per-ticker alerts
+        ticker_alerts = getattr(ctx, "_ticker_alerts", [])
+        heartbeat["ticker_alerts"] = {}
+        for ta in ticker_alerts:
+            if hasattr(ta, "to_dict"):
+                td = ta.to_dict()
+                # Try to extract symbol from signals
+                symbols = set()
+                for sig in getattr(ta, "signals", []):
+                    sym = getattr(sig, "metadata", {}).get("symbol", "")
+                    if sym:
+                        symbols.add(sym)
+                for sym in symbols:
+                    heartbeat["ticker_alerts"][sym] = td.get("direction", "neutral")
+
+        # Hypothesis stats
+        hyp_engine = getattr(ctx, "hypothesis_engine", None)
+        if hyp_engine is not None:
+            try:
+                hyp_stats = hyp_engine.get_statistics()
+                heartbeat["hypotheses"] = {
+                    "active": hyp_stats.get("active_count", 0),
+                    "probation": hyp_stats.get("probation_count", 0),
+                    "generated": hyp_stats.get("hypotheses_generated", 0),
+                    "promoted": hyp_stats.get("hypotheses_promoted", 0),
+                }
+            except Exception:
+                heartbeat["hypotheses"] = None
+        else:
+            heartbeat["hypotheses"] = None
+
+        # Kelly
+        heartbeat["kelly"] = getattr(ctx, "_latest_kelly", {})
+
+        # Write
+        out_dir = Path("data/midge")
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out_path = out_dir / "convergence_state.json"
+        with open(out_path, "w", encoding="utf-8") as f:
+            _json.dump(heartbeat, f, indent=2, default=str)
+
+    except Exception:
+        logger.debug("Convergence heartbeat write failed", exc_info=True)
+
+
 # =========================================================================
 # Layer 33g: Step hooks with deduplication
 # =========================================================================
@@ -1091,6 +1170,9 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                     sampler.apply_forgetting(decay_factor=0.99)
                 except Exception:
                     logger.debug("Thompson forgetting step failed", exc_info=True)
+
+            # Convergence heartbeat: overwrite data/midge/convergence_state.json
+            _write_convergence_heartbeat(ctx, step)
 
         # Every 500 steps: lag-correlation analysis
         if step % 500 == 0:
@@ -1495,3 +1577,80 @@ def _differentiate_market_agents(ctx: SimpleNamespace) -> None:
         "market + intelligence + hypothesis" if len(agents) >= 12
         else ("market + intelligence" if len(agents) >= 9 else "market"),
     )
+
+
+def _register_market_reflexes(agents: list, differentiated_count: int) -> None:
+    """Register market-aware reflex patterns on differentiated agents.
+
+    Each market agent's per-agent DecisionRouter gets reflexes that
+    map market stimulus strings to actions. This is the instinct layer —
+    when convergence is strong, exploit immediately; when hypotheses are
+    empty, explore to generate new ones.
+
+    Stimulus patterns use substring matching (decision_router._check_reflex
+    line 412: `pattern.stimulus_pattern in stimulus_lower`).
+    """
+    if differentiated_count == 0:
+        return
+
+    try:
+        from mae_core.cognition.decision_router import ReflexPattern
+    except ImportError:
+        logger.debug("Could not import ReflexPattern for market reflexes")
+        return
+
+    # Role → list of (stimulus_pattern, action, priority)
+    _MARKET_REFLEXES = {
+        "SEC_WATCHER": [
+            ("convergence:strong", {"type": "exploit"}, 20),
+            ("market:ambient", {"type": "explore"}, 5),
+        ],
+        "CONTRACT_TRACKER": [
+            ("convergence:strong", {"type": "exploit"}, 20),
+        ],
+        "MARKET_ANALYST": [
+            ("convergence:strong", {"type": "exploit"}, 25),
+            ("convergence:moderate", {"type": "exploit"}, 15),
+        ],
+        "HYPOTHESIS_EXPLORER": [
+            ("hypothesis:empty", {"type": "explore"}, 20),
+        ],
+        "HYPOTHESIS_VALIDATOR": [
+            ("convergence:strong", {"type": "exploit"}, 15),
+        ],
+    }
+
+    registered = 0
+    for agent in agents:
+        role = getattr(agent, "role", "STEM")
+        reflexes = _MARKET_REFLEXES.get(role)
+        if not reflexes:
+            continue
+
+        router = getattr(agent, "decision_router", None)
+        if router is None or not hasattr(router, "register_reflex"):
+            continue
+
+        agent_id = str(getattr(agent, "unique_id", id(agent)))
+        for stimulus, action, priority in reflexes:
+            pattern_id = f"market_{role.lower()}_{stimulus.replace(':', '_')}_{agent_id}"
+            try:
+                router.register_reflex(ReflexPattern(
+                    pattern_id=pattern_id,
+                    stimulus_pattern=stimulus,
+                    action=action,
+                    confidence=0.90,
+                    priority=priority,
+                ))
+                registered += 1
+            except Exception:
+                logger.debug(
+                    "Failed to register reflex %s on agent %s",
+                    stimulus, agent_id, exc_info=True,
+                )
+
+    if registered:
+        logger.info(
+            "Layer 33i - Registered %d market reflexes across differentiated agents",
+            registered,
+        )
