@@ -235,6 +235,11 @@ def get_latest_positions(symbols: Optional[List[str]] = None) -> List[COTSignal]
     return COTClient().get_latest_positions(symbols)
 
 
+def get_all_positions(symbols: Optional[List[str]] = None, years: Optional[List[int]] = None) -> List[COTSignal]:
+    """Convenience function for multi-year COT history."""
+    return COTClient().get_all_positions(symbols, years)
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     print("Testing CFTC COT Reports...")
