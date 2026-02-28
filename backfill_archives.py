@@ -806,6 +806,13 @@ def main():
         macro_indicators=macro_indicators,
         earnings_events=earnings_events,
         price_history=price_history,
+        cot_positions=cot_positions,
+        vix_readings=vix_readings,
+        stocktwits=stocktwits_data,
+        trends=trends_data,
+        finnhub_econ=finnhub_econ,
+        finnhub_recs=finnhub_recs,
+        finnhub_earn_cal=finnhub_earn_cal,
     )
     logger.info("Phase 2 complete: %d unique signals (deduped from %d raw)", len(signals), raw_total)
 
