@@ -320,19 +320,31 @@ class TestHypothesisValidator:
         reward = act_market(agent, "explore")
         assert reward == pytest.approx(0.05)
 
-    def test_validate_promoted(self):
+    def test_validate_promoted(self, tmp_path):
         engine = MagicMock()
         engine.request_validation.return_value = "promoted"
         agent = _make_agent(role="HYPOTHESIS_VALIDATOR", hypothesis_engine=engine)
-        reward = act_market(agent, "exploit")
+        with patch("mae_core.market.market_actions._OUTPUT_DIR", tmp_path):
+            reward = act_market(agent, "exploit")
         assert reward == pytest.approx(0.4)
+        # Verify hypothesis activity is logged to tmp_path, not data/midge/
+        log_path = tmp_path / "hypothesis_activity.jsonl"
+        assert log_path.exists(), "hypothesis_activity.jsonl must be written on promotion"
+        record = json.loads(log_path.read_text().strip())
+        assert record["event"] == "promoted"
 
-    def test_validate_retired(self):
+    def test_validate_retired(self, tmp_path):
         engine = MagicMock()
         engine.request_validation.return_value = "retired"
         agent = _make_agent(role="HYPOTHESIS_VALIDATOR", hypothesis_engine=engine)
-        reward = act_market(agent, "exploit")
+        with patch("mae_core.market.market_actions._OUTPUT_DIR", tmp_path):
+            reward = act_market(agent, "exploit")
         assert reward == pytest.approx(0.2)
+        # Verify hypothesis activity is logged to tmp_path, not data/midge/
+        log_path = tmp_path / "hypothesis_activity.jsonl"
+        assert log_path.exists(), "hypothesis_activity.jsonl must be written on retirement"
+        record = json.loads(log_path.read_text().strip())
+        assert record["event"] == "retired"
 
     def test_validate_busy(self):
         engine = MagicMock()
