@@ -748,9 +748,14 @@ class AutoHealer:
             """Inject resources into starving region."""
             if not self._substrate:
                 return "no_substrate"
-            for agent_id in record.failure.affected_agents:
-                self._substrate.inject_nutrient(agent_id, 1.0)
-            return f"nutrients_injected_for_{len(record.failure.affected_agents)}_agents"
+            flow = getattr(self._substrate, "nutrient_flow", None)
+            if flow is None or not hasattr(flow, "inject_resources"):
+                return "no_nutrient_flow"
+            injected = 0
+            for node_id in record.failure.affected_agents:
+                if flow.inject_resources(str(node_id), 0.5):
+                    injected += 1
+            return f"nutrients_injected_for_{injected}_nodes"
 
         self.register_recovery(FailureType.PERFORMANCE_DEGRADATION, _redistribute_load)
         self.register_recovery(FailureType.STARVATION, _inject_nutrients)
