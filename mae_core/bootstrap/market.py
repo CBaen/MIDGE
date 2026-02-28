@@ -93,7 +93,7 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
 # =========================================================================
 
 def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
-    """Create all 28 market system objects on ctx."""
+    """Create all 32 market system objects on ctx."""
     import os
     qdrant_url = getattr(ctx, "qdrant_url", "http://localhost:6333")
     failures = 0
