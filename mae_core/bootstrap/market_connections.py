@@ -1,0 +1,271 @@
+"""Bootstrap Layer 33d: Market triadic connections.
+
+One job: register all 66 triadic connections for the market intelligence organ
+(Groups 14-19). No bare dyads — every A<->B has witness C.
+
+Groups:
+  14 - Market K3 subsystems + EventBus pub/sub + TA indicators
+  15 - Phase 4: Signal archive, lag-correlation, calibration, Kelly
+  16 - Hypothesis loop (RSI Layer 2)
+  17 - Backtest bridge (Bridge 1 + Bridge 3)
+  18 - Efficiency: StepTimer performance metabolism
+  19 - Layer 6 new source clients
+"""
+
+from __future__ import annotations
+
+import logging
+from types import SimpleNamespace
+
+logger = logging.getLogger("midge.bootstrap")
+
+
+def _register_market_connections(ctx: SimpleNamespace) -> None:
+    """Register 66 triadic connections for market systems (Group 14-19)."""
+    from mae_core.backbone.connection_registry import (
+        ConnectionType,
+        ConnectionCriticality,
+    )
+
+    reg = ctx.connection_registry.register_connection
+    dr = ConnectionType.DIRECT_REFERENCE
+    eb = ConnectionType.EVENTBUS_PUBSUB
+    cb = ConnectionType.CALLBACK_REGISTRATION
+    sh = ConnectionType.STEP_HOOK
+
+    # --- Market Sensing K3 ---
+    reg("sec_edgar_client", "price_fetcher", dr,
+        witnesses=["job_tracker", "auditor"],
+        description="SEC signals correlate with price movement")
+    reg("price_fetcher", "job_tracker", dr,
+        witnesses=["sec_edgar_client", "auditor"],
+        description="Price data validates hiring signal predictions")
+    reg("job_tracker", "sec_edgar_client", dr,
+        witnesses=["price_fetcher", "auditor"],
+        description="Hiring data cross-references insider filings")
+
+    # --- Market Edge K3 ---
+    reg("cluster_detector", "politician_tracker", dr,
+        witnesses=["contract_predictor", "auditor"],
+        description="Insider clusters may correlate with political trades")
+    reg("politician_tracker", "contract_predictor", dr,
+        witnesses=["cluster_detector", "auditor"],
+        description="Political trades may precede contract awards")
+    reg("contract_predictor", "cluster_detector", dr,
+        witnesses=["politician_tracker", "auditor"],
+        description="Contract predictions validated by insider clusters")
+
+    # --- Market Learning K3 ---
+    reg("thompson_sampler", "convergence_alerter", dr,
+        witnesses=["velocity_detector", "auditor"],
+        description="Thompson reliability weights convergence decisions")
+    reg("convergence_alerter", "velocity_detector", dr,
+        witnesses=["thompson_sampler", "auditor"],
+        description="Convergence alerts carry velocity context")
+    reg("velocity_detector", "thompson_sampler", dr,
+        witnesses=["convergence_alerter", "auditor"],
+        description="Velocity anomalies feed signal exploration priority")
+
+    # --- Cross-subsystem: EventBus publish ---
+    reg("cluster_detector", "event_bus", eb,
+        channel="market.edge.cluster_detected",
+        witnesses=["threat_detector", "auditor"],
+        description="Insider cluster signal published")
+    reg("politician_tracker", "event_bus", eb,
+        channel="market.edge.politician_trade",
+        witnesses=["threat_detector", "auditor"],
+        description="Political trade correlation published")
+    reg("contract_predictor", "event_bus", eb,
+        channel="market.edge.contract_predicted",
+        witnesses=["threat_detector", "auditor"],
+        description="Contract prediction published")
+    reg("filing_time_analyzer", "event_bus", eb,
+        channel="market.edge.filing_anomaly",
+        witnesses=["threat_detector", "auditor"],
+        description="Filing time anomaly published")
+    reg("session_sweep_detector", "event_bus", eb,
+        channel="market.edge.session_sweep",
+        witnesses=["threat_detector", "auditor"],
+        description="Session sweep signal published")
+
+    # --- Cross-subsystem: EventBus subscribe ---
+    reg("convergence_alerter", "event_bus", cb,
+        channel="market.edge.cluster_detected",
+        witnesses=["thompson_sampler", "auditor"],
+        description="Convergence subscribes to cluster signals")
+    reg("convergence_alerter", "event_bus", cb,
+        channel="market.edge.politician_trade",
+        witnesses=["thompson_sampler", "auditor"],
+        description="Convergence subscribes to political trade signals")
+    reg("convergence_alerter", "event_bus", cb,
+        channel="market.edge.contract_predicted",
+        witnesses=["thompson_sampler", "auditor"],
+        description="Convergence subscribes to contract predictions")
+    reg("convergence_alerter", "event_bus", cb,
+        channel="market.edge.session_sweep",
+        witnesses=["thompson_sampler", "auditor"],
+        description="Convergence subscribes to session sweep signals")
+
+    # --- Integration connections ---
+    reg("convergence_alerter", "thompson_sampler", dr,
+        witnesses=["velocity_detector", "knowledge_base"],
+        description="Convergence queries Thompson for signal reliability")
+    reg("velocity_detector", "convergence_alerter", dr,
+        witnesses=["thompson_sampler", "auditor"],
+        description="Velocity enriches convergence signal context")
+    reg("convergence_alerter", "knowledge_base", dr,
+        witnesses=["thompson_sampler", "auditor"],
+        description="Convergence stores discoveries to knowledge base")
+    reg("sec_edgar_client", "boundary_membrane", dr,
+        witnesses=["input_validator", "threat_detector"],
+        criticality=ConnectionCriticality.IMPORTANT,
+        description="SEC client validated through boundary membrane")
+    reg("price_fetcher", "boundary_membrane", dr,
+        witnesses=["input_validator", "threat_detector"],
+        criticality=ConnectionCriticality.IMPORTANT,
+        description="Price fetcher validated through boundary membrane")
+    reg("session_sweep_detector", "price_fetcher", dr,
+        witnesses=["convergence_alerter", "auditor"],
+        description="Session sweep reads intraday price data via yfinance")
+
+    # --- TA Indicators connections ---
+    reg("ta_indicators", "price_fetcher", dr,
+        witnesses=["convergence_alerter", "auditor"],
+        description="TA indicators compute RSI/MACD/Bollinger from daily OHLCV")
+    reg("convergence_alerter", "ta_indicators", dr,
+        channel="market.edge.ta_indicators",
+        witnesses=["thompson_sampler", "auditor"],
+        description="Convergence subscribes to TA indicator signals")
+    reg("ta_indicators", "thompson_sampler", dr,
+        witnesses=["convergence_alerter", "auditor"],
+        description="Thompson learns TA indicator reliability from outcomes")
+
+    # --- Step hook + periodic ---
+    reg("convergence_alerter", "model", sh,
+        witnesses=["auditor", "connection_registry"],
+        description="Convergence alerter runs each step")
+    reg("thompson_sampler", "event_bus", eb,
+        channel="market.intel.thompson_stats",
+        witnesses=["auditor", "connection_registry"],
+        description="Thompson stats published periodically")
+
+    # --- Group 15: Phase 4 — Signal Archive, Lag-Correlation, Calibration, Kelly ---
+    reg("signal_archive_reader", "lag_correlation_analyzer", dr,
+        witnesses=["thompson_calibrator", "auditor"],
+        description="Archive reader provides historical series to lag analyzer")
+    reg("lag_correlation_analyzer", "event_bus", eb,
+        channel="market.intel.lag_finding",
+        witnesses=["correlation_tracker", "auditor"],
+        description="Lag findings published to EventBus")
+    reg("thompson_calibrator", "signal_archive_reader", dr,
+        witnesses=["lag_correlation_analyzer", "auditor"],
+        description="Calibrator reads archives to validate distributions")
+
+    reg("thompson_calibrator", "thompson_sampler", dr,
+        witnesses=["signal_archive_reader", "auditor"],
+        description="Calibrator seeds and diagnoses Thompson distributions")
+    reg("thompson_calibrator", "event_bus", eb,
+        channel="market.intel.thompson_stats",
+        witnesses=["convergence_alerter", "auditor"],
+        description="Calibration report published to EventBus")
+    reg("convergence_alerter", "thompson_calibrator", dr,
+        witnesses=["thompson_sampler", "auditor"],
+        description="Convergence alerter uses calibration for confidence")
+
+    reg("kelly_position_sizer", "thompson_sampler", dr,
+        witnesses=["thompson_calibrator", "auditor"],
+        description="Kelly sizer queries Thompson mean for p parameter")
+    reg("convergence_alerter", "kelly_position_sizer", dr,
+        witnesses=["thompson_sampler", "auditor"],
+        description="Convergence alert triggers Kelly sizing recommendation")
+    reg("kelly_position_sizer", "event_bus", eb,
+        channel="market.intel.kelly_sizing",
+        witnesses=["convergence_alerter", "auditor"],
+        description="Kelly sizing recommendation published on convergence")
+
+    reg("lag_correlation_analyzer", "correlation_tracker", dr,
+        witnesses=["signal_archive_reader", "auditor"],
+        description="Lag findings feed leading-indicator pairs to tracker")
+    reg("lag_correlation_analyzer", "convergence_alerter", dr,
+        witnesses=["correlation_tracker", "auditor"],
+        description="Significant lag pairs update convergence domain weights")
+    reg("signal_archive_reader", "outcome_tracker", dr,
+        witnesses=["thompson_calibrator", "auditor"],
+        description="Archive reader provides historical signals to outcome tracker")
+
+    # --- Group 16: Hypothesis loop (RSI Layer 2) ---
+    reg("hypothesis_generator", "hypothesis_registry", dr,
+        witnesses=["hypothesis_validator", "auditor"],
+        description="Generator registers new hypotheses in the registry")
+    reg("hypothesis_validator", "hypothesis_registry", dr,
+        witnesses=["hypothesis_generator", "auditor"],
+        description="Validator reads hypotheses for adversarial testing")
+    reg("hypothesis_engine", "hypothesis_generator", dr,
+        witnesses=["hypothesis_validator", "auditor"],
+        description="Engine drives generation on cadence")
+    reg("hypothesis_engine", "hypothesis_validator", dr,
+        witnesses=["hypothesis_generator", "auditor"],
+        description="Engine drives validation on cadence")
+    reg("hypothesis_engine", "hypothesis_registry", dr,
+        witnesses=["hypothesis_generator", "auditor"],
+        description="Engine manages lifecycle transitions (promote/retire)")
+    reg("hypothesis_generator", "lag_correlation_analyzer", dr,
+        witnesses=["hypothesis_registry", "auditor"],
+        description="Generator reads lag findings to create hypotheses")
+    reg("hypothesis_engine", "thompson_sampler", dr,
+        witnesses=["hypothesis_validator", "auditor"],
+        description="Engine registers Thompson key on hypothesis promotion")
+    reg("hypothesis_engine", "event_bus", eb,
+        channel="market.hypothesis.discovered",
+        witnesses=["hypothesis_registry", "auditor"],
+        description="Engine publishes hypothesis discoveries")
+    reg("hypothesis_engine", "event_bus", eb,
+        channel="market.hypothesis.promoted",
+        witnesses=["hypothesis_registry", "auditor"],
+        description="Engine publishes hypothesis promotions")
+    reg("hypothesis_engine", "event_bus", cb,
+        channel="market.sensing.signal_ingested",
+        witnesses=["hypothesis_registry", "auditor"],
+        description="Engine subscribes to ingested signals for trigger matching")
+
+    # --- Group 17: Backtest bridge (Bridge 1 — RSI Layer 2 self-reading) ---
+    reg("backtest_analyzer", "hypothesis_registry", dr,
+        witnesses=["hypothesis_validator", "auditor"],
+        description="Backtest analyzer registers derived hypotheses in registry")
+    reg("backtest_analyzer", "hypothesis_validator", dr,
+        witnesses=["hypothesis_registry", "auditor"],
+        description="Backtest hypotheses flow to validator for DSR evaluation")
+    reg("hypothesis_engine", "backtest_analyzer", dr,
+        witnesses=["hypothesis_generator", "auditor"],
+        description="Engine drives backtest analysis on generation cadence")
+
+    # --- Bridge 3: Autonomous backtest scheduling ---
+    reg("backtest_scheduler", "backtest_analyzer", dr,
+        witnesses=["hypothesis_engine", "auditor"],
+        description="Scheduler triggers backtest rerun and refreshes analyzer")
+    reg("backtest_scheduler", "event_bus", eb,
+        channel="market.intel.backtest_refreshed",
+        witnesses=["hypothesis_engine", "auditor"],
+        description="Scheduler publishes refresh completion event")
+
+    # --- Efficiency: Step timer (performance metabolism) ---
+    reg("step_timer", "convergence_alerter", dr,
+        witnesses=["hypothesis_engine", "auditor"],
+        description="StepTimer wraps convergence check to measure latency")
+    reg("step_timer", "event_bus", eb,
+        channel="market.intel.step_timing",
+        witnesses=["convergence_alerter", "auditor"],
+        description="StepTimer publishes timing statistics for health monitoring")
+
+    # --- Group 19: Layer 6 new source clients ---
+    for client_id in ("cot_client", "stocktwits_client", "vix_client", "trends_client"):
+        if getattr(ctx, client_id, None) is not None:
+            reg(client_id, "convergence_alerter", dr,
+                witnesses=["thompson_sampler", "auditor"],
+                description=f"{client_id} feeds signals to convergence")
+            reg(client_id, "boundary_membrane", dr,
+                witnesses=["input_validator", "threat_detector"],
+                criticality=ConnectionCriticality.IMPORTANT,
+                description=f"{client_id} validated through boundary membrane")
+
+    logger.info("Layer 33d - Market connections: 66 triadic connections registered (Group 14-19)")
