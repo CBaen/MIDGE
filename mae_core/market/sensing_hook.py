@@ -58,9 +58,17 @@ TIER_ROUTING = {
     "ta_bollinger": "tactical",
     "ta_structure": "tactical",
     "ta_candle": "tactical",
+    # New sources (Layer 6)
+    "cot_positioning": "strategic",
+    "stocktwits_sentiment": "thematic",
+    "vix_term_structure": "strategic",
+    "google_trends": "thematic",
+    "finnhub_economic": "tactical",
+    "finnhub_analyst": "strategic",
+    "finnhub_earnings_calendar": "tactical",
 }
 
-# Source names for rotation — 14 sources, full cycle every 700 steps
+# Source names for rotation — 19 sources, full cycle every 950 steps
 SOURCE_ROTATION = [
     "sec_form4",
     "sec_form8k",
@@ -76,6 +84,12 @@ SOURCE_ROTATION = [
     "fred_macro",
     "session_sweep",
     "ta_indicators",
+    # New sources (Layer 6)
+    "cot_positioning",
+    "stocktwits",
+    "vix_structure",
+    "google_trends",
+    "finnhub_extras",
 ]
 
 
@@ -106,6 +120,10 @@ class MarketSensingHook:
         form8k_sentiment: Any = None,
         session_sweep_detector: Any = None,
         ta_indicators: Any = None,
+        cot_client: Any = None,
+        stocktwits_client: Any = None,
+        vix_client: Any = None,
+        trends_client: Any = None,
         outcome_collector: Any = None,
         memory: Any = None,
         tiered_alerters: Optional[dict] = None,
@@ -126,6 +144,10 @@ class MarketSensingHook:
         self._sec_efts = sec_efts
         self._finnhub = finnhub
         self._fred = fred
+        self._cot_client = cot_client
+        self._stocktwits_client = stocktwits_client
+        self._vix_client = vix_client
+        self._trends_client = trends_client
 
         # EventBus (injected by bootstrap for signal bridge)
         self._bus = None
@@ -317,6 +339,12 @@ class MarketSensingHook:
             from_macro_indicator,
             from_session_sweep,
             from_ta_signal,
+            from_cot_positioning,
+            from_stocktwits_sentiment,
+            from_vix_structure,
+            from_trends_signal,
+            from_economic_event,
+            from_analyst_recommendation,
         )
 
         signals = []
@@ -362,6 +390,23 @@ class MarketSensingHook:
 
         elif source_name == "ta_indicators":
             signals = self._fetch_ta_indicators(from_ta_signal)
+
+        elif source_name == "cot_positioning":
+            signals = self._fetch_cot(from_cot_positioning)
+
+        elif source_name == "stocktwits":
+            signals = self._fetch_stocktwits(from_stocktwits_sentiment)
+
+        elif source_name == "vix_structure":
+            signals = self._fetch_vix(from_vix_structure)
+
+        elif source_name == "google_trends":
+            signals = self._fetch_trends(from_trends_signal)
+
+        elif source_name == "finnhub_extras":
+            signals = self._fetch_finnhub_extras(
+                from_economic_event, from_analyst_recommendation
+            )
 
         # Enrich in background thread (velocity, filing-time, Ollama sentiment)
         # Moved from _collect_results() so Ollama's 15s timeout doesn't block
@@ -680,6 +725,118 @@ class MarketSensingHook:
                         pass
             except Exception as e:
                 logger.debug("TA indicators failed for %s: %s", ticker, e)
+        return signals
+
+    # ------------------------------------------------------------------
+    # New source fetchers (Layer 6)
+    # ------------------------------------------------------------------
+
+    def _fetch_cot(self, converter) -> list:
+        """Fetch CFTC Commitments of Traders for futures watchlist."""
+        if self._cot_client is None:
+            return []
+
+        signals = []
+        # COT is futures-only — use futures tickers from watchlist or defaults
+        futures_tickers = [t for t in self._watchlist.get("tickers", [])
+                          if t.endswith("=F")]
+        if not futures_tickers:
+            futures_tickers = ["ES=F", "NQ=F", "GC=F", "CL=F"]
+
+        try:
+            positions = self._cot_client.get_latest_positions(futures_tickers)
+            for pos in positions:
+                try:
+                    signals.append(converter(pos))
+                except Exception:
+                    pass
+        except Exception as e:
+            logger.debug("COT fetch failed: %s", e)
+        return signals
+
+    def _fetch_stocktwits(self, converter) -> list:
+        """Fetch StockTwits bull/bear sentiment for watchlist tickers."""
+        if self._stocktwits_client is None:
+            return []
+
+        signals = []
+        tickers = self._watchlist.get("tickers", [])[:10]  # Cap at 10 for rate limits
+        try:
+            sentiments = self._stocktwits_client.get_sentiment(tickers)
+            for st in sentiments:
+                try:
+                    signals.append(converter(st))
+                except Exception:
+                    pass
+        except Exception as e:
+            logger.debug("StockTwits fetch failed: %s", e)
+        return signals
+
+    def _fetch_vix(self, converter) -> list:
+        """Fetch CBOE VIX term structure."""
+        if self._vix_client is None:
+            return []
+
+        signals = []
+        try:
+            vix = self._vix_client.get_vix_structure()
+            if vix is not None:
+                signals.append(converter(vix))
+        except Exception as e:
+            logger.debug("VIX fetch failed: %s", e)
+        return signals
+
+    def _fetch_trends(self, converter) -> list:
+        """Fetch Google Trends interest for watchlist tickers + macro terms."""
+        if self._trends_client is None:
+            return []
+
+        signals = []
+        # Mix watchlist tickers with macro fear terms
+        tickers = self._watchlist.get("tickers", [])[:5]
+        macro_terms = ["recession", "market crash", "fed rate"]
+        keywords = tickers + macro_terms
+
+        try:
+            trends = self._trends_client.get_interest(keywords)
+            for trend in trends:
+                try:
+                    signals.append(converter(trend))
+                except Exception:
+                    pass
+        except Exception as e:
+            logger.debug("Google Trends fetch failed: %s", e)
+        return signals
+
+    def _fetch_finnhub_extras(self, econ_converter, analyst_converter) -> list:
+        """Fetch Finnhub economic calendar + analyst recommendations."""
+        if self._finnhub is None:
+            return []
+
+        signals = []
+
+        # Economic calendar
+        try:
+            events = self._finnhub.get_economic_calendar(days=7)
+            for event in events:
+                try:
+                    signals.append(econ_converter(event))
+                except Exception:
+                    pass
+        except Exception as e:
+            logger.debug("Finnhub economic calendar failed: %s", e)
+
+        # Analyst recommendations for watchlist tickers
+        tickers = self._watchlist.get("tickers", [])[:5]
+        for ticker in tickers:
+            try:
+                recs = self._finnhub.get_analyst_recommendations(ticker)
+                if recs:
+                    # Only use the most recent recommendation period
+                    signals.append(analyst_converter(recs[0]))
+            except Exception as e:
+                logger.debug("Finnhub analyst recs failed for %s: %s", ticker, e)
+
         return signals
 
     # ------------------------------------------------------------------
