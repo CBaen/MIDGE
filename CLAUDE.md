@@ -65,6 +65,10 @@ mae_core/market/
     job_tracker.py              # RapidAPI hiring blitz detection
     usa_spending.py             # Government contract search
     sam_gov.py                  # Federal contracting opportunities
+    cot_client.py               # CFTC Commitment of Traders positioning data
+    stocktwits_client.py        # StockTwits social sentiment + trending tickers
+    vix_client.py               # VIX term structure + fear gauge signals
+    trends_client.py            # Google Trends search interest signals
   edge/                         # Edge detectors (Mae's pattern recognition)
     cluster_detector.py         # Insider buying clusters (3+ insiders = high signal)
     politician_tracker.py       # Congress member trade + committee + contract correlation
@@ -117,9 +121,9 @@ Market modules are **fully bootstrapped as Layer 33** — wired into EventBus, C
 After any structural change, grep for stale references:
 ```bash
 # Key numbers to check (update these values as they change):
-# Systems: 121 (92 core + 29 market) | Tests: 2886 | Bootstrap layers: 33 | Mixins: 14
-# Connections: 374 (217 core + 47 fractal + 55 bootstrap + 55 market) | Holons: 140 | Fractal depth: 4
-# Market modules: 40 files (9 API + 6 edge + 18 intelligence + 4 integration + session_sweep_detector + step_timer + market_actions)
+# Systems: 125 (92 core + 33 market) | Tests: 3057 | Bootstrap layers: 33 | Mixins: 14
+# Connections: 385 (217 core + 47 fractal + 55 bootstrap + 66 market) | Holons: 144 | Fractal depth: 4
+# Market modules: 44 files (13 API + 6 edge + 18 intelligence + 4 integration + session_sweep_detector + step_timer + market_actions)
 
 grep -rn "PREVIOUS_COUNT" --include="*.md" --include="*.py"
 ```
@@ -144,8 +148,8 @@ grep -rn "PREVIOUS_COUNT" --include="*.md" --include="*.py"
 
 - **Mesa 3.4** foundation, pure Python infrastructure
 - **33-layer bootstrap** in `mae_core/bootstrap/` (orchestrated by `main.py`)
-- **121 systems** (92 core + 29 market), **2886 tests**, **140 holons**, **374 connections**
-- **40 market intelligence files** in `mae_core/market/` (bootstrapped as Layer 33)
+- **125 systems** (92 core + 33 market), **3057 tests**, **144 holons**, **385 connections**
+- **44 market intelligence files** in `mae_core/market/` (bootstrapped as Layer 33)
 - **14 mixins** on MycelialAgent (10 capability + 4 lifecycle, HolonMixin is 10th capability)
 - **Fractal architecture:** All 5 steps complete (Holon Protocol, Triadic Connections, Bidirectional Awareness, Fractal Generator, Stem Cell)
 - **Advisory enforcement:** Triads and connections observe/report, never block

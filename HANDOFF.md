@@ -228,9 +228,9 @@ Fixed 3 bugs found in live scan output, defined data schema:
 
 ## Current State
 
-- **2886 tests pass, 0 failures**
-- **121 systems** (92 core + 29 market), **140 holons**, **374 connections** (217 core + 47 fractal + 55 bootstrap + 55 market)
-- **40 market files** in `mae_core/market/` (bootstrapped as Layer 33 + 6 API clients + form8k_sentiment + hypothesis loop + backtest_analyzer + backtest_scheduler + step_timer + market_actions)
+- **3057 tests pass, 0 failures**
+- **125 systems** (92 core + 33 market), **144 holons**, **385 connections** (217 core + 47 fractal + 55 bootstrap + 66 market)
+- **44 market files** in `mae_core/market/` (bootstrapped as Layer 33 + 6 API clients + form8k_sentiment + hypothesis loop + backtest_analyzer + backtest_scheduler + step_timer + market_actions)
 - **33-layer bootstrap** runs cleanly (Layers 33a-33i)
 - **Agent-based market sensing active** — 3+ agents differentiated (SEC_WATCHER, CONTRACT_TRACKER, MARKET_ANALYST, + HYPOTHESIS_EXPLORER + HYPOTHESIS_VALIDATOR at 12+ agents)
 - **Hypothesis generation loop active** — RSI Layer 2: lag findings → hypotheses → adversarial validation → DSR gate → promote/retire
