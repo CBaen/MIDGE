@@ -2,6 +2,27 @@
 
 ## What Happened
 
+### Bridge 4+5: Dynamic Gates + Meta-Learning / RSI Layer 3 (2026-02-27)
+
+MIDGE can now self-tune her discovery process. Previously, hypothesis promotion/retirement thresholds were hardcoded constants. Now they live in `learning_config.py` and adjust based on outcome history.
+
+**Bridge 4 — Dynamic Quality Gates:**
+- `learning_config.py` gained `hypothesis_gates` section (5 thresholds + `_bounds` + `_regime_deltas`)
+- `hypothesis_validator.py` reads gates from config via `_get_gate(key, regime)` with fallback to hardcoded values
+- `hypothesis_engine.py` `_review_gates()` runs every 2000 steps: if false-positive rate > 30%, tightens `promote_win_rate` by +0.01. If zero promotions with candidates, loosens by -0.01. Bounds-clamped, cooldown-protected.
+
+**Bridge 5 — Meta-Learning (RSI Layer 3 — the system improves HOW it discovers):**
+- `learning_config.py` gained `generator_thresholds` section (`min_correlation`, `min_pairs` + `_bounds`)
+- `hypothesis_generator.py` reads thresholds from config via `_get_gen_threshold()`. Tracks pair quality: which (source_a, source_b) pairs produce promoted vs retired hypotheses. Sorts findings by correlation + 0.1 bonus for known-good pairs.
+- `thompson_calibrator.py` gained `get_calibration_feedback()`: returns overconfident/underconfident sources with deltas (capped at +/-0.05)
+- `hypothesis_engine.py` `_run_meta_learning()` runs every 3000 steps:
+  - Wire 1: Calibration feedback → adjusts `source_reliability` in learning_config (overconfident sources reduced, underconfident raised)
+  - Wire 2: Retirement rate → adjusts `generator_thresholds.min_correlation` (>70% retired → tighten +0.02, <20% → loosen -0.01)
+  - Wire 3: `_promote()`/`_retire()` call `generator.record_outcome()` for pair quality tracking + retirement window tracking
+
+**New channels:** `CH_GATE_ADJUSTED`, `CH_META_ADJUSTED` in `channels.py`.
+**41 new tests** across `test_dynamic_gates.py` (15) and `test_meta_learning.py` (26).
+
 ### Market-Focused Step Loop (2026-02-27)
 
 MIDGE's agents now actively hunt patterns instead of doing generic TaskPool busywork. Previously, a SEC_WATCHER "exploring" claimed a generic task — the same thing a STEM agent does. Now it scans insider signal buffers. Same agent class (Law 5), different behavior based on role configuration.
@@ -207,7 +228,7 @@ Fixed 3 bugs found in live scan output, defined data schema:
 
 ## Current State
 
-- **2845 tests pass, 0 failures**
+- **2886 tests pass, 0 failures**
 - **121 systems** (92 core + 29 market), **140 holons**, **374 connections** (217 core + 47 fractal + 55 bootstrap + 55 market)
 - **40 market files** in `mae_core/market/` (bootstrapped as Layer 33 + 6 API clients + form8k_sentiment + hypothesis loop + backtest_analyzer + backtest_scheduler + step_timer + market_actions)
 - **33-layer bootstrap** runs cleanly (Layers 33a-33i)
