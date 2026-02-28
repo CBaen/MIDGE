@@ -283,29 +283,15 @@ Phase 7/7: Report — markdown intelligence report with all sections
 
 ## What's Next
 
-### Layer 5: Expansion
+### Layer 5: Complete
 
-Roadmap at `C:\Users\baenb\.claude\plans\delegated-leaping-map.md`. Items below ordered by priority.
-
-**Completed:**
-1. ~~Compressed cluster detector~~ DONE 2026-02-25
-2. ~~8-K text sentiment via Ollama~~ DONE 2026-02-25
-3. ~~Session sweep detector~~ DONE 2026-02-25
-4. ~~Lag-correlation analysis~~ DONE 2026-02-25 — infrastructure built, results improve as archives accumulate
-5. ~~Thompson calibration~~ DONE 2026-02-25 — seed fix + Brier score calibration pipeline
-6. ~~Position sizing / Kelly criterion~~ DONE 2026-02-25 — half-Kelly with 5% cap, win/loss from outcomes
-7. ~~Bridge 1: Backtest → Hypothesis Engine~~ DONE 2026-02-26 — MIDGE reads backtest results, creates formal hypotheses
-8. ~~Bridge 2: Thompson Routing~~ DONE 2026-02-26 — sweep signals routed to granular backtest-derived Thompson keys
+All 17 planned items from the Layer 5 roadmap are done. Roadmap history at `C:\Users\baenb\.claude\plans\delegated-leaping-map.md`.
 
 **Data-gated (infrastructure built, awaiting data maturation):**
-- Lag-correlation findings: needs 30+ days of signal archives (currently 3 days)
-- Thompson calibration accuracy: needs 50+ outcomes (currently 26)
+- Lag-correlation findings: needs 30+ days of signal archives
+- Thompson calibration accuracy: needs 50+ outcomes
 - Kelly sizing confidence: needs 100+ calibrated outcomes
-
-**Potential next bridges:**
-- **Bridge 3:** Autonomous backtest scheduling — step-hook cadence triggers yfinance fetches + backtest reruns
-- **Bridge 4:** Dynamic quality gates — adjust promotion/retirement thresholds based on hypothesis performance
-- **Bridge 5:** Meta-learning (RSI Layer 3) — improve the discovery algorithm itself
+- Meta-learning adjustments: needs retirement window to fill (50 promote/retire events)
 
 **Back burner:**
 - **Options flow via Unusual Whales** ($35/mo API — needs Guiding Light approval on spend)
