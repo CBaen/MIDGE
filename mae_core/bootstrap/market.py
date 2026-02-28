@@ -1,7 +1,7 @@
 """Bootstrap Layer 33: Market Intelligence Organ.
 
-Creates 29 market systems, registers holons, wires fractal hierarchy,
-registers triadic connections (Group 14-18),
+Creates 33 market systems, registers holons, wires fractal hierarchy,
+registers triadic connections (Group 14-19),
 wires EventBus channels, and hooks into the step lifecycle.
 
 Biological analogy: Growing a new sensory organ specialized for
@@ -925,7 +925,18 @@ def _register_market_connections(ctx: SimpleNamespace) -> None:
         witnesses=["convergence_alerter", "auditor"],
         description="StepTimer publishes timing statistics for health monitoring")
 
-    logger.info("Layer 33d - Market connections: 55 triadic connections registered (Group 14-18)")
+    # --- Group 19: Layer 6 new source clients ---
+    for client_id in ("cot_client", "stocktwits_client", "vix_client", "trends_client"):
+        if getattr(ctx, client_id, None) is not None:
+            reg(client_id, "convergence_alerter", dr,
+                witnesses=["thompson_sampler", "auditor"],
+                description=f"{client_id} feeds signals to convergence")
+            reg(client_id, "boundary_membrane", dr,
+                witnesses=["input_validator", "threat_detector"],
+                criticality=ConnectionCriticality.IMPORTANT,
+                description=f"{client_id} validated through boundary membrane")
+
+    logger.info("Layer 33d - Market connections: 63 triadic connections registered (Group 14-19)")
 
 
 # =========================================================================
