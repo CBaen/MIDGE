@@ -67,8 +67,7 @@ def phase_evaluate():
                 after_stats["total_evaluated"])
     logger.info("Newly registered: %d signals", count)
 
-    # Save Thompson state
-    thompson.save()
+    # Thompson auto-saves on each update via OutcomeTracker
     return count
 
 
