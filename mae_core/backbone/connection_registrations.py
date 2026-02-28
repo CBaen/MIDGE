@@ -659,6 +659,20 @@ def register_all_connections(
          channel="stem_cell.redifferentiated",
          witnesses=["reproductive_system", "morph_coordinator"],
          description="Role change -- lifecycle peers witness")
+    _reg("stem_cell_registry", "event_bus", eb,
+         channel="stem_cell.auto_redifferentiated",
+         witnesses=["reproductive_system", "morph_coordinator"],
+         description="Automatic role change -- lifecycle peers witness")
+
+    # Genome self-modification events (genome_reader.py, genome_sandbox.py)
+    _reg("genome_reader", "event_bus", eb,
+         channel="genome.snapshot_taken",
+         witnesses=["stem_cell_registry", "enforcer"],
+         description="Genome snapshot -- identity + enforcement peers witness")
+    _reg("genome_sandbox", "event_bus", eb,
+         channel="genome.sandbox_result",
+         witnesses=["stem_cell_registry", "enforcer"],
+         description="Genome sandbox test result -- identity + enforcement peers witness")
 
     # Octopus network (network + domain peers witness)
     _reg("gnn_communicator", "event_bus", eb,
@@ -1111,6 +1125,24 @@ def register_all_connections(
          channel="pattern.consolidation",
          witnesses=["pattern_cortex", "memory_bridge"],
          description="Pattern consolidated -- cortical + deep memory peers witness")
+
+    # Signal bus collaboration request (lifecycle_decision.py _act_communicate)
+    _reg("signal_bus", "event_bus", eb,
+         channel="signal.COLLABORATION_REQUEST",
+         witnesses=["gnn_communicator", "pattern_bus"],
+         description="Collaboration signal -- communication + pattern peers witness")
+
+    # Agent shared insight (lifecycle_decision.py _act_communicate)
+    _reg("gnn_communicator", "event_bus", eb,
+         channel="agent.shared",
+         witnesses=["pattern_bus", "metacognition"],
+         description="Agent insight sharing -- pattern + cognitive peers witness")
+
+    # Topology analysis report (topology_analyzer.py)
+    _reg("topology_analyzer", "event_bus", eb,
+         channel="topology.analysis",
+         witnesses=["somatic_map", "connection_registry"],
+         description="Topology analysis report -- body map + connection registry peers witness")
 
     # Fractal generator lifecycle events (fractal_generator.py)
     _reg("fractal_generator", "event_bus", eb,

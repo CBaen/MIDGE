@@ -120,14 +120,18 @@ class LearningLifecycleMixin:
             except Exception:
                 logger.debug("Agent %s: ancestral pattern store failed", self.unique_id, exc_info=True)
 
-        # Memory Bridge: periodic meta-memory update
+        # Memory Bridge: periodic meta-memory update (background thread)
         if mb is not None and self.step_count % 100 == 0:
-            try:
-                if hasattr(mb, "update_meta_memory"):
-                    stats = self.episodic_memory.get_statistics() if self.episodic_memory else {}
-                    mb.update_meta_memory(memory_stats=stats)
-            except Exception:
-                logger.debug("Agent %s: meta_memory update failed", self.unique_id, exc_info=True)
+            if hasattr(mb, "update_meta_memory"):
+                import threading
+                _stats = self.get_episodic_memory_statistics() if hasattr(self, "get_episodic_memory_statistics") else {}
+                _mb2 = mb
+                def _update_meta():
+                    try:
+                        _mb2.update_meta_memory(memory_stats=_stats)
+                    except Exception:
+                        pass
+                threading.Thread(target=_update_meta, daemon=True).start()
 
         # FIX-4: Activate 5 passive learning subsystems
         # (engines were created but never invoked from agent lifecycle)

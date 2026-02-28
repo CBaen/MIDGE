@@ -84,6 +84,35 @@ def bootstrap_organs(ctx: SimpleNamespace) -> None:
     ctx.model.add_step_hook(lambda s=ctx.energy_reserve: s.step(current_step=int(ctx.model.time)))
     ctx.model.add_step_hook(lambda s=ctx.circulatory_system: s.step(current_step=int(ctx.model.time)))
     ctx.model.add_step_hook(lambda s=ctx.renal_filter: s.step(current_step=int(ctx.model.time)))
+
+    # Wire microbiome: feed BEFORE step() so _process_counts are populated
+    # when _evolve_populations checks idle status (step resets counts at end)
+    _micro = ctx.microbiome
+    _micro_types = ["pattern", "anomaly", "weak_signal", "noisy", "data"]
+
+    def _feed_microbiome(channel, data, input_type="pattern"):
+        try:
+            if isinstance(data, dict):
+                _micro.process_input(input_type, data)
+            else:
+                _micro.process_input(input_type, {"raw": data})
+        except Exception:
+            pass
+
+    # Event-driven feeding from high-frequency channels
+    ctx.bus.register_callback("signal.PREDICTION_ERROR", lambda ch, d: _feed_microbiome(ch, d, "anomaly"))
+    ctx.bus.register_callback("external.response_received", lambda ch, d: _feed_microbiome(ch, d, "data"))
+
+    # Step-driven: feed all specializations BEFORE microbiome.step() each step.
+    # Must run before step() because step() resets _process_counts at the end.
+    def _microbiome_step_feed(step):
+        try:
+            for input_type in _micro_types:
+                _micro.process_input(input_type, {"step": step, "source": "organism_rhythm"})
+        except Exception:
+            pass
+    ctx.model.add_step_hook(lambda s=None: _microbiome_step_feed(int(ctx.model.time)))
+    # Microbiome step AFTER feed hook — checks _process_counts, then resets
     ctx.model.add_step_hook(lambda s=ctx.microbiome: s.step(current_step=int(ctx.model.time)))
 
     logger.info(

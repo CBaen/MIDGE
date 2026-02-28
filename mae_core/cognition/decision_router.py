@@ -462,7 +462,8 @@ class DecisionRouter:
         # Use WorldModel for simulation-based deliberation if available
         if self._world_model is not None and available_actions:
             try:
-                best_action = available_actions[0]
+                import random as _rng
+                best_actions = []
                 best_reward = float("-inf")
                 for action in available_actions:
                     pred = self._world_model.step(
@@ -472,7 +473,10 @@ class DecisionRouter:
                     )
                     if pred.reward > best_reward:
                         best_reward = pred.reward
-                        best_action = action
+                        best_actions = [action]
+                    elif pred.reward == best_reward:
+                        best_actions.append(action)
+                best_action = _rng.choice(best_actions)
                 return (
                     best_action,
                     0.75,
@@ -483,8 +487,9 @@ class DecisionRouter:
 
         # Default: select from available actions or generate response
         if available_actions:
-            action = available_actions[0]  # Default: first available
-            return action, 0.6, "Default selection (first available action)"
+            import random as _rng
+            action = _rng.choice(available_actions)
+            return action, 0.6, "Default selection (random from available)"
 
         return {"type": "deliberate", "stimulus": stimulus}, 0.5, "Default deliberation"
 

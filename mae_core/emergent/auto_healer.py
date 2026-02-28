@@ -154,6 +154,10 @@ class AutoHealer:
         self._failed_healings = 0
         self._cascade_preventions = 0
 
+        # Per-system healing cooldown: prevents re-healing the same system
+        # every scan interval when previous healing had no effect.
+        self._healing_cooldowns: dict[str, int] = {}
+
         # Cortisol-based priority: higher cortisol = more urgency
         self._cortisol_priority: float = 0.0
 
@@ -228,6 +232,13 @@ class AutoHealer:
                 try:
                     sick_systems = get_unhealthy(self._health_threshold)
                     for system_id in sick_systems:
+                        # Never heal ourselves — breaks the self-healing loop
+                        if system_id == "auto_healer":
+                            continue
+                        # Per-system cooldown: skip systems healed within last 50 steps
+                        last_healed = self._healing_cooldowns.get(system_id, -999)
+                        if self._step_count - last_healed < 50:
+                            continue
                         # Only file a report if we are not already healing this system
                         failure_id = f"proactive-{system_id}-{self._step_count}"
                         with self._lock:
@@ -492,7 +503,11 @@ class AutoHealer:
                 self.report_failure(failure)
 
     def _on_starvation(self, channel: str, message: Any) -> None:
-        """Handle substrate starvation alerts."""
+        """Handle substrate starvation alerts.
+
+        Substrate publishes {"nodes": [list_of_starving_nodes], "step": N}.
+        We iterate over the nodes list and file one report per node.
+        """
         if isinstance(message, str):
             try:
                 import json
@@ -500,14 +515,17 @@ class AutoHealer:
             except (json.JSONDecodeError, TypeError):
                 return
         if isinstance(message, dict):
-            node_id = message.get("node_id", "unknown")
-            failure = FailureReport(
-                failure_id=f"starve-{node_id}-{int(time.time())}",
-                failure_type=FailureType.STARVATION,
-                affected_agents=[str(node_id)],
-                severity=0.6,
-            )
-            self.report_failure(failure)
+            nodes = message.get("nodes", [])
+            if not nodes:
+                return  # No starving nodes — nothing to heal
+            for node_id in nodes:
+                failure = FailureReport(
+                    failure_id=f"starve-{node_id}-{int(time.time())}",
+                    failure_type=FailureType.STARVATION,
+                    affected_agents=[str(node_id)],
+                    severity=0.6,
+                )
+                self.report_failure(failure)
 
     # =========================================================================
     # Three-Phase Healing Pipeline
@@ -542,6 +560,9 @@ class AutoHealer:
             record.completed_at = time.time()
             self._active_healings.pop(record.failure.failure_id, None)
             self._history.append(record)
+            # Stamp cooldown so proactive scan doesn't immediately re-heal
+            for agent_id in record.failure.affected_agents:
+                self._healing_cooldowns[agent_id] = self._step_count
 
     def _phase_isolate(self, record: HealingRecord) -> None:
         """Phase 1: Isolate the affected region (clotting)."""

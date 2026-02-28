@@ -112,6 +112,8 @@ def bootstrap_agents(ctx: SimpleNamespace) -> None:
         agent._holon_parent_id = "colony"
         # FIX: Inject shared CuriosityDrive so _learn() can compute intrinsic reward
         agent.curiosity_drive = ctx.curiosity
+        # FIX: Inject EventBus so _act_api_call() can publish oracle requests
+        agent._event_bus = ctx.bus
         # FIX-5: Inject shared subsystems for lifecycle integration
         # ValidatedImagination lives in foundation.py (Layer 8) — available here.
         # Theory of Mind (Layer 27) and MemoryBridge (Layer 22) are injected

@@ -553,6 +553,17 @@ class DecisionActionLifecycleMixin:
                         "type": "solution_broadcast",
                         "step": self.step_count,
                     })
+
+                # Publish insight on EventBus for peer consumption
+                # Uses normalized channel "agent.shared" with agent_id in payload
+                # (not per-agent channel "agent.{id}.shared" which breaks group subscriptions)
+                bus = getattr(self, "_event_bus", None)
+                if bus is not None:
+                    bus.publish("agent.shared", {
+                        "agent_id": str(self.unique_id),
+                        "step": self.step_count,
+                        "prediction_error": float(getattr(self, "_prediction_error", 0.0)),
+                    })
                 return reward
 
         # No completed task to share -- look for "share" type tasks

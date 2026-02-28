@@ -487,8 +487,9 @@ def bootstrap_wiring(ctx: SimpleNamespace) -> None:
     # source/target/witness in register_all_connections(). Without SomaticMap
     # entries, verify_all() marks their connections as unhealthy.
     for abstract_name in (
-        "decision_router", "defense", "frl", "healing",
-        "improvement", "memory", "morphogenesis", "triad_audit",
+        "agent", "decision_router", "defense", "frl",
+        "genome_reader", "genome_sandbox",
+        "healing", "improvement", "memory", "morphogenesis", "triad_audit",
     ):
         ctx.somatic_map.register_system(
             system_id=abstract_name,

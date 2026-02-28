@@ -166,6 +166,10 @@ class GrowthTracker:
         meter = systems.get("integration_meter")
         if meter:
             try:
+                # If no measurement exists yet (cadence not reached), force one
+                if getattr(meter, "_last_report", None) is None:
+                    if hasattr(meter, "_compute_and_publish"):
+                        meter._compute_and_publish()
                 stats = meter.get_statistics()
                 return float(stats.get("current_phi", 0.0) or 0.0)
             except Exception:
