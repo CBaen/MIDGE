@@ -45,7 +45,7 @@ Last updated: 2026-02-22
 | 5.8 Temporal | TemporalMemory, WorldlinePlanner | 6 | 6 (EventBus) | 4 (cross-system stubs) |
 | 5.8+ Enforcement | TriadEnforcer, Watchdog, Auditor, Registry | 10 | 10 (EventBus) | 0 |
 | 5.8++ Holon | HolonRegistry, HolonMixin, HolonProxy, AwarenessPulse | 2 | 36 (proxy injection) + 1 (bootstrap) | 0 |
-| 5.8+++ Connection | ConnectionRegistry | 4 | 374 (217 core + 47 fractal + 55 bootstrap + 55 market, all witnessed, 0 bare dyads) | 0 |
+| 5.8+++ Connection | ConnectionRegistry | 4 | 385 (217 core + 47 fractal + 55 bootstrap + 66 market, all witnessed, 0 bare dyads) | 0 |
 | **5.9 Integration** | **API, Dashboard, Domain Config** | **0** | **0** | **20+ (all stubs need wiring)** |
 
 ---
@@ -157,7 +157,7 @@ The following 3 connections were added with the Session Sweep Detector (total ma
 
 ## Market Connections (Group 18 — Layer 33) — efficiency/step timing
 
-2 connections for the step timer (total market connections: 55):
+2 connections for the step timer (total market connections: 55, pre-new-data-sources):
 
 | Connection | Type | Witness | Notes |
 |-----------|------|---------|-------|

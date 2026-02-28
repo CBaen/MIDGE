@@ -91,7 +91,7 @@ MIDGE's recursive self-improvement loop. Discovers patterns, formalizes them as 
 - `mae_core/bootstrap/market.py` — Full wiring: 4 systems, 10 connections (Group 16), 4 holons, 1 fractal K3 subsystem, endocrine coupling (dopamine on promote, cortisol on unexpected retire), EventBus subscriptions, step hooks, agent differentiation at 12+ agents
 - `mae_core/market/market_awareness.py` — HYPOTHESIS_EXPLORER and HYPOTHESIS_VALIDATOR added to _MARKET_ROLES, hypothesis stats in router context
 
-**4 new test files, 40 tests.** Systems: 121 (92+29). Connections: 374 (55 market). Holons: 140.
+**4 new test files, 40 tests.** Systems: 125 (92+33). Connections: 385 (66 market). Holons: 144.
 
 ### Self-Calibrating Decision Engine (2026-02-25)
 
@@ -261,7 +261,7 @@ Data channels to agents:
 
 ```
 Phase 1/7: Setup — clients, alerter, 3 tiered alerters, memory, velocity, filing, outcome collector
-Phase 2/7: Fetch — 14 data sources (SEC Form4/8K/EFTS, House/Senate trades, jobs, USASpending, SAM.gov, prices, Reddit, FINRA short, Finnhub news/earnings, FRED macro)
+Phase 2/7: Fetch — 19 data sources (SEC Form4/8K/EFTS, House/Senate trades, jobs, USASpending, SAM.gov, prices, Reddit, FINRA short, Finnhub news/earnings/insider, FRED macro, COT positioning, StockTwits sentiment, VIX term structure, Google Trends)
 Phase 3/7: Convert — raw results → MarketSignals (with filters: 10b5-1, $50K min, log-linear)
 Phase 4/7: Store + Feed — Qdrant + JSONL, enriched with velocity + filing-time modifiers, fed to global + tiered alerters
 Phase 5/7: Outcome tracking — register predictions with per-type windows, evaluate matured outcomes → Thompson update
@@ -274,7 +274,7 @@ Phase 7/7: Report — markdown intelligence report with all sections
 | Subpackage | Files | Purpose |
 |------------|-------|---------|
 | `apis/sec_edgar/` | 4 (models, client, efts, __init__) | SEC insider trades + material events + full-text search |
-| `apis/` | 13 (price_fetcher, house_stock_watcher, senate_stock_watcher, job_tracker, usa_spending, sam_gov, apewisdom, finra_short_interest, finnhub_client, fred_client, ticker_resolver, market_data_provider) | 14 data sources + utilities |
+| `apis/` | 17 (price_fetcher, house_stock_watcher, senate_stock_watcher, job_tracker, usa_spending, sam_gov, apewisdom, finra_short_interest, finnhub_client, fred_client, ticker_resolver, market_data_provider, cot_client, stocktwits_client, vix_client, trends_client) | 19 data sources + utilities |
 | `edge/` | 7 (cluster_detector, politician_tracker, filing_time_analyzer, contract_predictor, form8k_sentiment, session_sweep_detector, ta_indicators) | Pattern recognition + text analysis |
 | `intelligence/` | 19 (thompson_sampler, velocity_detector, correlation_tracker, convergence_alerter, learning_config, regime_classifier, outcome_collector, signal_archive_reader, lag_correlation_analyzer, thompson_calibrator, kelly_position_sizer, backtest_analyzer, backtest_scheduler, hypothesis, hypothesis_registry, hypothesis_generator, hypothesis_validator, hypothesis_engine) | Bayesian learning + feedback loop + calibration + sizing + hypothesis lifecycle + meta-learning |
 | `root` | 7 (signal.py, channels.py, outcome_tracker.py, memory.py, sensing_hook.py, step_timer.py, market_actions.py) | Integration layer + sensing + Qdrant persistence + performance timing + agent actions |
@@ -313,7 +313,7 @@ Welcome. MIDGE is Mae differentiated for financial markets. Here is what you nee
 5. **Thompson Sampling** uses Bayesian explore/exploit. Learned distributions in `data/market/thompson_distributions.json`. Bayesian forgetting prevents stale evidence.
 6. **OutcomeCollector** closes the feedback loop: scan signals → register_signals() → per-type windows → price check → Thompson update. Success threshold: 5%.
 7. **All 8 Mathematical Laws are satisfied.** See implementation plan Section 12 for compliance map.
-8. **2886 tests must keep passing.** Zero regressions.
+8. **3057 tests must keep passing.** Zero regressions.
 9. **Deep memory runs on Qdrant** container (port 6333). Start with `docker compose up -d`.
 10. **API keys** needed: RAPIDAPI_KEY (job tracker, congressional trades), ALPHA_VANTAGE_KEY (price fallback), SAM_GOV_API_KEY, MAE_TAVILY_API_KEY, MAE_FINNHUB_API_KEY (news sentiment + earnings), FRED_API_KEY (macro indicators). Free/no-key: SEC EDGAR, yfinance, USASpending, Senate Stock Watcher, ApeWisdom, FINRA short volume, SEC EFTS.
 11. **`python main.py --agents 6 --steps 500`** runs MIDGE with agents sensing the market. Requires 6 agents (K3 general + K3 market per Law 2).
