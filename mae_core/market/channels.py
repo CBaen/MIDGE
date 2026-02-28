@@ -32,3 +32,7 @@ CH_HYPOTHESIS_FIRED = "market.hypothesis.fired"
 
 # Backtest bridge channels
 CH_BACKTEST_REFRESHED = "market.intel.backtest_refreshed"
+
+# Meta-learning channels (RSI Layer 3 — Bridges 4 & 5)
+CH_GATE_ADJUSTED = "market.meta.gate_adjusted"
+CH_META_ADJUSTED = "market.meta.meta_adjusted"

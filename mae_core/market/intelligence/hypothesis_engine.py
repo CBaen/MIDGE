@@ -337,6 +337,16 @@ class HypothesisEngine:
         self._hypotheses_promoted += 1
         self._meta_promoted_total += 1
 
+        # Bridge 5: track outcome in retirement window + pair quality
+        self._retirement_window.append("promoted")
+        if len(self._retirement_window) > self._retirement_window_max:
+            self._retirement_window.pop(0)
+        try:
+            self._generator.record_outcome(
+                hyp.trigger.source_a, hyp.trigger.source_b, "promoted")
+        except Exception:
+            pass
+
         # Register a Thompson key for the promoted hypothesis
         if self._thompson_sampler is not None:
             try:
@@ -397,6 +407,16 @@ class HypothesisEngine:
         self._hypotheses_retired += 1
         if was_active:
             self._meta_retired_after_active += 1
+
+        # Bridge 5: track outcome in retirement window + pair quality
+        self._retirement_window.append("retired")
+        if len(self._retirement_window) > self._retirement_window_max:
+            self._retirement_window.pop(0)
+        try:
+            self._generator.record_outcome(
+                hyp.trigger.source_a, hyp.trigger.source_b, "retired")
+        except Exception:
+            pass
 
         if self._bus is not None:
             from mae_core.market.channels import CH_HYPOTHESIS_RETIRED
@@ -520,6 +540,125 @@ class HypothesisEngine:
                     "fp_rate": fp_rate,
                     "promoted_total": self._meta_promoted_total,
                     "probation_count": probation_count,
+                })
+            except Exception:
+                pass
+
+    def _run_meta_learning(self) -> None:
+        """Bridge 5: RSI Layer 3 — improve how the system discovers patterns.
+
+        Three wires:
+          Wire 1: Calibration → source_reliability. If ThompsonCalibrator reports
+            overconfident sources, reduce their reliability in learning_config.
+          Wire 2: Retirement rate → generator thresholds. If too many hypotheses
+            get retired, tighten min_correlation to raise the quality bar.
+          Wire 3: Pair quality feedback is handled by _promote/_retire calling
+            generator.record_outcome() directly (not deferred to this method).
+        """
+        try:
+            from mae_core.market.intelligence.learning_config import (
+                LEARNING_CONFIG, update_config,
+            )
+        except ImportError:
+            return
+
+        changed = False
+
+        # Wire 1: Calibration feedback → source_reliability adjustment
+        if self._thompson_calibrator is not None:
+            try:
+                feedback = self._thompson_calibrator.get_calibration_feedback()
+                reliability = LEARNING_CONFIG.get("source_reliability", {})
+
+                for item in feedback.get("overconfident", []):
+                    key = item["key"]
+                    delta = item["delta"]  # Negative (reducing)
+                    if key in reliability:
+                        current = reliability[key]
+                        new_val = max(0.10, min(0.95, current + delta))
+                        if abs(new_val - current) > 1e-6:
+                            update_config(
+                                f"source_reliability.{key}",
+                                round(new_val, 4),
+                                modified_by="meta_learner_calibration",
+                            )
+                            changed = True
+                            logger.info(
+                                "META-LEARNING: source_reliability.%s %.4f → %.4f "
+                                "(overconfident, gap=%.4f)",
+                                key, current, new_val, item["gap"],
+                            )
+
+                for item in feedback.get("underconfident", []):
+                    key = item["key"]
+                    delta = item["delta"]  # Positive (increasing)
+                    if key in reliability:
+                        current = reliability[key]
+                        new_val = max(0.10, min(0.95, current + delta))
+                        if abs(new_val - current) > 1e-6:
+                            update_config(
+                                f"source_reliability.{key}",
+                                round(new_val, 4),
+                                modified_by="meta_learner_calibration",
+                            )
+                            changed = True
+                            logger.info(
+                                "META-LEARNING: source_reliability.%s %.4f → %.4f "
+                                "(underconfident, gap=%.4f)",
+                                key, current, new_val, item["gap"],
+                            )
+            except Exception:
+                logger.debug("Meta-learning Wire 1 (calibration) failed", exc_info=True)
+
+        # Wire 2: Retirement rate → generator threshold adaptation
+        if len(self._retirement_window) >= 20:
+            try:
+                gen_thresholds = LEARNING_CONFIG.get("generator_thresholds", {})
+                gen_bounds = gen_thresholds.get("_bounds", {})
+                retired_count = self._retirement_window.count("retired")
+                retirement_rate = retired_count / len(self._retirement_window)
+
+                current_min_corr = gen_thresholds.get("min_correlation", 0.6)
+
+                if retirement_rate > 0.70:
+                    # Too many hypotheses being retired → raise the bar
+                    new_val = current_min_corr + 0.02
+                elif retirement_rate < 0.20:
+                    # Very few retirements → can afford to explore more
+                    new_val = current_min_corr - 0.01
+                else:
+                    new_val = current_min_corr  # No change
+
+                # Clamp to bounds
+                corr_bounds = gen_bounds.get("min_correlation", [0.4, 0.85])
+                new_val = max(corr_bounds[0], min(corr_bounds[1], new_val))
+
+                if abs(new_val - current_min_corr) > 1e-6:
+                    update_config(
+                        "generator_thresholds.min_correlation",
+                        round(new_val, 4),
+                        modified_by="meta_learner_retirement",
+                    )
+                    changed = True
+                    logger.info(
+                        "META-LEARNING: min_correlation %.4f → %.4f "
+                        "(retirement_rate=%.2f, window=%d)",
+                        current_min_corr, new_val,
+                        retirement_rate, len(self._retirement_window),
+                    )
+            except Exception:
+                logger.debug("Meta-learning Wire 2 (retirement rate) failed", exc_info=True)
+
+        if changed and self._bus is not None:
+            from mae_core.market.channels import CH_META_ADJUSTED
+            try:
+                self._bus.publish(CH_META_ADJUSTED, {
+                    "step": self._step_counter,
+                    "retirement_window_size": len(self._retirement_window),
+                    "retirement_rate": (
+                        self._retirement_window.count("retired") / len(self._retirement_window)
+                        if self._retirement_window else 0.0
+                    ),
                 })
             except Exception:
                 pass

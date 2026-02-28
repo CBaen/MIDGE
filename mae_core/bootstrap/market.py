@@ -426,6 +426,7 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
                 regime_classifier=getattr(ctx, "regime_classifier", None),
                 thompson_sampler=getattr(ctx, "thompson_sampler", None),
                 backtest_analyzer=getattr(ctx, "backtest_analyzer", None),
+                thompson_calibrator=getattr(ctx, "thompson_calibrator", None),
             )
             if (ctx.hypothesis_registry is not None
                 and ctx.hypothesis_generator is not None
