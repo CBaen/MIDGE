@@ -102,7 +102,7 @@ mae_core/market/
 
 ### Integration Status
 
-Market modules are **fully bootstrapped as Layer 33** — wired into EventBus, ConnectionRegistry, HolonRegistry, fractal hierarchy, endocrine coupling, and step hooks. 29 systems, 55 triadic connections, 29 holons.
+Market modules are **fully bootstrapped as Layer 33** — wired into EventBus, ConnectionRegistry, HolonRegistry, fractal hierarchy, endocrine coupling, and step hooks. 33 systems, 66 triadic connections, 33 holons.
 
 **Phase 2 complete:** CorrelationTracker deque persistence, discovery_log reader, KNOWN_POLITICIANS expansion (437 members), TickerResolver service, MarketDataProvider registered with ApiGateway, ContractPredictor retained (entity-level, complements ConvergenceAlerter), regime-aware Thompson Sampling, client migration to MarketDataProvider.
 

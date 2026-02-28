@@ -500,7 +500,7 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
 
     logger.info(
         "Layer 33a - Market systems instantiated: %d systems (construction failures: %d)",
-        26 - failures, failures,
+        40 - failures, failures,
     )
     logger.info(
         "            Operational dependencies: Qdrant, RAPIDAPI_KEY, ALPHA_VANTAGE_KEY, "
@@ -936,7 +936,7 @@ def _register_market_connections(ctx: SimpleNamespace) -> None:
                 criticality=ConnectionCriticality.IMPORTANT,
                 description=f"{client_id} validated through boundary membrane")
 
-    logger.info("Layer 33d - Market connections: 63 triadic connections registered (Group 14-19)")
+    logger.info("Layer 33d - Market connections: 66 triadic connections registered (Group 14-19)")
 
 
 # =========================================================================
