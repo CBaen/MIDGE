@@ -502,7 +502,7 @@ def bootstrap_wiring(ctx: SimpleNamespace) -> None:
         description=type(ctx.somatic_map).__name__,
         depends_on=[],
     )
-    logger.info("Layer 17 - SomaticMap: %d systems registered for body awareness", 41)
+    logger.info("Layer 17 - SomaticMap: %d systems registered for body awareness", len(ctx.somatic_map.get_all_systems()))
 
     # Register all shared systems as holons (children of Mae)
     for name in (

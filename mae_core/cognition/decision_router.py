@@ -452,6 +452,8 @@ class DecisionRouter:
         available_actions: list[Any] | None = None,
     ) -> tuple[Any, float, str]:
         """Deliberative reasoning - the slow, thoughtful path."""
+        import random as _rng  # local import: avoids module-level side-effect, used in two branches below
+
         if self._prefrontal_fn is not None:
             result = self._prefrontal_fn(stimulus, context, available_actions)
             if isinstance(result, tuple):
@@ -462,7 +464,6 @@ class DecisionRouter:
         # Use WorldModel for simulation-based deliberation if available
         if self._world_model is not None and available_actions:
             try:
-                import random as _rng
                 best_actions = []
                 best_reward = float("-inf")
                 for action in available_actions:
@@ -487,7 +488,6 @@ class DecisionRouter:
 
         # Default: select from available actions or generate response
         if available_actions:
-            import random as _rng
             action = _rng.choice(available_actions)
             return action, 0.6, "Default selection (random from available)"
 
