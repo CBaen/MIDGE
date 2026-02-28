@@ -502,8 +502,8 @@ class HypothesisEngine:
         changed = False
 
         for key, delta in adjustments:
-            last_adjusted = self._gate_cooldowns.get(key, 0)
-            if self._step_counter - last_adjusted < cooldown_steps:
+            last_adjusted = self._gate_cooldowns.get(key)
+            if last_adjusted is not None and self._step_counter - last_adjusted < cooldown_steps:
                 continue  # Cooldown active
 
             current = gates.get(key, 0.0)

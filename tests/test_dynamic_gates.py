@@ -51,7 +51,6 @@ class TestGetGate:
         with patch(
             "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
             {},
-            create=True,
         ):
             for key, expected in _GATE_FALLBACKS.items():
                 result = _get_gate(key)
@@ -67,7 +66,6 @@ class TestGetGate:
         with patch(
             "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
             mock_config,
-            create=True,
         ):
             assert _get_gate("promote_win_rate") == 0.60
 
@@ -84,7 +82,6 @@ class TestGetGate:
         with patch(
             "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
             mock_config,
-            create=True,
         ):
             assert _get_gate("promote_win_rate", regime="volatile") == pytest.approx(0.55)
 
@@ -101,7 +98,6 @@ class TestGetGate:
         with patch(
             "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
             mock_config,
-            create=True,
         ):
             assert _get_gate("promote_dsr", regime="default") == 0.5
 

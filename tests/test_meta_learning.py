@@ -63,9 +63,8 @@ class TestCalibrationFeedback:
         sampler.distributions = {}
         sampler.prior_scale = 10.0
         with patch(
-            "mae_core.market.intelligence.thompson_calibrator.LEARNING_CONFIG",
+            "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
             {"source_reliability": {}},
-            create=True,
         ):
             calibrator = ThompsonCalibrator(sampler, data_dir=MagicMock())
             result = calibrator.get_calibration_feedback()
@@ -77,9 +76,8 @@ class TestCalibrationFeedback:
         sampler.prior_scale = 10.0
 
         with patch(
-            "mae_core.market.intelligence.thompson_calibrator.LEARNING_CONFIG",
+            "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
             {"source_reliability": {"sec_form4": 0.70}},
-            create=True,
         ):
             calibrator = ThompsonCalibrator(sampler, data_dir=MagicMock())
             calibrator._last_report = [
@@ -108,9 +106,8 @@ class TestCalibrationFeedback:
         sampler.prior_scale = 10.0
 
         with patch(
-            "mae_core.market.intelligence.thompson_calibrator.LEARNING_CONFIG",
+            "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
             {"source_reliability": {"finra_short": 0.65}},
-            create=True,
         ):
             calibrator = ThompsonCalibrator(sampler, data_dir=MagicMock())
             calibrator._last_report = [
@@ -139,9 +136,8 @@ class TestCalibrationFeedback:
         sampler.prior_scale = 10.0
 
         with patch(
-            "mae_core.market.intelligence.thompson_calibrator.LEARNING_CONFIG",
+            "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
             {"source_reliability": {}},
-            create=True,
         ):
             calibrator = ThompsonCalibrator(sampler, data_dir=MagicMock())
             calibrator._last_report = [
@@ -166,9 +162,8 @@ class TestCalibrationFeedback:
         sampler.prior_scale = 10.0
 
         with patch(
-            "mae_core.market.intelligence.thompson_calibrator.LEARNING_CONFIG",
+            "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
             {"source_reliability": {"sec_form4": 0.70}},
-            create=True,
         ):
             calibrator = ThompsonCalibrator(sampler, data_dir=MagicMock())
             # Gap of 0.30 → raw delta = 0.30 * -0.3 = -0.09, capped to -0.05
@@ -521,7 +516,6 @@ class TestGenThreshold:
         with patch(
             "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
             {"generator_thresholds": {"min_correlation": 0.70}},
-            create=True,
         ):
             assert _get_gen_threshold("min_correlation") == 0.70
 
@@ -529,7 +523,6 @@ class TestGenThreshold:
         with patch(
             "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
             {},
-            create=True,
         ):
             assert _get_gen_threshold("min_correlation") == 0.6
             assert _get_gen_threshold("min_pairs") == 10
