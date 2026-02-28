@@ -64,7 +64,7 @@ def create_mae(
 
     logger.info("=" * 60)
     logger.info("MIDGE is fully wired: %d shared systems, %d agents, %d per-agent systems, %d holons, %d connections",
-                41, ctx.num_agents, len(ctx.per_agent_systems) * 5, len(ctx.holon_registry.get_all_ids()),
+                45, ctx.num_agents, len(ctx.per_agent_systems) * 5, len(ctx.holon_registry.get_all_ids()),
                 ctx.connection_registry.get_statistics()["total_connections"])
     logger.info("=" * 60)
 
@@ -223,6 +223,11 @@ def _build_systems_dict(ctx) -> dict:
         "ta_indicators":            getattr(ctx, "ta_indicators", None),
         # Performance metabolism monitoring
         "step_timer":               getattr(ctx, "step_timer", None),
+        # Layer 6 new data sources
+        "cot_client":               getattr(ctx, "cot_client", None),
+        "stocktwits_client":        getattr(ctx, "stocktwits_client", None),
+        "vix_client":               getattr(ctx, "vix_client", None),
+        "trends_client":            getattr(ctx, "trends_client", None),
     }
 
 

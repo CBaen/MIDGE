@@ -157,9 +157,24 @@ The following 3 connections were added with the Session Sweep Detector (total ma
 
 ## Market Connections (Group 18 — Layer 33) — efficiency/step timing
 
-2 connections for the step timer (total market connections: 55, pre-new-data-sources):
+2 connections for the step timer (total market connections: 55):
 
 | Connection | Type | Witness | Notes |
 |-----------|------|---------|-------|
 | step_timer → convergence_alerter | direct_reference | hypothesis_engine, auditor | StepTimer wraps convergence check to measure latency |
 | step_timer → event_bus | eventbus_pubsub | convergence_alerter, auditor | StepTimer publishes timing statistics for health monitoring |
+
+## Market Connections (Group 19 — Layer 33) — new data source clients
+
+11 connections for 4 new API clients: COTClient, StockTwitsClient, VIXClient, TrendsClient (total market connections: 66):
+
+| Connection | Type | Witness | Notes |
+|-----------|------|---------|-------|
+| cot_client → convergence_alerter | direct_reference | thompson_sampler, auditor | COT positioning signals feed multi-domain synthesis |
+| cot_client → boundary_membrane | data_flow | input_validator, threat_detector | COT data validated through immune system |
+| stocktwits_client → convergence_alerter | direct_reference | thompson_sampler, auditor | StockTwits social sentiment feeds convergence |
+| stocktwits_client → boundary_membrane | data_flow | input_validator, threat_detector | Social data validated through immune system |
+| vix_client → convergence_alerter | direct_reference | thompson_sampler, auditor | VIX term structure feeds fear gauge signals |
+| vix_client → boundary_membrane | data_flow | input_validator, threat_detector | VIX data validated through immune system |
+| trends_client → convergence_alerter | direct_reference | thompson_sampler, auditor | Google Trends search interest feeds convergence |
+| trends_client → boundary_membrane | data_flow | input_validator, threat_detector | Trends data validated through immune system |

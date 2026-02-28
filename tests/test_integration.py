@@ -103,6 +103,10 @@ class TestBootstrap:
             "backtest_scheduler",
             "ta_indicators",
             "step_timer",
+            "cot_client",
+            "stocktwits_client",
+            "vix_client",
+            "trends_client",
         ]
         for key in market_keys:
             assert key in systems, f"Missing market system: {key}"
