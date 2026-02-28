@@ -1601,6 +1601,16 @@ def _differentiate_market_agents(ctx: SimpleNamespace) -> None:
             except Exception:
                 logger.debug("Failed to differentiate agent[%d] as %s", idx, role, exc_info=True)
 
+    # --- MIDGE-specific: disable oracle API calls for ALL agents ---
+    # In MIDGE, the external LLM oracle pathway adds nothing to market learning.
+    # Agents were auto-redifferentiating into API_CALLER and burning 1.8s per call
+    # for generic "prioritize exploration" filler. Market agents already have it off;
+    # this ensures STEM agents can't re-enable it via auto-redifferentiation.
+    for agent in agents:
+        config = getattr(agent, "agent_config", None)
+        if config is not None and isinstance(config, dict):
+            config["api_call_enabled"] = False
+
     # Wire market refs into RedifferentiationMonitor so auto-rediff
     # re-attaches live system connections (bug fix: refs were lost on role switch)
     rediff_monitor = getattr(ctx, "rediff_monitor", None)
