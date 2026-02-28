@@ -979,6 +979,13 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
         from mae_core.market.channels import CH_SIGNAL_INGESTED
         ctx.bus.register_callback(CH_SIGNAL_INGESTED, engine.on_signal_ingested)
 
+    # --- Kelly sizing subscriber (store latest recommendation on ctx) ---
+    def _on_kelly_sizing(channel, data):
+        msg = json.loads(data) if isinstance(data, str) else data
+        ctx._latest_kelly = msg
+
+    ctx.bus.register_callback("market.intel.kelly_sizing", _on_kelly_sizing)
+
     logger.info("Layer 33f - Market EventBus: convergence + hypothesis -> endocrine coupling wired")
 
 
@@ -1148,6 +1155,12 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
             if sizer is not None and alerter is not None:
                 try:
                     alerts = alerter.check_ticker_convergence(min_domains=2)
+                    # Store per-ticker alerts for agent access (Phase 1c)
+                    ctx._ticker_alerts = alerts
+                    ctx._market_advisory["ticker_alerts"] = [
+                        a.to_dict() if hasattr(a, "to_dict") else {"direction": a.direction, "strength": a.strength}
+                        for a in alerts
+                    ]
                     for alert in alerts:
                         # Extract symbol from alert signals' metadata
                         symbols = set()
@@ -1294,6 +1307,7 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
     def _sensing_step_with_advisory():
         """Wrap the sensing hook step to also update the market advisory."""
         _sensing_step_counter[0] += 1
+        step = _sensing_step_counter[0]
         original_step()
 
         # Reuse cached convergence alerts (written by _market_sense_hook)
@@ -1305,9 +1319,25 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
                     strongest.to_dict() if hasattr(strongest, "to_dict")
                     else {"direction": strongest.direction, "strength": strongest.strength}
                 )
-                ctx._market_advisory["updated_step"] = _sensing_step_counter[0]
+                ctx._market_advisory["updated_step"] = step
             except Exception:
                 logger.debug("Advisory bridge failed", exc_info=True)
+
+        # Every 10 steps: query tiered alerters (tactical/strategic/thematic)
+        if step % 10 == 0 and ctx._tiered_alerters:
+            for tier_name, tier_alerter in ctx._tiered_alerters.items():
+                try:
+                    tier_alerts = tier_alerter.check_convergence()
+                    if tier_alerts:
+                        strongest = max(tier_alerts, key=lambda a: a.strength)
+                        ctx._market_advisory[tier_name] = (
+                            strongest.to_dict() if hasattr(strongest, "to_dict")
+                            else {"direction": strongest.direction, "strength": strongest.strength}
+                        )
+                    else:
+                        ctx._market_advisory[tier_name] = None
+                except Exception:
+                    logger.debug("Tiered alerter %s query failed", tier_name, exc_info=True)
 
     # Register the wrapped step hook
     ctx.model.add_step_hook(_sensing_step_with_advisory)
