@@ -148,8 +148,8 @@ grep -rn "PREVIOUS_COUNT" --include="*.md" --include="*.py"
 
 - **Mesa 3.4** foundation, pure Python infrastructure
 - **33-layer bootstrap** in `mae_core/bootstrap/` (orchestrated by `main.py`)
-- **125 systems** (92 core + 33 market), **3057 tests**, **144 holons**, **385 connections**
-- **44 market intelligence files** in `mae_core/market/` (bootstrapped as Layer 33)
+- **125 systems** (92 core + 33 market), **3,119 tests**, **144 holons**, **385 connections**
+- **67 market intelligence files** in `mae_core/market/` (bootstrapped as Layer 33, decomposed into sub-modules)
 - **14 mixins** on MycelialAgent (10 capability + 4 lifecycle, HolonMixin is 10th capability)
 - **Fractal architecture:** All 5 steps complete (Holon Protocol, Triadic Connections, Bidirectional Awareness, Fractal Generator, Stem Cell)
 - **Advisory enforcement:** Triads and connections observe/report, never block

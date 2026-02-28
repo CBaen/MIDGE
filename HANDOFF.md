@@ -255,9 +255,11 @@ Fixed 3 bugs found in live scan output, defined data schema:
 
 ## Current State
 
-- **3057 tests pass, 0 failures**
+- **3,119 tests pass, 0 failures** (62 new decomposition wiring tests)
 - **125 systems** (92 core + 33 market), **144 holons**, **385 connections** (217 core + 47 fractal + 55 bootstrap + 66 market)
-- **44 market files** in `mae_core/market/` (bootstrapped as Layer 33 + 6 API clients + form8k_sentiment + hypothesis loop + backtest_analyzer + backtest_scheduler + step_timer + market_actions)
+- **67 market files** in `mae_core/market/` (decomposed: signal_adapters/ subpackage, sensing_fetchers.py, sensing_lifecycle.py)
+- **10 mae-core infrastructure fixes ported** (VDN epsilon-greedy, EventBus injection, tie-breaking, microbiome feed-before-step, EpisodicMemory stats, 6 channel registrations, SomaticMap names, agent.shared normalization, auto-healer starvation fix, Phi forced measurement)
+- **Bootstrap sub-modules** — `market.py` orchestrator (123 lines) + 5 sub-modules (market_systems, market_registration, market_connections, market_hooks, market_agents)
 - **33-layer bootstrap** runs cleanly (Layers 33a-33i)
 - **Agent-based market sensing active** — 3+ agents differentiated (SEC_WATCHER, CONTRACT_TRACKER, MARKET_ANALYST, + HYPOTHESIS_EXPLORER + HYPOTHESIS_VALIDATOR at 12+ agents)
 - **Hypothesis generation loop active** — RSI Layer 2: lag findings → hypotheses → adversarial validation → DSR gate → promote/retire
@@ -340,7 +342,7 @@ Welcome. MIDGE is Mae differentiated for financial markets. Here is what you nee
 5. **Thompson Sampling** uses Bayesian explore/exploit. Learned distributions in `data/market/thompson_distributions.json`. Bayesian forgetting prevents stale evidence.
 6. **OutcomeCollector** closes the feedback loop: scan signals → register_signals() → per-type windows → price check → Thompson update. Success threshold: 5%.
 7. **All 8 Mathematical Laws are satisfied.** See implementation plan Section 12 for compliance map.
-8. **3057 tests must keep passing.** Zero regressions.
+8. **3,119 tests must keep passing.** Zero regressions. Run `python -m pytest tests/ -q` to verify.
 9. **Deep memory runs on Qdrant** container (port 6333). Start with `docker compose up -d`.
 10. **API keys** needed: RAPIDAPI_KEY (job tracker, congressional trades), ALPHA_VANTAGE_KEY (price fallback), SAM_GOV_API_KEY, MAE_TAVILY_API_KEY, MAE_FINNHUB_API_KEY (news sentiment + earnings), FRED_API_KEY (macro indicators). Free/no-key: SEC EDGAR, yfinance, USASpending, Senate Stock Watcher, ApeWisdom, FINRA short volume, SEC EFTS.
 11. **`python main.py --agents 6 --steps 500`** runs MIDGE with agents sensing the market. Requires 6 agents (K3 general + K3 market per Law 2).
