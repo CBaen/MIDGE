@@ -56,6 +56,7 @@ class HypothesisEngine:
         regime_classifier: Any = None,
         thompson_sampler: Any = None,
         backtest_analyzer: Any = None,
+        thompson_calibrator: Any = None,
         generation_cadence: int = 500,
         validation_cadence: int = 1000,
         regime_cadence: int = 100,
@@ -67,6 +68,7 @@ class HypothesisEngine:
         self._regime_classifier = regime_classifier
         self._thompson_sampler = thompson_sampler
         self._backtest_analyzer = backtest_analyzer
+        self._thompson_calibrator = thompson_calibrator
 
         self._generation_cadence = generation_cadence
         self._validation_cadence = validation_cadence

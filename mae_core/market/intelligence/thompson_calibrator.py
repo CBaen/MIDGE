@@ -436,3 +436,45 @@ class ThompsonCalibrator:
             report["calibrated_source_count"] = 0
 
         return report
+
+    def get_calibration_feedback(self) -> dict:
+        """Bridge 5: Return structured feedback for meta-learning adjustments.
+
+        Reads the last calibration report and returns recommended deltas
+        for source_reliability in learning_config. Only includes sources
+        that exist in source_reliability.
+
+        Returns:
+            {"overconfident": [...], "underconfident": [...]}
+            Each item: {"key": str, "gap": float, "delta": float}
+        """
+        result: dict = {"overconfident": [], "underconfident": []}
+        if not self._last_report:
+            return result
+
+        try:
+            from mae_core.market.intelligence.learning_config import LEARNING_CONFIG
+            reliability = LEARNING_CONFIG.get("source_reliability", {})
+        except ImportError:
+            return result
+
+        for cal in self._last_report:
+            if cal.source not in reliability:
+                continue
+
+            gap = cal.mean_predicted_confidence - cal.mean_observed_hit_rate
+
+            if cal.is_overconfident and gap > 0.10:
+                delta = max(-0.05, gap * -0.3)  # Reduce, capped at -0.05
+                result["overconfident"].append({
+                    "key": cal.source, "gap": round(gap, 4),
+                    "delta": round(delta, 4),
+                })
+            elif cal.is_underconfident and gap < -0.10:
+                delta = min(0.05, gap * -0.3)  # Increase, capped at +0.05
+                result["underconfident"].append({
+                    "key": cal.source, "gap": round(gap, 4),
+                    "delta": round(delta, 4),
+                })
+
+        return result

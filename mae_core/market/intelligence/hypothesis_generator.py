@@ -149,15 +149,35 @@ class HypothesisGenerator:
     ):
         self._registry = registry
         self._lag_data_path = lag_data_path or (DATA_DIR / "lag_correlations.json")
+        # Bridge 5: pair quality memory — tracks which (source_a, source_b) produce
+        # promoted vs retired hypotheses. Resets on restart (soft signal, not hard filter).
+        self._pair_outcomes: dict[tuple, dict] = {}
+
+    def record_outcome(self, source_a: str, source_b: str, outcome: str) -> None:
+        """Record whether a hypothesis from this pair was promoted or retired.
+
+        Called by HypothesisEngine._promote() and _retire(). Builds a soft
+        priority signal so better-understood pairs are investigated first.
+        """
+        pair = (source_a, source_b)
+        if pair not in self._pair_outcomes:
+            self._pair_outcomes[pair] = {"promoted": 0, "retired": 0}
+        if outcome in ("promoted", "retired"):
+            self._pair_outcomes[pair][outcome] += 1
 
     def generate(self) -> List[Hypothesis]:
         """Read lag findings, generate qualifying hypotheses.
 
+        Findings are sorted by correlation strength + pair quality priority,
+        so better-understood pairs are investigated first when many compete.
         Returns list of newly created hypotheses.
         """
         findings = self._load_lag_findings()
         if not findings:
             return []
+
+        # Sort by correlation + pair quality priority (Bridge 5)
+        findings.sort(key=self._finding_priority, reverse=True)
 
         new_hypotheses = []
         for finding in findings:
@@ -182,10 +202,10 @@ class HypothesisGenerator:
         n_pairs = finding.get("n_pairs", 0)
         direction = finding.get("direction", "")
 
-        # Quality filters
-        if abs(correlation) < MIN_CORRELATION:
+        # Quality filters (read live from config, fall back to hardcoded)
+        if abs(correlation) < _get_gen_threshold("min_correlation"):
             return None
-        if n_pairs < MIN_PAIRS:
+        if n_pairs < _get_gen_threshold("min_pairs"):
             return None
 
         # Dedup: check if similar hypothesis already exists
@@ -225,16 +245,35 @@ class HypothesisGenerator:
             logger.warning("Failed to load lag correlations: %s", e)
             return []
 
+    def _finding_priority(self, finding: dict) -> float:
+        """Compute sort priority for a lag finding. Higher = processed first.
+
+        Base is |correlation|. Known-good pairs (more promotions than retirements)
+        get +0.1 bonus. This is ordering only, not filtering.
+        """
+        corr = abs(finding.get("correlation", 0.0))
+        pair = (finding.get("source_a", ""), finding.get("source_b", ""))
+        outcomes = self._pair_outcomes.get(pair, {})
+        promoted = outcomes.get("promoted", 0)
+        retired = outcomes.get("retired", 0)
+        bonus = 0.1 if promoted > retired and promoted > 0 else 0.0
+        return corr + bonus
+
     def get_statistics(self) -> dict:
         """Summary stats for monitoring."""
+        min_corr = _get_gen_threshold("min_correlation")
+        min_pairs = _get_gen_threshold("min_pairs")
         findings = self._load_lag_findings()
         qualifying = [
             f for f in findings
-            if abs(f.get("correlation", 0)) >= MIN_CORRELATION
-            and f.get("n_pairs", 0) >= MIN_PAIRS
+            if abs(f.get("correlation", 0)) >= min_corr
+            and f.get("n_pairs", 0) >= min_pairs
         ]
         return {
             "total_lag_findings": len(findings),
             "qualifying_findings": len(qualifying),
             "causal_templates": len(CAUSAL_STORY_TEMPLATES),
+            "live_min_correlation": min_corr,
+            "live_min_pairs": min_pairs,
+            "pair_outcomes_tracked": len(self._pair_outcomes),
         }
