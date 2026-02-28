@@ -1413,6 +1413,7 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
             trends_client=getattr(ctx, "trends_client", None),
             outcome_collector=outcome_collector,
             memory=memory,
+            thompson_sampler=getattr(ctx, "thompson_sampler", None),
             tiered_alerters=tiered_alerters,
         )
     except Exception:

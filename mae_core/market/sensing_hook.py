@@ -19,7 +19,9 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
+import random
 from collections import deque
 from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import datetime
@@ -91,6 +93,30 @@ SOURCE_ROTATION = [
     "google_trends",
     "finnhub_extras",
 ]
+
+# Map rotation source names → Thompson distribution keys for guided selection.
+# Sources with multiple Thompson keys use their primary/dominant key.
+_ROTATION_TO_THOMPSON = {
+    "sec_form4": "sec_form4",
+    "sec_form8k": "sec_form8k",
+    "congressional": "congressional",
+    "senate": "senate",
+    "hiring": "hiring_tracker",
+    "usa_spending": "contract_award",
+    "sam_gov_and_prices": "sam_gov",
+    "social_sentiment": "social_sentiment",
+    "finra_short": "finra_short",
+    "sec_efts": "sec_efts",
+    "finnhub": "finnhub_news",
+    "fred_macro": "fred_macro",
+    "session_sweep": "session_sweep",
+    "ta_indicators": "ta_rsi",
+    "cot_positioning": "cot_positioning",
+    "stocktwits": "stocktwits_sentiment",
+    "vix_structure": "vix_term_structure",
+    "google_trends": "google_trends",
+    "finnhub_extras": "finnhub_economic",
+}
 
 
 class MarketSensingHook:
@@ -206,23 +232,89 @@ class MarketSensingHook:
     # ------------------------------------------------------------------
 
     def _launch_next_fetch(self):
-        """Fill up to 3 concurrent fetch slots from source rotation."""
+        """Fill up to 3 concurrent fetch slots using Thompson-guided selection.
+
+        When a Thompson sampler is available, sources are selected
+        probabilistically: each source draws from its Beta distribution,
+        then the highest-scoring source is picked. This naturally
+        balances exploration (new sources with wide posteriors) and
+        exploitation (proven sources with high means). Falls back to
+        round-robin when no sampler is available.
+        """
         # Collect any completed futures first
         self._collect_results()
 
         # Fill available slots (3 max concurrent)
+        slots = 3 - len(self._pending_futures)
+        if slots <= 0:
+            return
+
+        # Identify eligible sources (not already in-flight)
+        eligible = [s for s in SOURCE_ROTATION if s not in self._pending_futures]
+        if not eligible:
+            return
+
+        if self._thompson_sampler is not None:
+            self._launch_thompson_guided(eligible, slots)
+        else:
+            self._launch_round_robin(slots)
+
+    def _launch_thompson_guided(self, eligible: list, slots: int):
+        """Select sources via Thompson sampling draws."""
+        # Draw from each source's Beta distribution
+        scored = []
+        for source in eligible:
+            thompson_key = _ROTATION_TO_THOMPSON.get(source)
+            if thompson_key is None:
+                # Unknown source — use uniform prior (maximally uncertain)
+                score = random.betavariate(1.0, 1.0)
+            else:
+                try:
+                    dist = self._thompson_sampler.get_distribution(thompson_key)
+                    if dist is not None and hasattr(dist, "alpha") and hasattr(dist, "beta"):
+                        score = random.betavariate(
+                            max(dist.alpha, 0.01), max(dist.beta, 0.01)
+                        )
+                    else:
+                        # No distribution yet — use wide prior (encourages exploration)
+                        score = random.betavariate(1.0, 1.0)
+                except Exception:
+                    score = random.betavariate(1.0, 1.0)
+            scored.append((score, source))
+
+        # Sort descending by score, pick top N
+        scored.sort(reverse=True)
+        for _, source in scored[:slots]:
+            self._total_fetches += 1
+            logger.info(
+                "Market sensing: Thompson-guided fetch [%s] (cycle %d)",
+                source, self._total_fetches,
+            )
+            self._pending_futures[source] = self._executor.submit(
+                self._fetch_source, source
+            )
+
+    def _launch_round_robin(self, slots: int):
+        """Fallback: simple round-robin selection."""
         attempts = 0
-        while len(self._pending_futures) < 3 and attempts < len(SOURCE_ROTATION):
+        launched = 0
+        while launched < slots and attempts < len(SOURCE_ROTATION):
             source = self._fetch_queue[0]
             self._fetch_queue.rotate(-1)
             attempts += 1
 
             if source in self._pending_futures:
-                continue  # Already in-flight
+                continue
 
             self._total_fetches += 1
-            logger.info("Market sensing: launching async fetch [%s] (cycle %d)", source, self._total_fetches)
-            self._pending_futures[source] = self._executor.submit(self._fetch_source, source)
+            logger.info(
+                "Market sensing: launching async fetch [%s] (cycle %d)",
+                source, self._total_fetches,
+            )
+            self._pending_futures[source] = self._executor.submit(
+                self._fetch_source, source
+            )
+            launched += 1
 
     def _collect_results(self):
         """Check for completed futures and process their signals."""

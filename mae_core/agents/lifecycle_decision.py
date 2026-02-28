@@ -248,6 +248,33 @@ class DecisionActionLifecycleMixin:
             except Exception:
                 logger.debug("Agent %s: causal inference failed", self.unique_id, exc_info=True)
 
+        # --- VDN value-guided action selection (biological: basal ganglia) ---
+        # The Q-table learns from intrinsic rewards every 10 steps in _learn().
+        # Now the learned values get to influence action selection.
+        # Epsilon-greedy: Mae discovers diversity herself through exploration.
+        vdn = getattr(self, "_vdn_engine", None)
+        if vdn is not None and state_vec is not None and self.step_count > 20:
+            try:
+                import random as _rng
+                actions = ["explore", "exploit", "communicate", "rest", "api_call"]
+                q_values = []
+                for a in actions:
+                    action_int = hash(str(a)) % vdn._action_dim
+                    q_val = vdn.compute_local_value(state_vec, action_int)
+                    q_values.append(q_val)
+
+                max_q = max(q_values)
+                if max_q > 0.0:
+                    # Decaying epsilon: 20% → 5% over ~500 steps
+                    epsilon = max(0.05, 0.20 - (self.step_count * 0.0003))
+                    if _rng.random() < epsilon:
+                        return _rng.choice(actions)
+                    else:
+                        best_idx = q_values.index(max_q)
+                        return actions[best_idx]
+            except Exception:
+                logger.debug("Agent %s: VDN selection failed", self.unique_id, exc_info=True)
+
         # Consult world model (biological: prefrontal cortex simulation)
         if self.world_model is not None:
             wm_action = self.use_world_model()
