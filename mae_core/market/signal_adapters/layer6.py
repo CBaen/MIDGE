@@ -1,0 +1,310 @@
+"""Layer 6 signal adapters — COT, StockTwits, VIX, Google Trends, Finnhub extras.
+
+Converts Layer 6 free data sources into normalized MarketSignal objects.
+These were the fifth expansion of MIDGE's sensing capabilities (2026-02-27).
+"""
+
+from __future__ import annotations
+
+from datetime import datetime
+
+from mae_core.market.signal import MarketSignal, _ensure_datetime
+
+
+def from_cot_positioning(cot) -> MarketSignal:
+    """Convert a COTSignal to a MarketSignal.
+
+    Commercial net positioning is the signal. When commercials are heavily
+    long, it's bullish (they hedge their physical exposure). When heavily
+    short, they're hedging against expected declines.
+    """
+    # Direction from commercial net position
+    if cot.commercial_net > 0 and cot.pct_commercial_long > 0.55:
+        direction = "bullish"
+    elif cot.commercial_net < 0 and cot.pct_commercial_long < 0.45:
+        direction = "bearish"
+    else:
+        direction = "neutral"
+
+    # Strength from absolute net size relative to open interest
+    net_ratio = abs(cot.commercial_net) / max(1, cot.open_interest)
+    strength = min(1.0, net_ratio * 5)  # 20% net/OI = full strength
+
+    event_dt = _ensure_datetime(cot.report_date)
+
+    signal_id = f"cot:{cot.ticker}:{cot.report_date}"
+
+    return MarketSignal(
+        signal_id=signal_id,
+        source="cot_positioning",
+        symbol=cot.ticker,
+        asset_class="futures",
+        domain="positioning",
+        direction=direction,
+        strength=strength,
+        confidence=cot.confidence,
+        decay_rate=cot.decay_rate,
+        timestamp=event_dt,
+        received_at=datetime.now(),
+        outcome_symbol=cot.ticker,
+        outcome_window_days=21,  # Weekly data — check 3 weeks out
+        raw_id="",
+        raw_type="COTSignal",
+        metadata={
+            "contract_name": cot.contract_name,
+            "commercial_net": cot.commercial_net,
+            "noncommercial_net": cot.noncommercial_net,
+            "small_trader_net": cot.small_trader_net,
+            "open_interest": cot.open_interest,
+            "pct_commercial_long": cot.pct_commercial_long,
+        },
+    )
+
+
+def from_stocktwits_sentiment(st) -> MarketSignal:
+    """Convert a StockTwitsSentiment to a MarketSignal.
+
+    Bull/bear ratio is the signal. Extreme readings (>70% or <30%)
+    are most actionable, either as confirmation or contrarian signals.
+    """
+    if st.bull_ratio >= 0.70:
+        direction = "bullish"
+    elif st.bull_ratio <= 0.30:
+        direction = "bearish"
+    else:
+        direction = "neutral"
+
+    # Strength from extremeness of sentiment
+    deviation = abs(st.bull_ratio - 0.50)
+    strength = min(1.0, deviation * 3)  # 50% = 0.0, 83% = 1.0
+
+    event_dt = _ensure_datetime(st.detected_at)
+
+    signal_id = f"stocktwits:{st.ticker}:{st.detected_at}"
+
+    return MarketSignal(
+        signal_id=signal_id,
+        source="stocktwits_sentiment",
+        symbol=st.ticker,
+        asset_class="stock",
+        domain="sentiment",
+        direction=direction,
+        strength=strength,
+        confidence=st.confidence,
+        decay_rate=st.decay_rate,
+        timestamp=event_dt,
+        received_at=event_dt,
+        outcome_symbol=st.ticker,
+        raw_id="",
+        raw_type="StockTwitsSentiment",
+        metadata={
+            "bull_count": st.bull_count,
+            "bear_count": st.bear_count,
+            "bull_ratio": st.bull_ratio,
+            "total_messages": st.total_messages,
+            "trending": st.trending,
+        },
+    )
+
+
+def from_vix_structure(vix) -> MarketSignal:
+    """Convert a VIXSignal to a MarketSignal.
+
+    VIX term structure is a regime signal:
+    - Backwardation = fear, bearish for equities
+    - Contango = complacency, bullish for equities
+    - High absolute VIX (>30) = fear regardless of structure
+    """
+    if vix.structure_type == "backwardation" or vix.vix_spot > 30:
+        direction = "bearish"
+    elif vix.structure_type == "contango" and vix.vix_spot < 20:
+        direction = "bullish"
+    else:
+        direction = "neutral"
+
+    # Strength from VIX level (higher = stronger signal)
+    strength = min(1.0, vix.vix_spot / 40.0)
+
+    event_dt = _ensure_datetime(vix.date)
+
+    signal_id = f"vix:{vix.structure_type}:{vix.date}"
+
+    return MarketSignal(
+        signal_id=signal_id,
+        source="vix_term_structure",
+        symbol="",  # VIX is market-wide, no specific ticker
+        asset_class="macro",
+        domain="volatility",
+        direction=direction,
+        strength=strength,
+        confidence=vix.confidence,
+        decay_rate=vix.decay_rate,
+        timestamp=event_dt,
+        received_at=datetime.now(),
+        outcome_symbol="SPY",  # Track against SPY
+        outcome_window_days=7,
+        raw_id="",
+        raw_type="VIXSignal",
+        metadata={
+            "vix_spot": vix.vix_spot,
+            "vix_1m": vix.vix_1m,
+            "vix_3m": vix.vix_3m,
+            "term_spread": vix.term_spread,
+            "structure_type": vix.structure_type,
+        },
+    )
+
+
+def from_trends_signal(trend) -> MarketSignal:
+    """Convert a TrendsSignal to a MarketSignal.
+
+    Search interest spikes indicate retail attention.
+    High interest + rising = momentum building.
+    Macro fear terms (recession, crash) are bearish.
+    """
+    fear_keywords = {"recession", "market crash", "bear market", "unemployment"}
+    is_fear = trend.keyword.lower() in fear_keywords
+
+    if is_fear:
+        direction = "bearish" if trend.interest_score > 50 else "neutral"
+    elif trend.interest_delta_7d > 20:
+        direction = "bullish"  # Rising attention on a ticker
+    elif trend.interest_delta_7d < -20:
+        direction = "bearish"
+    else:
+        direction = "neutral"
+
+    strength = min(1.0, trend.interest_score / 100.0)
+
+    event_dt = _ensure_datetime(trend.detected_at)
+
+    signal_id = f"trends:{trend.keyword}:{trend.detected_at}"
+
+    # Symbol is the keyword if it looks like a ticker (all caps, short)
+    symbol = trend.keyword if trend.keyword.isupper() and len(trend.keyword) <= 5 else ""
+
+    return MarketSignal(
+        signal_id=signal_id,
+        source="google_trends",
+        symbol=symbol,
+        asset_class="stock" if symbol else "macro",
+        domain="sentiment",
+        direction=direction,
+        strength=strength,
+        confidence=trend.confidence,
+        decay_rate=trend.decay_rate,
+        timestamp=event_dt,
+        received_at=event_dt,
+        outcome_symbol=symbol or "SPY",
+        outcome_window_days=7,
+        raw_id="",
+        raw_type="TrendsSignal",
+        metadata={
+            "keyword": trend.keyword,
+            "interest_score": trend.interest_score,
+            "interest_delta_7d": trend.interest_delta_7d,
+            "is_breakout": trend.is_breakout,
+            "related_queries": trend.related_queries[:5],
+        },
+    )
+
+
+def from_economic_event(event) -> MarketSignal:
+    """Convert a Finnhub EconomicEvent to a MarketSignal.
+
+    High-impact events (FOMC, CPI, NFP) are catalysts.
+    Pre-event: neutral catalyst approaching.
+    Post-event with surprise: directional from actual vs estimate.
+    """
+    if event.actual is not None and event.estimate is not None:
+        surprise = event.surprise_pct()
+        if surprise is not None and abs(surprise) > 0.05:
+            direction = "bullish" if surprise > 0 else "bearish"
+            strength = min(1.0, abs(surprise) * 5)
+        else:
+            direction = "neutral"
+            strength = 0.3
+    else:
+        direction = "neutral"
+        strength = 0.4 if event.impact == "high" else 0.2
+
+    event_dt = _ensure_datetime(event.date)
+
+    signal_id = f"econ:{event.event}:{event.date}"
+
+    return MarketSignal(
+        signal_id=signal_id,
+        source="finnhub_economic",
+        symbol="",
+        asset_class="macro",
+        domain="events",
+        direction=direction,
+        strength=strength,
+        confidence=event.confidence,
+        decay_rate=event.decay_rate,
+        timestamp=event_dt,
+        received_at=datetime.now(),
+        outcome_symbol="SPY",
+        outcome_window_days=3,
+        raw_id="",
+        raw_type="EconomicEvent",
+        metadata={
+            "event": event.event,
+            "country": event.country,
+            "impact": event.impact,
+            "actual": event.actual,
+            "estimate": event.estimate,
+            "previous": event.previous,
+            "unit": event.unit,
+        },
+    )
+
+
+def from_analyst_recommendation(rec) -> MarketSignal:
+    """Convert a Finnhub AnalystRec to a MarketSignal.
+
+    Strong consensus (>80% buy or >40% sell) is a signal.
+    Analyst sentiment is slow-moving and reflects institutional thinking.
+    """
+    buy_ratio = rec.buy_ratio
+    if buy_ratio >= 0.80:
+        direction = "bullish"
+    elif buy_ratio <= 0.30:
+        direction = "bearish"
+    else:
+        direction = "neutral"
+
+    # Strength from consensus strength (how extreme the skew is)
+    deviation = abs(buy_ratio - 0.50)
+    strength = min(1.0, deviation * 3)
+
+    event_dt = _ensure_datetime(rec.period)
+
+    signal_id = f"analyst:{rec.symbol}:{rec.period}"
+
+    return MarketSignal(
+        signal_id=signal_id,
+        source="finnhub_analyst",
+        symbol=rec.symbol,
+        asset_class="stock",
+        domain="fundamentals",
+        direction=direction,
+        strength=strength,
+        confidence=rec.confidence,
+        decay_rate=rec.decay_rate,
+        timestamp=event_dt,
+        received_at=datetime.now(),
+        outcome_symbol=rec.symbol,
+        outcome_window_days=30,  # Analyst recs have longer time horizon
+        raw_id="",
+        raw_type="AnalystRec",
+        metadata={
+            "strong_buy": rec.strong_buy,
+            "buy": rec.buy,
+            "hold": rec.hold,
+            "sell": rec.sell,
+            "strong_sell": rec.strong_sell,
+            "buy_ratio": buy_ratio,
+            "total": rec.total,
+        },
+    )
