@@ -93,6 +93,11 @@ class HypothesisEngine:
         self._gate_review_cadence = 2000
         self._gate_cooldowns: dict[str, int] = {}  # key → step when last adjusted
 
+        # Bridge 5: meta-learning for RSI Layer 3
+        self._meta_learning_cadence = 3000
+        self._retirement_window: list[str] = []  # ring buffer of "promoted"/"retired"
+        self._retirement_window_max = 50
+
     def step(self) -> None:
         """Called every model step. Runs lifecycle operations on cadence."""
         self._step_counter += 1
@@ -112,6 +117,9 @@ class HypothesisEngine:
 
         if self._step_counter % self._gate_review_cadence == 0:
             self._review_gates()
+
+        if self._step_counter % self._meta_learning_cadence == 0:
+            self._run_meta_learning()
 
     # -----------------------------------------------------------------
     # Agent-triggered methods (Phase 3a — market action dispatch)
