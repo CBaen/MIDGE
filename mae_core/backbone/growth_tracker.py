@@ -171,7 +171,8 @@ class GrowthTracker:
                     if hasattr(meter, "_compute_and_publish"):
                         meter._compute_and_publish()
                 stats = meter.get_statistics()
-                return float(stats.get("current_phi", 0.0) or 0.0)
+                lm = stats.get("last_measurement") or {}
+                return float(lm.get("organism_mean_phi", 0.0) or 0.0)
             except Exception:
                 pass
         return 0.0
