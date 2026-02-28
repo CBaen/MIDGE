@@ -126,6 +126,7 @@ class MarketSensingHook:
         trends_client: Any = None,
         outcome_collector: Any = None,
         memory: Any = None,
+        thompson_sampler: Any = None,
         tiered_alerters: Optional[dict] = None,
         watchlist: Optional[dict] = None,
         fetch_cadence: int = 50,
@@ -161,6 +162,7 @@ class MarketSensingHook:
         self._ta_indicators = ta_indicators
         self._outcome_collector = outcome_collector
         self._memory = memory
+        self._thompson_sampler = thompson_sampler
 
         # Tiered alerters (tactical/strategic/thematic)
         self._tiered_alerters = tiered_alerters or {}
