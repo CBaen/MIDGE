@@ -241,7 +241,7 @@ Fixed 3 bugs found in live scan output, defined data schema:
 
 ```
 Bootstrap Layer 33h: MarketSensingHook wired as step hook
-  ├─ Async fetch on 50-step cadence (12-source rotation: form4 → 8k → congress → senate → hiring → usaspending → sam.gov → reddit → finra → efts → finnhub → fred)
+  ├─ Async fetch on 50-step cadence (19-source rotation: form4 → 8k → congress → senate → hiring → usaspending → sam.gov → reddit → finra → efts → finnhub → fred → cot → stocktwits → vix → trends → finnhub_earnings → finnhub_insider → ta_indicators)
   ├─ Signals → convergence_alerter (global) + 3 tiered alerters
   ├─ Signals → Qdrant + JSONL archive
   └─ Outcome evaluation on 200-step cadence → Thompson update
@@ -306,7 +306,7 @@ All 17 planned items from the Layer 5 roadmap are done. Roadmap history at `C:\U
 
 Welcome. MIDGE is Mae differentiated for financial markets. Here is what you need to know:
 
-1. **MIDGE = mae-core + market intelligence.** 121 systems, same 8 laws, 33-layer bootstrap. Market organ is Layer 33 (33a-33i).
+1. **MIDGE = mae-core + market intelligence.** 125 systems, same 8 laws, 33-layer bootstrap. Market organ is Layer 33 (33a-33i).
 2. **Mae-core is upstream.** Changes to Mae's genome should be made in `C:\Users\baenb\projects\mae-core` and pulled here. Market-specific changes stay here.
 3. **Agents actively sense the market.** MarketSensingHook (Layer 33h) fetches data on cadence and feeds convergence_alerter. Three agents are differentiated into market roles (Layer 33i). Endocrine coupling and market advisory carry signals to all agents.
 4. **The crown jewel is `convergence_alerter.py`** — synthesizes signals across ALL domains (insider + congressional + contract + hiring + velocity) into actionable alerts. Now with per-ticker and multi-timeframe convergence.
