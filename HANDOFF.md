@@ -2,6 +2,29 @@
 
 ## What Happened
 
+### Market-Focused Step Loop (2026-02-27)
+
+MIDGE's agents now actively hunt patterns instead of doing generic TaskPool busywork. Previously, a SEC_WATCHER "exploring" claimed a generic task — the same thing a STEM agent does. Now it scans insider signal buffers. Same agent class (Law 5), different behavior based on role configuration.
+
+**New file:** `mae_core/market/market_actions.py` (~500 lines) — role-keyed action dispatch. Public function: `act_market(agent, action_type) -> float | None`. Returns reward for market-role agents, or None to fall through to generic TaskPool. 15 action handlers across 5 roles.
+
+**What changed:**
+1. **`lifecycle_decision.py`** — 8-line dispatch in `_act()`: market agents route to `act_market()` for explore/exploit/communicate before hitting TaskPool
+2. **`market_awareness.py`** — `market_stimulus` key added to `get_market_context_for_router()`: encodes market state as matchable string (`convergence:strong:bullish`, `hypothesis:empty`, `market:ambient`)
+3. **`lifecycle_decision.py`** — `_route_with_advisory()` uses `market_stimulus` as DecisionRouter stimulus for market agents, enabling reflex-driven routing
+4. **`hypothesis_engine.py`** — two public methods: `request_generation()` (agent-triggered, 100-step cooldown) and `request_validation()` (skip-if-busy, returns promoted/retired/busy/none)
+5. **`bootstrap/market.py`** — `_register_market_reflexes()`: 4 reflex patterns registered on per-agent DecisionRouters (convergence:strong → exploit, hypothesis:empty → explore, market:ambient → explore)
+6. **`bootstrap/market.py`** — `_write_convergence_heartbeat()`: overwrites `data/midge/convergence_state.json` every 100 steps with regime, convergence, ticker alerts, hypothesis stats, Kelly
+7. **`bootstrap/market.py`** — Phase 1 bug fixes: auto-redifferentiation ref loss (refs restored on role switch), tiered alerter queries every 10 steps, per-ticker alert storage, Kelly sizing subscriber
+8. **`redifferentiation_triggers.py`** — `set_market_refs()` + `_reattach_market_refs()`: when auto-rediff switches an agent to a market role, all live system connections are re-attached
+
+**Observable output files** (all in `data/midge/`, gitignored):
+- `agent_activity.jsonl` — written by `_market_broadcast()` communicate action
+- `hypothesis_activity.jsonl` — written by hypothesis generate/validate actions
+- `convergence_state.json` — overwritten every 100 steps with current snapshot
+
+**41 new tests** in `tests/test_market_actions.py`.
+
 ### Bridge 2: Thompson Routing (2026-02-26)
 
 Connected Bridge 1's granular Thompson keys to actual signal processing. Previously, promoted hypotheses seeded `sweep_bt:CL=F:bearish` keys but the convergence alerter always looked up the generic `session_sweep` key for all sweep signals.
@@ -184,9 +207,9 @@ Fixed 3 bugs found in live scan output, defined data schema:
 
 ## Current State
 
-- **2804 tests pass, 0 failures**
+- **2845 tests pass, 0 failures**
 - **121 systems** (92 core + 29 market), **140 holons**, **374 connections** (217 core + 47 fractal + 55 bootstrap + 55 market)
-- **39 market files** in `mae_core/market/` (bootstrapped as Layer 33 + 6 API clients + form8k_sentiment + hypothesis loop + backtest_analyzer + backtest_scheduler + step_timer)
+- **40 market files** in `mae_core/market/` (bootstrapped as Layer 33 + 6 API clients + form8k_sentiment + hypothesis loop + backtest_analyzer + backtest_scheduler + step_timer + market_actions)
 - **33-layer bootstrap** runs cleanly (Layers 33a-33i)
 - **Agent-based market sensing active** — 3+ agents differentiated (SEC_WATCHER, CONTRACT_TRACKER, MARKET_ANALYST, + HYPOTHESIS_EXPLORER + HYPOTHESIS_VALIDATOR at 12+ agents)
 - **Hypothesis generation loop active** — RSI Layer 2: lag findings → hypotheses → adversarial validation → DSR gate → promote/retire
