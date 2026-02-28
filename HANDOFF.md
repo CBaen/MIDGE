@@ -2,6 +2,33 @@
 
 ## What Happened
 
+### Layer 6: New Senses (2026-02-27)
+
+MIDGE gained 5 new FREE data sources, expanding her sensing from 14 to 19 sources. Each follows the exact same client→signal→convergence→Thompson pipeline as the original 14.
+
+**New sources:**
+
+1. **COT (CFTC Commitments of Traders)** — `cot_client.py`. Commercial/noncommercial futures positioning via `cot-reports` library. Weekly data. Domain: positioning (new), Tier: strategic, Thompson key: cot_positioning (0.55 prior). Slow decay (0.03 — ~23-day half-life).
+
+2. **StockTwits Sentiment** — `stocktwits_client.py`. Bull/bear message ratio via public API (no auth). Domain: sentiment, Tier: thematic, Thompson key: stocktwits_sentiment (0.50). Fast decay (0.50 — social data moves fast).
+
+3. **VIX Term Structure** — `vix_client.py`. CBOE VIX spot + contango/backwardation from free CSV. Domain: volatility (new), Tier: strategic, Thompson key: vix_term_structure (0.60). Medium decay (0.30).
+
+4. **Google Trends** — `trends_client.py`. Retail search attention via `pytrends` library. Mixes ticker symbols + macro fear terms ("recession", "market crash"). Domain: sentiment, Tier: thematic, Thompson key: google_trends (0.45 — noisy, low prior).
+
+5. **Finnhub Extras** — Extended existing `finnhub_client.py` with 3 new methods: `get_economic_calendar()` (FOMC/CPI/NFP dates), `get_analyst_recommendations()` (buy/sell consensus), `get_earnings_calendar()` (upcoming earnings). Thompson keys: finnhub_economic (0.55), finnhub_analyst (0.50), finnhub_earnings_calendar (0.55).
+
+**Wiring (same pattern as all existing sources):**
+- 6 new `from_*` converters in `signal.py`
+- 5 new fetch methods + dispatch cases in `sensing_hook.py` (SOURCE_ROTATION now 19 entries)
+- 7 new entries in `_SOURCE_TO_THOMPSON_KEY` + 2 new domain categories (positioning→institutional, volatility→market)
+- 7 new `source_reliability` entries + 2 new `decay_rates` in `learning_config.py`
+- 4 new clients instantiated in bootstrap, 8 new triadic connections (Group 19), 4 holons, 4 somatic entries
+
+**New dependencies:** `pip install cot-reports pytrends`
+
+**171 new tests:** test_new_sources.py (120 tests — clients + converters) + test_new_source_wiring.py (51 tests — pipeline integration). **3057 total tests, 0 failures.**
+
 ### Bridge 4+5: Dynamic Gates + Meta-Learning / RSI Layer 3 (2026-02-27)
 
 MIDGE can now self-tune her discovery process. Previously, hypothesis promotion/retirement thresholds were hardcoded constants. Now they live in `learning_config.py` and adjust based on outcome history.
