@@ -43,12 +43,39 @@ logger = logging.getLogger(__name__)
 DATA_DIR = Path(__file__).resolve().parents[3] / "data" / "market"
 
 # ── Promotion / retirement thresholds ───────────────────────────────
+# Hardcoded fallbacks (used if LEARNING_CONFIG is unavailable)
+_GATE_FALLBACKS = {
+    "min_observations": 20,
+    "promote_win_rate": 0.52,
+    "promote_dsr": 0.5,
+    "retire_win_rate": 0.45,
+    "retire_dsr": 0.0,
+}
 
-MIN_OBSERVATIONS = 20
-PROMOTE_WIN_RATE = 0.52
-PROMOTE_DSR = 0.5
-RETIRE_WIN_RATE = 0.45
-RETIRE_DSR = 0.0
+# Legacy module-level aliases for backward compatibility with tests
+MIN_OBSERVATIONS = _GATE_FALLBACKS["min_observations"]
+PROMOTE_WIN_RATE = _GATE_FALLBACKS["promote_win_rate"]
+PROMOTE_DSR = _GATE_FALLBACKS["promote_dsr"]
+RETIRE_WIN_RATE = _GATE_FALLBACKS["retire_win_rate"]
+RETIRE_DSR = _GATE_FALLBACKS["retire_dsr"]
+
+
+def _get_gate(key: str, regime: str = "default") -> float:
+    """Read a hypothesis gate from learning_config, with regime delta and fallback.
+
+    Graceful degradation: if learning_config import fails or key is missing,
+    returns the hardcoded fallback value. This means the system works identically
+    to before if the config sections are absent.
+    """
+    try:
+        from mae_core.market.intelligence.learning_config import LEARNING_CONFIG
+        gates = LEARNING_CONFIG.get("hypothesis_gates", {})
+    except ImportError:
+        return float(_GATE_FALLBACKS[key])
+
+    base = gates.get(key, _GATE_FALLBACKS.get(key, 0.0))
+    delta = gates.get("_regime_deltas", {}).get(regime, {}).get(key, 0.0)
+    return float(base + delta)
 
 
 @dataclass
@@ -160,22 +187,29 @@ class HypothesisValidator:
             and "REQUIRES MANUAL REVIEW" not in hypothesis.causal_story
         )
 
+        # Read live gates from config (with regime delta + fallback)
+        _min_obs = _get_gate("min_observations")
+        _pwr = _get_gate("promote_win_rate")
+        _pdsr = _get_gate("promote_dsr")
+        _rwr = _get_gate("retire_win_rate")
+        _rdsr = _get_gate("retire_dsr")
+
         recommend_promote = (
-            total >= MIN_OBSERVATIONS
-            and win_rate > PROMOTE_WIN_RATE
-            and dsr > PROMOTE_DSR
+            total >= _min_obs
+            and win_rate > _pwr
+            and dsr > _pdsr
             and has_real_causal_story
         )
 
         recommend_retire = False
         retire_reason = ""
-        if total >= MIN_OBSERVATIONS:
-            if win_rate < RETIRE_WIN_RATE:
+        if total >= _min_obs:
+            if win_rate < _rwr:
                 recommend_retire = True
-                retire_reason = f"Win rate {win_rate:.3f} < {RETIRE_WIN_RATE} after {total} obs"
-            elif dsr < RETIRE_DSR:
+                retire_reason = f"Win rate {win_rate:.3f} < {_rwr} after {total} obs"
+            elif dsr < _rdsr:
                 recommend_retire = True
-                retire_reason = f"DSR {dsr:.3f} < 0 after {total} obs (multiple testing penalty)"
+                retire_reason = f"DSR {dsr:.3f} < {_rdsr} after {total} obs (multiple testing penalty)"
 
         result = ValidationResult(
             hypothesis_id=hypothesis.hypothesis_id,
@@ -230,26 +264,33 @@ class HypothesisValidator:
             and "REQUIRES MANUAL REVIEW" not in hypothesis.causal_story
         )
 
+        # Read live gates from config (with regime delta + fallback)
+        _min_obs = _get_gate("min_observations")
+        _pwr = _get_gate("promote_win_rate")
+        _pdsr = _get_gate("promote_dsr")
+        _rwr = _get_gate("retire_win_rate")
+        _rdsr = _get_gate("retire_dsr")
+
         recommend_promote = (
-            total >= MIN_OBSERVATIONS
-            and win_rate > PROMOTE_WIN_RATE
-            and dsr > PROMOTE_DSR
+            total >= _min_obs
+            and win_rate > _pwr
+            and dsr > _pdsr
             and has_real_causal_story
         )
 
         recommend_retire = False
         retire_reason = ""
-        if total >= MIN_OBSERVATIONS:
-            if win_rate < RETIRE_WIN_RATE:
+        if total >= _min_obs:
+            if win_rate < _rwr:
                 recommend_retire = True
                 retire_reason = (
-                    f"Backtest win rate {win_rate:.3f} < {RETIRE_WIN_RATE} "
+                    f"Backtest win rate {win_rate:.3f} < {_rwr} "
                     f"over {total} historical trades"
                 )
-            elif dsr < RETIRE_DSR:
+            elif dsr < _rdsr:
                 recommend_retire = True
                 retire_reason = (
-                    f"DSR {dsr:.3f} < 0 after multiple-testing correction "
+                    f"DSR {dsr:.3f} < {_rdsr} after multiple-testing correction "
                     f"({self._dsr_trials_tracked} trials tracked)"
                 )
 

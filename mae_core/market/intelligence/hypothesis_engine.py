@@ -85,6 +85,12 @@ class HypothesisEngine:
             max_workers=1, thread_name_prefix="hyp-val")
         self._validation_future: Optional[Future] = None
 
+        # Bridge 4: meta-tracking for dynamic gate review
+        self._meta_promoted_total = 0
+        self._meta_retired_after_active = 0
+        self._gate_review_cadence = 2000
+        self._gate_cooldowns: dict[str, int] = {}  # key → step when last adjusted
+
     def step(self) -> None:
         """Called every model step. Runs lifecycle operations on cadence."""
         self._step_counter += 1
