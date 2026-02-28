@@ -548,6 +548,11 @@ def _register_market_somatic(ctx: SimpleNamespace) -> None:
         "backtest_scheduler": ("BacktestScheduler", ["backtest_analyzer"]),
         "ta_indicators": ("TAIndicators", ["price_fetcher"]),
         "step_timer": ("StepTimer", []),
+        # Layer 6 clients
+        "cot_client": ("COTClient", []),
+        "stocktwits_client": ("StockTwitsClient", []),
+        "vix_client": ("VIXClient", []),
+        "trends_client": ("TrendsClient", []),
     }
 
     for sys_id, (desc, deps) in market_systems.items():
@@ -584,6 +589,8 @@ def _register_market_holons(ctx: SimpleNamespace) -> None:
         "hypothesis_validator", "hypothesis_engine",
         "backtest_analyzer", "backtest_scheduler",
         "ta_indicators", "step_timer",
+        # Layer 6
+        "cot_client", "stocktwits_client", "vix_client", "trends_client",
     ]
 
     registered = 0
@@ -658,6 +665,8 @@ def _register_market_fractal(ctx: SimpleNamespace) -> None:
         "thompson_calibrator", "kelly_position_sizer",
         "hypothesis_registry", "backtest_analyzer", "backtest_scheduler",
         "ta_indicators", "step_timer",
+        # Layer 6
+        "cot_client", "stocktwits_client", "vix_client", "trends_client",
     ]
     for sys_id in extras:
         if ctx.holon_registry.get_entry(sys_id) is not None:
@@ -1387,6 +1396,10 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
             form8k_sentiment=form8k_sentiment,
             session_sweep_detector=getattr(ctx, "session_sweep_detector", None),
             ta_indicators=getattr(ctx, "ta_indicators", None),
+            cot_client=getattr(ctx, "cot_client", None),
+            stocktwits_client=getattr(ctx, "stocktwits_client", None),
+            vix_client=getattr(ctx, "vix_client", None),
+            trends_client=getattr(ctx, "trends_client", None),
             outcome_collector=outcome_collector,
             memory=memory,
             tiered_alerters=tiered_alerters,
