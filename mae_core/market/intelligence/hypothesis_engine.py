@@ -108,6 +108,9 @@ class HypothesisEngine:
         if self._step_counter % self._validation_cadence == 0:
             self._launch_validation()
 
+        if self._step_counter % self._gate_review_cadence == 0:
+            self._review_gates()
+
     # -----------------------------------------------------------------
     # Agent-triggered methods (Phase 3a — market action dispatch)
     # -----------------------------------------------------------------
@@ -322,6 +325,7 @@ class HypothesisEngine:
             return
 
         self._hypotheses_promoted += 1
+        self._meta_promoted_total += 1
 
         # Register a Thompson key for the promoted hypothesis
         if self._thompson_sampler is not None:
@@ -381,6 +385,8 @@ class HypothesisEngine:
             return
 
         self._hypotheses_retired += 1
+        if was_active:
+            self._meta_retired_after_active += 1
 
         if self._bus is not None:
             from mae_core.market.channels import CH_HYPOTHESIS_RETIRED
@@ -417,6 +423,96 @@ class HypothesisEngine:
                 if (hyp.regime_created_in == current_regime
                         or hyp.regime_created_in == "default"):
                     self._registry.reactivate(hyp.hypothesis_id)
+
+    def _review_gates(self) -> None:
+        """Bridge 4: Review and adjust hypothesis promotion/retirement gates.
+
+        Examines false-positive rate (promoted → retired) and promotion rate.
+        If gates are too loose (high FP), tightens promote_win_rate.
+        If gates are too tight (zero promotions with available candidates), loosens.
+        All adjustments are clamped to _bounds and rate-limited by cooldown.
+        """
+        try:
+            from mae_core.market.intelligence.learning_config import (
+                LEARNING_CONFIG, update_config,
+            )
+        except ImportError:
+            return
+
+        gates = LEARNING_CONFIG.get("hypothesis_gates", {})
+        bounds = gates.get("_bounds", {})
+
+        # Compute false positive rate
+        fp_rate = (
+            self._meta_retired_after_active / max(1, self._meta_promoted_total)
+            if self._meta_promoted_total > 0 else 0.0
+        )
+
+        # Check if any probation hypotheses exist (gate-tightness indicator)
+        probation_count = 0
+        try:
+            probation_count = len(self._registry.get_probation())
+        except Exception:
+            pass
+
+        adjustments = []
+
+        # Case A: too many false positives → tighten promotion gate
+        if fp_rate > 0.30 and self._meta_promoted_total >= 3:
+            adjustments.append(("promote_win_rate", +0.01))
+
+        # Case B: zero promotions but candidates exist → loosen gate
+        elif (self._meta_promoted_total == 0
+              and probation_count >= 3
+              and self._step_counter > self._gate_review_cadence * 2):
+            adjustments.append(("promote_win_rate", -0.01))
+
+        # Apply adjustments with cooldown and bounds
+        cooldown_steps = self._gate_review_cadence * 5  # 5 review cycles
+        changed = False
+
+        for key, delta in adjustments:
+            last_adjusted = self._gate_cooldowns.get(key, 0)
+            if self._step_counter - last_adjusted < cooldown_steps:
+                continue  # Cooldown active
+
+            current = gates.get(key, 0.0)
+            new_val = current + delta
+
+            # Clamp to bounds
+            key_bounds = bounds.get(key, [None, None])
+            if key_bounds[0] is not None:
+                new_val = max(key_bounds[0], new_val)
+            if key_bounds[1] is not None:
+                new_val = min(key_bounds[1], new_val)
+
+            if abs(new_val - current) < 1e-6:
+                continue  # No effective change after clamping
+
+            update_config(
+                f"hypothesis_gates.{key}",
+                round(new_val, 4),
+                modified_by="gate_reviewer",
+            )
+            self._gate_cooldowns[key] = self._step_counter
+            changed = True
+            logger.info(
+                "GATE ADJUSTED: %s %.4f → %.4f (fp_rate=%.2f, promoted=%d, probation=%d)",
+                key, current, new_val, fp_rate,
+                self._meta_promoted_total, probation_count,
+            )
+
+        if changed and self._bus is not None:
+            from mae_core.market.channels import CH_GATE_ADJUSTED
+            try:
+                self._bus.publish(CH_GATE_ADJUSTED, {
+                    "step": self._step_counter,
+                    "fp_rate": fp_rate,
+                    "promoted_total": self._meta_promoted_total,
+                    "probation_count": probation_count,
+                })
+            except Exception:
+                pass
 
     def get_statistics(self) -> dict:
         """Summary stats for HolonProxy.sense() and monitoring."""

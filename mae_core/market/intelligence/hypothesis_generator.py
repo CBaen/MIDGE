@@ -32,9 +32,26 @@ logger = logging.getLogger(__name__)
 DATA_DIR = Path(__file__).resolve().parents[3] / "data" / "market"
 
 # ── Minimum thresholds for hypothesis generation ────────────────────
+# Fallback values if learning_config is unavailable
+_GEN_FALLBACKS = {"min_correlation": 0.6, "min_pairs": 10}
 
-MIN_CORRELATION = 0.6     # |r| >= 0.6 to be worth investigating
-MIN_PAIRS = 10            # At least 10 data points (was 15, lowered for bootstrap)
+# Legacy module-level aliases for backward compatibility
+MIN_CORRELATION = _GEN_FALLBACKS["min_correlation"]
+MIN_PAIRS = _GEN_FALLBACKS["min_pairs"]
+
+
+def _get_gen_threshold(key: str) -> float:
+    """Read a generator threshold from learning_config, with fallback.
+
+    Graceful degradation: if config import fails or key is missing,
+    returns the hardcoded fallback value.
+    """
+    try:
+        from mae_core.market.intelligence.learning_config import LEARNING_CONFIG
+        cfg = LEARNING_CONFIG.get("generator_thresholds", {})
+        return float(cfg.get(key, _GEN_FALLBACKS.get(key, 0.0)))
+    except ImportError:
+        return float(_GEN_FALLBACKS.get(key, 0.0))
 
 # ── Causal story templates ──────────────────────────────────────────
 # Maps (source_a, source_b) to explanatory text. Order-independent:
