@@ -22,6 +22,13 @@ logger = logging.getLogger(__name__)
 # EventBus channel for automatic redifferentiation events
 CH_AUTO_REDIFFERENTIATED = "stem_cell.auto_redifferentiated"
 
+# Market roles that need live system refs re-attached after rediff
+_MARKET_ROLES = frozenset({
+    "SEC_WATCHER", "CONTRACT_TRACKER", "MARKET_ANALYST",
+    "HYPOTHESIS_EXPLORER", "HYPOTHESIS_VALIDATOR",
+})
+_HYPOTHESIS_ROLES = frozenset({"HYPOTHESIS_EXPLORER", "HYPOTHESIS_VALIDATOR"})
+
 # Thresholds
 HEALTH_THRESHOLD = 0.3       # Below this = critically underperforming
 CONSECUTIVE_REQUIRED = 21    # Checks before trigger (21 * 21-step cadence = 441 steps)
