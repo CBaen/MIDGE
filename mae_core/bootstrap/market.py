@@ -689,7 +689,7 @@ def _register_market_fractal(ctx: SimpleNamespace) -> None:
 # =========================================================================
 
 def _register_market_connections(ctx: SimpleNamespace) -> None:
-    """Register 51 triadic connections for market systems (Group 14-17)."""
+    """Register 66 triadic connections for market systems (Group 14-19)."""
     from mae_core.backbone.connection_registry import (
         ConnectionType,
         ConnectionCriticality,
