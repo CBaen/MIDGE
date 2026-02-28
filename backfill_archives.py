@@ -316,6 +316,164 @@ def fetch_price_history(tickers: List[str], days: int) -> list:
         return []
 
 
+# ── Layer 6 Sources ──────────────────────────────────────────────────────────
+
+def fetch_cot_history(days: int) -> list:
+    """Fetch CFTC COT positioning for all mapped futures contracts (all weekly rows)."""
+    try:
+        from mae_core.market.apis.cot_client import COTClient
+    except ImportError:
+        logger.warning("COT client not available, skipping")
+        return []
+
+    try:
+        client = COTClient()
+        # Fetch current year + previous year if days > 365
+        current_year = datetime.now().year
+        years = [current_year]
+        if days > 365:
+            years = [current_year - 1, current_year]
+        elif days > 30:
+            years = [current_year - 1, current_year]  # Always get both for coverage
+
+        positions = client.get_all_positions(years=years)
+        # Filter to requested window
+        cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+        filtered = [p for p in positions if p.report_date >= cutoff]
+        logger.info("  COT positions: %d weekly reports (filtered from %d)", len(filtered), len(positions))
+        return filtered
+    except Exception as e:
+        logger.warning("  COT history FAILED: %s", e)
+        return []
+
+
+def fetch_vix_history(days: int) -> list:
+    """Fetch CBOE VIX daily history."""
+    try:
+        from mae_core.market.apis.vix_client import VIXClient
+    except ImportError:
+        logger.warning("VIX client not available, skipping")
+        return []
+
+    try:
+        client = VIXClient()
+        signals = client.get_vix_history(days=days)
+        logger.info("  VIX history: %d daily readings", len(signals))
+        return signals
+    except Exception as e:
+        logger.warning("  VIX history FAILED: %s", e)
+        return []
+
+
+def fetch_stocktwits_sentiment(tickers: List[str]) -> list:
+    """Fetch StockTwits sentiment (snapshot only — no historical API)."""
+    try:
+        from mae_core.market.apis.stocktwits_client import StockTwitsClient
+    except ImportError:
+        logger.warning("StockTwits client not available, skipping")
+        return []
+
+    try:
+        client = StockTwitsClient()
+        sentiment = client.get_sentiment(tickers[:20])  # Limit to avoid rate limiting
+        logger.info("  StockTwits sentiment: %d tickers", len(sentiment))
+        return sentiment
+    except Exception as e:
+        logger.warning("  StockTwits sentiment FAILED: %s", e)
+        return []
+
+
+def fetch_trends(days: int) -> list:
+    """Fetch Google Trends search interest (snapshot only — current 7d window)."""
+    try:
+        from mae_core.market.apis.trends_client import TrendsClient
+    except ImportError:
+        logger.warning("Trends client not available, skipping")
+        return []
+
+    try:
+        client = TrendsClient()
+        signals = client.get_interest()
+        logger.info("  Google Trends: %d keyword signals", len(signals))
+        return signals
+    except Exception as e:
+        logger.warning("  Google Trends FAILED: %s", e)
+        return []
+
+
+def fetch_finnhub_economic(days: int) -> list:
+    """Fetch Finnhub economic calendar events."""
+    if not os.environ.get("MAE_FINNHUB_API_KEY"):
+        logger.warning("  MAE_FINNHUB_API_KEY not set, skipping economic calendar")
+        return []
+
+    try:
+        from mae_core.market.apis.finnhub_client import FinnhubClient
+    except ImportError:
+        logger.warning("Finnhub client not available, skipping economic")
+        return []
+
+    try:
+        client = FinnhubClient()
+        events = client.get_economic_calendar(days=min(days, 90))
+        logger.info("  Finnhub economic calendar: %d events", len(events))
+        return events
+    except Exception as e:
+        logger.warning("  Finnhub economic calendar FAILED: %s", e)
+        return []
+
+
+def fetch_finnhub_analyst(tickers: List[str]) -> list:
+    """Fetch Finnhub analyst recommendations for all tickers."""
+    if not os.environ.get("MAE_FINNHUB_API_KEY"):
+        logger.warning("  MAE_FINNHUB_API_KEY not set, skipping analyst recs")
+        return []
+
+    try:
+        from mae_core.market.apis.finnhub_client import FinnhubClient
+    except ImportError:
+        logger.warning("Finnhub client not available, skipping analyst")
+        return []
+
+    try:
+        client = FinnhubClient()
+        all_recs = []
+        for i, ticker in enumerate(tickers):
+            logger.info("  Finnhub analyst: %s (%d/%d)", ticker, i + 1, len(tickers))
+            try:
+                recs = client.get_analyst_recommendations(ticker)
+                all_recs.extend(recs)
+            except Exception as e:
+                logger.warning("    -> FAILED: %s", e)
+        logger.info("  Finnhub analyst recs total: %d", len(all_recs))
+        return all_recs
+    except Exception as e:
+        logger.warning("  Finnhub analyst FAILED: %s", e)
+        return []
+
+
+def fetch_finnhub_earnings_calendar(days: int) -> list:
+    """Fetch Finnhub earnings calendar (past + upcoming)."""
+    if not os.environ.get("MAE_FINNHUB_API_KEY"):
+        logger.warning("  MAE_FINNHUB_API_KEY not set, skipping earnings calendar")
+        return []
+
+    try:
+        from mae_core.market.apis.finnhub_client import FinnhubClient
+    except ImportError:
+        logger.warning("Finnhub client not available, skipping earnings calendar")
+        return []
+
+    try:
+        client = FinnhubClient()
+        events = client.get_earnings_calendar(days=min(days, 90))
+        logger.info("  Finnhub earnings calendar: %d events", len(events))
+        return events
+    except Exception as e:
+        logger.warning("  Finnhub earnings calendar FAILED: %s", e)
+        return []
+
+
 # ── Phase 2: Convert ─────────────────────────────────────────────────────────
 
 def convert_all(
@@ -328,6 +486,13 @@ def convert_all(
     macro_indicators: list = None,
     earnings_events: list = None,
     price_history: list = None,
+    cot_positions: list = None,
+    vix_readings: list = None,
+    stocktwits: list = None,
+    trends: list = None,
+    finnhub_econ: list = None,
+    finnhub_recs: list = None,
+    finnhub_earn_cal: list = None,
 ) -> list:
     """Convert raw API results to MarketSignal objects, deduped by signal_id."""
     from mae_core.market.signal import (
@@ -340,6 +505,12 @@ def convert_all(
         from_macro_indicator,
         from_earnings_event,
         from_price_data,
+        from_cot_positioning,
+        from_vix_structure,
+        from_stocktwits_sentiment,
+        from_trends_signal,
+        from_economic_event,
+        from_analyst_recommendation,
     )
 
     signals = []
@@ -403,6 +574,49 @@ def convert_all(
             sig = from_price_data(pd)
             if sig is not None:
                 _add(sig)
+        except Exception:
+            pass
+
+    for pos in (cot_positions or []):
+        try:
+            _add(from_cot_positioning(pos))
+        except Exception:
+            pass
+
+    for vix in (vix_readings or []):
+        try:
+            _add(from_vix_structure(vix))
+        except Exception:
+            pass
+
+    for st in (stocktwits or []):
+        try:
+            _add(from_stocktwits_sentiment(st))
+        except Exception:
+            pass
+
+    for tr in (trends or []):
+        try:
+            _add(from_trends_signal(tr))
+        except Exception:
+            pass
+
+    for ev in (finnhub_econ or []):
+        try:
+            _add(from_economic_event(ev))
+        except Exception:
+            pass
+
+    for rec in (finnhub_recs or []):
+        try:
+            _add(from_analyst_recommendation(rec))
+        except Exception:
+            pass
+
+    # Finnhub earnings calendar uses the same converter as earnings surprises
+    for ee in (finnhub_earn_cal or []):
+        try:
+            _add(from_earnings_event(ee))
         except Exception:
             pass
 
@@ -516,6 +730,13 @@ def main():
     macro_indicators = []
     earnings_events = []
     price_history = []
+    cot_positions = []
+    vix_readings = []
+    stocktwits_data = []
+    trends_data = []
+    finnhub_econ = []
+    finnhub_recs = []
+    finnhub_earn_cal = []
 
     if "sec" in sources:
         form4_trades = fetch_sec_form4(tickers, args.days)
@@ -542,9 +763,33 @@ def main():
     if "price" in sources:
         price_history = fetch_price_history(tickers, args.days)
 
+    if "cot" in sources:
+        cot_positions = fetch_cot_history(args.days)
+
+    if "vix" in sources:
+        vix_readings = fetch_vix_history(args.days)
+
+    if "stocktwits" in sources:
+        stocktwits_data = fetch_stocktwits_sentiment(tickers)
+
+    if "trends" in sources:
+        trends_data = fetch_trends(args.days)
+
+    if "finnhub_economic" in sources:
+        finnhub_econ = fetch_finnhub_economic(args.days)
+
+    if "finnhub_analyst" in sources:
+        finnhub_recs = fetch_finnhub_analyst(tickers)
+
+    if "finnhub_earnings_cal" in sources:
+        finnhub_earn_cal = fetch_finnhub_earnings_calendar(args.days)
+
     raw_total = (len(form4_trades) + len(house_trades) + len(senate_trades)
                  + len(contracts) + len(efts_hits) + len(short_interest)
-                 + len(macro_indicators) + len(earnings_events) + len(price_history))
+                 + len(macro_indicators) + len(earnings_events) + len(price_history)
+                 + len(cot_positions) + len(vix_readings) + len(stocktwits_data)
+                 + len(trends_data) + len(finnhub_econ) + len(finnhub_recs)
+                 + len(finnhub_earn_cal))
     logger.info("")
     logger.info("Phase 1 complete: %d raw records fetched", raw_total)
 
