@@ -47,6 +47,15 @@ class RedifferentiationMonitor:
         self._registry = stem_cell_registry
         self._event_bus = event_bus
         self._low_health_counts: dict[str, int] = {}
+        self._market_refs: dict[str, Any] | None = None
+
+    def set_market_refs(self, refs: dict[str, Any]) -> None:
+        """Attach market system refs for re-attachment after redifferentiation.
+
+        Called from Layer 33 (market bootstrap) after market systems exist.
+        Keys: advisory, alerter, regime, engine, registry, ctx.
+        """
+        self._market_refs = refs
 
     def step(self, current_step: int = 0) -> None:
         """Run both triggers. Called every 21 steps from model step hook."""
@@ -63,6 +72,19 @@ class RedifferentiationMonitor:
         recent = list(history)[-MIN_HISTORY:]
         total = sum(recent)
         return max(0.0, min(1.0, (total / len(recent) + 1.0) / 2.0))
+
+    def _reattach_market_refs(self, agent: Any, new_role: str) -> None:
+        """Re-attach market system refs if agent redifferentiated into a market role."""
+        if self._market_refs is None or new_role not in _MARKET_ROLES:
+            return
+        refs = self._market_refs
+        agent._market_advisory_ref = refs.get("advisory")
+        agent._convergence_alerter_ref = refs.get("alerter")
+        agent._regime_classifier_ref = refs.get("regime")
+        agent._model_ctx_ref = refs.get("ctx")
+        if new_role in _HYPOTHESIS_ROLES:
+            agent._hypothesis_engine_ref = refs.get("engine")
+            agent._hypothesis_registry_ref = refs.get("registry")
 
     def _least_populated_role(self, exclude_role: str) -> str:
         """Return the role with fewest agents, excluding current role."""
@@ -87,6 +109,7 @@ class RedifferentiationMonitor:
                 old_role = epi.role
                 new_role = self._least_populated_role(old_role)
                 self._registry.redifferentiate(agent_id, new_role, step=current_step)
+                self._reattach_market_refs(agent, new_role)
                 self._low_health_counts[agent_id] = 0
                 logger.info(
                     "Auto-redifferentiation (performance): agent %s %s->%s health=%.2f",
@@ -119,7 +142,10 @@ class RedifferentiationMonitor:
         if worst_id is None:
             return
         new_role = empty_roles[0]
+        agent = self._registry._agents.get(worst_id)
         self._registry.redifferentiate(worst_id, new_role, step=current_step)
+        if agent is not None:
+            self._reattach_market_refs(agent, new_role)
         self._low_health_counts[worst_id] = 0
         logger.info(
             "Auto-redifferentiation (imbalance): agent %s %s->%s",

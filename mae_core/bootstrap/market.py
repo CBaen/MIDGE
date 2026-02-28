@@ -1269,10 +1269,23 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
         logger.warning("MarketSensingHook construction failed — agents will not sense market data", exc_info=True)
         return
 
+    # --- Store tiered alerters on ctx for agent access ---
+    ctx._tiered_alerters = tiered_alerters
+
     # --- Market advisory dict (Channel B: supplements endocrine Channel A) ---
     # Separate from _latest_advisory which PatternCortex overwrites every step.
     # Market-role agents read this in their decision cascade.
-    ctx._market_advisory = {"alert": None, "updated_step": 0, "active_hypotheses": 0}
+    ctx._market_advisory = {
+        "alert": None,
+        "updated_step": 0,
+        "active_hypotheses": 0,
+        "tactical": None,
+        "strategic": None,
+        "thematic": None,
+        "ticker_alerts": [],
+    }
+    ctx._ticker_alerts = []
+    ctx._latest_kelly = {}
 
     # Wire convergence alerts into the advisory dict
     _sensing_step_counter = [0]
@@ -1417,6 +1430,19 @@ def _differentiate_market_agents(ctx: SimpleNamespace) -> None:
                 )
             except Exception:
                 logger.debug("Failed to differentiate agent[%d] as %s", idx, role, exc_info=True)
+
+    # Wire market refs into RedifferentiationMonitor so auto-rediff
+    # re-attaches live system connections (bug fix: refs were lost on role switch)
+    rediff_monitor = getattr(ctx, "rediff_monitor", None)
+    if rediff_monitor is not None and hasattr(rediff_monitor, "set_market_refs"):
+        rediff_monitor.set_market_refs({
+            "advisory": getattr(ctx, "_market_advisory", None),
+            "alerter": getattr(ctx, "convergence_alerter", None),
+            "regime": getattr(ctx, "regime_classifier", None),
+            "engine": getattr(ctx, "hypothesis_engine", None),
+            "registry": getattr(ctx, "hypothesis_registry", None),
+            "ctx": ctx,
+        })
 
     triads = (
         1
