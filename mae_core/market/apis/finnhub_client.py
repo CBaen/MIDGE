@@ -67,6 +67,78 @@ class NewsSentiment:
 
 
 @dataclass
+class EconomicEvent:
+    """
+    Economic calendar entry from Finnhub (FOMC, CPI, NFP, etc.).
+
+    High-impact events move markets. actual vs estimate determines surprise.
+    """
+    event: str                          # "CPI", "FOMC", "Nonfarm Payrolls", etc.
+    country: str                        # "US", "EU", etc.
+    date: str                           # YYYY-MM-DD
+    time: str                           # HH:MM or ""
+    impact: str                         # "high", "medium", "low"
+    actual: Optional[float]             # None if not yet released
+    estimate: Optional[float]
+    previous: Optional[float]
+    unit: str                           # "%", "K", etc.
+    signal_source: str = "finnhub_economic"
+    decay_rate: float = 0.30            # Economic events price in fast
+    confidence: float = 0.55
+
+    def surprise_pct(self) -> Optional[float]:
+        """Percentage surprise vs estimate. None if data missing."""
+        if self.actual is None or self.estimate is None:
+            return None
+        if self.estimate == 0:
+            return None
+        return (self.actual - self.estimate) / abs(self.estimate)
+
+    def to_plain_language(self) -> str:
+        if self.actual is not None:
+            surprise = self.surprise_pct()
+            s_str = f" (surprise {surprise:+.1%})" if surprise else ""
+            return f"{self.event} on {self.date}: actual={self.actual}{self.unit}{s_str}"
+        return f"{self.event} on {self.date}: estimate={self.estimate}{self.unit} (upcoming)"
+
+
+@dataclass
+class AnalystRec:
+    """
+    Analyst recommendation summary from Finnhub for a ticker.
+
+    Aggregates buy/sell/hold/strong_buy/strong_sell counts.
+    """
+    symbol: str
+    period: str                         # YYYY-MM-DD
+    strong_buy: int
+    buy: int
+    hold: int
+    sell: int
+    strong_sell: int
+    signal_source: str = "finnhub_analyst"
+    decay_rate: float = 0.05            # Slow decay — analyst recs are monthly
+    confidence: float = 0.50
+
+    @property
+    def total(self) -> int:
+        return self.strong_buy + self.buy + self.hold + self.sell + self.strong_sell
+
+    @property
+    def buy_ratio(self) -> float:
+        """Fraction of analysts with buy/strong_buy. 0.0-1.0."""
+        t = self.total
+        return (self.strong_buy + self.buy) / max(1, t)
+
+    def to_plain_language(self) -> str:
+        return (
+            f"{self.symbol}: {self.strong_buy} strong buy, {self.buy} buy, "
+            f"{self.hold} hold, {self.sell} sell, {self.strong_sell} strong sell "
+            f"(period {self.period})"
+        )
+
+
+@dataclass
 class EarningsEvent:
     """
     Single earnings calendar entry from Finnhub.
@@ -291,6 +363,64 @@ class FinnhubClient:
                 time.sleep(REQUEST_DELAY)
         return results
 
+    def get_economic_calendar(self, days: int = 14) -> List[EconomicEvent]:
+        """
+        Get upcoming economic events (FOMC, CPI, NFP, etc.).
+
+        Args:
+            days: How many days ahead to look (default 14).
+
+        Returns:
+            List of EconomicEvent objects sorted by date ascending.
+        """
+        today = datetime.now(timezone.utc).date()
+        from_date = today.strftime("%Y-%m-%d")
+        to_date = (today + timedelta(days=days)).strftime("%Y-%m-%d")
+
+        data = self._get("/calendar/economic", params={"from": from_date, "to": to_date})
+        if data is None:
+            return []
+
+        return self._parse_economic_calendar(data)
+
+    def get_analyst_recommendations(self, symbol: str) -> List[AnalystRec]:
+        """
+        Get analyst recommendation trends for a ticker.
+
+        Args:
+            symbol: Stock ticker (e.g. "AAPL")
+
+        Returns:
+            List of AnalystRec objects (most recent first), typically 4 quarters.
+        """
+        data = self._get("/stock/recommendation", params={"symbol": symbol.upper()})
+        if data is None or not isinstance(data, list):
+            return []
+
+        return self._parse_analyst_recommendations(data)
+
+    def get_earnings_calendar(self, days: int = 14) -> List[EarningsEvent]:
+        """
+        Get earnings calendar including both upcoming and recently reported.
+
+        Args:
+            days: How many days ahead AND back to look.
+
+        Returns:
+            List of EarningsEvent objects sorted by date.
+        """
+        today = datetime.now(timezone.utc).date()
+        from_date = (today - timedelta(days=days)).strftime("%Y-%m-%d")
+        to_date = (today + timedelta(days=days)).strftime("%Y-%m-%d")
+
+        data = self._get("/calendar/earnings", params={"from": from_date, "to": to_date})
+        if data is None:
+            return []
+
+        events = self._parse_earnings_calendar(data)
+        events.sort(key=lambda e: e.date)
+        return events
+
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
@@ -461,6 +591,92 @@ class FinnhubClient:
                 continue
 
         return events
+
+    @staticmethod
+    def _parse_economic_calendar(data: dict) -> List[EconomicEvent]:
+        """
+        Parse /calendar/economic response into EconomicEvent objects.
+
+        Expected structure: {"economicCalendar": [...]}
+        Each entry has: country, event, date, time, impact, actual, estimate, prev, unit
+        """
+        events: List[EconomicEvent] = []
+        calendar = data.get("economicCalendar") or []
+
+        for entry in calendar:
+            try:
+                country = (entry.get("country") or "").upper()
+                # Focus on US events only
+                if country != "US":
+                    continue
+
+                event_name = entry.get("event") or ""
+                if not event_name:
+                    continue
+
+                date = entry.get("date") or ""
+                event_time = entry.get("time") or ""
+                impact = (entry.get("impact") or "low").lower()
+
+                actual = entry.get("actual")
+                estimate = entry.get("estimate")
+                previous = entry.get("prev")
+                unit = entry.get("unit") or ""
+
+                actual   = float(actual)   if actual   is not None else None
+                estimate = float(estimate) if estimate is not None else None
+                previous = float(previous) if previous is not None else None
+
+                events.append(EconomicEvent(
+                    event=event_name,
+                    country=country,
+                    date=date,
+                    time=event_time,
+                    impact=impact,
+                    actual=actual,
+                    estimate=estimate,
+                    previous=previous,
+                    unit=unit,
+                ))
+            except Exception as exc:
+                logger.debug("Skipping malformed economic entry: %s | %s", entry, exc)
+                continue
+
+        # Sort by date ascending
+        events.sort(key=lambda e: e.date)
+        return events
+
+    @staticmethod
+    def _parse_analyst_recommendations(data: list) -> List[AnalystRec]:
+        """
+        Parse /stock/recommendation response into AnalystRec objects.
+
+        Response is a list of dicts with: buy, hold, period, sell, strongBuy, strongSell, symbol
+        """
+        results: List[AnalystRec] = []
+
+        for entry in data:
+            try:
+                symbol = (entry.get("symbol") or "").upper()
+                if not symbol:
+                    continue
+
+                results.append(AnalystRec(
+                    symbol=symbol,
+                    period=entry.get("period", ""),
+                    strong_buy=int(entry.get("strongBuy", 0)),
+                    buy=int(entry.get("buy", 0)),
+                    hold=int(entry.get("hold", 0)),
+                    sell=int(entry.get("sell", 0)),
+                    strong_sell=int(entry.get("strongSell", 0)),
+                ))
+            except Exception as exc:
+                logger.debug("Skipping malformed analyst entry: %s | %s", entry, exc)
+                continue
+
+        # Most recent first
+        results.sort(key=lambda r: r.period, reverse=True)
+        return results
 
 
 # ---------------------------------------------------------------------------
