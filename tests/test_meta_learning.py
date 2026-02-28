@@ -208,11 +208,11 @@ class TestMetaLearningWire1:
         )
 
         with patch(
-            "mae_core.market.intelligence.hypothesis_engine.LEARNING_CONFIG",
+            "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
             {"source_reliability": {"sec_form4": 0.70}, "generator_thresholds": {}},
             create=True,
         ), patch(
-            "mae_core.market.intelligence.hypothesis_engine.update_config",
+            "mae_core.market.intelligence.learning_config.update_config",
         ) as mock_update:
             engine._run_meta_learning()
             mock_update.assert_called_once()
@@ -223,11 +223,11 @@ class TestMetaLearningWire1:
     def test_skips_when_no_calibrator(self, engine):
         engine._thompson_calibrator = None
         with patch(
-            "mae_core.market.intelligence.hypothesis_engine.LEARNING_CONFIG",
+            "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
             {"source_reliability": {}, "generator_thresholds": {}},
             create=True,
         ), patch(
-            "mae_core.market.intelligence.hypothesis_engine.update_config",
+            "mae_core.market.intelligence.learning_config.update_config",
         ) as mock_update:
             engine._run_meta_learning()
             mock_update.assert_not_called()
@@ -247,7 +247,7 @@ class TestMetaLearningWire2:
         engine._retirement_window = ["retired"] * 16 + ["promoted"] * 4
 
         with patch(
-            "mae_core.market.intelligence.hypothesis_engine.LEARNING_CONFIG",
+            "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
             {
                 "source_reliability": {},
                 "generator_thresholds": {
@@ -257,7 +257,7 @@ class TestMetaLearningWire2:
             },
             create=True,
         ), patch(
-            "mae_core.market.intelligence.hypothesis_engine.update_config",
+            "mae_core.market.intelligence.learning_config.update_config",
         ) as mock_update:
             engine._run_meta_learning()
             mock_update.assert_called_once()
@@ -275,7 +275,7 @@ class TestMetaLearningWire2:
         engine._retirement_window = ["retired"] * 2 + ["promoted"] * 18
 
         with patch(
-            "mae_core.market.intelligence.hypothesis_engine.LEARNING_CONFIG",
+            "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
             {
                 "source_reliability": {},
                 "generator_thresholds": {
@@ -285,7 +285,7 @@ class TestMetaLearningWire2:
             },
             create=True,
         ), patch(
-            "mae_core.market.intelligence.hypothesis_engine.update_config",
+            "mae_core.market.intelligence.learning_config.update_config",
         ) as mock_update:
             engine._run_meta_learning()
             mock_update.assert_called_once()
@@ -303,7 +303,7 @@ class TestMetaLearningWire2:
         engine._retirement_window = ["retired"] * 8 + ["promoted"] * 12
 
         with patch(
-            "mae_core.market.intelligence.hypothesis_engine.LEARNING_CONFIG",
+            "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
             {
                 "source_reliability": {},
                 "generator_thresholds": {
@@ -313,7 +313,7 @@ class TestMetaLearningWire2:
             },
             create=True,
         ), patch(
-            "mae_core.market.intelligence.hypothesis_engine.update_config",
+            "mae_core.market.intelligence.learning_config.update_config",
         ) as mock_update:
             engine._run_meta_learning()
             mock_update.assert_not_called()
@@ -328,7 +328,7 @@ class TestMetaLearningWire2:
         engine._retirement_window = ["retired"] * 5
 
         with patch(
-            "mae_core.market.intelligence.hypothesis_engine.LEARNING_CONFIG",
+            "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
             {
                 "source_reliability": {},
                 "generator_thresholds": {
@@ -338,7 +338,7 @@ class TestMetaLearningWire2:
             },
             create=True,
         ), patch(
-            "mae_core.market.intelligence.hypothesis_engine.update_config",
+            "mae_core.market.intelligence.learning_config.update_config",
         ) as mock_update:
             engine._run_meta_learning()
             mock_update.assert_not_called()
@@ -352,7 +352,7 @@ class TestMetaLearningWire2:
         engine._retirement_window = ["retired"] * 16 + ["promoted"] * 4
 
         with patch(
-            "mae_core.market.intelligence.hypothesis_engine.LEARNING_CONFIG",
+            "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
             {
                 "source_reliability": {},
                 "generator_thresholds": {
@@ -362,7 +362,7 @@ class TestMetaLearningWire2:
             },
             create=True,
         ), patch(
-            "mae_core.market.intelligence.hypothesis_engine.update_config",
+            "mae_core.market.intelligence.learning_config.update_config",
         ) as mock_update:
             engine._run_meta_learning()
             mock_update.assert_called_once()
@@ -499,11 +499,11 @@ class TestRetirementWindow:
         )
 
         with patch(
-            "mae_core.market.intelligence.hypothesis_engine.LEARNING_CONFIG",
+            "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
             {"source_reliability": {"sec_form4": 0.70}, "generator_thresholds": {}},
             create=True,
         ), patch(
-            "mae_core.market.intelligence.hypothesis_engine.update_config",
+            "mae_core.market.intelligence.learning_config.update_config",
         ):
             engine._run_meta_learning()
             meta_calls = [
@@ -519,7 +519,7 @@ class TestRetirementWindow:
 class TestGenThreshold:
     def test_reads_from_config(self):
         with patch(
-            "mae_core.market.intelligence.hypothesis_generator.LEARNING_CONFIG",
+            "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
             {"generator_thresholds": {"min_correlation": 0.70}},
             create=True,
         ):
@@ -527,7 +527,7 @@ class TestGenThreshold:
 
     def test_falls_back_to_hardcoded(self):
         with patch(
-            "mae_core.market.intelligence.hypothesis_generator.LEARNING_CONFIG",
+            "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
             {},
             create=True,
         ):

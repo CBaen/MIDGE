@@ -49,7 +49,7 @@ def engine(registry):
 class TestGetGate:
     def test_returns_fallback_when_config_missing(self):
         with patch(
-            "mae_core.market.intelligence.hypothesis_validator.LEARNING_CONFIG",
+            "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
             {},
             create=True,
         ):
@@ -65,7 +65,7 @@ class TestGetGate:
             }
         }
         with patch(
-            "mae_core.market.intelligence.hypothesis_validator.LEARNING_CONFIG",
+            "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
             mock_config,
             create=True,
         ):
@@ -82,7 +82,7 @@ class TestGetGate:
             }
         }
         with patch(
-            "mae_core.market.intelligence.hypothesis_validator.LEARNING_CONFIG",
+            "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
             mock_config,
             create=True,
         ):
@@ -99,7 +99,7 @@ class TestGetGate:
             }
         }
         with patch(
-            "mae_core.market.intelligence.hypothesis_validator.LEARNING_CONFIG",
+            "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
             mock_config,
             create=True,
         ):
@@ -117,7 +117,7 @@ class TestReviewGates:
         engine._gate_review_cadence = 2000
 
         with patch(
-            "mae_core.market.intelligence.hypothesis_engine.LEARNING_CONFIG",
+            "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
             {
                 "hypothesis_gates": {
                     "promote_win_rate": 0.52,
@@ -127,7 +127,7 @@ class TestReviewGates:
             },
             create=True,
         ), patch(
-            "mae_core.market.intelligence.hypothesis_engine.update_config",
+            "mae_core.market.intelligence.learning_config.update_config",
         ) as mock_update:
             engine._review_gates()
             mock_update.assert_called_once()
@@ -151,7 +151,7 @@ class TestReviewGates:
             registry.register(hyp)
 
         with patch(
-            "mae_core.market.intelligence.hypothesis_engine.LEARNING_CONFIG",
+            "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
             {
                 "hypothesis_gates": {
                     "promote_win_rate": 0.55,
@@ -161,7 +161,7 @@ class TestReviewGates:
             },
             create=True,
         ), patch(
-            "mae_core.market.intelligence.hypothesis_engine.update_config",
+            "mae_core.market.intelligence.learning_config.update_config",
         ) as mock_update:
             engine._review_gates()
             mock_update.assert_called_once()
@@ -174,7 +174,7 @@ class TestReviewGates:
         engine._gate_review_cadence = 2000
 
         with patch(
-            "mae_core.market.intelligence.hypothesis_engine.LEARNING_CONFIG",
+            "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
             {
                 "hypothesis_gates": {
                     "promote_win_rate": 0.52,
@@ -184,7 +184,7 @@ class TestReviewGates:
             },
             create=True,
         ), patch(
-            "mae_core.market.intelligence.hypothesis_engine.update_config",
+            "mae_core.market.intelligence.learning_config.update_config",
         ) as mock_update:
             engine._review_gates()
             mock_update.assert_not_called()
@@ -196,7 +196,7 @@ class TestReviewGates:
         engine._gate_review_cadence = 2000
 
         with patch(
-            "mae_core.market.intelligence.hypothesis_engine.LEARNING_CONFIG",
+            "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
             {
                 "hypothesis_gates": {
                     "promote_win_rate": 0.65,  # Already at upper bound
@@ -206,7 +206,7 @@ class TestReviewGates:
             },
             create=True,
         ), patch(
-            "mae_core.market.intelligence.hypothesis_engine.update_config",
+            "mae_core.market.intelligence.learning_config.update_config",
         ) as mock_update:
             engine._review_gates()
             # Should not adjust because 0.65 + 0.01 = 0.66 clamps back to 0.65
@@ -221,7 +221,7 @@ class TestReviewGates:
         engine._gate_cooldowns["promote_win_rate"] = 3000
 
         with patch(
-            "mae_core.market.intelligence.hypothesis_engine.LEARNING_CONFIG",
+            "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
             {
                 "hypothesis_gates": {
                     "promote_win_rate": 0.52,
@@ -231,7 +231,7 @@ class TestReviewGates:
             },
             create=True,
         ), patch(
-            "mae_core.market.intelligence.hypothesis_engine.update_config",
+            "mae_core.market.intelligence.learning_config.update_config",
         ) as mock_update:
             engine._review_gates()
             mock_update.assert_not_called()
@@ -250,7 +250,7 @@ class TestReviewGates:
         engine._gate_review_cadence = 2000
 
         with patch(
-            "mae_core.market.intelligence.hypothesis_engine.LEARNING_CONFIG",
+            "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
             {
                 "hypothesis_gates": {
                     "promote_win_rate": 0.52,
@@ -260,7 +260,7 @@ class TestReviewGates:
             },
             create=True,
         ), patch(
-            "mae_core.market.intelligence.hypothesis_engine.update_config",
+            "mae_core.market.intelligence.learning_config.update_config",
         ):
             engine._review_gates()
             # Find the CH_GATE_ADJUSTED publish call
