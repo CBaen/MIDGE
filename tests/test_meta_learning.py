@@ -205,7 +205,6 @@ class TestMetaLearningWire1:
         with patch(
             "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
             {"source_reliability": {"sec_form4": 0.70}, "generator_thresholds": {}},
-            create=True,
         ), patch(
             "mae_core.market.intelligence.learning_config.update_config",
         ) as mock_update:
@@ -220,7 +219,6 @@ class TestMetaLearningWire1:
         with patch(
             "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
             {"source_reliability": {}, "generator_thresholds": {}},
-            create=True,
         ), patch(
             "mae_core.market.intelligence.learning_config.update_config",
         ) as mock_update:
@@ -250,7 +248,6 @@ class TestMetaLearningWire2:
                     "_bounds": {"min_correlation": [0.4, 0.85]},
                 },
             },
-            create=True,
         ), patch(
             "mae_core.market.intelligence.learning_config.update_config",
         ) as mock_update:
@@ -278,7 +275,6 @@ class TestMetaLearningWire2:
                     "_bounds": {"min_correlation": [0.4, 0.85]},
                 },
             },
-            create=True,
         ), patch(
             "mae_core.market.intelligence.learning_config.update_config",
         ) as mock_update:
@@ -306,7 +302,6 @@ class TestMetaLearningWire2:
                     "_bounds": {"min_correlation": [0.4, 0.85]},
                 },
             },
-            create=True,
         ), patch(
             "mae_core.market.intelligence.learning_config.update_config",
         ) as mock_update:
@@ -331,7 +326,6 @@ class TestMetaLearningWire2:
                     "_bounds": {"min_correlation": [0.4, 0.85]},
                 },
             },
-            create=True,
         ), patch(
             "mae_core.market.intelligence.learning_config.update_config",
         ) as mock_update:
@@ -355,7 +349,6 @@ class TestMetaLearningWire2:
                     "_bounds": {"min_correlation": [0.4, 0.85]},
                 },
             },
-            create=True,
         ), patch(
             "mae_core.market.intelligence.learning_config.update_config",
         ) as mock_update:
@@ -496,7 +489,6 @@ class TestRetirementWindow:
         with patch(
             "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
             {"source_reliability": {"sec_form4": 0.70}, "generator_thresholds": {}},
-            create=True,
         ), patch(
             "mae_core.market.intelligence.learning_config.update_config",
         ):

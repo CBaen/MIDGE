@@ -121,7 +121,6 @@ class TestReviewGates:
                     "_regime_deltas": {"default": {}},
                 },
             },
-            create=True,
         ), patch(
             "mae_core.market.intelligence.learning_config.update_config",
         ) as mock_update:
@@ -155,7 +154,6 @@ class TestReviewGates:
                     "_regime_deltas": {"default": {}},
                 },
             },
-            create=True,
         ), patch(
             "mae_core.market.intelligence.learning_config.update_config",
         ) as mock_update:
@@ -178,7 +176,6 @@ class TestReviewGates:
                     "_regime_deltas": {"default": {}},
                 },
             },
-            create=True,
         ), patch(
             "mae_core.market.intelligence.learning_config.update_config",
         ) as mock_update:
@@ -200,7 +197,6 @@ class TestReviewGates:
                     "_regime_deltas": {"default": {}},
                 },
             },
-            create=True,
         ), patch(
             "mae_core.market.intelligence.learning_config.update_config",
         ) as mock_update:
@@ -225,7 +221,6 @@ class TestReviewGates:
                     "_regime_deltas": {"default": {}},
                 },
             },
-            create=True,
         ), patch(
             "mae_core.market.intelligence.learning_config.update_config",
         ) as mock_update:
@@ -254,7 +249,6 @@ class TestReviewGates:
                     "_regime_deltas": {"default": {}},
                 },
             },
-            create=True,
         ), patch(
             "mae_core.market.intelligence.learning_config.update_config",
         ):
