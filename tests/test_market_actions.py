@@ -260,12 +260,19 @@ class TestHypothesisExplorer:
         reward = act_market(agent, "explore")
         assert reward == pytest.approx(0.05)
 
-    def test_generate_success(self):
+    def test_generate_success(self, tmp_path):
         engine = MagicMock()
         engine.request_generation.return_value = 3
         agent = _make_agent(role="HYPOTHESIS_EXPLORER", hypothesis_engine=engine)
-        reward = act_market(agent, "explore")
+        with patch("mae_core.market.market_actions._OUTPUT_DIR", tmp_path):
+            reward = act_market(agent, "explore")
         assert reward == pytest.approx(0.3)
+        # Verify hypothesis activity log is written to tmp_path, not data/midge/
+        log_path = tmp_path / "hypothesis_activity.jsonl"
+        assert log_path.exists(), "hypothesis_activity.jsonl must be written during generation"
+        record = json.loads(log_path.read_text().strip())
+        assert record["event"] == "generated"
+        assert record["count"] == 3
 
     def test_deepen_no_registry(self):
         agent = _make_agent(role="HYPOTHESIS_EXPLORER")
