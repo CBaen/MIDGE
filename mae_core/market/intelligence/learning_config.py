@@ -34,6 +34,9 @@ LEARNING_CONFIG = {
         "contract": 0.02,      # Half-life: ~35 days
         "research": 0.01,      # Half-life: ~69 days
         "price": 0.15,         # Half-life: ~5 days
+        # New domains (Layer 6)
+        "positioning": 0.03,   # Half-life: ~23 days (weekly COT data)
+        "volatility": 0.30,    # Half-life: ~2.3 days (VIX changes daily)
     },
 
     # Source reliability defaults
@@ -76,6 +79,14 @@ LEARNING_CONFIG = {
         "ta_bollinger": 0.55,
         "ta_structure": 0.55,
         "ta_candle": 0.55,
+        # New sources (Layer 6)
+        "cot_positioning": 0.55,
+        "stocktwits_sentiment": 0.50,
+        "vix_term_structure": 0.60,
+        "google_trends": 0.45,
+        "finnhub_economic": 0.55,
+        "finnhub_analyst": 0.50,
+        "finnhub_earnings_calendar": 0.55,
     },
 
     # Confidence calibration

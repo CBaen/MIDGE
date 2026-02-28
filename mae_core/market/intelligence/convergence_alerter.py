@@ -128,6 +128,14 @@ class ConvergenceAlerter:
         "ta_bollinger": "ta_bollinger",
         "ta_structure": "ta_structure",
         "ta_candle": "ta_candle",
+        # New sources (Layer 6)
+        "cot_positioning": "cot_positioning",
+        "stocktwits_sentiment": "stocktwits_sentiment",
+        "vix_term_structure": "vix_term_structure",
+        "google_trends": "google_trends",
+        "finnhub_economic": "finnhub_economic",
+        "finnhub_analyst": "finnhub_analyst",
+        "finnhub_earnings_calendar": "finnhub_earnings_calendar",
     }
 
     def __init__(
@@ -179,7 +187,10 @@ class ConvergenceAlerter:
             "macro": "financial",
             "government": "institutional",
             "contracts": "institutional",
-            "institutional_synthesis": "institutional"
+            "institutional_synthesis": "institutional",
+            # New domains (Layer 6)
+            "positioning": "institutional",
+            "volatility": "market",
         }
 
         self._alert_counter = 0

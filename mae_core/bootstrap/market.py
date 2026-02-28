@@ -205,6 +205,36 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         logger.debug("Market: fred_client failed to construct", exc_info=True)
         ctx.fred_client = None
 
+    # --- Layer 6 API clients (new free sources) ---
+
+    try:
+        from mae_core.market.apis.cot_client import COTClient
+        ctx.cot_client = COTClient(provider=provider)
+    except Exception:
+        logger.debug("Market: cot_client failed to construct", exc_info=True)
+        ctx.cot_client = None
+
+    try:
+        from mae_core.market.apis.stocktwits_client import StockTwitsClient
+        ctx.stocktwits_client = StockTwitsClient(provider=provider)
+    except Exception:
+        logger.debug("Market: stocktwits_client failed to construct", exc_info=True)
+        ctx.stocktwits_client = None
+
+    try:
+        from mae_core.market.apis.vix_client import VIXClient
+        ctx.vix_client = VIXClient(provider=provider)
+    except Exception:
+        logger.debug("Market: vix_client failed to construct", exc_info=True)
+        ctx.vix_client = None
+
+    try:
+        from mae_core.market.apis.trends_client import TrendsClient
+        ctx.trends_client = TrendsClient()  # pytrends library, not HTTP provider
+    except Exception:
+        logger.debug("Market: trends_client failed to construct", exc_info=True)
+        ctx.trends_client = None
+
     # --- Edge detectors ---
 
     try:
