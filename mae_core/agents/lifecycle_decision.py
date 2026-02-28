@@ -387,6 +387,16 @@ class DecisionActionLifecycleMixin:
             action_type = getattr(action, "type", str(action))
         self.last_action = action
 
+        # Market-role dispatch: route to role-specific implementation
+        # before generic TaskPool. Law 5: same class, config-gated behavior.
+        if action_type in ("explore", "exploit", "communicate"):
+            from mae_core.market.market_actions import MARKET_ROLES, act_market
+            _agent_role = getattr(self, "role", None)
+            if _agent_role in MARKET_ROLES:
+                market_reward = act_market(self, action_type)
+                if market_reward is not None:
+                    return market_reward
+
         if action_type == "explore":
             return self._act_explore(task_pool)
         elif action_type == "exploit":

@@ -100,6 +100,68 @@ class HypothesisEngine:
         if self._step_counter % self._validation_cadence == 0:
             self._launch_validation()
 
+    # -----------------------------------------------------------------
+    # Agent-triggered methods (Phase 3a — market action dispatch)
+    # -----------------------------------------------------------------
+
+    def request_generation(self) -> int:
+        """Agent-triggered hypothesis generation with cooldown.
+
+        Returns the number of new hypotheses generated. Respects a 100-step
+        cooldown to prevent over-generation. The cadence-based step() clock
+        continues as a floor — agents can accelerate but not replace it.
+        """
+        last_gen = getattr(self, "_last_generation_step", 0)
+        if self._step_counter - last_gen < 100:
+            return 0
+        before = self._hypotheses_generated
+        self._run_generation()
+        self._last_generation_step = self._step_counter
+        return self._hypotheses_generated - before
+
+    def request_validation(self) -> str:
+        """Agent-triggered validation with skip-if-busy guard.
+
+        Returns:
+            'promoted' — a hypothesis was promoted
+            'retired' — a hypothesis was retired (caught a bad one)
+            'busy' — background validation already in-flight
+            'none' — no validatable hypotheses exist
+        """
+        if self._validation_future is not None and not self._validation_future.done():
+            return "busy"
+
+        probation = self._registry.get_probation()
+        validatable = [
+            h for h in probation
+            if hasattr(h, "stats") and h.stats.total_observations >= 20
+        ]
+        if not validatable:
+            return "none"
+
+        # Validate the most-ready hypothesis synchronously (agent is waiting)
+        target = max(validatable, key=lambda h: h.stats.total_observations)
+        try:
+            result = self._validator.validate(target)
+            target.stats.wins = result.wins
+            target.stats.losses = result.losses
+            target.stats.total_observations = result.total_observations
+            target.stats.sharpe_ratio = result.sharpe_ratio
+            target.stats.deflated_sharpe_ratio = result.deflated_sharpe_ratio
+            target.stats.last_evaluated = datetime.now()
+            self._registry.update_stats(target.hypothesis_id, target)
+
+            if result.recommend_promote:
+                self._promote(target)
+                return "promoted"
+            elif result.recommend_retire:
+                self._retire(target, result.retire_reason)
+                return "retired"
+            return "none"
+        except Exception:
+            logger.debug("Agent-triggered validation failed for %s", target.name, exc_info=True)
+            return "none"
+
     def on_signal_ingested(self, channel: str, data: Any) -> None:
         """EventBus callback — match incoming signals against active triggers.
 

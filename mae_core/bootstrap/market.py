@@ -1404,6 +1404,7 @@ def _differentiate_market_agents(ctx: SimpleNamespace) -> None:
             # Attach live market system refs for market_awareness.py functions
             agent._convergence_alerter_ref = getattr(ctx, "convergence_alerter", None)
             agent._regime_classifier_ref = getattr(ctx, "regime_classifier", None)
+            agent._model_ctx_ref = ctx
             differentiated += 1
             logger.info(
                 "Market differentiation: agent %s → %s",
@@ -1427,6 +1428,7 @@ def _differentiate_market_agents(ctx: SimpleNamespace) -> None:
                     agent._market_advisory_ref = market_advisory
                 agent._convergence_alerter_ref = getattr(ctx, "convergence_alerter", None)
                 agent._regime_classifier_ref = getattr(ctx, "regime_classifier", None)
+                agent._model_ctx_ref = ctx
                 differentiated += 1
                 logger.info(
                     "Intelligence differentiation: agent %s → %s",
@@ -1450,6 +1452,7 @@ def _differentiate_market_agents(ctx: SimpleNamespace) -> None:
                     agent._market_advisory_ref = market_advisory
                 agent._convergence_alerter_ref = getattr(ctx, "convergence_alerter", None)
                 agent._regime_classifier_ref = getattr(ctx, "regime_classifier", None)
+                agent._model_ctx_ref = ctx
                 # Attach hypothesis engine/registry refs for direct interaction
                 agent._hypothesis_engine_ref = getattr(ctx, "hypothesis_engine", None)
                 agent._hypothesis_registry_ref = getattr(ctx, "hypothesis_registry", None)
