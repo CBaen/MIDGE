@@ -19,6 +19,8 @@ import logging
 from pathlib import Path
 from typing import List, Optional
 
+_PAIR_OUTCOMES_PATH = Path(__file__).resolve().parents[3] / "data" / "market" / "pair_outcomes.json"
+
 from mae_core.market.intelligence.hypothesis import (
     Hypothesis,
     HypothesisStatus,
@@ -149,9 +151,19 @@ class HypothesisGenerator:
     ):
         self._registry = registry
         self._lag_data_path = lag_data_path or (DATA_DIR / "lag_correlations.json")
+
+        # Derive pair outcomes path from registry's data_dir so tests using
+        # tmp_path registries get isolated persistence (no cross-test contamination).
+        registry_data_dir = getattr(registry, "_data_dir", None)
+        if registry_data_dir is not None:
+            self._pair_outcomes_path = Path(registry_data_dir) / "pair_outcomes.json"
+        else:
+            self._pair_outcomes_path = _PAIR_OUTCOMES_PATH
+
         # Bridge 5: pair quality memory — tracks which (source_a, source_b) produce
-        # promoted vs retired hypotheses. Resets on restart (soft signal, not hard filter).
+        # promoted vs retired hypotheses. Persisted across restarts.
         self._pair_outcomes: dict[tuple, dict] = {}
+        self._load_pair_outcomes()
 
     def record_outcome(self, source_a: str, source_b: str, outcome: str) -> None:
         """Record whether a hypothesis from this pair was promoted or retired.
@@ -164,6 +176,44 @@ class HypothesisGenerator:
             self._pair_outcomes[pair] = {"promoted": 0, "retired": 0}
         if outcome in ("promoted", "retired"):
             self._pair_outcomes[pair][outcome] += 1
+        self.save_pair_outcomes()
+
+    def save_pair_outcomes(self) -> None:
+        """Persist pair quality memory to disk.
+
+        Tuple keys are serialized as "source_a|source_b" strings (JSON only
+        supports string keys). Non-critical — failures are logged but not raised.
+        """
+        try:
+            self._pair_outcomes_path.parent.mkdir(parents=True, exist_ok=True)
+            serialized = {
+                f"{a}|{b}": counts
+                for (a, b), counts in self._pair_outcomes.items()
+            }
+            self._pair_outcomes_path.write_text(json.dumps(serialized, indent=2))
+        except Exception as e:
+            logger.debug("Failed to save pair outcomes: %s", e)
+
+    def _load_pair_outcomes(self) -> None:
+        """Restore pair quality memory from disk.
+
+        Pipe-separated string keys are split back to (source_a, source_b) tuples.
+        Safe to call when the file is absent (first boot).
+        """
+        if not self._pair_outcomes_path.exists():
+            return
+        try:
+            data = json.loads(self._pair_outcomes_path.read_text())
+            self._pair_outcomes = {
+                tuple(key.split("|", 1)): counts
+                for key, counts in data.items()
+                if "|" in key
+            }
+            logger.info(
+                "Loaded pair outcomes: %d pairs tracked", len(self._pair_outcomes)
+            )
+        except Exception as e:
+            logger.warning("Failed to load pair outcomes: %s", e)
 
     def generate(self) -> List[Hypothesis]:
         """Read lag findings, generate qualifying hypotheses.

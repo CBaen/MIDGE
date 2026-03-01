@@ -120,13 +120,39 @@ class BacktestScheduler:
         except (json.JSONDecodeError, ValueError, OSError):
             return True
 
+    def _compute_results_fingerprint(self) -> str:
+        """Hash of summary stats to detect meaningful backtest changes.
+
+        A fingerprint over win_rate and total_trades is sufficient — these
+        change whenever the rolling yfinance window shifts enough to alter the
+        outcome distribution. If the fingerprint is identical before and after
+        a run, the market data is unchanged and hypothesis refresh would be
+        a no-op, so we skip it to avoid unnecessary hypothesis churn.
+        """
+        import hashlib
+        try:
+            with open(self._results_path) as f:
+                data = json.load(f)
+            summary = data.get("summary", {})
+            key_data = f"{summary.get('win_rate', 0):.2f}|{summary.get('total_trades', 0)}"
+            return hashlib.md5(key_data.encode()).hexdigest()
+        except Exception:
+            return ""
+
     def _run_backtest_and_refresh(self) -> dict:
         """Run backtest and refresh hypotheses. Executes in background thread.
+
+        Computes a results fingerprint before running. If the new backtest
+        produces identical summary stats, hypothesis refresh is skipped —
+        the underlying data hasn't changed enough to warrant hypothesis churn.
 
         Returns a summary dict for statistics tracking.
         """
         try:
             from mae_core.market.edge.sweep_backtest import SweepBacktester
+
+            # Capture pre-run fingerprint for change detection
+            old_fingerprint = self._compute_results_fingerprint()
 
             bt = SweepBacktester(interval="5m", days=59)
             trades = bt.run(self._symbols)
@@ -138,8 +164,19 @@ class BacktestScheduler:
             # Write results (same format as sweep_backtest.py CLI main())
             self._write_results(trades)
 
+            # Fingerprint check — skip hypothesis refresh if results unchanged
+            new_fingerprint = self._compute_results_fingerprint()
+            if new_fingerprint == old_fingerprint and old_fingerprint != "":
+                logger.info(
+                    "Backtest results unchanged (fingerprint=%s) — "
+                    "skipping hypothesis refresh",
+                    new_fingerprint,
+                )
+                return {"trades": len(trades), "refreshed": 0, "unchanged": True}
+
             # Refresh hypotheses: retire stale PROBATION, create fresh ones
             refreshed = 0
+            new_hyps = []
             if self._analyzer is not None:
                 refreshed = self._analyzer.refresh_probation()
                 new_hyps = self._analyzer.analyze()
@@ -156,7 +193,7 @@ class BacktestScheduler:
                         "symbols_run": len(self._symbols),
                         "total_trades": len(trades),
                         "hypotheses_refreshed": refreshed,
-                        "new_hypotheses": len(new_hyps) if self._analyzer else 0,
+                        "new_hypotheses": len(new_hyps),
                         "run_time": datetime.now().isoformat(),
                     })
                 except Exception:

@@ -88,6 +88,19 @@ def _get_agent_id(agent: Any) -> str:
 
 
 def _get_step(agent: Any) -> int:
+    """Get the current model step (not the agent's internal cadence counter).
+
+    agent.step_count resets to 0 and counts up to the agent's own cadence
+    (typically 100), so it never reflects the true model time. The model's
+    Mesa schedule exposes the wall-clock step via model.time (Mesa 3.x) or
+    model.schedule.time (Mesa 2.x). We prefer that. Fallback to step_count
+    if the model reference is unavailable (tests, isolated instantiation).
+    """
+    model = getattr(agent, "model", None)
+    if model is not None:
+        t = getattr(model, "time", None)
+        if t is not None:
+            return int(t)
     return int(getattr(agent, "step_count", 0))
 
 

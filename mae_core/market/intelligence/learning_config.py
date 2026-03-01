@@ -5,8 +5,12 @@ This file CAN be modified by the meta-learner.
 All changes are logged to config_history.jsonl.
 """
 
+import json
+import logging
 from datetime import datetime
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 _DATA_DIR = Path(__file__).resolve().parents[3] / "data" / "market"
 _HISTORY_PATH = _DATA_DIR / "config_history.jsonl"
@@ -212,8 +216,61 @@ def update_config(key_path: str, new_value, modified_by: str = "meta_learner"):
             "version": LEARNING_CONFIG["version"],
         }) + "\n")
 
+    save_snapshot()
+
     return {
         "old_value": old_value,
         "new_value": new_value,
         "success": True,
     }
+
+
+def save_snapshot(path=None) -> None:
+    """Persist the full LEARNING_CONFIG dict to disk.
+
+    Writes to data/market/config_snapshot.json by default. Non-critical —
+    failures are logged but do not raise. Called automatically by update_config().
+    """
+    snapshot_path = Path(path) if path else _DATA_DIR / "config_snapshot.json"
+    try:
+        snapshot_path.parent.mkdir(parents=True, exist_ok=True)
+        snapshot_path.write_text(json.dumps(LEARNING_CONFIG, indent=2))
+    except Exception as e:
+        logger.debug("Failed to save config snapshot: %s", e)
+
+
+def load_snapshot(path=None) -> bool:
+    """Load a previously saved config snapshot and deep-merge into live LEARNING_CONFIG.
+
+    Modifies LEARNING_CONFIG in-place (other modules hold references — do not
+    replace the dict). Only updates keys that already exist in the base dict
+    for forward compatibility with newer code that has added new keys.
+
+    Returns True if a snapshot was found and merged successfully.
+    """
+    snapshot_path = Path(path) if path else _DATA_DIR / "config_snapshot.json"
+    if not snapshot_path.exists():
+        return False
+    try:
+        data = json.loads(snapshot_path.read_text())
+        _deep_merge(LEARNING_CONFIG, data)
+        logger.info("Loaded config snapshot from %s (version=%s)", snapshot_path, LEARNING_CONFIG.get("version"))
+        return True
+    except Exception as e:
+        logger.warning("Failed to load config snapshot: %s", e)
+        return False
+
+
+def _deep_merge(base: dict, update: dict) -> None:
+    """Recursive in-place dict merge. Overwrites leaf values in base with those
+    from update, but only for keys that already exist in base. Nested dicts are
+    merged recursively. Keys in update that are absent from base are ignored
+    (forward-compatibility: new keys added in code take precedence).
+    """
+    for key, value in update.items():
+        if key not in base:
+            continue  # Ignore keys not in base (forward compatibility)
+        if isinstance(base[key], dict) and isinstance(value, dict):
+            _deep_merge(base[key], value)
+        else:
+            base[key] = value

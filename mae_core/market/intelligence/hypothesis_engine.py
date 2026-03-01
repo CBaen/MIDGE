@@ -21,10 +21,14 @@ EventBus:
 
 from __future__ import annotations
 
+import json
 import logging
 from datetime import datetime
 from concurrent.futures import Future, ThreadPoolExecutor
+from pathlib import Path
 from typing import Any, Optional
+
+_RETIREMENT_WINDOW_PATH = Path(__file__).resolve().parents[3] / "data" / "market" / "retirement_window.json"
 
 from mae_core.market.intelligence.hypothesis import (
     Hypothesis,
@@ -94,9 +98,30 @@ class HypothesisEngine:
         self._gate_cooldowns: dict[str, int] = {}  # key → step when last adjusted
 
         # Bridge 5: meta-learning for RSI Layer 3
+        # Meta-learning persistence verified: config snapshot warm-starts from
+        # market_systems.py load_snapshot() before any system is constructed,
+        # retirement window loads in __init__ via _load_retirement_window() then
+        # seeds from registry if empty via _seed_retirement_window_from_registry(),
+        # pair outcomes load in generator __init__ via _load_pair_outcomes().
+        # Meta-learning fires at step 3000 regardless of session number (cadence-
+        # based counter resets to 0 on restart — absolute step is irrelevant).
         self._meta_learning_cadence = 3000
         self._retirement_window: list[str] = []  # ring buffer of "promoted"/"retired"
         self._retirement_window_max = 50
+
+        # Derive retirement window path from registry's data_dir so tests using
+        # tmp_path registries get isolated persistence (no cross-test contamination).
+        registry_data_dir = getattr(registry, "_data_dir", None)
+        if registry_data_dir is not None:
+            self._retirement_window_path = Path(registry_data_dir) / "retirement_window.json"
+        else:
+            self._retirement_window_path = _RETIREMENT_WINDOW_PATH
+
+        self._load_retirement_window()
+
+        # Cold-start: seed from registry if persistence file didn't exist
+        if not self._retirement_window:
+            self._seed_retirement_window_from_registry()
 
     def step(self) -> None:
         """Called every model step. Runs lifecycle operations on cadence."""
@@ -346,6 +371,7 @@ class HypothesisEngine:
                 hyp.trigger.source_a, hyp.trigger.source_b, "promoted")
         except Exception:
             pass
+        self._save_retirement_window()
 
         # Register a Thompson key for the promoted hypothesis
         if self._thompson_sampler is not None:
@@ -417,6 +443,7 @@ class HypothesisEngine:
                 hyp.trigger.source_a, hyp.trigger.source_b, "retired")
         except Exception:
             pass
+        self._save_retirement_window()
 
         if self._bus is not None:
             from mae_core.market.channels import CH_HYPOTHESIS_RETIRED
@@ -430,6 +457,110 @@ class HypothesisEngine:
                 })
             except Exception:
                 pass
+
+    def _save_retirement_window(self) -> None:
+        """Persist retirement window and meta-counters to disk.
+
+        Does NOT persist _gate_cooldowns — those are session-scoped step indices
+        that become meaningless after a restart. Non-critical: failures are logged
+        but never raised.
+        """
+        try:
+            self._retirement_window_path.parent.mkdir(parents=True, exist_ok=True)
+            payload = {
+                "saved_at": datetime.now().isoformat(),
+                "retirement_window": list(self._retirement_window),
+                "meta_promoted_total": self._meta_promoted_total,
+                "meta_retired_after_active": self._meta_retired_after_active,
+            }
+            self._retirement_window_path.write_text(json.dumps(payload, indent=2))
+        except Exception as e:
+            logger.debug("Failed to save retirement window: %s", e)
+
+    def _load_retirement_window(self) -> None:
+        """Restore retirement window and meta-counters from disk.
+
+        Trims the loaded window to _retirement_window_max in case the max was
+        lowered since the last save. Safe to call when the file is absent.
+        """
+        if not self._retirement_window_path.exists():
+            return
+        try:
+            data = json.loads(self._retirement_window_path.read_text())
+            window = data.get("retirement_window", [])
+            # Trim to current max
+            self._retirement_window = window[-self._retirement_window_max:]
+            self._meta_promoted_total = int(data.get("meta_promoted_total", 0))
+            self._meta_retired_after_active = int(data.get("meta_retired_after_active", 0))
+            logger.info(
+                "Loaded retirement window: %d entries, promoted=%d, retired_after_active=%d",
+                len(self._retirement_window),
+                self._meta_promoted_total,
+                self._meta_retired_after_active,
+            )
+        except Exception as e:
+            logger.warning("Failed to load retirement window: %s", e)
+
+    def get_persistence_stats(self) -> dict:
+        """Return persistence state for reporting and post-mortem diagnostics."""
+        return {
+            "retirement_window_size": len(self._retirement_window),
+            "retirement_window_path": str(self._retirement_window_path),
+            "meta_promoted_total": self._meta_promoted_total,
+            "meta_retired_after_active": self._meta_retired_after_active,
+        }
+
+    def _seed_retirement_window_from_registry(self) -> None:
+        """Cold-start fix: populate retirement window from registry state.
+
+        Called when no persistence file exists so the retirement window isn't
+        empty at startup. An empty window means Wire 2 of meta-learning has no
+        signal to act on until enough live promotions/retirements accumulate,
+        which can take many sessions. By reconstructing from the persisted
+        registry we get a meaningful prior immediately.
+
+        ACTIVE hypotheses were promoted at some point → "promoted".
+        RETIRED hypotheses failed validation → "retired".
+        PROBATION/HIBERNATED are excluded — their outcome is still unknown.
+
+        Entries are sorted by created_at (oldest first) before appending so the
+        window reflects the historical order of events rather than registry
+        iteration order.
+        """
+        try:
+            all_hyps = self._registry.get_all()
+        except Exception:
+            logger.debug("_seed_retirement_window_from_registry: get_all() failed", exc_info=True)
+            return
+
+        candidates = []
+        for hyp in all_hyps:
+            if hyp.status == HypothesisStatus.ACTIVE:
+                candidates.append((hyp.created_at, "promoted"))
+            elif hyp.status == HypothesisStatus.RETIRED:
+                candidates.append((hyp.created_at, "retired"))
+            # PROBATION and HIBERNATED are skipped — outcome unknown
+
+        if not candidates:
+            return
+
+        # Sort oldest-first so the window reflects historical progression
+        candidates.sort(key=lambda x: x[0])
+
+        # Trim to max before appending (take the most recent N)
+        if len(candidates) > self._retirement_window_max:
+            candidates = candidates[-self._retirement_window_max:]
+
+        for _, outcome in candidates:
+            self._retirement_window.append(outcome)
+
+        logger.info(
+            "HypothesisEngine: seeded retirement window from registry — "
+            "%d entries (%d promoted, %d retired)",
+            len(self._retirement_window),
+            self._retirement_window.count("promoted"),
+            self._retirement_window.count("retired"),
+        )
 
     def _check_regime(self) -> None:
         """Check market regime — hibernate/reactivate hypotheses as needed."""
@@ -496,6 +627,40 @@ class HypothesisEngine:
               and probation_count >= 3
               and self._step_counter > self._gate_review_cadence * 2):
             adjustments.append(("promote_win_rate", -0.01))
+
+        # Case C: retire gate too conservative — loosen if fp_rate very low
+        if (self._meta_promoted_total >= 5
+                and fp_rate < 0.05
+                and self._meta_retired_after_active == 0):
+            adjustments.append(("retire_win_rate", -0.01))
+
+        # Case D: couple promote_dsr to promote_win_rate direction
+        for key, delta in list(adjustments):
+            if key == "promote_win_rate" and delta > 0:
+                adjustments.append(("promote_dsr", +0.05))
+            elif key == "promote_win_rate" and delta < 0:
+                adjustments.append(("promote_dsr", -0.05))
+
+        # Case E: min_observations boundary retirement — if >40% of retirements
+        # happen at exactly the min_observations threshold, the gate is too low:
+        # hypotheses are being judged before they've accumulated enough evidence.
+        # Raise min_observations by +5 to demand more data before any verdict.
+        try:
+            min_obs_gate = int(gates.get("min_observations", 20))
+            retired_hyps = [
+                h for h in self._registry.get_all()
+                if h.status == HypothesisStatus.RETIRED
+            ]
+            if len(retired_hyps) >= 5:
+                boundary_retirements = sum(
+                    1 for h in retired_hyps
+                    if h.stats.total_observations == min_obs_gate
+                )
+                boundary_fraction = boundary_retirements / len(retired_hyps)
+                if boundary_fraction > 0.40:
+                    adjustments.append(("min_observations", +5))
+        except Exception:
+            pass
 
         # Apply adjustments with cooldown and bounds
         cooldown_steps = self._gate_review_cadence * 5  # 5 review cycles

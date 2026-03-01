@@ -2,6 +2,31 @@
 
 ## What Happened
 
+### Layer 7: Persistence + Reporting + Continuous Service (2026-02-28)
+
+Fixed 9 meta-learning bugs that prevented MIDGE from accumulating knowledge across sessions. Built automated marathon reporting and continuous deployment infrastructure.
+
+**Persistence (Forge):**
+- `learning_config.py`: `save_snapshot()`/`load_snapshot()` — LEARNING_CONFIG survives restarts via `data/market/config_snapshot.json`
+- `hypothesis_engine.py`: retirement window persists to `data/market/retirement_window.json` + cold-start seed from registry
+- `hypothesis_generator.py`: pair quality memory persists to `data/market/pair_outcomes.json`
+- `step_timer.py`: `save_session_stats()` snapshots performance metrics at shutdown
+- `market_systems.py`: warm-start — `load_snapshot()` called before any system construction
+
+**Reporting (Anvil):**
+- `marathon_report.py` (NEW): 6-section post-mortem report (vitals, intelligence, Bayesian learning, hypothesis pipeline, position sizing, performance health). Standalone CLI + callable from main.py
+- `main.py` finally block: StepTimer save + report generation + belt-and-suspenders persistence flushes
+- `main.py --continuous`: infinite loop with 30s recovery on crash. `_write_alerts()` writes high-confidence alerts to `data/midge/alerts.jsonl`
+- `run_service.bat` (NEW): Windows service wrapper for NSSM/Task Scheduler
+
+**Meta-Learning Fixes (Crucible):**
+- Cases C/D/E added to `_review_gates()`: retire_win_rate loosening, promote_dsr coupling, min_observations boundary detection
+- `backtest_scheduler.py`: fingerprint-based dedup prevents redundant refreshes
+- `thompson_calibrator.py`: 20-sample minimum guard prevents acting on noise
+- `market_actions.py`: step bug fixed (was always 100, now uses `model.time`)
+
+**29 new tests:** test_persistence_roundtrip.py (7), test_marathon_report.py (7), test_meta_learning_fixes.py (15). **3,148 total tests, 0 failures.**
+
 ### Data Acceleration Pipeline (2026-02-28)
 
 Fed MIDGE her own history. Instead of waiting weeks for organic learning, retroactively evaluated historical signals against historical prices — giving the learning loops months of experience in one pass.
@@ -56,7 +81,7 @@ MIDGE gained 5 new FREE data sources, expanding her sensing from 14 to 19 source
 
 **New dependencies:** `pip install cot-reports pytrends`
 
-**171 new tests:** test_new_sources.py (120 tests — clients + converters) + test_new_source_wiring.py (51 tests — pipeline integration). **3,119 total tests, 0 failures** (62 additional decomposition wiring tests added 2026-02-28).
+**171 new tests:** test_new_sources.py (120 tests — clients + converters) + test_new_source_wiring.py (51 tests — pipeline integration). **3,148 total tests, 0 failures** (29 Layer 7 persistence/reporting/meta-learning tests added 2026-02-28).
 
 ### Bridge 4+5: Dynamic Gates + Meta-Learning / RSI Layer 3 (2026-02-27)
 
@@ -284,7 +309,7 @@ Fixed 3 bugs found in live scan output, defined data schema:
 
 ## Current State
 
-- **3,119 tests pass, 0 failures** (62 new decomposition wiring tests)
+- **3,148 tests pass, 0 failures** (29 Layer 7 persistence/reporting/meta-learning tests)
 - **125 systems** (92 core + 33 market), **144 holons**, **385 connections** (217 core + 47 fractal + 55 bootstrap + 66 market)
 - **67 market files** in `mae_core/market/` (decomposed: signal_adapters/ subpackage, sensing_fetchers.py, sensing_lifecycle.py)
 - **10 mae-core infrastructure fixes ported** (VDN epsilon-greedy, EventBus injection, tie-breaking, microbiome feed-before-step, EpisodicMemory stats, 6 channel registrations, SomaticMap names, agent.shared normalization, auto-healer starvation fix, Phi forced measurement)
@@ -371,7 +396,7 @@ Welcome. MIDGE is Mae differentiated for financial markets. Here is what you nee
 5. **Thompson Sampling** uses Bayesian explore/exploit. 50 distributions with 9,470 total samples from 12,544 evaluated outcomes. Learned distributions in `data/market/thompson_distributions.json`. Bayesian forgetting prevents stale evidence.
 6. **OutcomeCollector** closes the feedback loop: scan signals → register_signals() → per-type windows → price check → Thompson update. Success threshold: 5%. Signal archives: 901 files spanning 414 days across 15 backfill sources.
 7. **All 8 Mathematical Laws are satisfied.** See implementation plan Section 12 for compliance map.
-8. **3,119 tests must keep passing.** Zero regressions. Run `python -m pytest tests/ -q` to verify.
+8. **3,148 tests must keep passing.** Zero regressions. Run `python -m pytest tests/ -q` to verify.
 9. **Deep memory runs on Qdrant** container (port 6333). Start with `docker compose up -d`.
 10. **API keys** needed: RAPIDAPI_KEY (job tracker, congressional trades), ALPHA_VANTAGE_KEY (price fallback), SAM_GOV_API_KEY, MAE_TAVILY_API_KEY, MAE_FINNHUB_API_KEY (news sentiment + earnings), FRED_API_KEY (macro indicators). Free/no-key: SEC EDGAR, yfinance, USASpending, Senate Stock Watcher, ApeWisdom, FINRA short volume, SEC EFTS.
 11. **`python main.py --agents 6 --steps 500`** runs MIDGE with agents sensing the market. Requires 6 agents (K3 general + K3 market per Law 2).

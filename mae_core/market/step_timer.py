@@ -7,10 +7,15 @@ from real data rather than theoretical analysis.
 Wired into bootstrap/market.py. Registered with SomaticMap + HolonProxy.
 """
 
+import json
+import logging
 import time
 from collections import defaultdict, deque
 from contextlib import contextmanager
+from datetime import datetime
 from typing import Dict
+
+logger = logging.getLogger(__name__)
 
 
 class StepTimer:
@@ -59,3 +64,20 @@ class StepTimer:
     def reset(self):
         """Clear all recorded timings."""
         self._timings.clear()
+
+    def save_session_stats(self, path) -> None:
+        """Write current timing statistics to a JSON file with a timestamp.
+
+        Non-critical — all exceptions are caught silently so a failing write
+        never disrupts the step loop.
+        """
+        try:
+            out_path = path if hasattr(path, "write_text") else __import__("pathlib").Path(path)
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            payload = {
+                "saved_at": datetime.now().isoformat(),
+                "stats": self.get_statistics(),
+            }
+            out_path.write_text(json.dumps(payload, indent=2))
+        except Exception:
+            pass

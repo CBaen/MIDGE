@@ -121,7 +121,7 @@ Market modules are **fully bootstrapped as Layer 33** — wired into EventBus, C
 After any structural change, grep for stale references:
 ```bash
 # Key numbers to check (update these values as they change):
-# Systems: 125 (92 core + 33 market) | Tests: 3119 | Bootstrap layers: 33 | Mixins: 14
+# Systems: 125 (92 core + 33 market) | Tests: 3148 | Bootstrap layers: 33 | Mixins: 14
 # Connections: 385 (217 core + 47 fractal + 55 bootstrap + 66 market) | Holons: 144 | Fractal depth: 4
 # Market modules: 67 files (19 API + 8 edge + 18 intelligence + 10 root + 6 signal_adapters + 6 __init__)
 
@@ -148,7 +148,7 @@ grep -rn "PREVIOUS_COUNT" --include="*.md" --include="*.py"
 
 - **Mesa 3.4** foundation, pure Python infrastructure
 - **33-layer bootstrap** in `mae_core/bootstrap/` (orchestrated by `main.py`)
-- **125 systems** (92 core + 33 market), **3,119 tests**, **144 holons**, **385 connections**
+- **125 systems** (92 core + 33 market), **3,148 tests**, **144 holons**, **385 connections**
 - **67 market intelligence files** in `mae_core/market/` (bootstrapped as Layer 33, decomposed into sub-modules)
 - **14 mixins** on MycelialAgent (10 capability + 4 lifecycle, HolonMixin is 10th capability)
 - **Fractal architecture:** All 5 steps complete (Holon Protocol, Triadic Connections, Bidirectional Awareness, Fractal Generator, Stem Cell)

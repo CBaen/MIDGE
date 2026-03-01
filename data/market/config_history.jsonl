@@ -2,3 +2,7 @@
 {"cycle_id": "learn_20260114_173441", "timestamp": "2026-01-14T17:34:41.036142", "predictions_analyzed": 2, "signal_performances": [], "reliability_updates": {}, "decay_updates": {}, "summary": "Analyzed 2 predictions | Overall accuracy: 50.0%"}
 {"cycle_id": "learn_20260114_174656", "timestamp": "2026-01-14T17:46:56.285402", "predictions_analyzed": 2, "signal_performances": [], "reliability_updates": {}, "decay_updates": {}, "summary": "Analyzed 2 predictions | Overall accuracy: 50.0%"}
 {"cycle_id": "learn_20260208_085959", "timestamp": "2026-02-08T08:59:59.263643", "predictions_analyzed": 4, "signal_performances": [], "reliability_updates": {}, "decay_updates": {}, "summary": "Analyzed 4 predictions | Overall accuracy: 75.0%"}
+{"timestamp": "2026-02-28T19:25:47.392233", "key_path": "hypothesis_gates.promote_win_rate", "old_value": 0.52, "new_value": 0.53, "modified_by": "gate_reviewer", "version": 2}
+{"timestamp": "2026-02-28T19:25:47.395602", "key_path": "hypothesis_gates.promote_dsr", "old_value": 0.5, "new_value": 0.55, "modified_by": "gate_reviewer", "version": 3}
+{"timestamp": "2026-02-28T19:36:44.322330", "key_path": "generator_thresholds.min_correlation", "old_value": 0.6, "new_value": 0.59, "modified_by": "meta_learner_retirement", "version": 2}
+{"timestamp": "2026-02-28T19:36:44.323774", "key_path": "generator_thresholds.min_correlation", "old_value": 0.59, "new_value": 0.58, "modified_by": "meta_learner_retirement", "version": 3}

@@ -117,7 +117,11 @@ class TestReviewGates:
             {
                 "hypothesis_gates": {
                     "promote_win_rate": 0.52,
-                    "_bounds": {"promote_win_rate": [0.50, 0.65]},
+                    "promote_dsr": 0.5,
+                    "_bounds": {
+                        "promote_win_rate": [0.50, 0.65],
+                        "promote_dsr": [0.0, 1.0],
+                    },
                     "_regime_deltas": {"default": {}},
                 },
             },
@@ -125,11 +129,13 @@ class TestReviewGates:
             "mae_core.market.intelligence.learning_config.update_config",
         ) as mock_update:
             engine._review_gates()
-            mock_update.assert_called_once()
-            call_args = mock_update.call_args
-            assert call_args[0][0] == "hypothesis_gates.promote_win_rate"
-            assert call_args[0][1] == pytest.approx(0.53)
-            assert call_args[1]["modified_by"] == "gate_reviewer"
+            # Case A tightens promote_win_rate, Case D couples promote_dsr
+            assert mock_update.call_count == 2
+            calls = mock_update.call_args_list
+            assert calls[0][0][0] == "hypothesis_gates.promote_win_rate"
+            assert calls[0][0][1] == pytest.approx(0.53)
+            assert calls[1][0][0] == "hypothesis_gates.promote_dsr"
+            assert calls[1][0][1] == pytest.approx(0.55)
 
     def test_loosens_when_zero_promotions_and_candidates_exist(self, engine, registry):
         engine._meta_promoted_total = 0
@@ -150,7 +156,11 @@ class TestReviewGates:
             {
                 "hypothesis_gates": {
                     "promote_win_rate": 0.55,
-                    "_bounds": {"promote_win_rate": [0.50, 0.65]},
+                    "promote_dsr": 0.5,
+                    "_bounds": {
+                        "promote_win_rate": [0.50, 0.65],
+                        "promote_dsr": [0.0, 1.0],
+                    },
                     "_regime_deltas": {"default": {}},
                 },
             },
@@ -158,8 +168,10 @@ class TestReviewGates:
             "mae_core.market.intelligence.learning_config.update_config",
         ) as mock_update:
             engine._review_gates()
-            mock_update.assert_called_once()
-            assert mock_update.call_args[0][1] == pytest.approx(0.54)
+            # Case B loosens promote_win_rate, Case D couples promote_dsr
+            assert mock_update.call_count == 2
+            assert mock_update.call_args_list[0][0][1] == pytest.approx(0.54)
+            assert mock_update.call_args_list[1][0][0] == "hypothesis_gates.promote_dsr"
 
     def test_no_change_in_healthy_range(self, engine):
         engine._meta_promoted_total = 5
@@ -193,7 +205,11 @@ class TestReviewGates:
             {
                 "hypothesis_gates": {
                     "promote_win_rate": 0.65,  # Already at upper bound
-                    "_bounds": {"promote_win_rate": [0.50, 0.65]},
+                    "promote_dsr": 1.0,  # Already at upper bound
+                    "_bounds": {
+                        "promote_win_rate": [0.50, 0.65],
+                        "promote_dsr": [0.0, 1.0],
+                    },
                     "_regime_deltas": {"default": {}},
                 },
             },
@@ -201,7 +217,7 @@ class TestReviewGates:
             "mae_core.market.intelligence.learning_config.update_config",
         ) as mock_update:
             engine._review_gates()
-            # Should not adjust because 0.65 + 0.01 = 0.66 clamps back to 0.65
+            # Both promote_win_rate and promote_dsr are at their bounds
             mock_update.assert_not_called()
 
     def test_cooldown_prevents_rapid_adjustment(self, engine):
@@ -211,13 +227,18 @@ class TestReviewGates:
         engine._gate_review_cadence = 2000
         # Set cooldown as if we just adjusted 1000 steps ago
         engine._gate_cooldowns["promote_win_rate"] = 3000
+        engine._gate_cooldowns["promote_dsr"] = 3000  # Both on cooldown
 
         with patch(
             "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
             {
                 "hypothesis_gates": {
                     "promote_win_rate": 0.52,
-                    "_bounds": {"promote_win_rate": [0.50, 0.65]},
+                    "promote_dsr": 0.5,
+                    "_bounds": {
+                        "promote_win_rate": [0.50, 0.65],
+                        "promote_dsr": [0.0, 1.0],
+                    },
                     "_regime_deltas": {"default": {}},
                 },
             },

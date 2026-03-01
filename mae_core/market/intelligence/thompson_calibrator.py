@@ -461,6 +461,9 @@ class ThompsonCalibrator:
         for cal in self._last_report:
             if cal.source not in reliability:
                 continue
+            # Minimum sample guard — don't act on thin calibration data
+            if cal.sample_count < 20:
+                continue
 
             gap = cal.mean_predicted_confidence - cal.mean_observed_hit_rate
 

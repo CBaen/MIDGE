@@ -20,6 +20,14 @@ logger = logging.getLogger("midge.bootstrap")
 
 def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
     """Create all 32 market system objects on ctx."""
+    # Warm-start: restore meta-learned config from prior sessions
+    try:
+        from mae_core.market.intelligence.learning_config import load_snapshot
+        if load_snapshot():
+            logger.info("Market config snapshot loaded — meta-learned values active from step 1")
+    except Exception:
+        logger.debug("Config snapshot warm-start skipped", exc_info=True)
+
     qdrant_url = getattr(ctx, "qdrant_url", "http://localhost:6333")
     failures = 0
 

@@ -624,8 +624,93 @@ def run(
         )
         logger.info("=" * 60)
 
+        # Belt-and-suspenders persistence flushes before post-mortem
+        hypothesis_engine = systems.get("hypothesis_engine")
+        if hypothesis_engine is not None:
+            try:
+                hypothesis_engine._save_retirement_window()
+                logger.debug("Shutdown flush: retirement window saved")
+            except Exception:
+                logger.debug("Shutdown flush: retirement window save failed", exc_info=True)
+
+        hypothesis_generator = systems.get("hypothesis_generator")
+        if hypothesis_generator is not None:
+            try:
+                hypothesis_generator.save_pair_outcomes()
+                logger.debug("Shutdown flush: pair outcomes saved")
+            except Exception:
+                logger.debug("Shutdown flush: pair outcomes save failed", exc_info=True)
+
+        try:
+            from mae_core.market.intelligence.learning_config import save_snapshot
+            save_snapshot()
+            logger.debug("Shutdown flush: config snapshot saved")
+        except Exception:
+            logger.debug("Shutdown flush: config snapshot save failed", exc_info=True)
+
+        # Save StepTimer snapshot for post-mortem
+        step_timer = systems.get("step_timer")
+        if step_timer is not None:
+            try:
+                step_timer.save_session_stats("data/midge/step_timer_snapshot.json")
+            except Exception:
+                logger.debug("StepTimer save failed", exc_info=True)
+
+        # Generate marathon post-mortem report
+        try:
+            from marathon_report import generate_report
+            generate_report(
+                output_path="data/midge/marathon-report.md",
+                round_times=round_times,
+            )
+            logger.info("Marathon post-mortem report generated.")
+        except Exception:
+            logger.debug("Marathon report generation failed", exc_info=True)
+
         model.shutdown()
         logger.info("MIDGE is resting.")
+
+
+def _write_alerts() -> None:
+    """Read convergence_state.json and append high-confidence alerts to alerts.jsonl.
+
+    Extracts ticker alerts with confidence >= 0.65 and appends each as a
+    JSON line to data/midge/alerts.jsonl with a timestamp.
+    """
+    import json
+    import datetime
+    import pathlib
+
+    state_path = pathlib.Path("data/midge/convergence_state.json")
+    alerts_path = pathlib.Path("data/midge/alerts.jsonl")
+
+    if not state_path.exists():
+        return
+
+    try:
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+    except Exception:
+        logger.debug("_write_alerts: could not read convergence_state.json", exc_info=True)
+        return
+
+    ticker_alerts = state.get("ticker_alerts", {})
+    now = datetime.datetime.utcnow().isoformat() + "Z"
+    written = 0
+
+    alerts_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(alerts_path, "a", encoding="utf-8") as fh:
+        for ticker, alert in ticker_alerts.items():
+            confidence = alert.get("confidence", 0.0) if isinstance(alert, dict) else 0.0
+            if confidence >= 0.65:
+                if isinstance(alert, dict):
+                    record = {"timestamp": now, "ticker": ticker, **alert}
+                else:
+                    record = {"timestamp": now, "ticker": ticker, "confidence": confidence}
+                fh.write(json.dumps(record) + "\n")
+                written += 1
+
+    if written:
+        logger.info("_write_alerts: wrote %d high-confidence alerts to %s", written, alerts_path)
 
 
 def main() -> None:
@@ -634,14 +719,38 @@ def main() -> None:
     parser.add_argument("--steps", type=int, default=100, help="Simulation steps")
     parser.add_argument("--cycle", type=int, default=100, help="Circadian cycle length")
     parser.add_argument("--rounds", type=int, default=1, help="Number of rounds (state persists between rounds)")
+    parser.add_argument("--continuous", action="store_true", help="Run forever, restarting on error (overrides --rounds)")
     args = parser.parse_args()
 
-    run(
-        num_agents=args.agents,
-        num_steps=args.steps,
-        num_rounds=args.rounds,
-        cycle_length=args.cycle,
-    )
+    if args.continuous:
+        import time as _time_cont
+        round_num = 0
+        logger.info("MIDGE continuous mode — running indefinitely. Ctrl-C to stop.")
+        while True:
+            try:
+                round_num += 1
+                logger.info("Continuous round %d starting.", round_num)
+                run(
+                    num_agents=args.agents,
+                    num_steps=args.steps,
+                    num_rounds=1,
+                    cycle_length=args.cycle,
+                )
+                _write_alerts()
+            except KeyboardInterrupt:
+                logger.info("MIDGE stopped by user.")
+                break
+            except Exception:
+                logger.error("Continuous round %d failed, restarting in 30s...", round_num, exc_info=True)
+                _time_cont.sleep(30)
+    else:
+        run(
+            num_agents=args.agents,
+            num_steps=args.steps,
+            num_rounds=args.rounds,
+            cycle_length=args.cycle,
+        )
+        _write_alerts()
 
 
 if __name__ == "__main__":
