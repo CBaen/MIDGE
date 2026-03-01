@@ -345,11 +345,11 @@ Phase 7/7: Report — markdown intelligence report with all sections
 
 All 17 planned items from the Layer 5 roadmap are done. Roadmap history at `C:\Users\baenb\.claude\plans\delegated-leaping-map.md`.
 
-**Data-gated (infrastructure built, awaiting data maturation):**
-- Lag-correlation findings: needs 30+ days of signal archives
-- Thompson calibration accuracy: needs 50+ outcomes
-- Kelly sizing confidence: needs 100+ calibrated outcomes
-- Meta-learning adjustments: needs retirement window to fill (50 promote/retire events)
+**Data gates (3 of 4 resolved via acceleration pipeline — 2026-02-28):**
+- ~~Lag-correlation findings: needs 30+ days of signal archives~~ — RESOLVED: 43 findings from 414-day archive
+- ~~Thompson calibration accuracy: needs 50+ outcomes~~ — RESOLVED: 12,544 outcomes, 50 distributions, 9,470 samples
+- ~~Kelly sizing confidence: needs 100+ calibrated outcomes~~ — RESOLVED: 12,544 outcomes far exceeds 100
+- Meta-learning adjustments: needs retirement window to fill (50 promote/retire events) — accelerating, hypothesis engine now has data to work with
 
 **Back burner:**
 - **Options flow via Unusual Whales** ($35/mo API — needs Guiding Light approval on spend)
@@ -368,8 +368,8 @@ Welcome. MIDGE is Mae differentiated for financial markets. Here is what you nee
 2. **Mae-core is upstream.** Changes to Mae's genome should be made in `C:\Users\baenb\projects\mae-core` and pulled here. Market-specific changes stay here.
 3. **Agents actively sense the market.** MarketSensingHook (Layer 33h) fetches data on cadence and feeds convergence_alerter. Three agents are differentiated into market roles (Layer 33i). Endocrine coupling and market advisory carry signals to all agents.
 4. **The crown jewel is `convergence_alerter.py`** — synthesizes signals across ALL domains (insider + congressional + contract + hiring + velocity) into actionable alerts. Now with per-ticker and multi-timeframe convergence.
-5. **Thompson Sampling** uses Bayesian explore/exploit. Learned distributions in `data/market/thompson_distributions.json`. Bayesian forgetting prevents stale evidence.
-6. **OutcomeCollector** closes the feedback loop: scan signals → register_signals() → per-type windows → price check → Thompson update. Success threshold: 5%.
+5. **Thompson Sampling** uses Bayesian explore/exploit. 50 distributions with 9,470 total samples from 12,544 evaluated outcomes. Learned distributions in `data/market/thompson_distributions.json`. Bayesian forgetting prevents stale evidence.
+6. **OutcomeCollector** closes the feedback loop: scan signals → register_signals() → per-type windows → price check → Thompson update. Success threshold: 5%. Signal archives: 901 files spanning 414 days across 15 backfill sources.
 7. **All 8 Mathematical Laws are satisfied.** See implementation plan Section 12 for compliance map.
 8. **3,119 tests must keep passing.** Zero regressions. Run `python -m pytest tests/ -q` to verify.
 9. **Deep memory runs on Qdrant** container (port 6333). Start with `docker compose up -d`.
