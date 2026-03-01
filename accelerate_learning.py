@@ -105,9 +105,6 @@ def phase_resolve():
     logger.info("Total evaluated this run: %d", total_evaluated)
     logger.info("Remaining pending: %d", after_stats["pending_predictions"])
 
-    # Save Thompson state
-    thompson.save()
-
     # Print Thompson summary
     _print_thompson_summary(thompson)
     return total_evaluated

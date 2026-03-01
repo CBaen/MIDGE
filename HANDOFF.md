@@ -2,6 +2,35 @@
 
 ## What Happened
 
+### Data Acceleration Pipeline (2026-02-28)
+
+Fed MIDGE her own history. Instead of waiting weeks for organic learning, retroactively evaluated historical signals against historical prices — giving the learning loops months of experience in one pass.
+
+**What was built:**
+
+1. **Extended backfill** — `backfill_archives.py` expanded from 8 to 15 sources (added COT positioning, VIX term structure, StockTwits, Google Trends, Finnhub economic/analyst/earnings calendar). Signal archive grew from 339 to 901 files spanning 414 days.
+
+2. **New client methods** — `cot_client.py` gained `get_all_positions()` for multi-year CFTC history backfill. `vix_client.py` gained `get_vix_history()` for full daily CBOE VIX history.
+
+3. **Learning accelerator** — NEW `accelerate_learning.py` (project root). Three-phase pipeline:
+   - Phase 1 (Evaluate): `OutcomeCollector.collect_from_archives()` registers archived signals as predictions
+   - Phase 2 (Resolve): Loops `collector.evaluate()` to check matured predictions against historical prices → Thompson updates
+   - Phase 3 (Correlate): `LagCorrelationAnalyzer.analyze(lookback_days=365)` for cross-domain lag patterns
+   - CLI: `--phase {evaluate,resolve,correlate,all}`, `--lookback N`
+
+4. **Thompson rebuild** — Marathon file-lock conflict corrupted Thompson distributions to all Beta(1,1). Rebuilt from 9,462 deduped outcomes in `outcomes.jsonl`. 50 distributions, 9,470 total samples.
+
+**Results:**
+- **Thompson distributions** now calibrated from real market data:
+  - `finra_short`: 1,987 samples, 35.8% mean
+  - `yfinance_price`: 580 samples, 23.0% mean
+  - `finnhub_earnings`: 110 samples, 26.6% mean
+  - `sec_form4`: 18 samples, 36.0% mean
+  - `congressional`: 53 samples, 16.4% mean
+- **43 lag-correlation findings** (at r >= 0.6, n_pairs >= 10 threshold)
+- **12,544 total outcomes** evaluated, 3,382 predictions pending
+- **Data gates unlocked**: Thompson (>> 50 outcomes), Kelly (>> 100), lag-correlation (43 findings)
+
 ### Layer 6: New Senses (2026-02-27)
 
 MIDGE gained 5 new FREE data sources, expanding her sensing from 14 to 19 sources. Each follows the exact same client→signal→convergence→Thompson pipeline as the original 14.
