@@ -175,6 +175,8 @@ class ConvergenceAlerter:
         self.persistence_path = Path(persistence_path) if persistence_path else None
         self._thompson = thompson_sampler
         self._regime_classifier = regime_classifier
+        self._causal_engine = causal_engine
+        self._bus = event_bus
         self._cached_regime = ("default", 0.0)  # (regime_str, timestamp)
 
         # Per-domain convergence windows — slow-moving data sources need longer lookback.
@@ -567,6 +569,42 @@ class ConvergenceAlerter:
         # Compute coherence once across all signals — shared by both directions.
         # Bearish signals dampen bullish confidence and vice versa.
         coherence_data = self._compute_coherence_score()
+
+        # Publish CH_CONTRADICTION_DETECTED when signals materially disagree.
+        # Completes Cap 3 (narrative coherence) — the sensor existed but never
+        # published to the EventBus. Also feeds CausalReasoningEngine if wired.
+        coherence = coherence_data.get("coherence", 1.0)
+        if coherence < 0.7 and self._bus is not None:
+            try:
+                from mae_core.market.channels import CH_CONTRADICTION_DETECTED
+                self._bus.publish(CH_CONTRADICTION_DETECTED, {
+                    "coherence": coherence,
+                    "dominant_direction": coherence_data.get("dominant_direction"),
+                    "bullish_count": coherence_data.get("bullish_count", 0),
+                    "bearish_count": coherence_data.get("bearish_count", 0),
+                    "contradiction_details": coherence_data.get("contradiction_details", []),
+                })
+            except Exception:
+                logger.debug("CH_CONTRADICTION_DETECTED publish failed", exc_info=True)
+
+        # Feed domain pair correlations into CausalReasoningEngine.
+        # This builds the causal graph that hypothesis_validator can later query.
+        if self._causal_engine is not None:
+            try:
+                active_domains = [d for d, sigs in self.signals.items() if sigs]
+                for i, domain_a in enumerate(active_domains):
+                    for domain_b in active_domains[i + 1:]:
+                        # Compute strength as product of max signal strengths
+                        str_a = max((s.strength for s in self.signals[domain_a]), default=0)
+                        str_b = max((s.strength for s in self.signals[domain_b]), default=0)
+                        corr_strength = str_a * str_b
+                        if corr_strength > 0.3:
+                            self._causal_engine.observe_correlation(
+                                domain_a, domain_b, corr_strength,
+                                context={"source": "convergence_alerter"},
+                            )
+            except Exception:
+                logger.debug("CausalReasoningEngine observation failed", exc_info=True)
 
         alerts = []
 

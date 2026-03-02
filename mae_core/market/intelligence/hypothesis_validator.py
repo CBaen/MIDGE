@@ -106,6 +106,7 @@ class HypothesisValidator:
         signals_dir: Path = None,
         outcomes_path: Path = None,
         data_dir: Path = None,
+        causal_engine=None,
     ):
         self._data_dir = data_dir or DATA_DIR
         self._signals_dir = signals_dir or (
