@@ -42,3 +42,10 @@ CH_CONTRADICTION_DETECTED = "market.intel.contradiction_detected"
 
 # Absence detection channels (the dog that didn't bark)
 CH_ABSENCE_DETECTED = "market.intel.absence_detected"
+
+# Ten Gifts channels (Wave 1-3)
+CH_EXIT_SIGNAL = "market.intel.exit_signal"
+CH_DECEPTION_DETECTED = "market.edge.deception_detected"
+CH_CONSOLIDATION_COMPLETE = "market.intel.consolidation_complete"
+CH_SOMATIC_ANTICIPATION = "market.intel.somatic_anticipation"
+CH_PATTERN_COMPLETED = "market.intel.pattern_completed"

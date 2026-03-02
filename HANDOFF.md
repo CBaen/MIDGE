@@ -375,7 +375,7 @@ Fixed 3 bugs found in live scan output, defined data schema:
 
 ## Current State
 
-- **3,417 tests pass, 0 failures** (66 new tests: correlation tracker wiring, causal bridge, absence monitor)
+- **3,429 tests pass, 0 failures** (78 tests across correlation tracker wiring, causal bridge, absence monitor — including 12 audit-gap tests)
 - **126 systems** (92 core + 34 market), **145 holons**, **392 connections** (217 core + 47 fractal + 55 bootstrap + 73 market)
 - **68 market files** in `mae_core/market/` (decomposed: signal_adapters/ subpackage, sensing_fetchers.py, sensing_lifecycle.py)
 - **10 mae-core infrastructure fixes ported** (VDN epsilon-greedy, EventBus injection, tie-breaking, microbiome feed-before-step, EpisodicMemory stats, 6 channel registrations, SomaticMap names, agent.shared normalization, auto-healer starvation fix, Phi forced measurement)
@@ -462,7 +462,7 @@ Welcome. MIDGE is Mae differentiated for financial markets. Here is what you nee
 5. **Thompson Sampling** uses Bayesian explore/exploit. 50 distributions with 9,470 total samples from 12,544 evaluated outcomes. Learned distributions in `data/market/thompson_distributions.json`. Bayesian forgetting prevents stale evidence.
 6. **OutcomeCollector** closes the feedback loop: scan signals → register_signals() → per-type windows → price check → Thompson update. Success threshold: 5%. Signal archives: 901 files spanning 414 days across 15 backfill sources.
 7. **All 8 Mathematical Laws are satisfied.** See implementation plan Section 12 for compliance map.
-8. **3,417 tests must keep passing.** Zero regressions. Run `python -m pytest tests/ -q` to verify.
+8. **3,429 tests must keep passing.** Zero regressions. Run `python -m pytest tests/ -q` to verify.
    **Pattern recognition capabilities (2026-03-02):** 6 capabilities — composite hypotheses, contextual Thompson, coherence scoring, auto causal stories, temporal freshness, intra-domain combination.
    **Completing the Circle (2026-03-02):** 3 cognitive dimensions — causal bridge (contradiction → causation), absence monitor (silence detection), correlation tracker activation (relationships in motion).
 9. **Deep memory runs on Qdrant** container (port 6333). Start with `docker compose up -d`.
