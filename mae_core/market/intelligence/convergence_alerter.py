@@ -135,6 +135,8 @@ class ConvergenceAlerter:
         "ta_bollinger": "ta_bollinger",
         "ta_structure": "ta_structure",
         "ta_candle": "ta_candle",
+        # Ten Gifts: Wave 1
+        "order_flow": "order_flow",
         # New sources (Layer 6)
         "cot_positioning": "cot_positioning",
         "stocktwits_sentiment": "stocktwits_sentiment",
@@ -763,6 +765,40 @@ class ConvergenceAlerter:
             contradiction_details = coherence_data.get("contradiction_details", [])
             coherence_multiplier = 0.5 + 0.5 * coherence
             final_confidence = max(0.05, min(0.95, final_confidence * coherence_multiplier))
+
+        # Gift 3: Catalyst Calendar modifier — timing context affects confidence.
+        # Extract primary ticker from signals' metadata for catalyst + cross-asset.
+        primary_ticker = None
+        primary_domain = None
+        for sig in directional_signals:
+            sym = sig.metadata.get("symbol", "")
+            if sym:
+                primary_ticker = sym
+                primary_domain = sig.domain
+                break
+
+        if primary_ticker and self._catalyst_calendar is not None:
+            try:
+                modifier = self._catalyst_calendar.compute_catalyst_modifier(
+                    primary_ticker, domain=primary_domain,
+                )
+                final_confidence = max(0.05, min(0.95, final_confidence * modifier))
+            except Exception:
+                pass  # Graceful degradation
+
+        # Gift 4: Cross-Asset Confirmation — correlated assets agree/disagree.
+        # Score range: -1 to 1. Mapped to confidence multiplier: 0.4x to 1.2x.
+        if primary_ticker and self._cross_asset_confirmer is not None:
+            try:
+                result = self._cross_asset_confirmer.check_confirmation(
+                    primary_ticker, direction,
+                )
+                if result is not None:
+                    score = getattr(result, "confirmation_score", 0.0)
+                    cross_multiplier = 0.8 + 0.4 * score
+                    final_confidence = max(0.05, min(0.95, final_confidence * cross_multiplier))
+            except Exception:
+                pass  # Graceful degradation
 
         # Determine urgency based on velocity (directional signals only)
         avg_velocity = sum(abs(s.velocity) for s in directional_signals) / len(directional_signals)

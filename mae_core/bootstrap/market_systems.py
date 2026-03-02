@@ -459,6 +459,14 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         logger.debug("Market: cross_asset_confirmer failed to construct", exc_info=True)
         ctx.cross_asset_confirmer = None
 
+    # Wire Wave 1 gifts into convergence alerter (two-phase init —
+    # catalyst_calendar and cross_asset_confirmer constructed after alerter)
+    if getattr(ctx, "convergence_alerter", None) is not None:
+        if getattr(ctx, "catalyst_calendar", None) is not None:
+            ctx.convergence_alerter._catalyst_calendar = ctx.catalyst_calendar
+        if getattr(ctx, "cross_asset_confirmer", None) is not None:
+            ctx.convergence_alerter._cross_asset_confirmer = ctx.cross_asset_confirmer
+
     # --- StepTimer (performance metabolism monitoring) ---
     try:
         from mae_core.market.step_timer import StepTimer
