@@ -439,6 +439,7 @@ Welcome. MIDGE is Mae differentiated for financial markets. Here is what you nee
 6. **OutcomeCollector** closes the feedback loop: scan signals → register_signals() → per-type windows → price check → Thompson update. Success threshold: 5%. Signal archives: 901 files spanning 414 days across 15 backfill sources.
 7. **All 8 Mathematical Laws are satisfied.** See implementation plan Section 12 for compliance map.
 8. **3,351 tests must keep passing.** Zero regressions. Run `python -m pytest tests/ -q` to verify.
+   **Pattern recognition capabilities (2026-03-02):** 6 capabilities — composite hypotheses, contextual Thompson, coherence scoring, auto causal stories, temporal freshness, intra-domain combination.
 9. **Deep memory runs on Qdrant** container (port 6333). Start with `docker compose up -d`.
 10. **API keys** needed: RAPIDAPI_KEY (job tracker, congressional trades), ALPHA_VANTAGE_KEY (price fallback), SAM_GOV_API_KEY, MAE_TAVILY_API_KEY, MAE_FINNHUB_API_KEY (news sentiment + earnings), FRED_API_KEY (macro indicators). Free/no-key: SEC EDGAR, yfinance, USASpending, Senate Stock Watcher, ApeWisdom, FINRA short volume, SEC EFTS.
 11. **`python main.py --agents 6 --steps 500`** runs MIDGE with agents sensing the market. Requires 6 agents (K3 general + K3 market per Law 2).

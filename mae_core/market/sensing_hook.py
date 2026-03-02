@@ -220,6 +220,7 @@ class MarketSensingHook:
         self._outcome_collector = outcome_collector
         self._memory = memory
         self._thompson_sampler = thompson_sampler
+        self._correlation_tracker = None  # Injected by bootstrap
 
         # Tiered alerters (tactical/strategic/thematic)
         self._tiered_alerters = tiered_alerters or {}
