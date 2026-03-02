@@ -422,6 +422,30 @@ class ConvergenceAlerter:
         except Exception:
             return 1.0
 
+    def _compute_freshness(self, signal: Signal, domain: str) -> float:
+        """Compute temporal freshness weight for a signal (Capability 5).
+
+        Recent signals are weighted more heavily than stale ones within
+        their convergence window.  Uses sqrt decay (concave curve) —
+        aggressive early dropoff so yesterday's signal is noticeably
+        dimmer, but a 0.3 floor preserves domain presence.
+
+        Examples (72h global window):
+          2h old  → 0.83
+          24h old → 0.42
+          70h old → 0.30 (floored)
+        """
+        now = datetime.now()
+        age_hours = max(0, (now - signal.timestamp).total_seconds() / 3600)
+        window = self._domain_windows.get(domain, self.convergence_window)
+        window_hours = window.total_seconds() / 3600
+
+        if window_hours <= 0:
+            return 1.0
+
+        freshness = 1.0 - (age_hours / window_hours) ** 0.5
+        return max(0.3, freshness)
+
     def _compute_confidence(
         self,
         signals: list,
