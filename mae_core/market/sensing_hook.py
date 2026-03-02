@@ -287,6 +287,33 @@ class MarketSensingHook:
         if self._step_counter % self._outcome_cadence == 0:
             self._evaluate_outcomes()
 
+        # Portfolio tracker: mark-to-market + exit signal check (cadence 50)
+        if self._step_counter % 50 == 0 and self._portfolio_tracker is not None:
+            try:
+                self._portfolio_tracker.update_prices()
+                exits = self._portfolio_tracker.check_exits()
+                if exits and self._convergence_alerter is not None:
+                    for exit_sig in exits:
+                        try:
+                            self._convergence_alerter.record_signal(
+                                signal_id=f"exit:{exit_sig.ticker}:{exit_sig.reason}",
+                                strength=exit_sig.urgency,
+                                domain="portfolio",
+                                direction="bearish",
+                                source="portfolio_exit",
+                            )
+                        except Exception:
+                            logger.debug("Portfolio exit signal feed failed", exc_info=True)
+            except Exception:
+                logger.debug("Portfolio tracker step failed", exc_info=True)
+
+        # Catalyst calendar: refresh upcoming events (cadence 200)
+        if self._step_counter % 200 == 0 and self._catalyst_calendar is not None:
+            try:
+                self._catalyst_calendar.refresh()
+            except Exception:
+                logger.debug("Catalyst calendar refresh failed", exc_info=True)
+
         # Absence detection on cadence 100 — check for unexpectedly silent sources
         if self._step_counter % 100 == 0 and self._absence_monitor is not None:
             try:
@@ -565,6 +592,7 @@ class MarketSensingHook:
             from_trends_signal,
             from_economic_event,
             from_analyst_recommendation,
+            from_order_flow,
         )
 
         signals = []
@@ -627,6 +655,9 @@ class MarketSensingHook:
             signals = fetch_finnhub_extras(
                 self._finnhub, self._watchlist, from_economic_event, from_analyst_recommendation
             )
+
+        elif source_name == "order_flow":
+            signals = fetch_order_flow(self._order_flow_detector, self._watchlist, from_order_flow)
 
         # Enrich in background thread (velocity, filing-time, Ollama sentiment)
         # Moved from _collect_results() so Ollama's 15s timeout doesn't block

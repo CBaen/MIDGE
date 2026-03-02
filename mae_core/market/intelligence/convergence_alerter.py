@@ -155,6 +155,8 @@ class ConvergenceAlerter:
         regime_classifier=None,
         causal_engine=None,
         event_bus=None,
+        catalyst_calendar=None,
+        cross_asset_confirmer=None,
     ):
         """
         Initialize convergence alerter.
@@ -168,6 +170,8 @@ class ConvergenceAlerter:
             regime_classifier: Optional RegimeClassifier for regime-aware Thompson queries
             causal_engine: Optional CausalReasoningEngine for contradiction analysis
             event_bus: Optional EventBus for publishing CH_CONTRADICTION_DETECTED
+            catalyst_calendar: Optional CatalystCalendar for timing context modifiers
+            cross_asset_confirmer: Optional CrossAssetConfirmer for cross-asset confirmation
         """
         self.min_domains = min_domains
         self.min_strength = min_strength
@@ -177,6 +181,8 @@ class ConvergenceAlerter:
         self._regime_classifier = regime_classifier
         self._causal_engine = causal_engine
         self._bus = event_bus
+        self._catalyst_calendar = catalyst_calendar
+        self._cross_asset_confirmer = cross_asset_confirmer
         self._cached_regime = ("default", 0.0)  # (regime_str, timestamp)
 
         # Per-domain convergence windows — slow-moving data sources need longer lookback.
