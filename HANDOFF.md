@@ -2,9 +2,25 @@
 
 ## What Happened
 
+### Pattern Recognition Gift — 6 Capabilities Built (2026-03-02)
+
+Transferred Claude's pattern recognition strategies into MIDGE as implementable algorithms. Triadic construction (Forge/Anvil/Crucible, 2 rounds with review gates). **3,351 tests, 0 failures.**
+
+**Round 1 — Core Semantic Lift:**
+- **Cap 1 Composite Hypotheses** — `hypothesis.py` TriggerPattern extended from bivariate (A→B) to multi-factor (A+C→B). `conjunct_source` + `conjunct_min_strength` fields. Generator emits composite hypotheses when multiple sources share the same target. Tighter promotion gates (+10 obs, +0.02 win rate).
+- **Cap 2 Contextual Thompson** — `convergence_alerter.py:_resolve_thompson_key()` extended with contextual cascade: `{source}:{role}:{sector}:{size}` → `{source}:{role}:{sector}` → `{source}:{role}` → static fallback. Size derived from transaction_value ($500K threshold). 15 contextual priors in `learning_config.py`.
+- **Cap 3 Narrative Coherence Scoring** — `convergence_alerter.py:_compute_coherence_score()` detects directional contradictions across domains. Coherence multiplier: `0.5 + 0.5 * coherence` → evenly split signals halve confidence. New `CH_CONTRADICTION_DETECTED` channel. 1 Group 20 triadic connection.
+- **Cap 4 Causal Story Auto-Generation** — `hypothesis_generator.py:_auto_generate_causal_story()` with 30-source `_DOMAIN_ROLES` table and 9-branch role-pair matrix. Prefixed `[AUTO]` with +0.01 promotion gate. Unblocks every PROBATION hypothesis stuck on "REQUIRES MANUAL REVIEW".
+
+**Round 2 — Temporal Precision:**
+- **Cap 5 Temporal Freshness** — `convergence_alerter.py:_compute_freshness()` applies sqrt decay: `freshness = max(0.3, 1.0 - (age_hours / window_hours)^0.5)`. Per-domain windows respected (positioning=14d, government=7d). Recent signals weighted over stale ones in domain selection.
+- **Cap 6 Intra-Domain Combination** — Multiple confirming signals from same domain boost effective strength: `max_eff *= (1 + 0.1 * log(count))`. 3 TA indicators confirming = ~11% boost. Log-saturating prevents runaway.
+
+**125 new tests across 5 files:** test_composite_hypotheses.py (29), test_contextual_thompson.py (21), test_coherence_scoring.py (22), test_auto_causal_stories.py (20), test_signal_freshness_and_combination.py (33).
+
 ### Triadic Architecture Audit — All 5 Priorities Built (2026-03-01)
 
-Full triadic audit (3 agents, 5 phases at `research/midge-architecture-audit/deliverable.md`) found 5 priorities. All 5 implemented via triadic construction (Forge/Anvil/Crucible, 3 rounds with review gates). **3,228 tests, 0 failures.**
+Full triadic audit (3 agents, 5 phases at `research/midge-architecture-audit/deliverable.md`) found 5 priorities. All 5 implemented via triadic construction (Forge/Anvil/Crucible, 3 rounds with review gates). **3,351 tests, 0 failures.**
 
 **Round 1 — Foundation (P1 + P4C):**
 - **CF-1 Thompson lock fix** — `thompson_sampler.py:update()` read-modify-write fully inside `with self._lock:`. Split into `_save_distributions_locked()` (assumes lock) + `_save_distributions()` (acquires lock). `apply_forgetting()` also locked.
@@ -335,8 +351,8 @@ Fixed 3 bugs found in live scan output, defined data schema:
 
 ## Current State
 
-- **3,228 tests pass, 0 failures** (29 Layer 7 persistence/reporting/meta-learning tests)
-- **125 systems** (92 core + 33 market), **144 holons**, **385 connections** (217 core + 47 fractal + 55 bootstrap + 66 market)
+- **3,351 tests pass, 0 failures** (29 Layer 7 persistence/reporting/meta-learning tests)
+- **125 systems** (92 core + 33 market), **144 holons**, **386 connections** (217 core + 47 fractal + 55 bootstrap + 67 market)
 - **67 market files** in `mae_core/market/` (decomposed: signal_adapters/ subpackage, sensing_fetchers.py, sensing_lifecycle.py)
 - **10 mae-core infrastructure fixes ported** (VDN epsilon-greedy, EventBus injection, tie-breaking, microbiome feed-before-step, EpisodicMemory stats, 6 channel registrations, SomaticMap names, agent.shared normalization, auto-healer starvation fix, Phi forced measurement)
 - **Bootstrap sub-modules** — `market.py` orchestrator (123 lines) + 5 sub-modules (market_systems, market_registration, market_connections, market_hooks, market_agents)
@@ -422,7 +438,7 @@ Welcome. MIDGE is Mae differentiated for financial markets. Here is what you nee
 5. **Thompson Sampling** uses Bayesian explore/exploit. 50 distributions with 9,470 total samples from 12,544 evaluated outcomes. Learned distributions in `data/market/thompson_distributions.json`. Bayesian forgetting prevents stale evidence.
 6. **OutcomeCollector** closes the feedback loop: scan signals → register_signals() → per-type windows → price check → Thompson update. Success threshold: 5%. Signal archives: 901 files spanning 414 days across 15 backfill sources.
 7. **All 8 Mathematical Laws are satisfied.** See implementation plan Section 12 for compliance map.
-8. **3,228 tests must keep passing.** Zero regressions. Run `python -m pytest tests/ -q` to verify.
+8. **3,351 tests must keep passing.** Zero regressions. Run `python -m pytest tests/ -q` to verify.
 9. **Deep memory runs on Qdrant** container (port 6333). Start with `docker compose up -d`.
 10. **API keys** needed: RAPIDAPI_KEY (job tracker, congressional trades), ALPHA_VANTAGE_KEY (price fallback), SAM_GOV_API_KEY, MAE_TAVILY_API_KEY, MAE_FINNHUB_API_KEY (news sentiment + earnings), FRED_API_KEY (macro indicators). Free/no-key: SEC EDGAR, yfinance, USASpending, Senate Stock Watcher, ApeWisdom, FINRA short volume, SEC EFTS.
 11. **`python main.py --agents 6 --steps 500`** runs MIDGE with agents sensing the market. Requires 6 agents (K3 general + K3 market per Law 2).
