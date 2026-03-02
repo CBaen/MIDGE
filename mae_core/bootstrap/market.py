@@ -19,7 +19,7 @@ This mirrors how Mae handles all optional systems — advisory, never blocking.
 Sub-module responsibilities:
   market_systems.py       — Layer 33a: construct all market objects on ctx
   market_registration.py — Layer 33b-e: somatic, holons, fractal, stem roles
-  market_connections.py  — Layer 33d: 66 triadic connections (Groups 14-19)
+  market_connections.py  — Layer 33d: 73 triadic connections (Groups 14-22)
   market_hooks.py        — Layer 33f-h: EventBus callbacks, step hooks, sensing hook
   market_agents.py       — Layer 33i: agent differentiation + market reflexes
 """
