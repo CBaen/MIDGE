@@ -16,7 +16,6 @@ import pytest
 from mae_core.market.intelligence.portfolio_tracker import (
     ClosedTrade,
     ExitSignal,
-    Portfolio,
     PortfolioState,
     PortfolioTracker,
     Position,
