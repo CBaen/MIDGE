@@ -103,6 +103,8 @@ class Hypothesis:
                 "direction": self.trigger.direction,
                 "min_strength": self.trigger.min_strength,
                 "domain_filter": self.trigger.domain_filter,
+                "conjunct_source": self.trigger.conjunct_source,
+                "conjunct_min_strength": self.trigger.conjunct_min_strength,
             },
             "status": self.status.value,
             "stats": {
@@ -152,6 +154,8 @@ class Hypothesis:
                 direction=trigger_data.get("direction", ""),
                 min_strength=trigger_data.get("min_strength", 0.0),
                 domain_filter=trigger_data.get("domain_filter", ""),
+                conjunct_source=trigger_data.get("conjunct_source", ""),
+                conjunct_min_strength=trigger_data.get("conjunct_min_strength", 0.0),
             ),
             status=HypothesisStatus(data.get("status", "probation")),
             stats=HypothesisStats(

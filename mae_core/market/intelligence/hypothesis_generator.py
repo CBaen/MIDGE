@@ -63,6 +63,135 @@ def _get_gen_threshold(key: str) -> float:
 # Pairs WITHOUT a template get a default "requires manual review" story,
 # which blocks promotion until a human or future analysis adds one.
 
+# ── Domain role classification ───────────────────────────────────────
+# Maps each source to (domain_category, activity_description).
+# Used by _auto_generate_causal_story() to produce stories for unknown pairs.
+
+_DOMAIN_ROLES = {
+    "sec_form4": ("insider", "equity_trading"),
+    "sec_form8k": ("insider", "material_disclosure"),
+    "sec_efts": ("regulatory", "filing_activity"),
+    "congressional": ("political", "equity_trading"),
+    "senate": ("political", "equity_trading"),
+    "insider_cluster": ("insider", "coordinated_buying"),
+    "contract_award": ("government", "procurement"),
+    "contract_prediction": ("government", "procurement_forecast"),
+    "hiring_tracker": ("corporate", "workforce_expansion"),
+    "sam_gov": ("government", "opportunity_posting"),
+    "social_sentiment": ("social", "retail_sentiment"),
+    "finra_short": ("institutional", "short_positioning"),
+    "finnhub_news": ("information", "news_flow"),
+    "finnhub_earnings": ("fundamental", "earnings_reporting"),
+    "fred_macro": ("macro", "economic_indicator"),
+    "session_sweep": ("technical", "liquidity_sweep"),
+    "session_sweep_ifvg": ("technical", "liquidity_sweep_fvg"),
+    "ta_rsi": ("technical", "momentum_indicator"),
+    "ta_macd": ("technical", "trend_indicator"),
+    "ta_bollinger": ("technical", "volatility_band"),
+    "ta_structure": ("technical", "market_structure"),
+    "ta_candle": ("technical", "candlestick_pattern"),
+    "cot_positioning": ("institutional", "futures_positioning"),
+    "stocktwits_sentiment": ("social", "retail_sentiment"),
+    "vix_term_structure": ("volatility", "fear_gauge"),
+    "google_trends": ("social", "search_attention"),
+    "finnhub_economic": ("macro", "economic_calendar"),
+    "finnhub_analyst": ("fundamental", "analyst_consensus"),
+    "finnhub_earnings_calendar": ("fundamental", "earnings_schedule"),
+    "yfinance_price": ("technical", "price_action"),
+}
+
+
+def _auto_generate_causal_story(source_a: str, source_b: str) -> str:
+    """Generate a causal story from domain roles when no template exists.
+
+    Looks up both sources in _DOMAIN_ROLES, then applies a role-pair matrix
+    to produce a plausible story. Returns None if either source is unknown.
+
+    Stories are prefixed with [AUTO] to distinguish from human-written ones.
+    """
+    role_a = _DOMAIN_ROLES.get(source_a)
+    role_b = _DOMAIN_ROLES.get(source_b)
+
+    if role_a is None or role_b is None:
+        return ""
+
+    domain_a, activity_a = role_a
+    domain_b, activity_b = role_b
+
+    # Role-pair matrix: ordered by specificity (most specific first)
+
+    # Insider/political → anything fundamental or reporting
+    if domain_a in ("insider", "political") and domain_b in ("fundamental", "regulatory", "information"):
+        return (
+            f"[AUTO] Information advantage: {domain_a} participants ({activity_a}) "
+            f"may have advance knowledge of {activity_b} events, creating a lead-lag "
+            f"relationship where informed actors move before public disclosure."
+        )
+
+    # Technical → technical (independent confirmation)
+    if domain_a == "technical" and domain_b == "technical":
+        return (
+            f"[AUTO] Technical confirmation: {activity_a} and {activity_b} are independent "
+            f"indicators that, when aligned, strengthen the directional signal by reducing "
+            f"the probability of false positives through multi-indicator consensus."
+        )
+
+    # Macro → institutional (cascade effect)
+    if domain_a == "macro" and domain_b in ("institutional", "technical"):
+        return (
+            f"[AUTO] Macro-institutional cascade: {activity_a} changes drive {activity_b} "
+            f"positioning as institutions respond to economic signals, creating measurable "
+            f"lead-lag dynamics in market structure."
+        )
+
+    # Social → fundamental (attention/front-running)
+    if domain_a == "social" and domain_b in ("fundamental", "information"):
+        return (
+            f"[AUTO] Attention-fundamental link: {activity_a} may front-run or react to "
+            f"{activity_b} events, as retail attention often anticipates or amplifies "
+            f"fundamental disclosures."
+        )
+
+    # Institutional → fundamental (positioning before events)
+    if domain_a == "institutional" and domain_b == "fundamental":
+        return (
+            f"[AUTO] Institutional positioning: {activity_a} changes reflect informed "
+            f"expectations about {activity_b} outcomes, as large participants position "
+            f"before scheduled events based on proprietary research."
+        )
+
+    # Volatility → any (fear/regime signal)
+    if domain_a == "volatility":
+        return (
+            f"[AUTO] Volatility regime signal: {activity_a} levels precede changes in "
+            f"{activity_b} as fear/complacency cycles drive participant behavior across "
+            f"asset classes and trading styles."
+        )
+
+    # Government → corporate (procurement signal chain)
+    if domain_a == "government" and domain_b == "corporate":
+        return (
+            f"[AUTO] Government-corporate signal chain: {activity_a} activity leads "
+            f"{activity_b} responses as companies prepare for or react to public sector "
+            f"procurement cycles."
+        )
+
+    # Insider → government (regulatory foresight)
+    if domain_a == "insider" and domain_b == "government":
+        return (
+            f"[AUTO] Regulatory foresight: {activity_a} may reflect insider awareness of "
+            f"upcoming {activity_b} decisions, particularly for defense, healthcare, and "
+            f"infrastructure sectors."
+        )
+
+    # Generic fallback for any remaining known pairs
+    return (
+        f"[AUTO] Cross-domain correlation: {domain_a} {activity_a} leads {domain_b} "
+        f"{activity_b}. Mechanism requires further research, but statistical signal "
+        f"justifies monitoring while causal story develops."
+    )
+
+
 CAUSAL_STORY_TEMPLATES = {
     ("sec_form4", "finnhub_earnings"): (
         "Insider trading activity (Form 4) precedes earnings announcements. "
@@ -124,13 +253,25 @@ CAUSAL_STORY_TEMPLATES = {
 
 
 def _get_causal_story(source_a: str, source_b: str) -> str:
-    """Look up causal story for a source pair (order-independent)."""
+    """Look up causal story for a source pair (order-independent).
+
+    Priority:
+    1. Hardcoded CAUSAL_STORY_TEMPLATES (human-written, highest quality)
+    2. _auto_generate_causal_story() using _DOMAIN_ROLES (auto, slightly tighter gates)
+    3. "REQUIRES MANUAL REVIEW" only when both sources are completely unknown
+    """
     story = CAUSAL_STORY_TEMPLATES.get((source_a, source_b))
     if story:
         return story
     story = CAUSAL_STORY_TEMPLATES.get((source_b, source_a))
     if story:
         return story
+
+    # Attempt auto-generation from domain roles
+    auto_story = _auto_generate_causal_story(source_a, source_b)
+    if auto_story:
+        return auto_story
+
     return (
         f"REQUIRES MANUAL REVIEW: Statistical correlation found between "
         f"{source_a} and {source_b} but no known causal mechanism. "
@@ -225,7 +366,7 @@ class HypothesisGenerator:
 
         Findings are sorted by correlation strength + pair quality priority,
         so better-understood pairs are investigated first when many compete.
-        Returns list of newly created hypotheses.
+        Returns list of newly created hypotheses (bivariate + composite).
         """
         findings = self._load_lag_findings()
         if not findings:
@@ -234,17 +375,28 @@ class HypothesisGenerator:
         # Sort by correlation + pair quality priority (Bridge 5)
         findings.sort(key=self._finding_priority, reverse=True)
 
+        # Collect qualifying findings before generating (needed for composites)
+        qualifying: list[dict] = []
         new_hypotheses = []
         for finding in findings:
             hyp = self._finding_to_hypothesis(finding)
             if hyp is not None:
                 self._registry.register(hyp)
                 new_hypotheses.append(hyp)
+                qualifying.append(finding)
+
+        # Generate composite (multi-factor) hypotheses from qualifying findings
+        composite_hypotheses = self._generate_composites(qualifying)
+        new_hypotheses.extend(composite_hypotheses)
 
         if new_hypotheses:
             logger.info(
-                "HypothesisGenerator: %d new hypotheses from %d lag findings",
-                len(new_hypotheses), len(findings),
+                "HypothesisGenerator: %d new hypotheses (%d bivariate, %d composite) "
+                "from %d lag findings",
+                len(new_hypotheses),
+                len(new_hypotheses) - len(composite_hypotheses),
+                len(composite_hypotheses),
+                len(findings),
             )
         return new_hypotheses
 
