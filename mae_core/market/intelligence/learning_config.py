@@ -47,6 +47,9 @@ LEARNING_CONFIG = {
         "volatility": 0.30,    # Half-life: ~2.3 days (VIX changes daily)
         # Absence signals (the dog that didn't bark)
         "absence": 0.15,       # Half-life: ~4.6 days (medium-duration)
+        # Ten Gifts (Wave 1-2)
+        "order_flow": 0.30,    # Half-life: ~2.3 days (intraday signal, fast decay)
+        "archetype": 0.03,     # Half-life: ~23 days (archetypes unfold over weeks)
     },
 
     # Source reliability defaults
@@ -118,6 +121,10 @@ LEARNING_CONFIG = {
         "ta_macd:crossover": 0.55,          # MACD crossover signals
         # Absence detection (the dog that didn't bark)
         "absence_signal": 0.50,             # Neutral prior — let the data teach
+        # Ten Gifts (Wave 1-2)
+        "order_flow": 0.50,                 # Neutral prior — intraday volume imbalance
+        "fractal_resonance": 0.55,          # Slightly optimistic (multi-timeframe = robust)
+        "archetype_match": 0.55,            # Slightly optimistic (historical backing)
     },
 
     # Confidence calibration

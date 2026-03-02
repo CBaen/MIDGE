@@ -224,6 +224,98 @@ class PriceFetcher:
             logger.warning("Daily history error for %s: %s", symbol, e)
             return []
 
+    def get_weekly_history(self, symbol: str, weeks: int = 52) -> List[PriceData]:
+        """Fetch weekly OHLCV history for a symbol using yfinance.
+
+        Returns one PriceData per trading week. Used by fractal resonance
+        detector for multi-timeframe pattern analysis.
+
+        Args:
+            symbol: Stock ticker (e.g. "AAPL", "ES=F")
+            weeks: Number of weeks of history to fetch
+
+        Returns:
+            List of PriceData sorted oldest-first. Empty on failure.
+        """
+        if not YFINANCE_AVAILABLE:
+            return []
+        try:
+            days = weeks * 7
+            start = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+            end = datetime.now().strftime("%Y-%m-%d")
+            ticker = yf.Ticker(symbol)
+            df = ticker.history(start=start, end=end, interval="1wk")
+            if df.empty:
+                return []
+            results: List[PriceData] = []
+            for idx, row in df.iterrows():
+                if hasattr(idx, "tz") and idx.tz is not None:
+                    idx = idx.tz_localize(None)
+                open_price = float(row["Open"])
+                close_price = float(row["Close"])
+                change_pct = ((close_price - open_price) / open_price * 100) if open_price != 0 else 0.0
+                results.append(PriceData(
+                    symbol=symbol,
+                    price=close_price,
+                    timestamp=idx.strftime("%Y-%m-%d"),
+                    source="yfinance_weekly",
+                    open=open_price,
+                    high=float(row["High"]),
+                    low=float(row["Low"]),
+                    volume=int(row["Volume"]),
+                    change_pct=change_pct,
+                ))
+            return results
+        except Exception as e:
+            logger.warning("Weekly history error for %s: %s", symbol, e)
+            return []
+
+    def get_monthly_history(self, symbol: str, months: int = 24) -> List[PriceData]:
+        """Fetch monthly OHLCV history for a symbol using yfinance.
+
+        Returns one PriceData per calendar month. Used by fractal resonance
+        detector for multi-timeframe pattern analysis.
+
+        Args:
+            symbol: Stock ticker (e.g. "AAPL", "ES=F")
+            months: Number of months of history to fetch
+
+        Returns:
+            List of PriceData sorted oldest-first. Empty on failure.
+        """
+        if not YFINANCE_AVAILABLE:
+            return []
+        try:
+            days = months * 31
+            start = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+            end = datetime.now().strftime("%Y-%m-%d")
+            ticker = yf.Ticker(symbol)
+            df = ticker.history(start=start, end=end, interval="1mo")
+            if df.empty:
+                return []
+            results: List[PriceData] = []
+            for idx, row in df.iterrows():
+                if hasattr(idx, "tz") and idx.tz is not None:
+                    idx = idx.tz_localize(None)
+                open_price = float(row["Open"])
+                close_price = float(row["Close"])
+                change_pct = ((close_price - open_price) / open_price * 100) if open_price != 0 else 0.0
+                results.append(PriceData(
+                    symbol=symbol,
+                    price=close_price,
+                    timestamp=idx.strftime("%Y-%m-%d"),
+                    source="yfinance_monthly",
+                    open=open_price,
+                    high=float(row["High"]),
+                    low=float(row["Low"]),
+                    volume=int(row["Volume"]),
+                    change_pct=change_pct,
+                ))
+            return results
+        except Exception as e:
+            logger.warning("Monthly history error for %s: %s", symbol, e)
+            return []
+
     def get_multiple_prices(self, symbols: List[str]) -> Dict[str, Optional[PriceData]]:
         """
         Get current prices for multiple symbols efficiently.
