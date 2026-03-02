@@ -114,6 +114,8 @@ class HypothesisValidator:
         )
         self._outcomes_path = outcomes_path or (self._data_dir / "outcomes.jsonl")
 
+        self._causal_engine = causal_engine
+
         # Global DSR counter — tracks total hypotheses ever tested
         # Persisted so it survives restarts
         self._dsr_state_path = self._data_dir / "dsr_state.json"
@@ -210,6 +212,29 @@ class HypothesisValidator:
         # Auto-generated causal stories get a slightly tighter win rate bar
         if hypothesis.causal_story.startswith("[AUTO]"):
             _pwr += 0.01
+
+        # Causal engine confounding check — if the correlation is likely
+        # driven by a hidden confounder, tighten the promotion gate.
+        _confounded = False
+        if self._causal_engine is not None and hypothesis.trigger.source_a and hypothesis.trigger.source_b:
+            try:
+                result = self._causal_engine.query_causation(
+                    hypothesis.trigger.source_a,
+                    hypothesis.trigger.source_b,
+                )
+                if hasattr(result, "relation_type"):
+                    from mae_core.cognition.causal_reasoning import CausalRelationType
+                    if result.relation_type == CausalRelationType.CONFOUNDED:
+                        _pwr += 0.03
+                        _confounded = True
+                        logger.info(
+                            "Hypothesis %s: causal engine flags confounded (%s → %s), "
+                            "tightening promote_win_rate to %.3f",
+                            hypothesis.name, hypothesis.trigger.source_a,
+                            hypothesis.trigger.source_b, _pwr,
+                        )
+            except Exception:
+                logger.debug("Causal engine query failed for %s", hypothesis.name, exc_info=True)
 
         recommend_promote = (
             total >= _min_obs

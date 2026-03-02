@@ -1,7 +1,7 @@
 """Bootstrap Layer 33d: Market triadic connections.
 
-One job: register all 67 triadic connections for the market intelligence organ
-(Groups 14-20). No bare dyads — every A<->B has witness C.
+One job: register all 70 triadic connections for the market intelligence organ
+(Groups 14-21). No bare dyads — every A<->B has witness C.
 
 Groups:
   14 - Market K3 subsystems + EventBus pub/sub + TA indicators
@@ -11,6 +11,7 @@ Groups:
   18 - Efficiency: StepTimer performance metabolism
   19 - Layer 6 new source clients
   20 - Coherence scoring (narrative conflict detection — Capability 3)
+  21 - Causal Bridge (CausalReasoningEngine wired to market layer)
 """
 
 from __future__ import annotations
@@ -22,7 +23,7 @@ logger = logging.getLogger("midge.bootstrap")
 
 
 def _register_market_connections(ctx: SimpleNamespace) -> None:
-    """Register 67 triadic connections for market systems (Group 14-20)."""
+    """Register 70 triadic connections for market systems (Group 14-21)."""
     from mae_core.backbone.connection_registry import (
         ConnectionType,
         ConnectionCriticality,
@@ -275,4 +276,16 @@ def _register_market_connections(ctx: SimpleNamespace) -> None:
         witnesses=["thompson_sampler", "auditor"],
         description="Convergence publishes contradiction when signals conflict")
 
-    logger.info("Layer 33d - Market connections: 67 triadic connections registered (Group 14-20)")
+    # --- Group 21: Causal Bridge (completing Cap 3 — contradiction → causation) ---
+    reg("shared_causal_engine", "convergence_alerter", dr,
+        witnesses=["hypothesis_validator", "auditor"],
+        description="Causal engine receives domain pair correlations from convergence")
+    reg("shared_causal_engine", "hypothesis_validator", dr,
+        witnesses=["convergence_alerter", "auditor"],
+        description="Causal engine checks confounding before hypothesis promotion")
+    reg("shared_causal_engine", "event_bus", eb,
+        channel="market.intel.contradiction_detected",
+        witnesses=["convergence_alerter", "auditor"],
+        description="Causal engine context enriches contradiction events")
+
+    logger.info("Layer 33d - Market connections: 70 triadic connections registered (Group 14-21)")
