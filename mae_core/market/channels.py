@@ -39,3 +39,6 @@ CH_META_ADJUSTED = "market.meta.meta_adjusted"
 
 # Coherence channels (narrative conflict detection — Capability 3)
 CH_CONTRADICTION_DETECTED = "market.intel.contradiction_detected"
+
+# Absence detection channels (the dog that didn't bark)
+CH_ABSENCE_DETECTED = "market.intel.absence_detected"

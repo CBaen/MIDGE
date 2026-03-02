@@ -149,6 +149,21 @@ _ROTATION_TO_THOMPSON = {
     "finnhub_extras": "finnhub_economic",
 }
 
+# Map absence source names back to convergence domains
+_ABSENCE_SOURCE_DOMAINS = {
+    "sec_form4": "insider", "sec_form8k": "insider", "sec_efts": "insider",
+    "congressional": "government", "senate": "government",
+    "finra_short": "institutional", "cot_positioning": "positioning",
+    "fred_macro": "macro", "finnhub_earnings": "news",
+    "finnhub_news": "news", "hiring": "contracts",
+    "usa_spending": "contracts", "sam_gov": "contracts",
+}
+
+
+def _absence_source_to_domain(source: str) -> str:
+    """Map an absence source name to a convergence domain."""
+    return _ABSENCE_SOURCE_DOMAINS.get(source, "unknown")
+
 
 class MarketSensingHook:
     """Async market data fetcher that runs as a step hook.
@@ -221,6 +236,7 @@ class MarketSensingHook:
         self._memory = memory
         self._thompson_sampler = thompson_sampler
         self._correlation_tracker = None  # Injected by bootstrap
+        self._absence_monitor = None  # Injected by bootstrap
 
         # Tiered alerters (tactical/strategic/thematic)
         self._tiered_alerters = tiered_alerters or {}
@@ -258,6 +274,40 @@ class MarketSensingHook:
         # Outcome tracking on cadence
         if self._step_counter % self._outcome_cadence == 0:
             self._evaluate_outcomes()
+
+        # Absence detection on cadence 100 — check for unexpectedly silent sources
+        if self._step_counter % 100 == 0 and self._absence_monitor is not None:
+            try:
+                absences = self._absence_monitor.check_absences()
+                if absences:
+                    logger.info(
+                        "AbsenceMonitor: %d sources unexpectedly silent",
+                        len(absences),
+                    )
+                    # Feed absence signals to convergence alerter
+                    if self._convergence_alerter is not None:
+                        for absence in absences:
+                            try:
+                                from mae_core.market.intelligence.convergence_alerter import Signal as CASignal
+                                absence_signal = CASignal(
+                                    signal_id=f"absence:{absence.source}",
+                                    strength=min(1.0, 0.3 + 0.1 * (absence.silence_ratio - self._absence_monitor._absence_threshold)),
+                                    domain=_absence_source_to_domain(absence.source),
+                                    direction=absence.direction,
+                                    timestamp=datetime.now(),
+                                    confidence=0.5,
+                                )
+                                self._convergence_alerter.record_signal(
+                                    absence_signal.signal_id,
+                                    absence_signal.strength,
+                                    absence_signal.domain,
+                                    direction=absence_signal.direction,
+                                    source=f"absence_{absence.source}",
+                                )
+                            except Exception:
+                                logger.debug("Absence signal feed failed", exc_info=True)
+            except Exception:
+                logger.debug("AbsenceMonitor check failed", exc_info=True)
 
         # Cross-source correlation anomaly scan on cadence 200
         if self._step_counter % 200 == 0 and self._correlation_tracker is not None:
@@ -419,6 +469,13 @@ class MarketSensingHook:
             "Market sensing: fed %d signals from [%s] (total: %d)",
             len(signals), source_name, self._total_signals_fed,
         )
+
+        # Record signal arrival for AbsenceMonitor cadence tracking
+        if self._absence_monitor is not None and signals:
+            try:
+                self._absence_monitor.record_arrival(source_name, datetime.now())
+            except Exception:
+                logger.debug("AbsenceMonitor record_arrival failed", exc_info=True)
 
         # Feed CorrelationTracker (cross-source anomaly detection)
         if self._correlation_tracker is not None and signals:

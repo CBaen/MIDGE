@@ -404,6 +404,23 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         logger.debug("Market: hypothesis_engine failed to construct", exc_info=True)
         ctx.hypothesis_engine = None
 
+    # --- AbsenceMonitor (detecting unexpectedly silent sources) ---
+    try:
+        from mae_core.market.intelligence.absence_monitor import AbsenceMonitor
+        ctx.absence_monitor = AbsenceMonitor(
+            event_bus=getattr(ctx, "bus", None),
+            archive_reader=getattr(ctx, "signal_archive_reader", None),
+        )
+        # Bootstrap cadences from signal archive (non-blocking, best-effort)
+        if ctx.absence_monitor is not None:
+            try:
+                ctx.absence_monitor.bootstrap_from_archives()
+            except Exception:
+                logger.debug("AbsenceMonitor archive bootstrap skipped", exc_info=True)
+    except Exception:
+        logger.debug("Market: absence_monitor failed to construct", exc_info=True)
+        ctx.absence_monitor = None
+
     # --- StepTimer (performance metabolism monitoring) ---
     try:
         from mae_core.market.step_timer import StepTimer
