@@ -710,3 +710,236 @@ class TestGetStatistics:
 
         assert stats["tracked_sources"] == 0
         assert stats["sources_with_history"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Section 8: Absence-to-convergence pipeline (HIGH priority audit gaps)
+# ---------------------------------------------------------------------------
+
+
+class TestAbsenceToConvergenceFeed:
+    """Verifies that absences detected at step cadence flow into the convergence
+    alerter as bearish signals — the core output of Package B.
+
+    Without these tests, a bug in the sensing_hook.py absence → convergence
+    feed path would be completely invisible.
+    """
+
+    def test_absence_signals_feed_to_convergence_alerter(self):
+        """When check_absences returns absences AND convergence_alerter is set,
+        record_signal must be called for each absence."""
+        hook = _make_hook()
+        absence_monitor = MagicMock()
+        convergence_alerter = MagicMock()
+        hook._absence_monitor = absence_monitor
+        hook._convergence_alerter = convergence_alerter
+
+        # Simulate an absence detection
+        absence = AbsenceSignal(
+            source="sec_form4",
+            expected_hours=48.0,
+            actual_hours=150.0,
+            silence_ratio=3.125,
+            direction="bearish",
+        )
+        absence_monitor.check_absences.return_value = [absence]
+
+        with (
+            patch.object(hook, "_collect_results"),
+            patch.object(hook, "_launch_next_fetch"),
+            patch.object(hook, "_evaluate_outcomes"),
+        ):
+            for _ in range(100):
+                hook.step()
+
+        convergence_alerter.record_signal.assert_called_once()
+        call_args = convergence_alerter.record_signal.call_args
+        # signal_id should contain the source name
+        assert "sec_form4" in str(call_args)
+        # direction should be bearish
+        assert call_args.kwargs.get("direction") == "bearish" or "bearish" in str(call_args)
+
+    def test_absence_signal_strength_formula(self):
+        """Strength = min(1.0, 0.3 + 0.1 * (silence_ratio - threshold)).
+
+        At threshold=2.5, silence_ratio=3.5:
+        strength = min(1.0, 0.3 + 0.1*(3.5-2.5)) = min(1.0, 0.4) = 0.4
+        """
+        hook = _make_hook()
+        absence_monitor = MagicMock()
+        absence_monitor._absence_threshold = DEFAULT_ABSENCE_THRESHOLD
+        convergence_alerter = MagicMock()
+        hook._absence_monitor = absence_monitor
+        hook._convergence_alerter = convergence_alerter
+
+        absence = AbsenceSignal(
+            source="sec_form4",
+            expected_hours=48.0,
+            actual_hours=168.0,  # 168/48 = 3.5
+            silence_ratio=3.5,
+            direction="bearish",
+        )
+        absence_monitor.check_absences.return_value = [absence]
+
+        with (
+            patch.object(hook, "_collect_results"),
+            patch.object(hook, "_launch_next_fetch"),
+            patch.object(hook, "_evaluate_outcomes"),
+        ):
+            for _ in range(100):
+                hook.step()
+
+        call_args = convergence_alerter.record_signal.call_args
+        # First positional arg after signal_id is strength
+        # record_signal(signal_id, strength, domain, direction=..., source=...)
+        actual_strength = call_args[0][1]
+        expected_strength = min(1.0, 0.3 + 0.1 * (3.5 - DEFAULT_ABSENCE_THRESHOLD))
+        assert abs(actual_strength - expected_strength) < 0.01, (
+            f"Expected strength={expected_strength:.3f}, got {actual_strength:.3f}"
+        )
+
+    def test_absence_signal_strength_capped_at_1(self):
+        """Extreme silence ratio should be capped at strength=1.0."""
+        hook = _make_hook()
+        absence_monitor = MagicMock()
+        absence_monitor._absence_threshold = DEFAULT_ABSENCE_THRESHOLD
+        convergence_alerter = MagicMock()
+        hook._absence_monitor = absence_monitor
+        hook._convergence_alerter = convergence_alerter
+
+        absence = AbsenceSignal(
+            source="sec_form4",
+            expected_hours=48.0,
+            actual_hours=960.0,  # 960/48 = 20x, way above cap
+            silence_ratio=20.0,
+            direction="bearish",
+        )
+        absence_monitor.check_absences.return_value = [absence]
+
+        with (
+            patch.object(hook, "_collect_results"),
+            patch.object(hook, "_launch_next_fetch"),
+            patch.object(hook, "_evaluate_outcomes"),
+        ):
+            for _ in range(100):
+                hook.step()
+
+        call_args = convergence_alerter.record_signal.call_args
+        actual_strength = call_args[0][1]
+        assert actual_strength <= 1.0, (
+            f"Strength must be capped at 1.0, got {actual_strength}"
+        )
+
+    def test_absence_no_convergence_alerter_no_crash(self):
+        """When absence_monitor finds absences but convergence_alerter is None,
+        step must not crash."""
+        hook = _make_hook()
+        absence_monitor = MagicMock()
+        hook._absence_monitor = absence_monitor
+        hook._convergence_alerter = None  # explicitly None
+
+        absence = AbsenceSignal(
+            source="sec_form4",
+            expected_hours=48.0,
+            actual_hours=150.0,
+            silence_ratio=3.125,
+            direction="bearish",
+        )
+        absence_monitor.check_absences.return_value = [absence]
+
+        with (
+            patch.object(hook, "_collect_results"),
+            patch.object(hook, "_launch_next_fetch"),
+            patch.object(hook, "_evaluate_outcomes"),
+        ):
+            for _ in range(100):
+                hook.step()  # Must not raise
+
+    def test_multiple_absences_each_fed_to_alerter(self):
+        """When two sources are absent, both get fed as separate signals."""
+        hook = _make_hook()
+        absence_monitor = MagicMock()
+        absence_monitor._absence_threshold = DEFAULT_ABSENCE_THRESHOLD
+        convergence_alerter = MagicMock()
+        hook._absence_monitor = absence_monitor
+        hook._convergence_alerter = convergence_alerter
+
+        absences = [
+            AbsenceSignal("sec_form4", 48.0, 150.0, 3.125, "bearish"),
+            AbsenceSignal("congressional", 168.0, 500.0, 2.976, "bearish"),
+        ]
+        absence_monitor.check_absences.return_value = absences
+
+        with (
+            patch.object(hook, "_collect_results"),
+            patch.object(hook, "_launch_next_fetch"),
+            patch.object(hook, "_evaluate_outcomes"),
+        ):
+            for _ in range(100):
+                hook.step()
+
+        assert convergence_alerter.record_signal.call_count == 2, (
+            f"Expected 2 record_signal calls, got "
+            f"{convergence_alerter.record_signal.call_count}"
+        )
+
+
+class TestAbsenceSourceToDomain:
+    """Verifies the _absence_source_to_domain mapping used when feeding
+    absence signals to the convergence alerter."""
+
+    def test_known_sources_map_correctly(self):
+        """All entries in _ABSENCE_SOURCE_DOMAINS must return the expected domain."""
+        from mae_core.market.sensing_hook import _absence_source_to_domain, _ABSENCE_SOURCE_DOMAINS
+
+        for source, expected_domain in _ABSENCE_SOURCE_DOMAINS.items():
+            actual = _absence_source_to_domain(source)
+            assert actual == expected_domain, (
+                f"Source {source!r}: expected domain {expected_domain!r}, got {actual!r}"
+            )
+
+    def test_unknown_source_returns_unknown(self):
+        """A source not in the mapping must return 'unknown', not raise."""
+        from mae_core.market.sensing_hook import _absence_source_to_domain
+
+        result = _absence_source_to_domain("totally_new_source")
+        assert result == "unknown", (
+            f"Expected 'unknown' for unmapped source, got {result!r}"
+        )
+
+    def test_absence_signal_domain_matches_mapping(self):
+        """When an absence for sec_form4 is fed to convergence, the domain
+        must be 'insider' (per _ABSENCE_SOURCE_DOMAINS)."""
+        from mae_core.market.sensing_hook import _ABSENCE_SOURCE_DOMAINS
+
+        hook = _make_hook()
+        absence_monitor = MagicMock()
+        absence_monitor._absence_threshold = DEFAULT_ABSENCE_THRESHOLD
+        convergence_alerter = MagicMock()
+        hook._absence_monitor = absence_monitor
+        hook._convergence_alerter = convergence_alerter
+
+        absence = AbsenceSignal(
+            source="sec_form4",
+            expected_hours=48.0,
+            actual_hours=150.0,
+            silence_ratio=3.125,
+            direction="bearish",
+        )
+        absence_monitor.check_absences.return_value = [absence]
+
+        with (
+            patch.object(hook, "_collect_results"),
+            patch.object(hook, "_launch_next_fetch"),
+            patch.object(hook, "_evaluate_outcomes"),
+        ):
+            for _ in range(100):
+                hook.step()
+
+        call_args = convergence_alerter.record_signal.call_args
+        # Third positional arg is domain
+        actual_domain = call_args[0][2]
+        expected_domain = _ABSENCE_SOURCE_DOMAINS["sec_form4"]
+        assert actual_domain == expected_domain, (
+            f"Expected domain={expected_domain!r}, got {actual_domain!r}"
+        )
