@@ -1,7 +1,7 @@
 """Bootstrap Layer 33: Market Intelligence Organ.
 
-Creates 33 market systems, registers holons, wires fractal hierarchy,
-registers triadic connections (Group 14-19),
+Creates 34 market systems, registers holons, wires fractal hierarchy,
+registers triadic connections (Group 14-22),
 wires EventBus channels, and hooks into the step lifecycle.
 
 Biological analogy: Growing a new sensory organ specialized for
