@@ -756,6 +756,9 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
     # data until now — Package C of "Completing the Circle" wiring)
     hook._correlation_tracker = getattr(ctx, "correlation_tracker", None)
 
+    # Inject AbsenceMonitor (Package B of "Completing the Circle")
+    hook._absence_monitor = getattr(ctx, "absence_monitor", None)
+
     # --- Store tiered alerters on ctx for agent access ---
     ctx._tiered_alerters = tiered_alerters
 

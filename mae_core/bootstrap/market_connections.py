@@ -1,7 +1,7 @@
 """Bootstrap Layer 33d: Market triadic connections.
 
-One job: register all 70 triadic connections for the market intelligence organ
-(Groups 14-21). No bare dyads — every A<->B has witness C.
+One job: register all 73 triadic connections for the market intelligence organ
+(Groups 14-22). No bare dyads — every A<->B has witness C.
 
 Groups:
   14 - Market K3 subsystems + EventBus pub/sub + TA indicators
@@ -12,6 +12,7 @@ Groups:
   19 - Layer 6 new source clients
   20 - Coherence scoring (narrative conflict detection — Capability 3)
   21 - Causal Bridge (CausalReasoningEngine wired to market layer)
+  22 - Absence Monitor (detecting unexpectedly silent sources)
 """
 
 from __future__ import annotations
@@ -23,7 +24,7 @@ logger = logging.getLogger("midge.bootstrap")
 
 
 def _register_market_connections(ctx: SimpleNamespace) -> None:
-    """Register 70 triadic connections for market systems (Group 14-21)."""
+    """Register 73 triadic connections for market systems (Group 14-22)."""
     from mae_core.backbone.connection_registry import (
         ConnectionType,
         ConnectionCriticality,
@@ -288,4 +289,16 @@ def _register_market_connections(ctx: SimpleNamespace) -> None:
         witnesses=["convergence_alerter", "auditor"],
         description="Causal engine context enriches contradiction events")
 
-    logger.info("Layer 33d - Market connections: 70 triadic connections registered (Group 14-21)")
+    # --- Group 22: Absence Monitor (detecting unexpectedly silent sources) ---
+    reg("absence_monitor", "event_bus", eb,
+        channel="market.intel.absence_detected",
+        witnesses=["convergence_alerter", "auditor"],
+        description="AbsenceMonitor publishes silence signals to EventBus")
+    reg("absence_monitor", "sensing_hook", dr,
+        witnesses=["convergence_alerter", "auditor"],
+        description="Sensing hook records arrivals for cadence tracking")
+    reg("absence_monitor", "convergence_alerter", dr,
+        witnesses=["sensing_hook", "auditor"],
+        description="Absence signals feed into convergence pipeline")
+
+    logger.info("Layer 33d - Market connections: 73 triadic connections registered (Group 14-22)")

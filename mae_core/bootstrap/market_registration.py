@@ -52,6 +52,7 @@ def _register_market_somatic(ctx: SimpleNamespace) -> None:
         "backtest_scheduler": ("BacktestScheduler", ["backtest_analyzer"]),
         "ta_indicators": ("TAIndicators", ["price_fetcher"]),
         "step_timer": ("StepTimer", []),
+        "absence_monitor": ("AbsenceMonitor", ["signal_archive_reader"]),
         # Layer 6 clients
         "cot_client": ("COTClient", []),
         "stocktwits_client": ("StockTwitsClient", []),
@@ -88,7 +89,7 @@ def _register_market_holons(ctx: SimpleNamespace) -> None:
         "hypothesis_registry", "hypothesis_generator",
         "hypothesis_validator", "hypothesis_engine",
         "backtest_analyzer", "backtest_scheduler",
-        "ta_indicators", "step_timer",
+        "ta_indicators", "step_timer", "absence_monitor",
         # Layer 6
         "cot_client", "stocktwits_client", "vix_client", "trends_client",
     ]

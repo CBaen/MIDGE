@@ -114,6 +114,8 @@ LEARNING_CONFIG = {
         "ta_rsi:oversold": 0.65,            # RSI oversold more reliable
         "ta_rsi:overbought": 0.58,          # RSI overbought slightly less
         "ta_macd:crossover": 0.55,          # MACD crossover signals
+        # Absence detection (the dog that didn't bark)
+        "absence_signal": 0.50,             # Neutral prior — let the data teach
     },
 
     # Confidence calibration
