@@ -1,7 +1,7 @@
 """Bootstrap Layer 33d: Market triadic connections.
 
-One job: register all 66 triadic connections for the market intelligence organ
-(Groups 14-19). No bare dyads — every A<->B has witness C.
+One job: register all 67 triadic connections for the market intelligence organ
+(Groups 14-20). No bare dyads — every A<->B has witness C.
 
 Groups:
   14 - Market K3 subsystems + EventBus pub/sub + TA indicators
@@ -10,6 +10,7 @@ Groups:
   17 - Backtest bridge (Bridge 1 + Bridge 3)
   18 - Efficiency: StepTimer performance metabolism
   19 - Layer 6 new source clients
+  20 - Coherence scoring (narrative conflict detection — Capability 3)
 """
 
 from __future__ import annotations

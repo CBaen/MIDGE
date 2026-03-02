@@ -463,6 +463,64 @@ class ConvergenceAlerter:
 
         return min(0.95, max(0.05, boosted))
 
+    def _compute_coherence_score(self) -> dict:
+        """Compute agreement ratio between directional signals across ALL domains.
+
+        Used by Capability 3 (narrative coherence scoring) to detect when the
+        market is sending contradictory signals — e.g. 5 bullish and 4 bearish
+        domains simultaneously.  This does NOT look at signal strength; it is a
+        simple directional vote count across all currently-held signals.
+
+        Returns a dict with:
+          coherence: float in [0.5, 1.0] — 1.0 = all agree, 0.5 = evenly split.
+          dominant_direction: "bullish" or "bearish" (or "neutral" if no votes).
+          bullish_count: number of domains with at least one bullish signal.
+          bearish_count: number of domains with at least one bearish signal.
+          contradiction_details: list of (domain, direction) for minority domains.
+        """
+        bullish_domains = []
+        bearish_domains = []
+
+        for domain, signals in self.signals.items():
+            has_bullish = any(s.direction == "bullish" for s in signals)
+            has_bearish = any(s.direction == "bearish" for s in signals)
+            if has_bullish:
+                bullish_domains.append(domain)
+            if has_bearish:
+                bearish_domains.append(domain)
+
+        total = len(bullish_domains) + len(bearish_domains)
+        if total == 0:
+            return {
+                "coherence": 1.0,
+                "dominant_direction": "neutral",
+                "bullish_count": 0,
+                "bearish_count": 0,
+                "contradiction_details": [],
+            }
+
+        bullish_count = len(bullish_domains)
+        bearish_count = len(bearish_domains)
+
+        # coherence = fraction of votes going to the majority side
+        majority_count = max(bullish_count, bearish_count)
+        coherence = majority_count / total  # range [0.5, 1.0]
+
+        if bullish_count >= bearish_count:
+            dominant = "bullish"
+            minority_domains = [(d, "bearish") for d in bearish_domains]
+        else:
+            dominant = "bearish"
+            minority_domains = [(d, "bullish") for d in bullish_domains]
+
+        return {
+            "coherence": coherence,
+            "dominant_direction": dominant,
+            "bullish_count": bullish_count,
+            "bearish_count": bearish_count,
+            "contradiction_details": minority_domains,
+        }
+
     def check_convergence(
         self,
         direction_filter: str = None
@@ -478,17 +536,21 @@ class ConvergenceAlerter:
         """
         self._prune_old_signals()
 
+        # Compute coherence once across all signals — shared by both directions.
+        # Bearish signals dampen bullish confidence and vice versa.
+        coherence_data = self._compute_coherence_score()
+
         alerts = []
 
         # Check bullish convergence
         if direction_filter in (None, "bullish"):
-            alert = self._check_direction_convergence("bullish")
+            alert = self._check_direction_convergence("bullish", coherence_data)
             if alert:
                 alerts.append(alert)
 
         # Check bearish convergence
         if direction_filter in (None, "bearish"):
-            alert = self._check_direction_convergence("bearish")
+            alert = self._check_direction_convergence("bearish", coherence_data)
             if alert:
                 alerts.append(alert)
 
@@ -522,7 +584,11 @@ class ConvergenceAlerter:
 
         return alerts
 
-    def _check_direction_convergence(self, direction: str) -> Optional[ConvergenceAlert]:
+    def _check_direction_convergence(
+        self,
+        direction: str,
+        coherence_data: dict = None,
+    ) -> Optional[ConvergenceAlert]:
         """Check for convergence in a specific direction.
 
         Directional signals (bullish/bearish) contribute domain presence, direction
@@ -533,6 +599,12 @@ class ConvergenceAlerter:
         vote and are not counted toward avg_strength.  This ensures that a reliable
         volatility predictor like FINRA short-interest counts toward min_domains
         without polluting the directional signal.
+
+        Capability 3 — Narrative coherence: if coherence_data is provided, the
+        final confidence is multiplied by a coherence_multiplier derived from the
+        global directional vote ratio.  Perfect agreement (coherence=1.0) leaves
+        confidence unchanged; evenly split signals (coherence=0.5) halve it.
+        Formula: coherence_multiplier = 0.5 + 0.5 * coherence → range [0.5, 1.0].
         """
         directional_signals = []   # Cast direction vote + strength + confidence
         neutral_signals = []       # Domain presence + confidence only
@@ -588,6 +660,18 @@ class ConvergenceAlerter:
 
         final_confidence = self._compute_confidence(all_contributing, cross_domain_count)
 
+        # Capability 3 — Apply coherence multiplier.
+        # Bearish signals dampen bullish confidence and vice versa.
+        # coherence_multiplier = 0.5 + 0.5 * coherence → range [0.5, 1.0].
+        # Perfect agreement (coherence=1.0): unchanged.  Evenly split: halved.
+        coherence = 1.0
+        contradiction_details: list = []
+        if coherence_data is not None:
+            coherence = coherence_data.get("coherence", 1.0)
+            contradiction_details = coherence_data.get("contradiction_details", [])
+            coherence_multiplier = 0.5 + 0.5 * coherence
+            final_confidence = max(0.05, min(0.95, final_confidence * coherence_multiplier))
+
         # Determine urgency based on velocity (directional signals only)
         avg_velocity = sum(abs(s.velocity) for s in directional_signals) / len(directional_signals)
         if avg_velocity > 0.1:
@@ -597,14 +681,15 @@ class ConvergenceAlerter:
         else:
             urgency = "days"
 
-        # Generate summary — note neutral signal count for transparency
+        # Generate summary — note neutral signal count and coherence for transparency
         domain_list = ", ".join(sorted(domains_seen))
         neutral_note = f", +{len(neutral_signals)} neutral" if neutral_signals else ""
+        coherence_note = f", coherence={coherence:.2f}" if coherence < 1.0 else ""
         summary = (
             f"{direction.upper()}: {len(domains_seen)} domains converging "
             f"({domain_list}) | {len(directional_signals)} directional"
             f"{neutral_note} | strength={avg_strength:.2f}, "
-            f"confidence={final_confidence:.2f}, urgency={urgency}"
+            f"confidence={final_confidence:.2f}, urgency={urgency}{coherence_note}"
         )
 
         # Create alert — signals list includes both directional and neutral
@@ -620,7 +705,9 @@ class ConvergenceAlerter:
             signals=all_contributing,
             cross_domain_count=cross_domain_count,
             summary=summary,
-            urgency=urgency
+            urgency=urgency,
+            coherence=coherence,
+            contradiction_details=contradiction_details,
         )
 
         return alert
