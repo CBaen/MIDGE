@@ -64,6 +64,10 @@ class ConvergenceAlert:
     cross_domain_count: int
     summary: str
     urgency: str  # immediate, hours, days
+    # Coherence fields — Capability 3 (narrative conflict detection).
+    # Defaults preserve backward compatibility with existing callers.
+    coherence: float = 1.0            # 1.0 = all signals agree, 0.5 = evenly split
+    contradiction_details: list = field(default_factory=list)  # [(domain, direction), ...]
 
     def to_dict(self) -> dict:
         return {
@@ -76,7 +80,9 @@ class ConvergenceAlert:
             "signal_count": len(self.signals),
             "cross_domain_count": self.cross_domain_count,
             "summary": self.summary,
-            "urgency": self.urgency
+            "urgency": self.urgency,
+            "coherence": round(self.coherence, 3),
+            "contradiction_details": self.contradiction_details,
         }
 
 
@@ -306,38 +312,82 @@ class ConvergenceAlerter:
           sweep_bt:{symbol}:{direction} → sweep_bt:{symbol} →
           sweep_bt:{direction} → generic session_sweep fallback.
 
+        For all other sources with metadata (Capability 2 — contextual Thompson):
+          {source}:{role}:{sector} → {source}:{role} → {source} fallback.
+          The "size" dimension (large/small) is appended when role is present:
+          {source}:{role}:{size} → {source}:{role} as the final intermediate.
+          Size is derived: "large" if transaction_value > $500K, else "small".
+
         Only selects a granular key if it has >= 5 samples (mature data).
-        Non-sweep sources use the static _SOURCE_TO_THOMPSON_KEY map.
+        Final fallback: static _SOURCE_TO_THOMPSON_KEY map (existing behavior).
         """
-        if signal.source not in self._SWEEP_SOURCES or self._thompson is None:
+        # --- Sweep sources: Bridge 2 cascade ---
+        if signal.source in self._SWEEP_SOURCES:
+            if self._thompson is None:
+                return self._SOURCE_TO_THOMPSON_KEY.get(
+                    signal.source, signal.source or "unknown"
+                )
+
+            symbol = signal.metadata.get("symbol", "")
+            direction = signal.direction or ""
+            regime = self._get_regime()
+
+            candidates = []
+            if symbol and direction:
+                candidates.append(f"sweep_bt:{symbol}:{direction}")
+            if symbol:
+                candidates.append(f"sweep_bt:{symbol}")
+            if direction:
+                candidates.append(f"sweep_bt:{direction}")
+
+            for key in candidates:
+                try:
+                    dist = self._thompson.get_distribution(key, regime)
+                    if dist.samples >= 5:
+                        logger.debug("Thompson cascade: %s → %s (n=%d)",
+                                     signal.source, key, dist.samples)
+                        return key
+                except Exception:
+                    continue
+
             return self._SOURCE_TO_THOMPSON_KEY.get(
                 signal.source, signal.source or "unknown"
             )
 
-        symbol = signal.metadata.get("symbol", "")
-        direction = signal.direction or ""
-        regime = self._get_regime()
+        # --- All other sources: contextual cascade (Capability 2) ---
+        if self._thompson is not None and signal.metadata:
+            base = self._SOURCE_TO_THOMPSON_KEY.get(
+                signal.source, signal.source or "unknown"
+            )
+            role = signal.metadata.get("role", "")
+            sector = signal.metadata.get("sector", "")
+            tx_value = signal.metadata.get("transaction_value", 0)
+            size = "large" if tx_value > 500_000 else "small" if tx_value > 0 else ""
 
-        # Cascade: most specific → least specific
-        candidates = []
-        if symbol and direction:
-            candidates.append(f"sweep_bt:{symbol}:{direction}")
-        if symbol:
-            candidates.append(f"sweep_bt:{symbol}")
-        if direction:
-            candidates.append(f"sweep_bt:{direction}")
+            regime = self._get_regime()
 
-        for key in candidates:
-            try:
-                dist = self._thompson.get_distribution(key, regime)
-                if dist.samples >= 5:
-                    logger.debug("Thompson cascade: %s → %s (n=%d)",
-                                 signal.source, key, dist.samples)
-                    return key
-            except Exception:
-                continue
+            # Build candidates most-specific → least-specific
+            contextual_candidates = []
+            if role and sector and size:
+                contextual_candidates.append(f"{base}:{role}:{sector}:{size}")
+            if role and sector:
+                contextual_candidates.append(f"{base}:{role}:{sector}")
+            if role and size:
+                contextual_candidates.append(f"{base}:{role}:{size}")
+            if role:
+                contextual_candidates.append(f"{base}:{role}")
 
-        # Fallback to generic key
+            for key in contextual_candidates:
+                try:
+                    dist = self._thompson.get_distribution(key, regime)
+                    if dist.samples >= 5:
+                        logger.debug("Contextual Thompson cascade: %s → %s (n=%d)",
+                                     signal.source, key, dist.samples)
+                        return key
+                except Exception:
+                    continue
+
+        # --- Static map fallback (existing behavior) ---
         return self._SOURCE_TO_THOMPSON_KEY.get(
             signal.source, signal.source or "unknown"
         )

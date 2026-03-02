@@ -437,6 +437,125 @@ class HypothesisGenerator:
             parent_lag_finding=finding,
         )
 
+    def _generate_composites(self, qualifying: list[dict]) -> List[Hypothesis]:
+        """Generate composite (multi-factor) hypotheses from qualifying findings.
+
+        Groups findings by source_b. When two or more independently qualifying
+        findings share the same source_b, generates a composite hypothesis
+        requiring BOTH leading sources to co-fire. This captures "A AND C
+        together predict B" patterns missed by bivariate hypotheses.
+
+        The composite lag is the shorter of the two constituent lags (both
+        must fire within that window for the pattern to trigger).
+        """
+        # Group qualifying findings by source_b
+        by_target: dict[str, list[dict]] = {}
+        for f in qualifying:
+            target = f.get("source_b", "")
+            if not target:
+                continue
+            by_target.setdefault(target, []).append(f)
+
+        new_composites: List[Hypothesis] = []
+        for source_b, group in by_target.items():
+            if len(group) < 2:
+                continue
+
+            # Generate all pairs within the group
+            for i in range(len(group)):
+                for j in range(i + 1, len(group)):
+                    f_a = group[i]
+                    f_c = group[j]
+                    hyp = self._findings_to_composite(f_a, f_c)
+                    if hyp is not None:
+                        self._registry.register(hyp)
+                        new_composites.append(hyp)
+
+        return new_composites
+
+    def _findings_to_composite(
+        self,
+        finding_a: dict,
+        finding_c: dict,
+    ) -> Optional[Hypothesis]:
+        """Convert two findings sharing source_b into a composite hypothesis.
+
+        Returns None if the composite is a duplicate of an existing hypothesis.
+        """
+        source_a = finding_a.get("source_a", "")
+        source_c = finding_c.get("source_a", "")
+        source_b = finding_a.get("source_b", "")
+
+        if not source_a or not source_c or not source_b:
+            return None
+
+        # Dedup: check composite signature (order of a/c doesn't matter)
+        if self._is_duplicate_composite(source_a, source_c, source_b):
+            return None
+
+        lag_a = finding_a.get("lag_days", 0)
+        lag_c = finding_c.get("lag_days", 0)
+        composite_lag = min(lag_a, lag_c)  # Both must fire within the shorter window
+
+        corr_a = finding_a.get("correlation", 0.0)
+        corr_c = finding_c.get("correlation", 0.0)
+
+        # Causal story for the composite
+        story_a = _get_causal_story(source_a, source_b)
+        story_c = _get_causal_story(source_c, source_b)
+        composite_story = (
+            f"[COMPOSITE] Multi-factor pattern: {source_a} AND {source_c} together "
+            f"predict {source_b}. "
+            f"{source_a} story: {story_a[:120].rstrip()}... "
+            f"{source_c} story: {story_c[:120].rstrip()}..."
+        )
+
+        name = (
+            f"[{source_a}+{source_c}]→{source_b} "
+            f"(lag {composite_lag}d, r_a={corr_a:.3f}, r_c={corr_c:.3f})"
+        )
+
+        return Hypothesis(
+            name=name,
+            trigger=TriggerPattern(
+                source_a=source_a,
+                source_b=source_b,
+                lag_days=composite_lag,
+                direction=finding_a.get("direction", ""),
+                conjunct_source=source_c,
+            ),
+            causal_story=composite_story,
+            source_type=SourceType.LAG_CORRELATION,
+            parent_lag_finding={
+                "composite": True,
+                "finding_a": finding_a,
+                "finding_c": finding_c,
+            },
+        )
+
+    def _is_duplicate_composite(
+        self, source_a: str, conjunct_source: str, source_b: str
+    ) -> bool:
+        """Check if a composite hypothesis already exists with this signature.
+
+        Order of source_a and conjunct_source doesn't matter — (A+C→B) is
+        the same as (C+A→B).
+        """
+        for hyp in self._registry.get_all():
+            if hyp.status.value == "retired":
+                continue
+            t = hyp.trigger
+            if t.source_b != source_b:
+                continue
+            if not t.conjunct_source:
+                continue  # Skip bivariate hypotheses
+            # Canonical pair: sorted tuple so order doesn't matter
+            existing_pair = frozenset({t.source_a, t.conjunct_source})
+            candidate_pair = frozenset({source_a, conjunct_source})
+            if existing_pair == candidate_pair:
+                return True
+        return False
+
     def _load_lag_findings(self) -> list:
         """Load lag-correlation findings from disk."""
         if not self._lag_data_path.exists():

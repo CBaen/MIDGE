@@ -36,3 +36,6 @@ CH_BACKTEST_REFRESHED = "market.intel.backtest_refreshed"
 # Meta-learning channels (RSI Layer 3 — Bridges 4 & 5)
 CH_GATE_ADJUSTED = "market.meta.gate_adjusted"
 CH_META_ADJUSTED = "market.meta.meta_adjusted"
+
+# Coherence channels (narrative conflict detection — Capability 3)
+CH_CONTRADICTION_DETECTED = "market.intel.contradiction_detected"

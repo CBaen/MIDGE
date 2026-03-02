@@ -95,6 +95,25 @@ LEARNING_CONFIG = {
         "finnhub_economic": 0.55,
         "finnhub_analyst": 0.50,
         "finnhub_earnings_calendar": 0.55,
+        # Contextual Thompson priors (sub-source discrimination — Capability 2)
+        # These are keyed by {source}:{role}, {source}:{role}:{sector}, etc.
+        # The cascade falls through to the base source key if no contextual key
+        # has enough data (>= 5 samples in Thompson).
+        "sec_form4:officer": 0.45,          # Officers have more info than directors
+        "sec_form4:officer:large": 0.55,    # Large officer buys = high conviction
+        "sec_form4:director": 0.30,         # Directors have less predictive power
+        "sec_form4:10pct_owner": 0.35,      # Major shareholders, mixed signal
+        "congressional:senate": 0.25,       # Senate committee trades
+        "congressional:house": 0.18,        # House trades, less informed
+        "finra_short:large_change": 0.45,   # Large short interest changes
+        "finra_short:small_change": 0.30,   # Small changes are noise
+        "finnhub_earnings:beat": 0.40,      # Earnings beats
+        "finnhub_earnings:miss": 0.35,      # Earnings misses
+        "contract_award:defense": 0.20,     # Defense contract awards
+        "contract_award:tech": 0.18,        # Tech contract awards
+        "ta_rsi:oversold": 0.65,            # RSI oversold more reliable
+        "ta_rsi:overbought": 0.58,          # RSI overbought slightly less
+        "ta_macd:crossover": 0.55,          # MACD crossover signals
     },
 
     # Confidence calibration

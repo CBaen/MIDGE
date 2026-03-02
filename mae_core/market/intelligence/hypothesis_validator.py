@@ -144,10 +144,16 @@ class HypothesisValidator:
         if hypothesis.source_type == SourceType.BACKTEST_DERIVED:
             return self._validate_from_precomputed(hypothesis)
 
-        # Find historical trigger events
-        trigger_events = self._find_trigger_events(
-            hypothesis, lookback_days
-        )
+        # Find historical trigger events — composite hypotheses require both sources
+        is_composite = bool(hypothesis.trigger.conjunct_source)
+        if is_composite:
+            trigger_events = self._find_composite_trigger_events(
+                hypothesis, lookback_days
+            )
+        else:
+            trigger_events = self._find_trigger_events(
+                hypothesis, lookback_days
+            )
 
         if not trigger_events:
             return ValidationResult(
@@ -193,6 +199,16 @@ class HypothesisValidator:
         _pdsr = _get_gate("promote_dsr")
         _rwr = _get_gate("retire_win_rate")
         _rdsr = _get_gate("retire_dsr")
+
+        # Composite hypotheses are more specific — need more evidence
+        is_composite = bool(hypothesis.trigger.conjunct_source)
+        if is_composite:
+            _min_obs += 10
+            _pwr += 0.02
+
+        # Auto-generated causal stories get a slightly tighter win rate bar
+        if hypothesis.causal_story.startswith("[AUTO]"):
+            _pwr += 0.01
 
         recommend_promote = (
             total >= _min_obs
@@ -365,6 +381,101 @@ class HypothesisValidator:
                 continue
 
         return events
+
+    def _find_composite_trigger_events(
+        self,
+        hypothesis: Hypothesis,
+        lookback_days: int,
+    ) -> List[dict]:
+        """Find historical instances where BOTH source_a AND conjunct_source fired.
+
+        For each source_a event, checks whether conjunct_source also fired
+        within ± lag_days/2 of the source_a event. Only events where both
+        conditions are met are returned.
+
+        This ensures composite hypotheses are validated against co-firing
+        patterns, not just single-source events.
+        """
+        cutoff = datetime.now() - timedelta(days=lookback_days)
+
+        # First pass: collect all source_a events
+        source_a_events = self._find_trigger_events(hypothesis, lookback_days)
+        if not source_a_events:
+            return []
+
+        # Second pass: collect all conjunct_source events for window matching
+        conjunct_source = hypothesis.trigger.conjunct_source
+        lag = hypothesis.trigger.lag_days
+        half_window = timedelta(days=max(1, lag // 2))
+
+        conjunct_events: List[dict] = []
+        if self._signals_dir.exists():
+            for jsonl_file in sorted(self._signals_dir.glob("*.jsonl")):
+                try:
+                    with open(jsonl_file) as f:
+                        for line in f:
+                            line = line.strip()
+                            if not line:
+                                continue
+                            try:
+                                record = json.loads(line)
+                            except json.JSONDecodeError:
+                                continue
+
+                            if record.get("source", "") != conjunct_source:
+                                continue
+
+                            ts_str = record.get("timestamp", "")
+                            if not ts_str:
+                                continue
+                            try:
+                                ts = datetime.fromisoformat(ts_str)
+                            except ValueError:
+                                continue
+
+                            if ts < cutoff:
+                                continue
+
+                            conjunct_events.append(record)
+                except Exception:
+                    continue
+
+        if not conjunct_events:
+            return []
+
+        # Third pass: keep only source_a events that have a matching conjunct event
+        matched_events = []
+        for event_a in source_a_events:
+            ts_a_str = event_a.get("timestamp", "")
+            if not ts_a_str:
+                continue
+            try:
+                ts_a = datetime.fromisoformat(ts_a_str)
+            except ValueError:
+                continue
+
+            symbol_a = event_a.get("symbol", "")
+            window_start = ts_a - half_window
+            window_end = ts_a + half_window
+
+            for event_c in conjunct_events:
+                # Symbol must match if source_a had a symbol
+                if symbol_a and event_c.get("symbol", "") != symbol_a:
+                    continue
+
+                ts_c_str = event_c.get("timestamp", "")
+                if not ts_c_str:
+                    continue
+                try:
+                    ts_c = datetime.fromisoformat(ts_c_str)
+                except ValueError:
+                    continue
+
+                if window_start <= ts_c <= window_end:
+                    matched_events.append(event_a)
+                    break  # One conjunct match per source_a event is enough
+
+        return matched_events
 
     def _check_event_outcome(
         self,
