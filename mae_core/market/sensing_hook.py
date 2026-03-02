@@ -259,6 +259,18 @@ class MarketSensingHook:
         if self._step_counter % self._outcome_cadence == 0:
             self._evaluate_outcomes()
 
+        # Cross-source correlation anomaly scan on cadence 200
+        if self._step_counter % 200 == 0 and self._correlation_tracker is not None:
+            try:
+                anomalies = self._correlation_tracker.detect_cross_domain_anomalies()
+                if anomalies:
+                    logger.info(
+                        "CorrelationTracker: %d cross-domain anomalies detected",
+                        len(anomalies),
+                    )
+            except Exception:
+                logger.debug("CorrelationTracker anomaly scan failed", exc_info=True)
+
     # ------------------------------------------------------------------
     # Async fetch lifecycle
     # ------------------------------------------------------------------
@@ -407,6 +419,20 @@ class MarketSensingHook:
             "Market sensing: fed %d signals from [%s] (total: %d)",
             len(signals), source_name, self._total_signals_fed,
         )
+
+        # Feed CorrelationTracker (cross-source anomaly detection)
+        if self._correlation_tracker is not None and signals:
+            try:
+                max_strength = max(sig.strength for sig in signals)
+                domain = signals[0].domain if hasattr(signals[0], "domain") else None
+                self._correlation_tracker.record(
+                    signal_id=source_name,
+                    value=max_strength,
+                    timestamp=datetime.now(),
+                    domain=domain,
+                )
+            except Exception:
+                logger.debug("CorrelationTracker record failed", exc_info=True)
 
         # Publish each signal to EventBus (hypothesis engine subscribes here)
         if self._bus is not None:

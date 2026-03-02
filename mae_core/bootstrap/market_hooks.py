@@ -718,7 +718,7 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
     except Exception:
         logger.debug("Form8KSentimentAnalyzer construction failed", exc_info=True)
 
-    # --- Instantiate the sensing hook ---
+    # --- Instantiate the sensing hook (with optional CorrelationTracker) ---
     try:
         hook = MarketSensingHook(
             sec_client=getattr(ctx, "sec_edgar_client", None),
@@ -751,6 +751,10 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
     except Exception:
         logger.warning("MarketSensingHook construction failed — agents will not sense market data", exc_info=True)
         return
+
+    # Inject CorrelationTracker (already bootstrapped in Layer 33a, receives no
+    # data until now — Package C of "Completing the Circle" wiring)
+    hook._correlation_tracker = getattr(ctx, "correlation_tracker", None)
 
     # --- Store tiered alerters on ctx for agent access ---
     ctx._tiered_alerters = tiered_alerters

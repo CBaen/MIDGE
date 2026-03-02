@@ -153,6 +153,8 @@ class ConvergenceAlerter:
         persistence_path: str = None,
         thompson_sampler=None,
         regime_classifier=None,
+        causal_engine=None,
+        event_bus=None,
     ):
         """
         Initialize convergence alerter.
@@ -164,6 +166,8 @@ class ConvergenceAlerter:
             persistence_path: Path for alert history
             thompson_sampler: Optional ThompsonSampler for reliability weights
             regime_classifier: Optional RegimeClassifier for regime-aware Thompson queries
+            causal_engine: Optional CausalReasoningEngine for contradiction analysis
+            event_bus: Optional EventBus for publishing CH_CONTRADICTION_DETECTED
         """
         self.min_domains = min_domains
         self.min_strength = min_strength
