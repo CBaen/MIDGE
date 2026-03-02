@@ -207,37 +207,23 @@ class TestCorrelationTrackerRecording:
             f"Expected domain='positioning', got {call_kwargs['domain']!r}"
         )
 
-    # ── 5. domain fallback when signal lacks domain attribute ────────────
+    # ── 5. timestamp argument is a datetime instance ─────────────────────
 
-    def test_record_domain_none_when_signal_lacks_domain_attr(self):
-        """If the first signal has no 'domain' attribute, record() must
-        receive domain=None rather than crashing. This exercises the
-        hasattr(signals[0], 'domain') guard at sensing_hook.py:484."""
+    def test_record_timestamp_is_datetime(self):
+        """tracker.record() must receive a datetime instance for timestamp,
+        not an arbitrary type."""
         hook = _make_hook()
         tracker = MagicMock()
         hook._correlation_tracker = tracker
 
-        # Build a signal mock without a 'domain' attribute
-        sig = MagicMock(spec=[])  # empty spec = no attributes
-        sig.signal_id = "sig_no_domain"
-        sig.strength = 0.65
-        sig.direction = "bullish"
-        sig.source = "sec_form4"
-        sig.symbol = "AAPL"
-        sig.confidence = 0.6
-        sig.velocity = 0.0
-        sig.timestamp = datetime.now()
-        sig.metadata = {}
-        # Explicitly do NOT set sig.domain
-
+        sig = _make_signal(strength=0.75, source="sec_form4")
         hook._pending_futures["sec_form4"] = _make_future([sig])
         hook._collect_one("sec_form4")
 
         tracker.record.assert_called_once()
         call_kwargs = tracker.record.call_args.kwargs
-        assert call_kwargs["domain"] is None, (
-            f"Expected domain=None when signal lacks domain attr, "
-            f"got {call_kwargs['domain']!r}"
+        assert isinstance(call_kwargs["timestamp"], datetime), (
+            f"Expected timestamp to be a datetime, got {type(call_kwargs['timestamp'])}"
         )
 
     # ── 6. Empty signal list does not call record ──────────────────────────

@@ -836,6 +836,7 @@ class TestAbsenceToConvergenceFeed:
         step must not crash."""
         hook = _make_hook()
         absence_monitor = MagicMock()
+        absence_monitor._absence_threshold = DEFAULT_ABSENCE_THRESHOLD
         hook._absence_monitor = absence_monitor
         hook._convergence_alerter = None  # explicitly None
 
