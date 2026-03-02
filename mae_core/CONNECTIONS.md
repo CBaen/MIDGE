@@ -30,8 +30,8 @@ Last updated: 2026-02-22
 
 ## Connection Matrix Summary
 
-**Total EventBus channels wired:** 60+
-**Total cross-system connections mapped:** 80+
+**Total EventBus channels wired:** 65+
+**Total cross-system connections mapped:** 90+
 
 | Phase | Systems | EventBus Channels | Direct Wiring | Stub/Ready |
 |-------|---------|-------------------|---------------|------------|
@@ -45,7 +45,7 @@ Last updated: 2026-02-22
 | 5.8 Temporal | TemporalMemory, WorldlinePlanner | 6 | 6 (EventBus) | 4 (cross-system stubs) |
 | 5.8+ Enforcement | TriadEnforcer, Watchdog, Auditor, Registry | 10 | 10 (EventBus) | 0 |
 | 5.8++ Holon | HolonRegistry, HolonMixin, HolonProxy, AwarenessPulse | 2 | 36 (proxy injection) + 1 (bootstrap) | 0 |
-| 5.8+++ Connection | ConnectionRegistry | 4 | 386 (217 core + 47 fractal + 55 bootstrap + 67 market, all witnessed, 0 bare dyads) | 0 |
+| 5.8+++ Connection | ConnectionRegistry | 4 | 392 (217 core + 47 fractal + 55 bootstrap + 73 market, all witnessed, 0 bare dyads) | 0 |
 | **5.9 Integration** | **API, Dashboard, Domain Config** | **0** | **0** | **20+ (all stubs need wiring)** |
 
 ---
