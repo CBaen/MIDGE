@@ -22,7 +22,7 @@ logger = logging.getLogger("midge.bootstrap")
 
 
 def _register_market_connections(ctx: SimpleNamespace) -> None:
-    """Register 66 triadic connections for market systems (Group 14-19)."""
+    """Register 67 triadic connections for market systems (Group 14-20)."""
     from mae_core.backbone.connection_registry import (
         ConnectionType,
         ConnectionCriticality,
@@ -269,4 +269,10 @@ def _register_market_connections(ctx: SimpleNamespace) -> None:
                 criticality=ConnectionCriticality.IMPORTANT,
                 description=f"{client_id} validated through boundary membrane")
 
-    logger.info("Layer 33d - Market connections: 66 triadic connections registered (Group 14-19)")
+    # --- Group 20: Coherence scoring (narrative conflict detection) ---
+    reg("convergence_alerter", "event_bus", eb,
+        channel="market.intel.contradiction_detected",
+        witnesses=["thompson_sampler", "auditor"],
+        description="Convergence publishes contradiction when signals conflict")
+
+    logger.info("Layer 33d - Market connections: 67 triadic connections registered (Group 14-20)")
