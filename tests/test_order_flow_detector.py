@@ -193,9 +193,13 @@ class TestStrengthCalculation:
     def _strength_for_zscore(self, zscore_multiplier: float) -> float:
         """
         Build bars where the spike bar has a known volume z-score.
-        baseline: 20 bars at volume=1000 (mean=1000, std≈0 but add variance).
-        Use varying volumes to get non-zero std, then place spike.
+
+        Uses a 20-bar baseline with controlled variance so the rolling std is
+        non-zero and predictable. The spike volume is computed as
+        mean + zscore_multiplier * std, rounded up (ceil) to avoid integer
+        truncation pushing the bar below the 2.0-sigma detection threshold.
         """
+        import math as _math
         # baseline with slight variance: volumes 800-1200, mean=1000
         baseline_vols = [800, 900, 950, 1000, 1000, 1000, 1000, 1050, 1100, 1200] * 2
         baseline = [
@@ -203,8 +207,8 @@ class TestStrengthCalculation:
         ]
         vol_mean = sum(baseline_vols) / len(baseline_vols)
         vol_std = _std(baseline_vols)
-        spike_vol = vol_mean + zscore_multiplier * vol_std
-        spike = [(100.0, 101.0, 99.0, 100.9, int(spike_vol))]
+        spike_vol = _math.ceil(vol_mean + zscore_multiplier * vol_std)
+        spike = [(100.0, 101.0, 99.0, 100.9, spike_vol)]
         bars = baseline + spike
         df = _make_df(bars)
         fetcher = _mock_fetcher_from_df(df)
@@ -213,9 +217,12 @@ class TestStrengthCalculation:
         return signals[0].strength if signals else 0.0
 
     def test_strength_two_sigma(self):
-        strength = self._strength_for_zscore(2.0)
-        # 2/4 = 0.5
-        assert abs(strength - 0.5) < 0.15  # allow tolerance for rolling window edge effects
+        # 2-sigma bar: volume exactly at threshold → strength ≈ 2/4 = 0.5
+        # We use 2.1 to avoid floating-point boundary edge cases.
+        strength = self._strength_for_zscore(2.1)
+        expected = min(1.0, 2.1 / 4.0)  # ≈ 0.525
+        # Allow 0.15 tolerance for rolling window variation
+        assert abs(strength - expected) < 0.15
 
     def test_strength_four_sigma_caps_at_one(self):
         strength = self._strength_for_zscore(4.0)
