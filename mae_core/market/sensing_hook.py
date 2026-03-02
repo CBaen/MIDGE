@@ -52,6 +52,7 @@ from mae_core.market.sensing_fetchers import (
     fetch_vix,
     fetch_trends,
     fetch_finnhub_extras,
+    fetch_order_flow,
 )
 from mae_core.market.sensing_lifecycle import (
     enrich_signal,
@@ -91,6 +92,8 @@ TIER_ROUTING = {
     "ta_bollinger": "tactical",
     "ta_structure": "tactical",
     "ta_candle": "tactical",
+    # Ten Gifts: Wave 1
+    "order_flow": "tactical",
     # New sources (Layer 6)
     "cot_positioning": "strategic",
     "stocktwits_sentiment": "thematic",
@@ -117,6 +120,8 @@ SOURCE_ROTATION = [
     "fred_macro",
     "session_sweep",
     "ta_indicators",
+    # Ten Gifts: Wave 1
+    "order_flow",
     # New sources (Layer 6)
     "cot_positioning",
     "stocktwits",
@@ -142,6 +147,7 @@ _ROTATION_TO_THOMPSON = {
     "fred_macro": "fred_macro",
     "session_sweep": "session_sweep",
     "ta_indicators": "ta_rsi",
+    "order_flow": "order_flow",
     "cot_positioning": "cot_positioning",
     "stocktwits": "stocktwits_sentiment",
     "vix_structure": "vix_term_structure",
@@ -203,6 +209,9 @@ class MarketSensingHook:
         watchlist: Optional[dict] = None,
         fetch_cadence: int = 50,
         outcome_cadence: int = 200,
+        order_flow_detector: Any = None,
+        portfolio_tracker: Any = None,
+        catalyst_calendar: Any = None,
     ):
         # API clients (all optional — graceful degradation)
         self._sec_client = sec_client
@@ -221,6 +230,9 @@ class MarketSensingHook:
         self._stocktwits_client = stocktwits_client
         self._vix_client = vix_client
         self._trends_client = trends_client
+        self._order_flow_detector = order_flow_detector
+        self._portfolio_tracker = portfolio_tracker
+        self._catalyst_calendar = catalyst_calendar
 
         # EventBus (injected by bootstrap for signal bridge)
         self._bus = None
