@@ -454,7 +454,7 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
 
     logger.info(
         "Layer 33a - Market systems instantiated: %d systems (construction failures: %d)",
-        40 - failures, failures,
+        41 - failures, failures,
     )
     logger.info(
         "            Operational dependencies: Qdrant, RAPIDAPI_KEY, ALPHA_VANTAGE_KEY, "
