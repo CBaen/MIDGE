@@ -168,6 +168,54 @@ class TestContradictionPublishing:
         _, payload = mock_bus.publish.call_args[0]
         assert payload["coherence"] < 0.7
 
+    def test_payload_includes_dominant_direction(self):
+        """Published payload must carry dominant_direction field."""
+        mock_bus = MagicMock()
+        alerter = _make_alerter(event_bus=mock_bus)
+        _inject_contradicting_signals(alerter)
+
+        alerter.check_convergence()
+
+        _, payload = mock_bus.publish.call_args[0]
+        assert "dominant_direction" in payload, (
+            f"Payload missing 'dominant_direction'. Keys: {list(payload.keys())}"
+        )
+        assert payload["dominant_direction"] in ("bullish", "bearish", None), (
+            f"Unexpected dominant_direction: {payload['dominant_direction']!r}"
+        )
+
+    def test_direction_filter_bullish_only(self):
+        """direction_filter='bullish' should only return bullish alerts, not bearish."""
+        alerter = _make_alerter()
+        # Inject strong bullish signals in 3+ domains
+        for domain in ("insider", "sentiment", "macro"):
+            alerter.signals[domain] = [_make_signal(domain, "bullish", strength=0.9)]
+        # Also inject bearish in 3+ domains
+        for domain in ("technical", "positioning", "government"):
+            alerter.signals[domain] = [_make_signal(domain, "bearish", strength=0.9)]
+
+        alerts = alerter.check_convergence(direction_filter="bullish")
+
+        for alert in alerts:
+            assert alert.direction == "bullish", (
+                f"Expected only bullish alerts with filter='bullish', got {alert.direction!r}"
+            )
+
+    def test_direction_filter_bearish_only(self):
+        """direction_filter='bearish' should only return bearish alerts, not bullish."""
+        alerter = _make_alerter()
+        for domain in ("insider", "sentiment", "macro"):
+            alerter.signals[domain] = [_make_signal(domain, "bullish", strength=0.9)]
+        for domain in ("technical", "positioning", "government"):
+            alerter.signals[domain] = [_make_signal(domain, "bearish", strength=0.9)]
+
+        alerts = alerter.check_convergence(direction_filter="bearish")
+
+        for alert in alerts:
+            assert alert.direction == "bearish", (
+                f"Expected only bearish alerts with filter='bearish', got {alert.direction!r}"
+            )
+
 
 # ---------------------------------------------------------------------------
 # Section 2: Causal observations (convergence_alerter)

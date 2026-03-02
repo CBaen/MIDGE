@@ -730,6 +730,7 @@ class TestAbsenceToConvergenceFeed:
         record_signal must be called for each absence."""
         hook = _make_hook()
         absence_monitor = MagicMock()
+        absence_monitor._absence_threshold = DEFAULT_ABSENCE_THRESHOLD
         convergence_alerter = MagicMock()
         hook._absence_monitor = absence_monitor
         hook._convergence_alerter = convergence_alerter
