@@ -634,6 +634,7 @@ class ConvergenceAlerter:
         neutral_signals = []       # Domain presence + confidence only
         domains_seen = set()
         categories_seen = set()
+        effective_strengths = {}   # id(signal) -> effective strength (Cap 5 + 6)
 
         for domain, signals in self.signals.items():
             # Directional signals for the requested direction
@@ -649,16 +650,31 @@ class ConvergenceAlerter:
             ]
 
             if matching:
-                # Take strongest directional signal from this domain
-                strongest = max(matching, key=lambda s: s.strength)
+                # Cap 5: Select strongest by freshness-weighted strength.
+                # A 2-hour-old signal at 0.8 beats a 70-hour-old signal at 0.85.
+                strongest = max(
+                    matching,
+                    key=lambda s: s.strength * self._compute_freshness(s, domain)
+                )
+                max_eff = strongest.strength * self._compute_freshness(strongest, domain)
+
+                # Cap 6: Intra-domain count boost — multiple confirming signals
+                # from the same domain IS additional evidence.
+                # 1 signal: 1.0x, 2: ~1.07x, 3: ~1.11x (log-saturating)
+                count = len(matching)
+                if count > 1:
+                    max_eff *= (1 + 0.1 * math.log(count))
+
                 directional_signals.append(strongest)
+                effective_strengths[id(strongest)] = max_eff
                 domains_seen.add(domain)
                 categories_seen.add(self.domain_categories.get(domain, domain))
             elif neutral:
-                # Domain has no directional opinion but has a neutral predictor.
-                # Count the domain toward min_domains so it contributes to
-                # convergence breadth, but do NOT bias direction or strength.
-                strongest_neutral = max(neutral, key=lambda s: s.strength)
+                # Cap 5: Select strongest neutral by freshness-weighted strength.
+                strongest_neutral = max(
+                    neutral,
+                    key=lambda s: s.strength * self._compute_freshness(s, domain)
+                )
                 neutral_signals.append(strongest_neutral)
                 domains_seen.add(domain)
                 categories_seen.add(self.domain_categories.get(domain, domain))
@@ -675,9 +691,13 @@ class ConvergenceAlerter:
         # Calculate cross-domain count (different categories)
         cross_domain_count = len(categories_seen)
 
-        # Strength is only from directional signals — neutral signals don't vote
+        # Cap 5+6: Strength uses effective (freshness-weighted, count-boosted) values.
+        # Neutral signals don't vote on strength — they only add domain presence.
         if directional_signals:
-            avg_strength = sum(s.strength for s in directional_signals) / len(directional_signals)
+            avg_strength = sum(
+                effective_strengths.get(id(s), s.strength)
+                for s in directional_signals
+            ) / len(directional_signals)
         else:
             # All domains are neutral — no directional conviction; don't alert
             return None
