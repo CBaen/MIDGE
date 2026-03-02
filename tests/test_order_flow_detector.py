@@ -45,8 +45,19 @@ def _make_df(bars: list, base_dt=None) -> pd.DataFrame:
 
 
 def _flat_bars(n: int, price: float = 100.0, volume: int = 1000) -> list:
-    """n bars with identical price and uniform volume (baseline filler)."""
-    return [(price, price + 0.10, price - 0.10, price, volume)] * n
+    """
+    n bars with stable price and slightly varying volume (baseline filler).
+
+    Volume alternates between 90% and 110% of the nominal value so that the
+    rolling standard deviation is non-zero. The detector correctly skips
+    degenerate windows where std < 1, which a perfectly uniform baseline would
+    trigger — realistic market data always has volume variation.
+    """
+    result = []
+    for i in range(n):
+        vol = int(volume * (0.90 if i % 2 == 0 else 1.10))
+        result.append((price, price + 0.10, price - 0.10, price, vol))
+    return result
 
 
 def _mock_fetcher_from_df(df: pd.DataFrame, daily_history=None) -> MagicMock:
