@@ -22,6 +22,7 @@ Usage:
 import json
 import logging
 import math
+import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -166,6 +167,14 @@ class ConvergenceAlerter:
         self._regime_classifier = regime_classifier
         self._cached_regime = ("default", 0.0)  # (regime_str, timestamp)
 
+        # Per-domain convergence windows — slow-moving data sources need longer lookback.
+        # Domains NOT listed here fall back to self.convergence_window (72h global default).
+        self._domain_windows: Dict[str, timedelta] = {
+            "positioning": timedelta(hours=14 * 24),  # 14 days — COT is weekly data
+            "government": timedelta(hours=7 * 24),    # 7 days — congressional trades
+            "contracts": timedelta(hours=7 * 24),     # 7 days — contract awards
+        }
+
         # Recent signals by domain
         self.signals: Dict[str, List[Signal]] = defaultdict(list)
 
@@ -196,8 +205,11 @@ class ConvergenceAlerter:
         self._alert_counter = 0
 
         # Alert deduplication (defense in depth — step hook also deduplicates)
-        self._last_alert_direction = None
-        self._last_alert_time = None
+        # Per-direction tracking: both bullish and bearish can be suppressed
+        # independently, preventing the cross-evasion bug where each direction
+        # kept overwriting the other's suppression record.
+        self._last_alert_times: Dict[str, datetime] = {}
+        self._alert_lock = threading.Lock()
         self._min_alert_interval_hours = 4.0
 
     def record_signal(
@@ -253,14 +265,23 @@ class ConvergenceAlerter:
         self._prune_old_signals()
 
     def _prune_old_signals(self):
-        """Remove signals outside the convergence window."""
-        cutoff = datetime.now() - self.convergence_window
+        """Remove signals outside the convergence window.
 
-        for domain in self.signals:
+        Each domain may have its own extended window (self._domain_windows).
+        Domains not in the dict use the global convergence_window (72h default).
+        Domains whose signal list empties after pruning are removed entirely to
+        keep self.signals clean.
+        """
+        now = datetime.now()
+        for domain in list(self.signals.keys()):
+            window = self._domain_windows.get(domain, self.convergence_window)
+            cutoff = now - window
             self.signals[domain] = [
                 s for s in self.signals[domain]
                 if s.timestamp >= cutoff
             ]
+            if not self.signals[domain]:
+                del self.signals[domain]
 
     def _get_regime(self) -> str:
         """Get current market regime with 60s cache to avoid repeated calls."""
@@ -421,20 +442,23 @@ class ConvergenceAlerter:
             if alert:
                 alerts.append(alert)
 
-        # Alert deduplication — suppress re-alert within interval
-        now = datetime.now()
-        filtered = []
-        for alert in alerts:
-            direction = alert.direction if hasattr(alert, "direction") else "neutral"
-            if (self._last_alert_direction == direction
-                    and self._last_alert_time is not None
-                    and (now - self._last_alert_time).total_seconds() / 3600
-                    < self._min_alert_interval_hours):
-                continue  # Suppress — same condition, too recent
-            filtered.append(alert)
-            self._last_alert_direction = direction
-            self._last_alert_time = now
-        alerts = filtered
+        # Alert deduplication — suppress re-alert within interval, per direction.
+        # Using a dict keyed by direction so bullish and bearish each maintain
+        # their own independent suppression window.  A threading.Lock guards the
+        # dict so concurrent step-hook calls can't race each other.
+        with self._alert_lock:
+            now = datetime.now()
+            filtered = []
+            for alert in alerts:
+                direction = alert.direction if hasattr(alert, "direction") else "neutral"
+                last_time = self._last_alert_times.get(direction)
+                if (last_time is not None
+                        and (now - last_time).total_seconds() / 3600
+                        < self._min_alert_interval_hours):
+                    continue  # Suppress — same direction, too recent
+                filtered.append(alert)
+                self._last_alert_times[direction] = now
+            alerts = filtered
 
         # Store alerts (capped to prevent unbounded growth)
         self.alerts.extend(alerts)
@@ -449,41 +473,73 @@ class ConvergenceAlerter:
         return alerts
 
     def _check_direction_convergence(self, direction: str) -> Optional[ConvergenceAlert]:
-        """Check for convergence in a specific direction."""
-        converging_signals = []
+        """Check for convergence in a specific direction.
+
+        Directional signals (bullish/bearish) contribute domain presence, direction
+        voting, strength, and confidence.
+
+        Neutral signals (e.g. finra_short with short_ratio < threshold) contribute
+        domain presence and confidence weighting ONLY — they do not cast a direction
+        vote and are not counted toward avg_strength.  This ensures that a reliable
+        volatility predictor like FINRA short-interest counts toward min_domains
+        without polluting the directional signal.
+        """
+        directional_signals = []   # Cast direction vote + strength + confidence
+        neutral_signals = []       # Domain presence + confidence only
         domains_seen = set()
         categories_seen = set()
 
         for domain, signals in self.signals.items():
-            # Get recent signals matching direction
+            # Directional signals for the requested direction
             matching = [
                 s for s in signals
                 if s.direction == direction and s.strength >= self.min_strength
             ]
 
+            # Neutral signals from this domain (direction-agnostic predictors)
+            neutral = [
+                s for s in signals
+                if s.direction == "neutral" and s.strength >= self.min_strength
+            ]
+
             if matching:
-                # Take strongest recent signal from this domain
+                # Take strongest directional signal from this domain
                 strongest = max(matching, key=lambda s: s.strength)
-                converging_signals.append(strongest)
+                directional_signals.append(strongest)
                 domains_seen.add(domain)
+                categories_seen.add(self.domain_categories.get(domain, domain))
+            elif neutral:
+                # Domain has no directional opinion but has a neutral predictor.
+                # Count the domain toward min_domains so it contributes to
+                # convergence breadth, but do NOT bias direction or strength.
+                strongest_neutral = max(neutral, key=lambda s: s.strength)
+                neutral_signals.append(strongest_neutral)
+                domains_seen.add(domain)
+                categories_seen.add(self.domain_categories.get(domain, domain))
 
-                # Track category
-                category = self.domain_categories.get(domain, domain)
-                categories_seen.add(category)
-
-        # Need minimum domains
+        # Need minimum domains (directional + neutral combined)
         if len(domains_seen) < self.min_domains:
             return None
+
+        # Confidence is computed over ALL contributing signals so that
+        # Thompson-weighted neutral sources (e.g. high-reliability FINRA short)
+        # improve the estimate without inflating strength or direction.
+        all_contributing = directional_signals + neutral_signals
 
         # Calculate cross-domain count (different categories)
         cross_domain_count = len(categories_seen)
 
-        # Calculate overall strength and confidence
-        avg_strength = sum(s.strength for s in converging_signals) / len(converging_signals)
-        final_confidence = self._compute_confidence(converging_signals, cross_domain_count)
+        # Strength is only from directional signals — neutral signals don't vote
+        if directional_signals:
+            avg_strength = sum(s.strength for s in directional_signals) / len(directional_signals)
+        else:
+            # All domains are neutral — no directional conviction; don't alert
+            return None
 
-        # Determine urgency based on velocity
-        avg_velocity = sum(abs(s.velocity) for s in converging_signals) / len(converging_signals)
+        final_confidence = self._compute_confidence(all_contributing, cross_domain_count)
+
+        # Determine urgency based on velocity (directional signals only)
+        avg_velocity = sum(abs(s.velocity) for s in directional_signals) / len(directional_signals)
         if avg_velocity > 0.1:
             urgency = "immediate"
         elif avg_velocity > 0.05:
@@ -491,15 +547,18 @@ class ConvergenceAlerter:
         else:
             urgency = "days"
 
-        # Generate summary
+        # Generate summary — note neutral signal count for transparency
         domain_list = ", ".join(sorted(domains_seen))
+        neutral_note = f", +{len(neutral_signals)} neutral" if neutral_signals else ""
         summary = (
             f"{direction.upper()}: {len(domains_seen)} domains converging "
-            f"({domain_list}) | strength={avg_strength:.2f}, "
+            f"({domain_list}) | {len(directional_signals)} directional"
+            f"{neutral_note} | strength={avg_strength:.2f}, "
             f"confidence={final_confidence:.2f}, urgency={urgency}"
         )
 
-        # Create alert
+        # Create alert — signals list includes both directional and neutral
+        # so callers can inspect the full contributing set
         self._alert_counter += 1
         alert = ConvergenceAlert(
             alert_id=f"CONV-{datetime.now().strftime('%Y%m%d')}-{self._alert_counter:04d}",
@@ -508,7 +567,7 @@ class ConvergenceAlerter:
             strength=avg_strength,
             confidence=final_confidence,
             domains_converging=sorted(domains_seen),
-            signals=converging_signals,
+            signals=all_contributing,
             cross_domain_count=cross_domain_count,
             summary=summary,
             urgency=urgency

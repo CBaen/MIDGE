@@ -236,8 +236,11 @@ class TestMetaLearningWire2:
             generator=generator,
             validator=MagicMock(),
         )
-        # Fill retirement window with 80% retirements
-        engine._retirement_window = ["retired"] * 16 + ["promoted"] * 4
+        # Fill retirement window with 80% live retirements (seeded=False so Wire 2 counts them)
+        engine._retirement_window = (
+            [{"outcome": "retired", "seeded": False}] * 16
+            + [{"outcome": "promoted", "seeded": False}] * 4
+        )
 
         with patch(
             "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
@@ -263,8 +266,11 @@ class TestMetaLearningWire2:
             generator=generator,
             validator=MagicMock(),
         )
-        # Fill retirement window with 10% retirements
-        engine._retirement_window = ["retired"] * 2 + ["promoted"] * 18
+        # Fill retirement window with 10% live retirements (seeded=False so Wire 2 counts them)
+        engine._retirement_window = (
+            [{"outcome": "retired", "seeded": False}] * 2
+            + [{"outcome": "promoted", "seeded": False}] * 18
+        )
 
         with patch(
             "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
@@ -290,8 +296,11 @@ class TestMetaLearningWire2:
             generator=generator,
             validator=MagicMock(),
         )
-        # 40% retirements — healthy range
-        engine._retirement_window = ["retired"] * 8 + ["promoted"] * 12
+        # 40% live retirements — healthy range (seeded=False so Wire 2 counts them)
+        engine._retirement_window = (
+            [{"outcome": "retired", "seeded": False}] * 8
+            + [{"outcome": "promoted", "seeded": False}] * 12
+        )
 
         with patch(
             "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
@@ -314,8 +323,8 @@ class TestMetaLearningWire2:
             generator=generator,
             validator=MagicMock(),
         )
-        # Only 5 entries — below 20 threshold
-        engine._retirement_window = ["retired"] * 5
+        # Only 5 live entries — below the 10-entry live-window threshold
+        engine._retirement_window = [{"outcome": "retired", "seeded": False}] * 5
 
         with patch(
             "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
@@ -338,7 +347,10 @@ class TestMetaLearningWire2:
             generator=generator,
             validator=MagicMock(),
         )
-        engine._retirement_window = ["retired"] * 16 + ["promoted"] * 4
+        engine._retirement_window = (
+            [{"outcome": "retired", "seeded": False}] * 16
+            + [{"outcome": "promoted", "seeded": False}] * 4
+        )
 
         with patch(
             "mae_core.market.intelligence.learning_config.LEARNING_CONFIG",
@@ -446,7 +458,7 @@ class TestRetirementWindow:
         )
         registry.register(hyp)
         engine._promote(hyp)
-        assert engine._retirement_window == ["promoted"]
+        assert engine._retirement_window == [{"outcome": "promoted", "seeded": False}]
 
     def test_retire_appends_to_window(self, engine, registry):
         hyp = Hypothesis(
@@ -456,7 +468,7 @@ class TestRetirementWindow:
         )
         registry.register(hyp)
         engine._retire(hyp, "Bad")
-        assert engine._retirement_window == ["retired"]
+        assert engine._retirement_window == [{"outcome": "retired", "seeded": False}]
 
     def test_window_caps_at_max(self, engine, registry):
         engine._retirement_window_max = 5

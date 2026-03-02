@@ -146,8 +146,13 @@ def test_retirement_window_save_load(tmp_path):
         validator=MagicMock(generate=MagicMock(return_value=[])),
     )
 
-    # Directly manipulate the retirement window and persist
-    eng1._retirement_window = ["promoted", "retired", "promoted"]
+    # Directly manipulate the retirement window and persist.
+    # Entries are dicts since P5C (seeded=False for live entries).
+    eng1._retirement_window = [
+        {"outcome": "promoted", "seeded": False},
+        {"outcome": "retired", "seeded": False},
+        {"outcome": "promoted", "seeded": False},
+    ]
     eng1._meta_promoted_total = 2
     eng1._meta_retired_after_active = 1
     eng1._save_retirement_window()
@@ -165,7 +170,9 @@ def test_retirement_window_save_load(tmp_path):
         validator=MagicMock(generate=MagicMock(return_value=[])),
     )
 
-    assert eng2._retirement_window == ["promoted", "retired", "promoted"]
+    # Entries survive the round-trip as dicts
+    outcomes = [e.get("outcome") for e in eng2._retirement_window]
+    assert outcomes == ["promoted", "retired", "promoted"]
     assert eng2._meta_promoted_total == 2
     assert eng2._meta_retired_after_active == 1
 
@@ -185,7 +192,9 @@ def test_retirement_window_trims_to_max(tmp_path):
         validator=MagicMock(generate=MagicMock(return_value=[])),
     )
 
-    # Write 60 entries directly to the file (bypassing the list guard)
+    # Write 60 entries directly to the file (bypassing the list guard).
+    # Old plain-string format is used to test backward-compat normalization
+    # (P5C: loader converts strings → dicts with seeded=True).
     window_path = tmp_path / "retirement_window.json"
     oversized = ["promoted"] * 35 + ["retired"] * 25  # 60 total
     window_path.write_text(json.dumps({
@@ -205,8 +214,12 @@ def test_retirement_window_trims_to_max(tmp_path):
     )
 
     assert len(eng2._retirement_window) == 50
-    # Should be the *last* 50 entries (tail of the list)
-    assert eng2._retirement_window == oversized[-50:]
+    # Entries should be the *last* 50 entries, normalized to dict form with seeded=True
+    expected_outcomes = oversized[-50:]  # last 50 plain strings
+    actual_outcomes = [e.get("outcome") for e in eng2._retirement_window]
+    assert actual_outcomes == expected_outcomes
+    # Backward-compat: old string entries are normalized to seeded=True
+    assert all(e.get("seeded") is True for e in eng2._retirement_window)
 
 
 # ── 5. Pair outcomes save/load ───────────────────────────────────────

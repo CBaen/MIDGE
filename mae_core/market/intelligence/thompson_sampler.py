@@ -131,17 +131,21 @@ class ThompsonSampler:
             except (json.JSONDecodeError, OSError):
                 self.distributions = {}
 
+    def _save_distributions_locked(self) -> None:
+        """Atomic write — assumes caller already holds self._lock."""
+        tmp = self.persistence_path.with_suffix(".tmp")
+        try:
+            tmp.write_text(json.dumps(self.distributions, indent=2))
+            os.replace(tmp, self.persistence_path)
+        except Exception:
+            logger.warning("Failed to persist Thompson distributions", exc_info=True)
+            if tmp.exists():
+                tmp.unlink(missing_ok=True)
+
     def _save_distributions(self) -> None:
         """Atomic write with lock."""
         with self._lock:
-            tmp = self.persistence_path.with_suffix(".tmp")
-            try:
-                tmp.write_text(json.dumps(self.distributions, indent=2))
-                os.replace(tmp, self.persistence_path)
-            except Exception:
-                logger.warning("Failed to persist Thompson distributions", exc_info=True)
-                if tmp.exists():
-                    tmp.unlink(missing_ok=True)
+            self._save_distributions_locked()
 
     def _seed_from_reliability(self) -> None:
         """
@@ -225,45 +229,46 @@ class ThompsonSampler:
         Returns:
             UpdateResult with change details
         """
-        dist = self.get_distribution(signal_id, regime)
-        old_alpha, old_beta = dist.alpha, dist.beta
-        old_mean = dist.mean
+        with self._lock:
+            dist = self.get_distribution(signal_id, regime)
+            old_alpha, old_beta = dist.alpha, dist.beta
+            old_mean = dist.mean
 
-        # Bayesian update
-        if success:
-            new_alpha = old_alpha + 1
-            new_beta = old_beta
-        else:
-            new_alpha = old_alpha
-            new_beta = old_beta + 1
+            # Bayesian update
+            if success:
+                new_alpha = old_alpha + 1
+                new_beta = old_beta
+            else:
+                new_alpha = old_alpha
+                new_beta = old_beta + 1
 
-        # Store updated distribution
-        self.distributions[signal_id][regime] = {
-            "alpha": new_alpha,
-            "beta": new_beta
-        }
+            # Store updated distribution
+            self.distributions[signal_id][regime] = {
+                "alpha": new_alpha,
+                "beta": new_beta
+            }
 
-        new_dist = BetaDistribution(alpha=new_alpha, beta=new_beta)
+            new_dist = BetaDistribution(alpha=new_alpha, beta=new_beta)
 
-        # Create result
-        result = UpdateResult(
-            timestamp=datetime.now().isoformat(),
-            signal_id=signal_id,
-            success=success,
-            regime=regime,
-            old_alpha=old_alpha,
-            old_beta=old_beta,
-            new_alpha=new_alpha,
-            new_beta=new_beta,
-            old_mean=old_mean,
-            new_mean=new_dist.mean
-        )
+            # Create result
+            result = UpdateResult(
+                timestamp=datetime.now().isoformat(),
+                signal_id=signal_id,
+                success=success,
+                regime=regime,
+                old_alpha=old_alpha,
+                old_beta=old_beta,
+                new_alpha=new_alpha,
+                new_beta=new_beta,
+                old_mean=old_mean,
+                new_mean=new_dist.mean
+            )
 
-        # Log to history
-        self._log_update(result)
+            # Log to history
+            self._log_update(result)
 
-        # Persist changes
-        self._save_distributions()
+            # Persist changes (no lock re-acquisition needed)
+            self._save_distributions_locked()
 
         return result
 
@@ -393,16 +398,17 @@ class ThompsonSampler:
         Returns:
             Number of distributions decayed
         """
-        count = 0
-        for signal_id in self.distributions:
-            for regime in self.distributions[signal_id]:
-                params = self.distributions[signal_id][regime]
-                params["alpha"] = max(1.0, params["alpha"] * decay_factor)
-                params["beta"] = max(1.0, params["beta"] * decay_factor)
-                count += 1
+        with self._lock:
+            count = 0
+            for signal_id in self.distributions:
+                for regime in self.distributions[signal_id]:
+                    params = self.distributions[signal_id][regime]
+                    params["alpha"] = max(1.0, params["alpha"] * decay_factor)
+                    params["beta"] = max(1.0, params["beta"] * decay_factor)
+                    count += 1
 
-        if count > 0:
-            self._save_distributions()
+            if count > 0:
+                self._save_distributions_locked()
 
         return count
 

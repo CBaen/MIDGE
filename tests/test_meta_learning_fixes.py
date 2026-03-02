@@ -93,12 +93,17 @@ class TestSeedRetirementWindowFromRegistry:
             validator=MagicMock(),
         )
 
-        # Window should contain one "promoted" (ACTIVE) and one "retired" (RETIRED)
-        assert "promoted" in eng._retirement_window
-        assert "retired" in eng._retirement_window
+        # Window should contain one "promoted" (ACTIVE) and one "retired" (RETIRED).
+        # Entries are now dicts with seeded=True (P5C cold-start guard format).
+        outcomes = [e.get("outcome") for e in eng._retirement_window]
+        seeded_flags = [e.get("seeded") for e in eng._retirement_window]
+        assert "promoted" in outcomes
+        assert "retired" in outcomes
+        # All seeded entries carry seeded=True so Wire 2 can exclude them
+        assert all(s is True for s in seeded_flags)
         # PROBATION must not produce any entry
-        assert eng._retirement_window.count("promoted") == 1
-        assert eng._retirement_window.count("retired") == 1
+        assert outcomes.count("promoted") == 1
+        assert outcomes.count("retired") == 1
         assert len(eng._retirement_window) == 2
 
     def test_probation_and_hibernated_excluded(self, tmp_data_dir):

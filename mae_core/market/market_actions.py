@@ -47,7 +47,7 @@ def act_market(agent: Any, action_type: str) -> Optional[float]:
 
     try:
         reward = handler(agent)
-        return max(0.0, min(0.5, reward))  # Clamp to [0.0, 0.5]
+        return max(0.0, min(0.8, reward))  # Clamp to [0.0, 0.8]
     except Exception:
         logger.debug("Market action failed: %s/%s", role, action_type, exc_info=True)
         return 0.0

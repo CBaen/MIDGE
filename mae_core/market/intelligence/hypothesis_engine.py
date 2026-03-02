@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from datetime import datetime
 from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
@@ -106,7 +107,12 @@ class HypothesisEngine:
         # Meta-learning fires at step 3000 regardless of session number (cadence-
         # based counter resets to 0 on restart — absolute step is irrelevant).
         self._meta_learning_cadence = 3000
-        self._retirement_window: list[str] = []  # ring buffer of "promoted"/"retired"
+        # Ring buffer of outcome dicts: {"outcome": "promoted"/"retired", "seeded": bool}
+        # seeded=True entries come from _seed_retirement_window_from_registry() and
+        # represent historical state reconstructed at cold-start. Wire 2 of meta-
+        # learning only counts live (seeded=False) entries so historical data cannot
+        # bias the threshold adjustments before any real session data accumulates.
+        self._retirement_window: list[dict] = []
         self._retirement_window_max = 50
 
         # Derive retirement window path from registry's data_dir so tests using
@@ -363,7 +369,7 @@ class HypothesisEngine:
         self._meta_promoted_total += 1
 
         # Bridge 5: track outcome in retirement window + pair quality
-        self._retirement_window.append("promoted")
+        self._retirement_window.append({"outcome": "promoted", "seeded": False})
         if len(self._retirement_window) > self._retirement_window_max:
             self._retirement_window.pop(0)
         try:
@@ -435,7 +441,7 @@ class HypothesisEngine:
             self._meta_retired_after_active += 1
 
         # Bridge 5: track outcome in retirement window + pair quality
-        self._retirement_window.append("retired")
+        self._retirement_window.append({"outcome": "retired", "seeded": False})
         if len(self._retirement_window) > self._retirement_window_max:
             self._retirement_window.pop(0)
         try:
@@ -465,6 +471,7 @@ class HypothesisEngine:
         that become meaningless after a restart. Non-critical: failures are logged
         but never raised.
         """
+        tmp = self._retirement_window_path.with_suffix(".tmp")
         try:
             self._retirement_window_path.parent.mkdir(parents=True, exist_ok=True)
             payload = {
@@ -473,9 +480,12 @@ class HypothesisEngine:
                 "meta_promoted_total": self._meta_promoted_total,
                 "meta_retired_after_active": self._meta_retired_after_active,
             }
-            self._retirement_window_path.write_text(json.dumps(payload, indent=2))
+            tmp.write_text(json.dumps(payload, indent=2))
+            os.replace(tmp, self._retirement_window_path)
         except Exception as e:
             logger.debug("Failed to save retirement window: %s", e)
+            if tmp.exists():
+                tmp.unlink(missing_ok=True)
 
     def _load_retirement_window(self) -> None:
         """Restore retirement window and meta-counters from disk.
@@ -487,9 +497,19 @@ class HypothesisEngine:
             return
         try:
             data = json.loads(self._retirement_window_path.read_text())
-            window = data.get("retirement_window", [])
+            raw_window = data.get("retirement_window", [])
+            # Backward compatibility: old format stored plain strings.
+            # Treat all old string entries as seeded=True because we cannot
+            # distinguish live from historical entries retrospectively.
+            normalized: list[dict] = []
+            for entry in raw_window:
+                if isinstance(entry, str):
+                    normalized.append({"outcome": entry, "seeded": True})
+                elif isinstance(entry, dict):
+                    normalized.append(entry)
+                # Silently skip any other unexpected types
             # Trim to current max
-            self._retirement_window = window[-self._retirement_window_max:]
+            self._retirement_window = normalized[-self._retirement_window_max:]
             self._meta_promoted_total = int(data.get("meta_promoted_total", 0))
             self._meta_retired_after_active = int(data.get("meta_retired_after_active", 0))
             logger.info(
@@ -552,14 +572,14 @@ class HypothesisEngine:
             candidates = candidates[-self._retirement_window_max:]
 
         for _, outcome in candidates:
-            self._retirement_window.append(outcome)
+            self._retirement_window.append({"outcome": outcome, "seeded": True})
 
         logger.info(
             "HypothesisEngine: seeded retirement window from registry — "
             "%d entries (%d promoted, %d retired)",
             len(self._retirement_window),
-            self._retirement_window.count("promoted"),
-            self._retirement_window.count("retired"),
+            sum(1 for e in self._retirement_window if e.get("outcome") == "promoted"),
+            sum(1 for e in self._retirement_window if e.get("outcome") == "retired"),
         )
 
     def _check_regime(self) -> None:
@@ -776,12 +796,17 @@ class HypothesisEngine:
                 logger.debug("Meta-learning Wire 1 (calibration) failed", exc_info=True)
 
         # Wire 2: Retirement rate → generator threshold adaptation
-        if len(self._retirement_window) >= 20:
+        # Only count live (seeded=False) entries so cold-start historical data
+        # cannot bias min_correlation before real session outcomes accumulate.
+        live_entries = [e for e in self._retirement_window if not e.get("seeded", False)]
+        if len(live_entries) >= 10:
             try:
                 gen_thresholds = LEARNING_CONFIG.get("generator_thresholds", {})
                 gen_bounds = gen_thresholds.get("_bounds", {})
-                retired_count = self._retirement_window.count("retired")
-                retirement_rate = retired_count / len(self._retirement_window)
+                retired_count = sum(
+                    1 for e in live_entries if e.get("outcome") == "retired"
+                )
+                retirement_rate = retired_count / len(live_entries)
 
                 current_min_corr = gen_thresholds.get("min_correlation", 0.6)
 
@@ -807,9 +832,9 @@ class HypothesisEngine:
                     changed = True
                     logger.info(
                         "META-LEARNING: min_correlation %.4f → %.4f "
-                        "(retirement_rate=%.2f, window=%d)",
+                        "(retirement_rate=%.2f, live_window=%d, total_window=%d)",
                         current_min_corr, new_val,
-                        retirement_rate, len(self._retirement_window),
+                        retirement_rate, len(live_entries), len(self._retirement_window),
                     )
             except Exception:
                 logger.debug("Meta-learning Wire 2 (retirement rate) failed", exc_info=True)
@@ -817,12 +842,17 @@ class HypothesisEngine:
         if changed and self._bus is not None:
             from mae_core.market.channels import CH_META_ADJUSTED
             try:
+                live_window = [
+                    e for e in self._retirement_window if not e.get("seeded", False)
+                ]
                 self._bus.publish(CH_META_ADJUSTED, {
                     "step": self._step_counter,
                     "retirement_window_size": len(self._retirement_window),
+                    "live_window_size": len(live_window),
                     "retirement_rate": (
-                        self._retirement_window.count("retired") / len(self._retirement_window)
-                        if self._retirement_window else 0.0
+                        sum(1 for e in live_window if e.get("outcome") == "retired")
+                        / len(live_window)
+                        if live_window else 0.0
                     ),
                 })
             except Exception:

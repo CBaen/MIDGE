@@ -9,6 +9,7 @@ Wired into bootstrap/market.py. Registered with SomaticMap + HolonProxy.
 
 import json
 import logging
+import os
 import time
 from collections import defaultdict, deque
 from contextlib import contextmanager
@@ -74,10 +75,16 @@ class StepTimer:
         try:
             out_path = path if hasattr(path, "write_text") else __import__("pathlib").Path(path)
             out_path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = out_path.with_suffix(".tmp")
             payload = {
                 "saved_at": datetime.now().isoformat(),
                 "stats": self.get_statistics(),
             }
-            out_path.write_text(json.dumps(payload, indent=2))
+            tmp.write_text(json.dumps(payload, indent=2))
+            os.replace(tmp, out_path)
         except Exception:
-            pass
+            try:
+                if tmp.exists():
+                    tmp.unlink(missing_ok=True)
+            except Exception:
+                pass

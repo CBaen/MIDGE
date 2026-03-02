@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from pathlib import Path
 from typing import List, Optional
 
@@ -184,15 +185,19 @@ class HypothesisGenerator:
         Tuple keys are serialized as "source_a|source_b" strings (JSON only
         supports string keys). Non-critical — failures are logged but not raised.
         """
+        tmp = self._pair_outcomes_path.with_suffix(".tmp")
         try:
             self._pair_outcomes_path.parent.mkdir(parents=True, exist_ok=True)
             serialized = {
                 f"{a}|{b}": counts
                 for (a, b), counts in self._pair_outcomes.items()
             }
-            self._pair_outcomes_path.write_text(json.dumps(serialized, indent=2))
+            tmp.write_text(json.dumps(serialized, indent=2))
+            os.replace(tmp, self._pair_outcomes_path)
         except Exception as e:
             logger.debug("Failed to save pair outcomes: %s", e)
+            if tmp.exists():
+                tmp.unlink(missing_ok=True)
 
     def _load_pair_outcomes(self) -> None:
         """Restore pair quality memory from disk.

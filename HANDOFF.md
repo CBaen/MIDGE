@@ -2,6 +2,32 @@
 
 ## What Happened
 
+### Triadic Architecture Audit — All 5 Priorities Built (2026-03-01)
+
+Full triadic audit (3 agents, 5 phases at `research/midge-architecture-audit/deliverable.md`) found 5 priorities. All 5 implemented via triadic construction (Forge/Anvil/Crucible, 3 rounds with review gates). **3,228 tests, 0 failures.**
+
+**Round 1 — Foundation (P1 + P4C):**
+- **CF-1 Thompson lock fix** — `thompson_sampler.py:update()` read-modify-write fully inside `with self._lock:`. Split into `_save_distributions_locked()` (assumes lock) + `_save_distributions()` (acquires lock). `apply_forgetting()` also locked.
+- **CF-2 Atomic writes** — 4 files now use `tmp + os.replace()`: `learning_config.py:save_snapshot()`, `hypothesis_engine.py:_save_retirement_window()`, `hypothesis_generator.py:save_pair_outcomes()`, `step_timer.py:save_session_stats()`.
+- **P4C Source reliability defaults** — 7 keys corrected to match Thompson-learned means: congressional 0.75→0.20, sec_form4 0.70→0.36, finra_short 0.65→0.36, finnhub_earnings 0.80→0.27, contract_award 0.75→0.15, yfinance_price 0.50→0.23, sec_edgar 0.95→0.59.
+- **CF-3 Data cleanup** — Removed 8 test fixtures from `pair_outcomes.json`, bad GOOGL 2027 record from `predictions.jsonl`. Updated `config_snapshot.json` to match corrected defaults.
+
+**Round 2 — Signal Pipeline (P3 + P4A + P4B + P5C):**
+- **P3 Neutral signals** — `convergence_alerter.py:_check_direction_convergence()` now collects neutral signals (e.g. finra_short) in a second pass. Neutral signals contribute domain presence (toward min_domains=3) without direction bias.
+- **P4A Reward rebalancing** — `market_actions.py` ceiling 0.5→0.8. `lifecycle_decision.py` caps TaskPool fallthrough at 0.3 for market roles. VDN now learns market intelligence > busywork.
+- **P4B Alert dedup lock** — `convergence_alerter.py` gained `_alert_lock` + per-direction `_last_alert_times` dict. Dedup check moved before `_check_direction_convergence()`.
+- **P5C Cold-start guard** — `hypothesis_engine.py` retirement window entries changed from strings to `{"outcome": str, "seeded": bool}` dicts. Wire 2 meta-learning only counts non-seeded entries, skips when live entries < 10.
+
+**Round 3 — Output + Advanced (P2 + P5A + P5B + P5D):**
+- **P2 Paper trading** — `market_hooks.py:_write_paper_trade()` instantiates `TradeSignal` when convergence alert has confidence > 0.75 AND strength > 0.65. 4-hour dedup. Writes to `data/midge/paper_trades.jsonl`. Registered with OutcomeCollector.
+- **P5A Session sweep bypass** — `market_hooks.py:_check_sweep_bypass()` at step%50. `session_sweep_ifvg` with quality >= 0.65 + confidence >= 0.55 writes to separate `paper_trades_bypass.jsonl`.
+- **P5B Per-domain convergence windows** — positioning=14d, government=7d, contracts=7d. Others keep 72h default.
+- **P5D OutcomeCollector prune** — `_registered` changed from set to `dict[str, datetime]`, 90-day auto-prune.
+- **P5D Registry compaction** — `hypothesis_registry.py` auto-snapshots at 200 events. Incremental replay on restart.
+- **paper_account_value** — Added 50000 to `learning_config.py`.
+
+**80 new tests across 7 files:** test_foundation_fixes.py (12), test_signal_pipeline_fixes.py (13), test_paper_trading.py (10), test_convergence_domain_windows.py (10), test_session_sweep_bypass.py (15), test_outcome_collector_prune.py (8), test_hypothesis_registry_compaction.py (12).
+
 ### Layer 7: Persistence + Reporting + Continuous Service (2026-02-28)
 
 Fixed 9 meta-learning bugs that prevented MIDGE from accumulating knowledge across sessions. Built automated marathon reporting and continuous deployment infrastructure.
@@ -25,7 +51,7 @@ Fixed 9 meta-learning bugs that prevented MIDGE from accumulating knowledge acro
 - `thompson_calibrator.py`: 20-sample minimum guard prevents acting on noise
 - `market_actions.py`: step bug fixed (was always 100, now uses `model.time`)
 
-**29 new tests:** test_persistence_roundtrip.py (7), test_marathon_report.py (7), test_meta_learning_fixes.py (15). **3,148 total tests, 0 failures.**
+**29 new tests:** test_persistence_roundtrip.py (7), test_marathon_report.py (7), test_meta_learning_fixes.py (15). **3,228 total tests, 0 failures.**
 
 ### Data Acceleration Pipeline (2026-02-28)
 
@@ -81,7 +107,7 @@ MIDGE gained 5 new FREE data sources, expanding her sensing from 14 to 19 source
 
 **New dependencies:** `pip install cot-reports pytrends`
 
-**171 new tests:** test_new_sources.py (120 tests — clients + converters) + test_new_source_wiring.py (51 tests — pipeline integration). **3,148 total tests, 0 failures** (29 Layer 7 persistence/reporting/meta-learning tests added 2026-02-28).
+**171 new tests:** test_new_sources.py (120 tests — clients + converters) + test_new_source_wiring.py (51 tests — pipeline integration). **3,228 total tests, 0 failures** (29 Layer 7 persistence/reporting/meta-learning tests added 2026-02-28).
 
 ### Bridge 4+5: Dynamic Gates + Meta-Learning / RSI Layer 3 (2026-02-27)
 
@@ -309,7 +335,7 @@ Fixed 3 bugs found in live scan output, defined data schema:
 
 ## Current State
 
-- **3,148 tests pass, 0 failures** (29 Layer 7 persistence/reporting/meta-learning tests)
+- **3,228 tests pass, 0 failures** (29 Layer 7 persistence/reporting/meta-learning tests)
 - **125 systems** (92 core + 33 market), **144 holons**, **385 connections** (217 core + 47 fractal + 55 bootstrap + 66 market)
 - **67 market files** in `mae_core/market/` (decomposed: signal_adapters/ subpackage, sensing_fetchers.py, sensing_lifecycle.py)
 - **10 mae-core infrastructure fixes ported** (VDN epsilon-greedy, EventBus injection, tie-breaking, microbiome feed-before-step, EpisodicMemory stats, 6 channel registrations, SomaticMap names, agent.shared normalization, auto-healer starvation fix, Phi forced measurement)
@@ -396,7 +422,7 @@ Welcome. MIDGE is Mae differentiated for financial markets. Here is what you nee
 5. **Thompson Sampling** uses Bayesian explore/exploit. 50 distributions with 9,470 total samples from 12,544 evaluated outcomes. Learned distributions in `data/market/thompson_distributions.json`. Bayesian forgetting prevents stale evidence.
 6. **OutcomeCollector** closes the feedback loop: scan signals → register_signals() → per-type windows → price check → Thompson update. Success threshold: 5%. Signal archives: 901 files spanning 414 days across 15 backfill sources.
 7. **All 8 Mathematical Laws are satisfied.** See implementation plan Section 12 for compliance map.
-8. **3,148 tests must keep passing.** Zero regressions. Run `python -m pytest tests/ -q` to verify.
+8. **3,228 tests must keep passing.** Zero regressions. Run `python -m pytest tests/ -q` to verify.
 9. **Deep memory runs on Qdrant** container (port 6333). Start with `docker compose up -d`.
 10. **API keys** needed: RAPIDAPI_KEY (job tracker, congressional trades), ALPHA_VANTAGE_KEY (price fallback), SAM_GOV_API_KEY, MAE_TAVILY_API_KEY, MAE_FINNHUB_API_KEY (news sentiment + earnings), FRED_API_KEY (macro indicators). Free/no-key: SEC EDGAR, yfinance, USASpending, Senate Stock Watcher, ApeWisdom, FINRA short volume, SEC EFTS.
 11. **`python main.py --agents 6 --steps 500`** runs MIDGE with agents sensing the market. Requires 6 agents (K3 general + K3 market per Law 2).

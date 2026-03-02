@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
@@ -39,10 +40,14 @@ class HypothesisRegistry:
     and supports any future replay/debugging needs.
     """
 
+    _SNAPSHOT_INTERVAL = 200  # events between snapshot saves
+
     def __init__(self, data_dir: Path = None):
         self._data_dir = data_dir or DATA_DIR
         self._events_path = self._data_dir / "hypotheses.jsonl"
+        self._snapshot_path = self._data_dir / "hypotheses_snapshot.json"
         self._hypotheses: dict[str, Hypothesis] = {}
+        self._events_since_snapshot: int = 0
         self._load_events()
 
     def register(self, hypothesis: Hypothesis) -> str:
@@ -175,7 +180,7 @@ class HypothesisRegistry:
     # ── Persistence ─────────────────────────────────────────────────
 
     def _append_event(self, event_type: str, hypothesis: Hypothesis) -> None:
-        """Append event to hypotheses.jsonl."""
+        """Append event to hypotheses.jsonl and trigger snapshot if threshold crossed."""
         self._data_dir.mkdir(parents=True, exist_ok=True)
         event = {
             "event": event_type,
@@ -185,11 +190,71 @@ class HypothesisRegistry:
         try:
             with open(self._events_path, "a") as f:
                 f.write(json.dumps(event) + "\n")
+            self._events_since_snapshot += 1
+            if self._events_since_snapshot >= self._SNAPSHOT_INTERVAL:
+                self._save_snapshot()
         except Exception as e:
             logger.warning("Failed to persist hypothesis event: %s", e)
 
+    def _save_snapshot(self) -> None:
+        """Serialize current hypothesis state to hypotheses_snapshot.json.
+
+        Uses atomic tmp+replace so a crash mid-write never corrupts the snapshot.
+        The JSONL event log is never truncated — it remains the full audit trail.
+        """
+        tmp = self._snapshot_path.with_suffix(".tmp")
+        try:
+            snapshot = {
+                "saved_at": datetime.now().isoformat(),
+                "event_count": self._events_since_snapshot,
+                "hypotheses": {
+                    hid: hyp.to_dict()
+                    for hid, hyp in self._hypotheses.items()
+                },
+            }
+            tmp.write_text(json.dumps(snapshot, indent=2))
+            os.replace(tmp, self._snapshot_path)
+            self._events_since_snapshot = 0
+            logger.debug(
+                "Hypothesis snapshot saved (%d hypotheses)", len(self._hypotheses)
+            )
+        except Exception as e:
+            logger.warning("Failed to save hypothesis snapshot: %s", e)
+            if tmp.exists():
+                tmp.unlink(missing_ok=True)
+
     def _load_events(self) -> None:
-        """Replay event log to rebuild state."""
+        """Rebuild state from snapshot (if present) + incremental JSONL replay.
+
+        If a snapshot exists, hypotheses are loaded from it and only JSONL events
+        newer than snapshot.saved_at are replayed. This keeps startup fast even
+        when the event log grows large.
+
+        If no snapshot exists, the full event log is replayed (backward compat).
+        """
+        snapshot_cutoff: datetime | None = None
+
+        if self._snapshot_path.exists():
+            try:
+                snap = json.loads(self._snapshot_path.read_text())
+                snapshot_cutoff = datetime.fromisoformat(snap["saved_at"])
+                for hid, hdata in snap.get("hypotheses", {}).items():
+                    try:
+                        hyp = Hypothesis.from_dict(hdata)
+                        self._hypotheses[hyp.hypothesis_id] = hyp
+                    except Exception:
+                        continue
+                logger.debug(
+                    "Loaded hypothesis snapshot (%d hypotheses, cutoff=%s)",
+                    len(self._hypotheses), snapshot_cutoff.isoformat(),
+                )
+            except Exception as e:
+                logger.warning(
+                    "Failed to load hypothesis snapshot, falling back to full replay: %s", e
+                )
+                self._hypotheses.clear()
+                snapshot_cutoff = None
+
         if not self._events_path.exists():
             return
 
@@ -201,6 +266,15 @@ class HypothesisRegistry:
                         continue
                     try:
                         event = json.loads(line)
+                        if snapshot_cutoff is not None:
+                            # Skip events already captured in the snapshot
+                            event_ts_raw = event.get("timestamp", "")
+                            try:
+                                event_ts = datetime.fromisoformat(event_ts_raw)
+                            except (ValueError, TypeError):
+                                event_ts = None
+                            if event_ts is not None and event_ts <= snapshot_cutoff:
+                                continue
                         hyp = Hypothesis.from_dict(event.get("hypothesis", {}))
                         self._hypotheses[hyp.hypothesis_id] = hyp
                     except (json.JSONDecodeError, Exception):

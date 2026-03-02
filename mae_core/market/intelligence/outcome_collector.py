@@ -29,6 +29,7 @@ threshold barely exceeded random baseline at $50K+ trade sizes after costs).
 
 import json
 import logging
+from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, TYPE_CHECKING
 
@@ -84,7 +85,7 @@ class OutcomeCollector:
         self.tracker.min_price_move_pct = SUCCESS_THRESHOLD_PCT
 
         self._registered_path = self._data_dir / "registered_signals.json"
-        self._registered: set = self._load_registered()
+        self._registered: dict = self._load_registered()
 
     # ── Registration ──────────────────────────────────────────────────
 
@@ -98,6 +99,13 @@ class OutcomeCollector:
 
         Returns count of newly registered predictions.
         """
+        # Prune stale entries (older than 90 days) before processing
+        now = datetime.now()
+        self._registered = {
+            k: v for k, v in self._registered.items()
+            if (now - v).days <= 90
+        }
+
         count = 0
         for sig in signals:
             if not sig.symbol or sig.signal_id in self._registered:
@@ -115,7 +123,7 @@ class OutcomeCollector:
                 metadata={"original_signal_id": sig.signal_id},
                 timestamp=sig_ts,
             )
-            self._registered.add(sig.signal_id)
+            self._registered[sig.signal_id] = datetime.now()
             count += 1
 
         if count > 0:
@@ -175,7 +183,7 @@ class OutcomeCollector:
                             metadata={"original_signal_id": signal_id, "archive": jsonl_file.name},
                             timestamp=record.get("timestamp", ""),
                         )
-                        self._registered.add(signal_id)
+                        self._registered[signal_id] = datetime.now()
                         count += 1
             except Exception as e:
                 logger.warning(f"Failed to process archive {jsonl_file.name}: {e}")
@@ -198,20 +206,38 @@ class OutcomeCollector:
 
     # ── Persistence ───────────────────────────────────────────────────
 
-    def _load_registered(self) -> set:
-        """Load set of already-registered signal IDs."""
+    def _load_registered(self) -> dict:
+        """Load dict of signal_id → registration datetime.
+
+        Backward compatible: if the persisted data is a list or set (old format),
+        each entry is migrated with a fallback timestamp of 90 days ago so they
+        pass one more prune cycle before expiring naturally.
+        """
         if self._registered_path.exists():
             try:
                 data = json.loads(self._registered_path.read_text())
-                return set(data)
+                if isinstance(data, dict):
+                    # New format: {signal_id: iso_timestamp}
+                    result = {}
+                    for k, v in data.items():
+                        try:
+                            result[k] = datetime.fromisoformat(v)
+                        except (ValueError, TypeError):
+                            result[k] = datetime.now()
+                    return result
+                elif isinstance(data, list):
+                    # Old format: [signal_id, ...] — migrate with fallback timestamp
+                    fallback = datetime.now()
+                    return {sid: fallback for sid in data if isinstance(sid, str)}
             except (json.JSONDecodeError, TypeError):
                 pass
-        return set()
+        return {}
 
     def _save_registered(self) -> None:
-        """Persist registered signal IDs."""
+        """Persist registered signal IDs with their registration timestamps."""
         self._data_dir.mkdir(parents=True, exist_ok=True)
         try:
-            self._registered_path.write_text(json.dumps(sorted(self._registered), indent=0))
+            serialized = {k: v.isoformat() for k, v in self._registered.items()}
+            self._registered_path.write_text(json.dumps(serialized, indent=0))
         except Exception as e:
             logger.warning(f"Failed to persist registered signals: {e}")

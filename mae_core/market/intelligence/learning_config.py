@@ -7,6 +7,7 @@ All changes are logged to config_history.jsonl.
 
 import json
 import logging
+import os
 from datetime import datetime
 from pathlib import Path
 
@@ -20,6 +21,9 @@ LEARNING_CONFIG = {
     "version": 1,
     "last_modified": "2026-01-14T00:00:00",
     "modified_by": "initial_setup",
+
+    # Paper trading account — denominator for Kelly fraction position sizing
+    "paper_account_value": 50000,
 
     # Learning parameters (can be adjusted by meta-learner)
     "learning_rate": 0.1,
@@ -47,7 +51,7 @@ LEARNING_CONFIG = {
     # Can be adjusted based on observed accuracy
     "source_reliability": {
         # Legacy keys (retained for backward compatibility with existing distributions)
-        "sec_edgar": 0.95,
+        "sec_edgar": 0.59,
         "13f_filing": 0.90,
         "form_4": 0.90,
         "capitol_trades": 0.85,
@@ -60,24 +64,24 @@ LEARNING_CONFIG = {
         "deepseek": 0.70,
         "unknown": 0.50,
         # Signal-source-level keys (match MarketSignal.source values from signal.py)
-        "sec_form4": 0.70,
+        "sec_form4": 0.36,
         "sec_form8k": 0.65,
         "sec_efts": 0.70,
-        "congressional": 0.75,
+        "congressional": 0.20,
         "senate": 0.75,
         "insider_cluster": 0.85,
-        "contract_award": 0.75,
+        "contract_award": 0.15,
         "contract_prediction": 0.60,
         "hiring_tracker": 0.60,
         "sam_gov": 0.40,
         "social_sentiment": 0.30,
-        "finra_short": 0.65,
+        "finra_short": 0.36,
         "finnhub_news": 0.60,
-        "finnhub_earnings": 0.80,
+        "finnhub_earnings": 0.27,
         "fred_macro": 0.70,
         "session_sweep": 0.55,
         "session_sweep_ifvg": 0.58,
-        "yfinance_price": 0.50,
+        "yfinance_price": 0.23,
         "ta_rsi": 0.60,
         "ta_macd": 0.53,
         "ta_bollinger": 0.55,
@@ -232,11 +236,15 @@ def save_snapshot(path=None) -> None:
     failures are logged but do not raise. Called automatically by update_config().
     """
     snapshot_path = Path(path) if path else _DATA_DIR / "config_snapshot.json"
+    tmp = snapshot_path.with_suffix(".tmp")
     try:
         snapshot_path.parent.mkdir(parents=True, exist_ok=True)
-        snapshot_path.write_text(json.dumps(LEARNING_CONFIG, indent=2))
+        tmp.write_text(json.dumps(LEARNING_CONFIG, indent=2))
+        os.replace(tmp, snapshot_path)
     except Exception as e:
         logger.debug("Failed to save config snapshot: %s", e)
+        if tmp.exists():
+            tmp.unlink(missing_ok=True)
 
 
 def load_snapshot(path=None) -> bool:

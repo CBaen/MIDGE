@@ -18,10 +18,278 @@ from __future__ import annotations
 
 import json
 import logging
+from dataclasses import asdict
+from datetime import datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
 logger = logging.getLogger("midge.bootstrap")
+
+# Sources eligible for the bypass path (backtest-validated, single-domain actionable).
+# Min 1 domain instead of 3, quality gate replaces domain diversity requirement.
+BYPASS_ELIGIBLE_SOURCES = {"session_sweep_ifvg"}
+
+
+def _check_sweep_bypass(alerter, ctx: SimpleNamespace) -> None:
+    """Direct output path for high-quality session sweep signals.
+
+    Unlike standard convergence (min_domains=3, writes paper_trades.jsonl),
+    this path uses min_domains=1 ticker convergence and applies a quality gate.
+    Writes to data/midge/paper_trades_bypass.jsonl — a SEPARATE file.
+
+    Gate: any contributing signal.source in BYPASS_ELIGIBLE_SOURCES
+          AND alert quality >= 0.65 AND alert confidence >= 0.55.
+
+    Dedup: ctx._bypass_dedup {"{direction}:{ticker}" -> datetime}, 4-hour window.
+    """
+    try:
+        ticker_alerts = alerter.check_ticker_convergence(min_domains=1)
+    except Exception:
+        logger.debug("Sweep bypass ticker convergence failed", exc_info=True)
+        return
+
+    bypass_dedup = getattr(ctx, "_bypass_dedup", {})
+    now = datetime.now()
+
+    for alert in ticker_alerts:
+        # Check that at least one contributing signal comes from an eligible source
+        signals = getattr(alert, "signals", [])
+        has_eligible = any(
+            getattr(sig, "source", "") in BYPASS_ELIGIBLE_SOURCES
+            for sig in signals
+        )
+        if not has_eligible:
+            continue
+
+        # Quality gate: pull from alert metadata or signals
+        # Quality is stored in signal metadata from session_sweep_detector
+        quality = 0.0
+        for sig in signals:
+            q = getattr(sig, "metadata", {}).get("quality", 0.0)
+            if q > quality:
+                quality = q
+
+        confidence = getattr(alert, "confidence", 0.0)
+
+        if quality < 0.65 or confidence < 0.55:
+            logger.debug(
+                "Sweep bypass rejected: quality=%.2f confidence=%.2f",
+                quality, confidence,
+            )
+            continue
+
+        # Resolve ticker and direction
+        direction = getattr(alert, "direction", "neutral")
+        if direction not in ("bullish", "bearish"):
+            continue
+
+        ticker = "UNKNOWN"
+        for sig in signals:
+            sym = getattr(sig, "metadata", {}).get("symbol", "")
+            if sym:
+                ticker = sym
+                break
+
+        # Dedup gate: same direction+ticker within 4 hours → skip
+        dedup_key = f"{direction}:{ticker}"
+        last_written = bypass_dedup.get(dedup_key)
+        if last_written is not None and (now - last_written) < timedelta(hours=4):
+            logger.debug("Bypass dedup suppressed: %s", dedup_key)
+            continue
+
+        # Write to separate bypass file
+        try:
+            alert_id = getattr(alert, "alert_id", None)
+            signal_id = (
+                f"BYP-{alert_id}" if alert_id
+                else f"BYP-{now.strftime('%Y%m%d%H%M%S')}-{direction}"
+            )
+            domains = getattr(alert, "domains_converging", [])
+            summary = getattr(alert, "summary", "")
+            record = {
+                "signal_id": signal_id,
+                "asset": ticker,
+                "asset_class": "futures",
+                "direction": "buy" if direction == "bullish" else "sell",
+                "confidence": round(float(confidence), 4),
+                "quality": round(float(quality), 4),
+                "bypass_reason": "backtest_validated",
+                "contributing_signals": [
+                    getattr(sig, "signal_id", "") for sig in signals
+                    if getattr(sig, "signal_id", "")
+                ],
+                "domains": domains,
+                "summary": summary,
+                "generated_at": now.isoformat(),
+            }
+            bypass_path = Path("data/midge/paper_trades_bypass.jsonl")
+            bypass_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(bypass_path, "a", encoding="utf-8") as f:
+                f.write(json.dumps(record) + "\n")
+
+            bypass_dedup[dedup_key] = now
+            ctx._bypass_dedup = bypass_dedup
+
+            logger.info(
+                "Sweep bypass trade written: %s %s quality=%.2f confidence=%.2f",
+                direction.upper(), ticker, quality, confidence,
+            )
+        except Exception:
+            logger.debug("Sweep bypass write failed", exc_info=True)
+
+
+def _write_paper_trade(alert, ctx: SimpleNamespace) -> None:
+    """Convert a high-confidence ConvergenceAlert into a TradeSignal and persist it.
+
+    Called only when alert.confidence > 0.75 AND alert.strength > 0.65.
+
+    Dedup gate: same direction+ticker combination is suppressed for 4 hours.
+    Writes to data/midge/paper_trades.jsonl (atomic append).
+    Optionally registers with OutcomeCollector to close the Thompson feedback loop.
+    """
+    try:
+        from mae_core.market.signal import TradeSignal, MarketSignal
+
+        # --- Resolve ticker from alert signals ---
+        ticker = "MULTI"
+        asset_class = "stock"
+        for sig in getattr(alert, "signals", []):
+            sym = getattr(sig, "metadata", {}).get("symbol", "")
+            if sym:
+                ticker = sym
+                break
+            # Session sweep signals carry asset_class=futures
+            if getattr(sig, "source", "") in ("session_sweep", "session_sweep_ifvg"):
+                asset_class = "futures"
+
+        # Determine asset class from signal metadata if available
+        for sig in getattr(alert, "signals", []):
+            ac = getattr(sig, "metadata", {}).get("asset_class", "")
+            if ac:
+                asset_class = ac
+                break
+
+        # --- Dedup gate: same direction+ticker within 4h → skip ---
+        dedup_key = f"{alert.direction}:{ticker}"
+        dedup = getattr(ctx, "_paper_trade_dedup", {})
+        now = datetime.now()
+        last_written = dedup.get(dedup_key)
+        if last_written is not None and (now - last_written) < timedelta(hours=4):
+            logger.debug(
+                "Paper trade dedup suppressed: %s (last: %s)",
+                dedup_key, last_written.isoformat(timespec="seconds"),
+            )
+            return
+
+        # --- Resolve direction (ConvergenceAlert uses bullish/bearish) ---
+        raw_direction = getattr(alert, "direction", "neutral")
+        if raw_direction == "bullish":
+            trade_direction = "buy"
+        elif raw_direction == "bearish":
+            trade_direction = "sell"
+        else:
+            return  # Neutral alerts are not actionable
+
+        # --- Resolve catalyst text ---
+        summary = getattr(alert, "summary", None)
+        domains_converging = getattr(alert, "domains_converging", [])
+        if summary:
+            catalyst = summary
+        else:
+            catalyst = (
+                f"{raw_direction} convergence across "
+                f"{len(domains_converging)} domains: {', '.join(domains_converging)}"
+            )
+
+        # --- Build contributing signal IDs ---
+        contributing_signals = [
+            getattr(sig, "signal_id", "") for sig in getattr(alert, "signals", [])
+            if getattr(sig, "signal_id", "")
+        ]
+
+        # --- Generate signal_id ---
+        alert_id = getattr(alert, "alert_id", None)
+        if alert_id:
+            signal_id = f"PT-{alert_id}"
+        else:
+            signal_id = f"PT-{now.strftime('%Y%m%d%H%M%S')}-{trade_direction}"
+
+        # --- Kelly fraction (best-effort) ---
+        kelly_fraction: float | None = None
+        latest_kelly = getattr(ctx, "_latest_kelly", {}) or {}
+        if isinstance(latest_kelly, dict) and latest_kelly.get("symbol") == ticker:
+            kelly_fraction = latest_kelly.get("kelly_capped")
+
+        # --- Instantiate TradeSignal ---
+        trade_signal = TradeSignal(
+            signal_id=signal_id,
+            asset=ticker,
+            asset_class=asset_class,
+            direction=trade_direction,
+            confidence=round(float(alert.confidence), 4),
+            timeframe_days=5,
+            catalyst=catalyst,
+            contributing_signals=contributing_signals,
+            hit_rate=0.0,
+            generated_at=now,
+        )
+
+        # --- Serialize to JSONL (generated_at → ISO string) ---
+        record = asdict(trade_signal)
+        record["generated_at"] = trade_signal.generated_at.isoformat()
+        if kelly_fraction is not None:
+            record["kelly_fraction"] = round(float(kelly_fraction), 4)
+
+        trade_path = Path("data/midge/paper_trades.jsonl")
+        trade_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(trade_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(record) + "\n")
+
+        # --- Update dedup dict ---
+        dedup[dedup_key] = now
+        ctx._paper_trade_dedup = dedup
+
+        logger.info(
+            "Paper trade written: %s %s %s (confidence=%.2f, strength=%.2f, kelly=%s)",
+            trade_direction.upper(), ticker, asset_class,
+            alert.confidence, alert.strength,
+            f"{kelly_fraction:.3f}" if kelly_fraction is not None else "n/a",
+        )
+
+        # --- Register with OutcomeCollector (closes Thompson feedback loop) ---
+        outcome_collector = getattr(ctx, "_market_sensing_hook", None)
+        if outcome_collector is not None:
+            outcome_collector = getattr(outcome_collector, "_outcome_collector", None)
+        if outcome_collector is None:
+            # Fallback: check ctx directly (some setups store it there)
+            outcome_collector = getattr(ctx, "outcome_collector", None)
+
+        if outcome_collector is not None:
+            try:
+                # Synthesize a minimal MarketSignal for outcome tracking
+                synthetic = MarketSignal(
+                    signal_id=signal_id,
+                    source="convergence_alert",
+                    symbol=ticker,
+                    asset_class=asset_class,
+                    domain="convergence",
+                    direction=raw_direction,
+                    strength=float(alert.strength),
+                    confidence=float(alert.confidence),
+                    decay_rate=0.05,
+                    timestamp=now,
+                    received_at=now,
+                    outcome_symbol=ticker,
+                    outcome_window_days=trade_signal.timeframe_days,
+                    metadata={"alert_id": getattr(alert, "alert_id", ""), "paper_trade": True},
+                )
+                outcome_collector.register_signals([synthetic])
+                logger.debug("Paper trade %s registered with OutcomeCollector", signal_id)
+            except Exception:
+                logger.debug("OutcomeCollector registration for paper trade failed", exc_info=True)
+
+    except Exception:
+        logger.debug("_write_paper_trade failed", exc_info=True)
 
 
 def _register_market_eventbus(ctx: SimpleNamespace) -> None:
@@ -271,6 +539,13 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                 except Exception:
                     logger.debug("Velocity detector step failed", exc_info=True)
 
+            # Session sweep bypass — direct output for backtest-validated signals
+            if alerter is not None:
+                try:
+                    _check_sweep_bypass(alerter, ctx)
+                except Exception:
+                    logger.debug("Session sweep bypass step failed", exc_info=True)
+
         # Every 100 steps: Bayesian forgetting (decay old evidence)
         if step % 100 == 0:
             sampler = getattr(ctx, "thompson_sampler", None)
@@ -494,6 +769,8 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
     }
     ctx._ticker_alerts = []
     ctx._latest_kelly = {}
+    ctx._paper_trade_dedup = {}  # {"{direction}:{ticker}" -> datetime} dedup for paper trades
+    ctx._bypass_dedup = {}  # {"{direction}:{ticker}" -> datetime} dedup for bypass trades
 
     # Wire convergence alerts into the advisory dict
     _sensing_step_counter = [0]
@@ -517,6 +794,19 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
                 ctx._market_advisory["updated_step"] = step
             except Exception:
                 logger.debug("Advisory bridge failed", exc_info=True)
+
+            # Paper trading gate — convert high-confidence convergence to TradeSignal
+            try:
+                for alert in alerts:
+                    if (
+                        hasattr(alert, "confidence")
+                        and hasattr(alert, "strength")
+                        and alert.confidence > 0.75
+                        and alert.strength > 0.65
+                    ):
+                        _write_paper_trade(alert, ctx)
+            except Exception:
+                logger.debug("Paper trading gate failed", exc_info=True)
 
         # Every 10 steps: query tiered alerters (tactical/strategic/thematic)
         if step % 10 == 0 and ctx._tiered_alerters:

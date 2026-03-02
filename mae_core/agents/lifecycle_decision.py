@@ -423,26 +423,35 @@ class DecisionActionLifecycleMixin:
 
         # Market-role dispatch: route to role-specific implementation
         # before generic TaskPool. Law 5: same class, config-gated behavior.
+        _agent_role = getattr(self, "role", None)
+        _is_market_role = False
         if action_type in ("explore", "exploit", "communicate"):
             from mae_core.market.market_actions import MARKET_ROLES, act_market
-            _agent_role = getattr(self, "role", None)
             if _agent_role in MARKET_ROLES:
+                _is_market_role = True
                 market_reward = act_market(self, action_type)
                 if market_reward is not None:
                     return market_reward
 
         if action_type == "explore":
-            return self._act_explore(task_pool)
+            reward = self._act_explore(task_pool)
         elif action_type == "exploit":
-            return self._act_exploit(task_pool)
+            reward = self._act_exploit(task_pool)
         elif action_type == "communicate":
-            return self._act_communicate(task_pool)
+            reward = self._act_communicate(task_pool)
         elif action_type == "rest":
             return self._act_rest(task_pool)
         elif action_type == "api_call":
             return self._act_api_call(task_pool)
         else:
             return 0.0
+
+        # Market-role agents that fell through to TaskPool are capped at 0.3.
+        # This keeps TaskPool busywork below the market-intelligence reward ceiling
+        # (0.8), preserving the incentive gradient toward role-specific actions.
+        if _is_market_role and reward is not None:
+            reward = min(0.3, reward)
+        return reward
 
     def _act_explore(self, pool: Any) -> float:
         """Explore the environment: claim easy tasks, deposit discovery markers.
