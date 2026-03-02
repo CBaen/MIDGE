@@ -1,7 +1,7 @@
 """Bootstrap Layer 33: Market Intelligence Organ.
 
-Creates 34 market systems, registers holons, wires fractal hierarchy,
-registers triadic connections (Group 14-22),
+Creates 45 market systems, registers holons, wires fractal hierarchy,
+registers triadic connections (Group 14-26),
 wires EventBus channels, and hooks into the step lifecycle.
 
 Biological analogy: Growing a new sensory organ specialized for
@@ -48,7 +48,7 @@ logger = logging.getLogger("midge.bootstrap")
 
 
 def bootstrap_market(ctx: SimpleNamespace) -> None:
-    """Wire Layer 33: Market Intelligence organ (34 systems, 73 connections).
+    """Wire Layer 33: Market Intelligence organ (45 systems, 85 connections).
 
     Call order is load-bearing — sub-modules have dependencies:
       1. _instantiate_market_systems: build all objects first
@@ -89,33 +89,20 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
         "backtest_analyzer", "backtest_scheduler",
         "ta_indicators", "step_timer",
         "absence_monitor",
+        # Ten Gifts: Wave 1
+        "portfolio_tracker", "order_flow_detector",
+        "catalyst_calendar", "cross_asset_confirmer",
+        # Layer 6
         "cot_client", "stocktwits_client", "vix_client", "trends_client",
     ]
     active = sum(1 for a in market_attrs if getattr(ctx, a, None) is not None)
     holon_count = len([
         hid for hid in ctx.holon_registry.get_all_ids()
         if hid.startswith("market") or hid in market_attrs
-        or hid in (
-            "sec_edgar_client", "price_fetcher", "house_stock_watcher",
-            "job_tracker", "usa_spending_client", "sam_gov_client",
-            "cluster_detector", "politician_tracker", "filing_time_analyzer",
-            "contract_predictor", "session_sweep_detector",
-            "thompson_sampler", "convergence_alerter",
-            "velocity_detector", "correlation_tracker", "outcome_tracker",
-            "regime_classifier",
-            "signal_archive_reader", "lag_correlation_analyzer",
-            "thompson_calibrator", "kelly_position_sizer",
-            "hypothesis_registry", "hypothesis_generator",
-            "hypothesis_validator", "hypothesis_engine",
-            "backtest_analyzer", "backtest_scheduler",
-            "ta_indicators", "step_timer",
-            "absence_monitor",
-            "cot_client", "stocktwits_client", "vix_client", "trends_client",
-        )
     ])
 
     logger.info(
-        "Layer 33  - Market Intelligence organ complete: %d systems, %d holons, 73 connections",
+        "Layer 33  - Market Intelligence organ complete: %d systems, %d holons, 85 connections",
         active, holon_count,
     )
     logger.info(

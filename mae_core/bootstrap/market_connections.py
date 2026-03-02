@@ -1,7 +1,7 @@
 """Bootstrap Layer 33d: Market triadic connections.
 
-One job: register all 73 triadic connections for the market intelligence organ
-(Groups 14-22). No bare dyads — every A<->B has witness C.
+One job: register all 85 triadic connections for the market intelligence organ
+(Groups 14-26). No bare dyads — every A<->B has witness C.
 
 Groups:
   14 - Market K3 subsystems + EventBus pub/sub + TA indicators
@@ -13,6 +13,10 @@ Groups:
   20 - Coherence scoring (narrative conflict detection — Capability 3)
   21 - Causal Bridge (CausalReasoningEngine wired to market layer)
   22 - Absence Monitor (detecting unexpectedly silent sources)
+  23 - Portfolio Tracker (Gift 1: portfolio state awareness)
+  24 - Order Flow Detector (Gift 2: intraday volume imbalance)
+  25 - Catalyst Calendar (Gift 3: timing context for signals)
+  26 - Cross-Asset Confirmer (Gift 4: cross-asset regime confirmation)
 """
 
 from __future__ import annotations
@@ -24,7 +28,7 @@ logger = logging.getLogger("midge.bootstrap")
 
 
 def _register_market_connections(ctx: SimpleNamespace) -> None:
-    """Register 73 triadic connections for market systems (Group 14-22)."""
+    """Register 85 triadic connections for market systems (Group 14-26)."""
     from mae_core.backbone.connection_registry import (
         ConnectionType,
         ConnectionCriticality,
@@ -301,4 +305,51 @@ def _register_market_connections(ctx: SimpleNamespace) -> None:
         witnesses=["sensing_hook", "auditor"],
         description="Absence signals feed into convergence pipeline")
 
-    logger.info("Layer 33d - Market connections: 73 triadic connections registered (Group 14-22)")
+    # --- Group 23: Portfolio Tracker (Gift 1 — portfolio state awareness) ---
+    reg("portfolio_tracker", "price_fetcher", dr,
+        witnesses=["convergence_alerter", "auditor"],
+        description="Portfolio tracker marks positions to market via price fetcher")
+    reg("portfolio_tracker", "convergence_alerter", dr,
+        witnesses=["price_fetcher", "auditor"],
+        description="Exit signals from portfolio tracker feed into convergence")
+    reg("portfolio_tracker", "event_bus", eb,
+        channel="market.intel.exit_signal",
+        witnesses=["convergence_alerter", "auditor"],
+        description="Portfolio tracker publishes exit signals on EventBus")
+
+    # --- Group 24: Order Flow Detector (Gift 2 — intraday volume imbalance) ---
+    reg("order_flow_detector", "price_fetcher", dr,
+        witnesses=["convergence_alerter", "auditor"],
+        description="Order flow detector reads intraday candles from price fetcher")
+    reg("order_flow_detector", "convergence_alerter", dr,
+        witnesses=["thompson_sampler", "auditor"],
+        description="Order flow imbalance signals feed into convergence pipeline")
+    reg("order_flow_detector", "thompson_sampler", dr,
+        witnesses=["convergence_alerter", "auditor"],
+        description="Thompson learns order flow signal reliability from outcomes")
+
+    # --- Group 25: Catalyst Calendar (Gift 3 — timing context for signals) ---
+    reg("catalyst_calendar", "convergence_alerter", dr,
+        witnesses=["thompson_sampler", "auditor"],
+        description="Catalyst calendar provides timing modifiers to convergence")
+    reg("catalyst_calendar", "boundary_membrane", dr,
+        witnesses=["input_validator", "threat_detector"],
+        criticality=ConnectionCriticality.IMPORTANT,
+        description="Catalyst calendar API calls validated through boundary membrane")
+    reg("catalyst_calendar", "event_bus", cb,
+        channel="market.sensing.signal_ingested",
+        witnesses=["convergence_alerter", "auditor"],
+        description="Catalyst calendar listens for signals to enrich with timing context")
+
+    # --- Group 26: Cross-Asset Confirmer (Gift 4 — cross-asset regime confirmation) ---
+    reg("cross_asset_confirmer", "price_fetcher", dr,
+        witnesses=["convergence_alerter", "auditor"],
+        description="Cross-asset confirmer reads prices for correlated assets")
+    reg("cross_asset_confirmer", "convergence_alerter", dr,
+        witnesses=["thompson_sampler", "auditor"],
+        description="Cross-asset confirmation scores adjust convergence confidence")
+    reg("cross_asset_confirmer", "regime_classifier", dr,
+        witnesses=["convergence_alerter", "auditor"],
+        description="Cross-asset confirmer uses regime context for pair weighting")
+
+    logger.info("Layer 33d - Market connections: 85 triadic connections registered (Group 14-26)")
