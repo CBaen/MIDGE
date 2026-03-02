@@ -2,6 +2,30 @@
 
 ## What Happened
 
+### Completing the Circle — 3 Cognitive Dimensions Added (2026-03-02)
+
+The Pattern Recognition Gift taught MIDGE to see better. This teaches her to **reason about contradictions** (causal bridge), **notice silence** (absence detection), and **sense relationships in motion** (correlation tracking).
+
+**Package C — CorrelationTracker Activation:**
+- `sensing_hook.py`: `_correlation_tracker.record()` called in `_collect_one()` after signal batch. Cadence-200 anomaly scan via `detect_cross_domain_anomalies()`.
+- `market_hooks.py`: Injects `ctx.correlation_tracker` into sensing hook.
+- 14 new tests in `test_correlation_tracker_wiring.py`.
+
+**Package A — Causal Bridge (completes Cap 3):**
+- `convergence_alerter.py`: Accepts `causal_engine` and `event_bus`. Publishes `CH_CONTRADICTION_DETECTED` when coherence < 0.7. Feeds domain pair correlations to `CausalReasoningEngine.observe_correlation()`.
+- `hypothesis_validator.py`: Accepts `causal_engine`. Queries `query_causation()` before promotion — confounded hypotheses get +0.03 tighter win rate gate.
+- `market_systems.py`: Passes `ctx.shared_causal_engine` and `ctx.bus` to both.
+- 3 Group 21 triadic connections. 19 new tests in `test_causal_bridge.py`.
+
+**Package B — Absence Monitor (new cognitive dimension):**
+- New file `absence_monitor.py`: Tracks per-source cadence (median inter-arrival). Fires `AbsenceSignal` when silence exceeds 2.5x expected cadence. Bootstrap from signal archives on startup.
+- `channels.py`: Added `CH_ABSENCE_DETECTED`.
+- `sensing_hook.py`: Records arrivals in `_collect_one()`. Cadence-100 check feeds absence signals to convergence pipeline.
+- `learning_config.py`: `absence_signal` Thompson prior 0.50, `absence` decay rate 0.15.
+- 3 Group 22 triadic connections. 33 new tests in `test_absence_monitor.py`.
+
+**Totals:** 126 systems (92 core + 34 market), 392 connections (73 market), 145 holons, 68 market files.
+
 ### Pattern Recognition Gift — 6 Capabilities Built (2026-03-02)
 
 Transferred Claude's pattern recognition strategies into MIDGE as implementable algorithms. Triadic construction (Forge/Anvil/Crucible, 2 rounds with review gates). **3,351 tests, 0 failures.**
