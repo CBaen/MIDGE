@@ -116,6 +116,7 @@ from mae_core.market.signal_adapters import (  # noqa: E402
     from_social_sentiment,
     from_ta_signal,
     from_session_sweep,
+    from_order_flow,
     from_government_contract,
     from_contract_opportunity,
     from_contract_prediction,

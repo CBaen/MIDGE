@@ -747,6 +747,9 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
             memory=memory,
             thompson_sampler=getattr(ctx, "thompson_sampler", None),
             tiered_alerters=tiered_alerters,
+            order_flow_detector=getattr(ctx, "order_flow_detector", None),
+            portfolio_tracker=getattr(ctx, "portfolio_tracker", None),
+            catalyst_calendar=getattr(ctx, "catalyst_calendar", None),
         )
     except Exception:
         logger.warning("MarketSensingHook construction failed — agents will not sense market data", exc_info=True)
