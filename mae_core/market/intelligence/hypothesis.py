@@ -46,6 +46,8 @@ class TriggerPattern:
     direction: str = ""         # "positive" or "negative" correlation
     min_strength: float = 0.0   # Minimum signal strength to trigger
     domain_filter: str = ""     # Optional domain restriction
+    conjunct_source: str = ""   # Optional second leading source (composite hypothesis)
+    conjunct_min_strength: float = 0.0  # Minimum strength for conjunct source
 
 
 @dataclass
