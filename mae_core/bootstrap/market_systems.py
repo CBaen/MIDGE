@@ -421,6 +421,44 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         logger.debug("Market: absence_monitor failed to construct", exc_info=True)
         ctx.absence_monitor = None
 
+    # --- Ten Gifts: Wave 1 (Foundation) ---
+
+    try:
+        from mae_core.market.intelligence.portfolio_tracker import PortfolioTracker
+        ctx.portfolio_tracker = PortfolioTracker(
+            price_fetcher=getattr(ctx, "price_fetcher", None),
+        )
+    except Exception:
+        logger.debug("Market: portfolio_tracker failed to construct", exc_info=True)
+        ctx.portfolio_tracker = None
+
+    try:
+        from mae_core.market.edge.order_flow_detector import OrderFlowDetector
+        ctx.order_flow_detector = OrderFlowDetector(
+            price_fetcher=getattr(ctx, "price_fetcher", None),
+        )
+    except Exception:
+        logger.debug("Market: order_flow_detector failed to construct", exc_info=True)
+        ctx.order_flow_detector = None
+
+    try:
+        from mae_core.market.intelligence.catalyst_calendar import CatalystCalendar
+        ctx.catalyst_calendar = CatalystCalendar(
+            finnhub_client=getattr(ctx, "finnhub_client", None),
+        )
+    except Exception:
+        logger.debug("Market: catalyst_calendar failed to construct", exc_info=True)
+        ctx.catalyst_calendar = None
+
+    try:
+        from mae_core.market.intelligence.cross_asset_confirmer import CrossAssetConfirmer
+        ctx.cross_asset_confirmer = CrossAssetConfirmer(
+            price_fetcher=getattr(ctx, "price_fetcher", None),
+        )
+    except Exception:
+        logger.debug("Market: cross_asset_confirmer failed to construct", exc_info=True)
+        ctx.cross_asset_confirmer = None
+
     # --- StepTimer (performance metabolism monitoring) ---
     try:
         from mae_core.market.step_timer import StepTimer
@@ -454,7 +492,7 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
 
     logger.info(
         "Layer 33a - Market systems instantiated: %d systems (construction failures: %d)",
-        41 - failures, failures,
+        45 - failures, failures,
     )
     logger.info(
         "            Operational dependencies: Qdrant, RAPIDAPI_KEY, ALPHA_VANTAGE_KEY, "

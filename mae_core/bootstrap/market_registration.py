@@ -53,6 +53,11 @@ def _register_market_somatic(ctx: SimpleNamespace) -> None:
         "ta_indicators": ("TAIndicators", ["price_fetcher"]),
         "step_timer": ("StepTimer", []),
         "absence_monitor": ("AbsenceMonitor", ["signal_archive_reader"]),
+        # Ten Gifts: Wave 1
+        "portfolio_tracker": ("PortfolioTracker", ["price_fetcher"]),
+        "order_flow_detector": ("OrderFlowDetector", ["price_fetcher"]),
+        "catalyst_calendar": ("CatalystCalendar", ["finnhub_client"]),
+        "cross_asset_confirmer": ("CrossAssetConfirmer", ["price_fetcher"]),
         # Layer 6 clients
         "cot_client": ("COTClient", []),
         "stocktwits_client": ("StockTwitsClient", []),
@@ -90,6 +95,9 @@ def _register_market_holons(ctx: SimpleNamespace) -> None:
         "hypothesis_validator", "hypothesis_engine",
         "backtest_analyzer", "backtest_scheduler",
         "ta_indicators", "step_timer", "absence_monitor",
+        # Ten Gifts: Wave 1
+        "portfolio_tracker", "order_flow_detector",
+        "catalyst_calendar", "cross_asset_confirmer",
         # Layer 6
         "cot_client", "stocktwits_client", "vix_client", "trends_client",
     ]
@@ -162,6 +170,9 @@ def _register_market_fractal(ctx: SimpleNamespace) -> None:
         "thompson_calibrator", "kelly_position_sizer",
         "hypothesis_registry", "backtest_analyzer", "backtest_scheduler",
         "ta_indicators", "step_timer", "absence_monitor",
+        # Ten Gifts: Wave 1
+        "portfolio_tracker", "order_flow_detector",
+        "catalyst_calendar", "cross_asset_confirmer",
         # Layer 6
         "cot_client", "stocktwits_client", "vix_client", "trends_client",
     ]
