@@ -1,4 +1,4 @@
-"""Technical analysis signal adapters — TA indicators and session sweeps.
+"""Technical analysis signal adapters — TA indicators, session sweeps, order flow.
 
 Converts technical analysis signals into normalized MarketSignal objects.
 """
@@ -41,6 +41,44 @@ def from_ta_signal(signal) -> MarketSignal:
         raw_id=signal.signal_id,
         raw_type=type(signal).__name__,
         metadata=signal.metadata,
+    )
+
+
+def from_order_flow(signal) -> MarketSignal:
+    """Convert an OrderFlowSignal to a MarketSignal.
+
+    Intraday volume-imbalance signal. Decay is fast (~2.3 days half-life).
+    Outcome checked within 2 days (intraday signal).
+    """
+    event_dt = _ensure_datetime(signal.timestamp)
+
+    signal_id = (
+        f"order_flow:{signal.ticker}:{signal.direction}:"
+        f"{signal.timestamp}"
+    )
+
+    return MarketSignal(
+        signal_id=signal_id,
+        source="order_flow",
+        symbol=signal.ticker,
+        asset_class="stock",
+        domain="technical",
+        direction=signal.direction,
+        strength=signal.strength,
+        confidence=0.5,  # Neutral prior — let Thompson learn
+        decay_rate=0.30,
+        timestamp=event_dt,
+        received_at=datetime.now(),
+        outcome_symbol=signal.ticker,
+        outcome_window_days=2,
+        raw_id=signal_id,
+        raw_type="OrderFlowSignal",
+        metadata={
+            "volume_zscore": signal.volume_zscore,
+            "close_position_in_range": signal.close_position_in_range,
+            "consecutive_directional": signal.consecutive_directional,
+            "relative_volume": signal.relative_volume,
+        },
     )
 
 

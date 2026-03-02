@@ -466,3 +466,31 @@ def fetch_finnhub_extras(
             logger.debug("Finnhub analyst recs failed for %s: %s", ticker, e)
 
     return signals
+
+
+def fetch_order_flow(
+    order_flow_detector: Any,
+    watchlist: dict,
+    converter: Callable,
+) -> list:
+    """Fetch order flow imbalance signals for watchlist tickers.
+
+    Calls OrderFlowDetector.detect_imbalance() for each ticker, then converts
+    detected imbalances into MarketSignal via the from_order_flow adapter.
+    """
+    if order_flow_detector is None:
+        return []
+
+    signals = []
+    tickers = watchlist.get("tickers", [])[:10]
+    for ticker in tickers:
+        try:
+            results = order_flow_detector.detect_imbalance(ticker)
+            for result in results:
+                try:
+                    signals.append(converter(result))
+                except Exception:
+                    pass
+        except Exception as e:
+            logger.debug("Order flow fetch failed for %s: %s", ticker, e)
+    return signals
