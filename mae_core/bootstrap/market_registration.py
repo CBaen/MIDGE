@@ -161,7 +161,7 @@ def _register_market_fractal(ctx: SimpleNamespace) -> None:
         "signal_archive_reader", "lag_correlation_analyzer",
         "thompson_calibrator", "kelly_position_sizer",
         "hypothesis_registry", "backtest_analyzer", "backtest_scheduler",
-        "ta_indicators", "step_timer",
+        "ta_indicators", "step_timer", "absence_monitor",
         # Layer 6
         "cot_client", "stocktwits_client", "vix_client", "trends_client",
     ]

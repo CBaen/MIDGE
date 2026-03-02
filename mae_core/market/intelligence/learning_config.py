@@ -45,6 +45,8 @@ LEARNING_CONFIG = {
         # New domains (Layer 6)
         "positioning": 0.03,   # Half-life: ~23 days (weekly COT data)
         "volatility": 0.30,    # Half-life: ~2.3 days (VIX changes daily)
+        # Absence signals (the dog that didn't bark)
+        "absence": 0.15,       # Half-life: ~4.6 days (medium-duration)
     },
 
     # Source reliability defaults

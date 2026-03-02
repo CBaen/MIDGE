@@ -178,3 +178,31 @@ The following 3 connections were added with the Session Sweep Detector (total ma
 | vix_client → boundary_membrane | data_flow | input_validator, threat_detector | VIX data validated through immune system |
 | trends_client → convergence_alerter | direct_reference | thompson_sampler, auditor | Google Trends search interest feeds convergence |
 | trends_client → boundary_membrane | data_flow | input_validator, threat_detector | Trends data validated through immune system |
+
+## Market Connections (Group 20 — Layer 33) — coherence scoring
+
+1 connection for narrative conflict detection (total market connections: 67):
+
+| Connection | Type | Witness | Notes |
+|-----------|------|---------|-------|
+| convergence_alerter → event_bus (CH_CONTRADICTION_DETECTED) | eventbus_pubsub | thompson_sampler, auditor | Publishes when signal directions materially disagree (coherence < 0.7) |
+
+## Market Connections (Group 21 — Layer 33) — Causal Bridge
+
+3 connections wiring CausalReasoningEngine to market layer (total market connections: 70):
+
+| Connection | Type | Witness | Notes |
+|-----------|------|---------|-------|
+| shared_causal_engine ↔ convergence_alerter | direct_reference | hypothesis_validator, auditor | Causal engine receives domain pair correlations; distinguishes causation from correlation |
+| shared_causal_engine ↔ hypothesis_validator | direct_reference | convergence_alerter, auditor | Confounded hypotheses get +0.03 tighter promotion gate |
+| shared_causal_engine ↔ event_bus (CH_CONTRADICTION_DETECTED) | eventbus_pubsub | convergence_alerter, auditor | Causal context enriches contradiction events |
+
+## Market Connections (Group 22 — Layer 33) — Absence Monitor
+
+3 connections for detecting unexpectedly silent sources (total market connections: 73):
+
+| Connection | Type | Witness | Notes |
+|-----------|------|---------|-------|
+| absence_monitor → event_bus (CH_ABSENCE_DETECTED) | eventbus_pubsub | convergence_alerter, auditor | Publishes silence signals when sources go unexpectedly quiet |
+| absence_monitor ↔ sensing_hook | direct_reference | convergence_alerter, auditor | Sensing hook records arrivals for cadence tracking |
+| absence_monitor → convergence_alerter | direct_reference | sensing_hook, auditor | Absence signals feed into convergence pipeline as bearish domain signals |
