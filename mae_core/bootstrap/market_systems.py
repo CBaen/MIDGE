@@ -14,6 +14,25 @@ from types import SimpleNamespace
 logger = logging.getLogger("midge.bootstrap")
 
 
+def _instantiate_wave2_3_clients(ctx: SimpleNamespace) -> None:
+    """Construct Wave 2+3 API clients (Always-On MIDGE)."""
+    import importlib
+    for attr, mod_path, cls in [
+        ("coingecko_client", "mae_core.market.apis.coingecko_client", "CoinGeckoClient"),
+        ("coincap_client", "mae_core.market.apis.coincap_client", "CoinCapClient"),
+        ("openinsider_client", "mae_core.market.apis.openinsider_client", "OpenInsiderClient"),
+        ("edgar_enhanced_client", "mae_core.market.apis.edgar_enhanced_client", "EdgarEnhancedClient"),
+        ("finviz_client", "mae_core.market.apis.finviz_client", "FinVizClient"),
+        ("economic_calendar_client", "mae_core.market.apis.economic_calendar_client", "EconomicCalendarClient"),
+        ("finnhub_websocket", "mae_core.market.apis.finnhub_websocket", "FinnhubWebSocket"),
+    ]:
+        try:
+            setattr(ctx, attr, getattr(importlib.import_module(mod_path), cls)())
+        except Exception:
+            logger.debug("Market: %s failed to construct", attr, exc_info=True)
+            setattr(ctx, attr, None)
+
+
 def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
     """Create all 56 market system objects on ctx."""
     # Warm-start: restore meta-learned config from prior sessions
@@ -135,7 +154,6 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         ctx.fred_client = None
 
     # --- Layer 6 API clients (new free sources) ---
-
     try:
         from mae_core.market.apis.cot_client import COTClient
         ctx.cot_client = COTClient(provider=provider)
