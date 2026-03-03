@@ -52,7 +52,7 @@ Three work packages making MIDGE resilient across restarts and capable of runnin
 - `--daemon-interval` flag (default 15 minutes) configures cycle period.
 - **26 new tests** in `test_daemon_mode.py`.
 
-**Document parity updated:** CLAUDE.md, README.md, data/MAES-MATHEMATICAL-IDENTITY.md all reflect 137 systems / 3,810 tests / 80 market files.
+**Document parity updated:** CLAUDE.md, README.md, data/MAES-MATHEMATICAL-IDENTITY.md all reflect Wave 1 state (now superseded by Wave 2+3 counts above).
 
 ---
 
@@ -466,7 +466,7 @@ Fixed 3 bugs found in live scan output, defined data schema:
 
 ```
 Bootstrap Layer 33h: MarketSensingHook wired as step hook
-  ├─ Async fetch on 50-step cadence (19-source rotation: form4 → 8k → congress → senate → hiring → usaspending → sam.gov → reddit → finra → efts → finnhub → fred → cot → stocktwits → vix → trends → finnhub_earnings → finnhub_insider → ta_indicators)
+  ├─ Async fetch on 50-step cadence (27-source rotation: form4 → 8k → congress → senate → hiring → usaspending → sam.gov → reddit → finra → efts → finnhub → fred → cot → stocktwits → vix → trends → finnhub_earnings → finnhub_insider → ta_indicators → session_sweep → order_flow → crypto_prices → crypto_exchange → openinsider → institutional_13f → finviz → economic_calendar)
   ├─ Signals → convergence_alerter (global) + 3 tiered alerters
   ├─ Signals → Qdrant + JSONL archive
   └─ Outcome evaluation on 200-step cadence → Thompson update
@@ -531,14 +531,14 @@ All 17 planned items from the Layer 5 roadmap are done. Roadmap history at `C:\U
 
 Welcome. MIDGE is Mae differentiated for financial markets. Here is what you need to know:
 
-1. **MIDGE = mae-core + market intelligence.** 137 systems, same 8 laws, 33-layer bootstrap. Market organ is Layer 33 (33a-33i). Always-On Wave 1 complete: signal persistence, MarketClock, daemon mode.
+1. **MIDGE = mae-core + market intelligence.** 144 systems, same 8 laws, 33-layer bootstrap. Market organ is Layer 33 (33a-33i). Always-On Waves 1-3 complete: signal persistence, MarketClock, daemon mode, real-time WebSocket, crypto 24/7, 4 new data sources, economic calendar suppression.
 2. **Mae-core is upstream.** Changes to Mae's genome should be made in `C:\Users\baenb\projects\mae-core` and pulled here. Market-specific changes stay here.
 3. **Agents actively sense the market.** MarketSensingHook (Layer 33h) fetches data on cadence and feeds convergence_alerter. Three agents are differentiated into market roles (Layer 33i). Endocrine coupling and market advisory carry signals to all agents.
 4. **The crown jewel is `convergence_alerter.py`** — synthesizes signals across ALL domains (insider + congressional + contract + hiring + velocity) into actionable alerts. Now with per-ticker and multi-timeframe convergence.
 5. **Thompson Sampling** uses Bayesian explore/exploit. 50 distributions with 9,470 total samples from 12,544 evaluated outcomes. Learned distributions in `data/market/thompson_distributions.json`. Bayesian forgetting prevents stale evidence.
 6. **OutcomeCollector** closes the feedback loop: scan signals → register_signals() → per-type windows → price check → Thompson update. Success threshold: 5%. Signal archives: 901 files spanning 414 days across 15 backfill sources.
 7. **All 8 Mathematical Laws are satisfied.** See implementation plan Section 12 for compliance map.
-8. **3,810 tests must keep passing.** Zero regressions. Run `python -m pytest tests/ -q` to verify.
+8. **4,148 tests must keep passing.** Zero regressions. Run `python -m pytest tests/ -q` to verify.
    **Pattern recognition capabilities (2026-03-02):** 6 capabilities — composite hypotheses, contextual Thompson, coherence scoring, auto causal stories, temporal freshness, intra-domain combination.
    **Completing the Circle (2026-03-02):** 3 cognitive dimensions — causal bridge (contradiction → causation), absence monitor (silence detection), correlation tracker activation (relationships in motion).
 9. **Deep memory runs on Qdrant** container (port 6333). Start with `docker compose up -d`.
