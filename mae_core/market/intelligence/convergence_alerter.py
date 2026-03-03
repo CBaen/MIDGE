@@ -165,6 +165,7 @@ class ConvergenceAlerter:
         cross_asset_confirmer=None,
         deception_detector=None,
         pattern_archetype_engine=None,
+        economic_calendar=None,
     ):
         """
         Initialize convergence alerter.
@@ -182,6 +183,7 @@ class ConvergenceAlerter:
             cross_asset_confirmer: Optional CrossAssetConfirmer for cross-asset confirmation
             deception_detector: Optional DeceptionDetector for manipulation detection
             pattern_archetype_engine: Optional PatternArchetypeEngine for archetype context
+            economic_calendar: Optional EconomicCalendar for suppression windows
         """
         self.min_domains = min_domains
         self.min_strength = min_strength
@@ -195,6 +197,7 @@ class ConvergenceAlerter:
         self._cross_asset_confirmer = cross_asset_confirmer
         self._deception_detector = deception_detector
         self._pattern_archetype_engine = pattern_archetype_engine
+        self._economic_calendar = economic_calendar
         self._cached_regime = ("default", 0.0)  # (regime_str, timestamp)
 
         # Per-domain convergence windows — slow-moving data sources need longer lookback.
@@ -958,6 +961,20 @@ class ConvergenceAlerter:
                 if assessment is not None and assessment.deception_probability > 0.5:
                     deception_penalty = 1.0 - assessment.deception_probability
                     final_confidence = max(0.05, final_confidence * deception_penalty)
+            except Exception:
+                pass  # Graceful degradation
+
+        # Economic calendar suppression — reduce confidence during high-impact events.
+        # FOMC, CPI, NFP create scheduled volatility that makes normal signals unreliable.
+        # Multiplier: 0.5x during suppression windows (halves confidence).
+        if self._economic_calendar is not None:
+            try:
+                if self._economic_calendar.is_in_suppression_window():
+                    final_confidence = max(0.05, final_confidence * 0.5)
+                    logger.info(
+                        "Convergence: suppression window active — confidence reduced to %.2f",
+                        final_confidence,
+                    )
             except Exception:
                 pass  # Graceful degradation
 

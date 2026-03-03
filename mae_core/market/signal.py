@@ -6,7 +6,7 @@ TradeSignal is the actionable output — what to trade and why.
 Adapter functions convert raw source types into MarketSignal.
 Each adapter is a standalone function named `from_{source_type}`.
 
-The 25 adapter functions live in the signal_adapters/ subpackage (split by domain)
+The 33 adapter functions live in the signal_adapters/ subpackage (split by domain)
 and are re-exported here for full backward compatibility. All existing imports of
 the form `from mae_core.market.signal import from_insider_trade` continue to work.
 """
@@ -95,7 +95,7 @@ class TradeSignal:
 
 
 # ---------------------------------------------------------------------------
-# Adapter re-exports — all 25 from_* functions (backward compatibility)
+# Adapter re-exports — all 33 from_* functions (backward compatibility)
 # ---------------------------------------------------------------------------
 # The actual implementations live in signal_adapters/ subpackage.
 # These imports keep all existing `from mae_core.market.signal import X` working.
@@ -128,6 +128,14 @@ from mae_core.market.signal_adapters import (  # noqa: E402
     from_trends_signal,
     from_economic_event,
     from_analyst_recommendation,
+    from_crypto_signal,
+    from_openinsider,
+    from_13f_holding,
+    from_activist_filing,
+    from_finviz_unusual_volume,
+    from_finviz_short_squeeze,
+    from_finnhub_realtime,
+    from_suppression_event,
 )
 
 __all__ = [
@@ -169,4 +177,13 @@ __all__ = [
     "from_trends_signal",
     "from_economic_event",
     "from_analyst_recommendation",
+    # Adapter re-exports (wave2_3)
+    "from_crypto_signal",
+    "from_openinsider",
+    "from_13f_holding",
+    "from_activist_filing",
+    "from_finviz_unusual_volume",
+    "from_finviz_short_squeeze",
+    "from_finnhub_realtime",
+    "from_suppression_event",
 ]

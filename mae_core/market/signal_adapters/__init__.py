@@ -1,4 +1,4 @@
-"""Signal adapter subpackage — all 27 from_* converter functions.
+"""Signal adapter subpackage — all 35 from_* converter functions.
 
 This package splits the original signal.py adapter functions into focused
 modules by domain. Backward compatibility is maintained: importing any
@@ -11,6 +11,7 @@ Module layout:
     technical    — TA indicators, session sweeps, order flow, fractal resonance (4 functions)
     contracts    — Government contracts, SAM.gov, predictions, hiring (4 functions)
     layer6       — COT, StockTwits, VIX, Google Trends, Finnhub extras (6 functions)
+    wave2_3      — Crypto, OpenInsider, 13F, FinViz, Finnhub real-time, suppression (8 functions)
 """
 
 from mae_core.market.signal_adapters.regulatory import (
@@ -58,6 +59,17 @@ from mae_core.market.signal_adapters.layer6 import (
     from_analyst_recommendation,
 )
 
+from mae_core.market.signal_adapters.wave2_3 import (
+    from_crypto_signal,
+    from_openinsider,
+    from_13f_holding,
+    from_activist_filing,
+    from_finviz_unusual_volume,
+    from_finviz_short_squeeze,
+    from_finnhub_realtime,
+    from_suppression_event,
+)
+
 __all__ = [
     # regulatory (5)
     "from_insider_trade",
@@ -92,4 +104,13 @@ __all__ = [
     "from_trends_signal",
     "from_economic_event",
     "from_analyst_recommendation",
+    # wave2_3 (8)
+    "from_crypto_signal",
+    "from_openinsider",
+    "from_13f_holding",
+    "from_activist_filing",
+    "from_finviz_unusual_volume",
+    "from_finviz_short_squeeze",
+    "from_finnhub_realtime",
+    "from_suppression_event",
 ]

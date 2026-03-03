@@ -185,6 +185,12 @@ _ROTATION_TO_THOMPSON = {
     "vix_structure": "vix_term_structure",
     "google_trends": "google_trends",
     "finnhub_extras": "finnhub_economic",
+    "crypto_prices": "crypto_coingecko",
+    "crypto_exchange": "crypto_coincap",
+    "openinsider": "openinsider_purchase",
+    "institutional_13f": "institutional_13f",
+    "finviz": "finviz_unusual_volume",
+    "economic_calendar": "finnhub_economic",  # reuse existing key
 }
 
 # Map absence source names back to convergence domains
@@ -195,6 +201,10 @@ _ABSENCE_SOURCE_DOMAINS = {
     "fred_macro": "macro", "finnhub_earnings": "news",
     "finnhub_news": "news", "hiring": "contracts",
     "usa_spending": "contracts", "sam_gov": "contracts",
+    "crypto_coingecko": "crypto", "crypto_coincap": "crypto",
+    "openinsider_purchase": "insider", "institutional_13f": "institutional",
+    "activist_13d": "institutional",
+    "finviz_unusual_volume": "technical", "finviz_short_squeeze": "institutional",
 }
 
 
@@ -251,6 +261,13 @@ class MarketSensingHook:
         somatic_anticipation: Any = None,
         pattern_completion_engine: Any = None,
         market_clock: Any = None,
+        coingecko_client: Any = None,
+        coincap_client: Any = None,
+        openinsider_client: Any = None,
+        edgar_enhanced_client: Any = None,
+        finviz_client: Any = None,
+        economic_calendar_client: Any = None,
+        finnhub_websocket: Any = None,
     ):
         # API clients (all optional — graceful degradation)
         self._sec_client = sec_client
@@ -279,6 +296,13 @@ class MarketSensingHook:
         self._somatic_anticipation = somatic_anticipation
         self._pattern_completion_engine = pattern_completion_engine
         self._market_clock = market_clock
+        self._coingecko_client = coingecko_client
+        self._coincap_client = coincap_client
+        self._openinsider_client = openinsider_client
+        self._edgar_enhanced_client = edgar_enhanced_client
+        self._finviz_client = finviz_client
+        self._economic_calendar_client = economic_calendar_client
+        self._finnhub_websocket = finnhub_websocket
 
         # EventBus (injected by bootstrap for signal bridge)
         self._bus = None
@@ -324,6 +348,24 @@ class MarketSensingHook:
     def step(self):
         """Called every model step. Non-blocking."""
         self._step_counter += 1
+
+        # Real-time WebSocket signals bypass rotation — collected EVERY step
+        if self._finnhub_websocket is not None:
+            try:
+                ws_signals = self._finnhub_websocket.get_pending_signals()
+                if ws_signals:
+                    from mae_core.market.signal import from_finnhub_realtime
+                    converted = []
+                    for ws_sig in ws_signals:
+                        try:
+                            converted.append(from_finnhub_realtime(ws_sig))
+                        except Exception:
+                            pass
+                    if converted:
+                        # Feed directly into _collect_one style processing
+                        self._process_realtime_signals(converted)
+            except Exception:
+                logger.debug("WebSocket signal collection failed", exc_info=True)
 
         # Log market session status periodically
         if self._step_counter % 1000 == 0 and self._market_clock is not None:
@@ -464,6 +506,61 @@ class MarketSensingHook:
                 self._pattern_completion_engine._prune_expired()
             except Exception:
                 logger.debug("Pattern completion review failed", exc_info=True)
+
+    def _process_realtime_signals(self, signals: list):
+        """Process real-time WebSocket signals — same pipeline as rotation signals."""
+        self._last_fetch_source = "finnhub_realtime"
+
+        for sig in signals:
+            sig_kwargs = dict(
+                signal_id=sig.signal_id,
+                strength=sig.strength,
+                domain=sig.domain,
+                direction=sig.direction,
+                confidence=sig.confidence,
+                velocity=sig.velocity,
+                timestamp=sig.timestamp,
+                metadata={**sig.metadata, "symbol": sig.symbol},
+                source=sig.source,
+            )
+            if self._convergence_alerter is not None:
+                try:
+                    self._convergence_alerter.record_signal(**sig_kwargs)
+                except Exception:
+                    logger.debug("Realtime signal feed to alerter failed", exc_info=True)
+
+            tier = TIER_ROUTING.get(sig.source, "tactical")
+            tier_alerter = self._tiered_alerters.get(tier)
+            if tier_alerter is not None:
+                try:
+                    tier_alerter.record_signal(**sig_kwargs)
+                except Exception:
+                    pass
+
+        # Track stats
+        self._total_signals_fed += len(signals)
+
+        # Publish to EventBus
+        if self._bus is not None:
+            from mae_core.market.channels import CH_SIGNAL_INGESTED
+            for sig in signals:
+                try:
+                    self._bus.publish(CH_SIGNAL_INGESTED, {
+                        "signal_id": sig.signal_id,
+                        "source": sig.source,
+                        "symbol": sig.symbol,
+                        "domain": sig.domain,
+                        "direction": sig.direction,
+                        "strength": sig.strength,
+                        "confidence": sig.confidence,
+                        "velocity": sig.velocity,
+                        "timestamp": sig.timestamp.isoformat(),
+                    })
+                except Exception:
+                    pass
+
+        # Store
+        store_signals(signals, self._memory)
 
     # ------------------------------------------------------------------
     # Async fetch lifecycle

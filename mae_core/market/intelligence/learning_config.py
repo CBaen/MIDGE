@@ -50,6 +50,7 @@ LEARNING_CONFIG = {
         # Ten Gifts (Wave 1-2)
         "order_flow": 0.30,    # Half-life: ~2.3 days (intraday signal, fast decay)
         "archetype": 0.03,     # Half-life: ~23 days (archetypes unfold over weeks)
+        "crypto": 0.50,        # Half-life: ~1.4 days (crypto moves fast)
     },
 
     # Source reliability defaults
@@ -125,6 +126,17 @@ LEARNING_CONFIG = {
         "order_flow": 0.50,                 # Neutral prior — intraday volume imbalance
         "fractal_resonance": 0.55,          # Slightly optimistic (multi-timeframe = robust)
         "archetype_match": 0.55,            # Slightly optimistic (historical backing)
+        # Wave 2: Real-Time + Crypto (Always-On)
+        "finnhub_realtime": 0.50,       # Neutral prior — real-time signals are new
+        "crypto_coingecko": 0.50,       # Neutral prior — crypto source
+        "crypto_coincap": 0.50,         # Neutral prior — second crypto source
+        # Wave 3: Data Enrichment
+        "openinsider_purchase": 0.55,   # Pre-filtered insider buys = higher signal
+        "institutional_13f": 0.50,      # 45-day lag tempers initial confidence
+        "activist_13d": 0.60,           # Activist filings are very high signal
+        "finviz_unusual_volume": 0.50,  # Neutral prior — volume spikes
+        "finviz_short_squeeze": 0.50,   # Neutral prior — squeeze candidates
+        "economic_calendar": 0.55,      # Scheduled events are reliable signals
     },
 
     # Confidence calibration
