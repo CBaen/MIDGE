@@ -70,9 +70,10 @@ class TestConstruction:
 class TestShouldConsolidate:
     """Test cadence checking."""
 
-    def test_first_step_triggers(self):
+    def test_first_step_does_not_trigger(self):
+        """Step 0 - last_consolidation 0 = 0, which is < cadence."""
         ce = ConsolidationEngine()
-        assert ce.should_consolidate(0) is True
+        assert ce.should_consolidate(0) is False
 
     def test_early_step_does_not_trigger(self):
         ce = ConsolidationEngine()
