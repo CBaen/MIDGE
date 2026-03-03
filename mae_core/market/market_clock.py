@@ -67,6 +67,7 @@ MARKET_HOURS: Set[str] = {
     "fractal_resonance",
     "vix_structure",
     "finviz",              # FinViz data is most useful during market hours
+    "massive_snapshot",    # Massive/Polygon EOD data — market hours for freshness
 }
 
 # Available on business days only (T+2 delay / weekly cadence don't change this)

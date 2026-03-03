@@ -137,6 +137,8 @@ LEARNING_CONFIG = {
         "finviz_unusual_volume": 0.50,  # Neutral prior — volume spikes
         "finviz_short_squeeze": 0.50,   # Neutral prior — squeeze candidates
         "economic_calendar": 0.55,      # Scheduled events are reliable signals
+        # Massive/Polygon.io
+        "massive_snapshot": 0.55,       # Institutional-grade EOD data, slightly optimistic
     },
 
     # Confidence calibration
