@@ -522,3 +522,127 @@ def fetch_order_flow(
         except Exception as e:
             logger.debug("Order flow fetch failed for %s: %s", ticker, e)
     return signals
+
+
+def fetch_crypto_prices(coingecko_client: Any, converter: Callable) -> list:
+    """Fetch crypto prices from CoinGecko."""
+    if coingecko_client is None:
+        return []
+    signals = []
+    try:
+        prices = coingecko_client.get_prices()
+        for price in prices:
+            try:
+                signals.append(converter(price))
+            except Exception:
+                pass
+    except Exception as e:
+        logger.debug("CoinGecko fetch failed: %s", e)
+    return signals
+
+
+def fetch_crypto_exchange(coincap_client: Any, converter: Callable) -> list:
+    """Fetch crypto from CoinCap."""
+    if coincap_client is None:
+        return []
+    signals = []
+    try:
+        assets = coincap_client.get_assets(limit=10)
+        for asset in assets:
+            try:
+                signals.append(converter(asset))
+            except Exception:
+                pass
+    except Exception as e:
+        logger.debug("CoinCap fetch failed: %s", e)
+    return signals
+
+
+def fetch_openinsider(openinsider_client: Any, converter: Callable) -> list:
+    """Fetch pre-filtered insider purchases from OpenInsider."""
+    if openinsider_client is None:
+        return []
+    signals = []
+    try:
+        purchases = openinsider_client.get_recent_purchases(days=7)
+        for purchase in purchases:
+            try:
+                signals.append(converter(purchase))
+            except Exception:
+                pass
+    except Exception as e:
+        logger.debug("OpenInsider fetch failed: %s", e)
+    return signals
+
+
+def fetch_13f_holdings(
+    edgar_enhanced_client: Any,
+    converter: Callable,
+    activist_converter: Callable,
+) -> list:
+    """Fetch 13F holdings + 13D activist filings from SEC EDGAR."""
+    if edgar_enhanced_client is None:
+        return []
+    signals = []
+    # 13D activist filings (high signal — someone took >5% stake)
+    try:
+        filings = edgar_enhanced_client.get_13d_filings(days=30)
+        for filing in filings:
+            try:
+                signals.append(activist_converter(filing))
+            except Exception:
+                pass
+    except Exception as e:
+        logger.debug("SEC 13D fetch failed: %s", e)
+    return signals
+
+
+def fetch_finviz(
+    finviz_client: Any,
+    volume_converter: Callable,
+    squeeze_converter: Callable,
+) -> list:
+    """Fetch FinViz unusual volume + short squeeze candidates."""
+    if finviz_client is None:
+        return []
+    signals = []
+    # Unusual volume
+    try:
+        uv_list = finviz_client.get_unusual_volume()
+        for uv in uv_list[:20]:  # Cap at 20
+            try:
+                signals.append(volume_converter(uv))
+            except Exception:
+                pass
+    except Exception as e:
+        logger.debug("FinViz unusual volume fetch failed: %s", e)
+    # Short squeeze candidates
+    try:
+        sq_list = finviz_client.get_high_short_float(min_pct=20)
+        for sq in sq_list[:10]:  # Cap at 10
+            try:
+                signals.append(squeeze_converter(sq))
+            except Exception:
+                pass
+    except Exception as e:
+        logger.debug("FinViz short squeeze fetch failed: %s", e)
+    return signals
+
+
+def fetch_economic_calendar(calendar_client: Any, converter: Callable) -> list:
+    """Fetch upcoming high-impact economic events as suppression signals."""
+    if calendar_client is None:
+        return []
+    signals = []
+    try:
+        events = calendar_client.get_upcoming_events(days=7)
+        # Only high-impact events
+        high_impact = [e for e in events if e.impact == "high"]
+        for event in high_impact:
+            try:
+                signals.append(converter(event))
+            except Exception:
+                pass
+    except Exception as e:
+        logger.debug("Economic calendar fetch failed: %s", e)
+    return signals
