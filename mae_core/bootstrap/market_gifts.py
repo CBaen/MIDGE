@@ -107,3 +107,24 @@ def _instantiate_gift_systems(ctx: SimpleNamespace) -> None:
             ctx.convergence_alerter._deception_detector = ctx.deception_detector
         if getattr(ctx, "pattern_archetype_engine", None) is not None:
             ctx.convergence_alerter._pattern_archetype_engine = ctx.pattern_archetype_engine
+
+    # --- Wave 3 (Synthesis) ---
+
+    try:
+        from mae_core.market.intelligence.somatic_anticipation import SomaticAnticipation
+        ctx.somatic_anticipation = SomaticAnticipation(
+            event_bus=getattr(ctx, "bus", None),
+        )
+    except Exception:
+        logger.debug("Market: somatic_anticipation failed to construct", exc_info=True)
+        ctx.somatic_anticipation = None
+
+    try:
+        from mae_core.market.intelligence.pattern_completion import PatternCompletionEngine
+        ctx.pattern_completion_engine = PatternCompletionEngine(
+            archetype_engine=getattr(ctx, "pattern_archetype_engine", None),
+            event_bus=getattr(ctx, "bus", None),
+        )
+    except Exception:
+        logger.debug("Market: pattern_completion_engine failed to construct", exc_info=True)
+        ctx.pattern_completion_engine = None
