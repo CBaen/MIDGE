@@ -297,9 +297,9 @@ class MarketSensingHook:
                         try:
                             self._convergence_alerter.record_signal(
                                 signal_id=f"exit:{exit_sig.ticker}:{exit_sig.reason}",
-                                strength=exit_sig.urgency,
+                                strength=exit_sig.strength,
                                 domain="portfolio",
-                                direction="bearish",
+                                direction=exit_sig.direction,
                                 source="portfolio_exit",
                             )
                         except Exception:

@@ -154,6 +154,7 @@ __all__ = [
     # Adapter re-exports (technical)
     "from_ta_signal",
     "from_session_sweep",
+    "from_order_flow",
     # Adapter re-exports (contracts)
     "from_government_contract",
     "from_contract_opportunity",

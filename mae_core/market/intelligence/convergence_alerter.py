@@ -780,7 +780,7 @@ class ConvergenceAlerter:
         if primary_ticker and self._catalyst_calendar is not None:
             try:
                 modifier = self._catalyst_calendar.compute_catalyst_modifier(
-                    primary_ticker, domain=primary_domain,
+                    primary_ticker, signal_domain=primary_domain or "",
                 )
                 final_confidence = max(0.05, min(0.95, final_confidence * modifier))
             except Exception:
