@@ -249,36 +249,58 @@ class ConvergenceAlerter:
     # Signal buffer persistence
     # ------------------------------------------------------------------
 
-    def save_signal_buffer(self) -> None:
+    @staticmethod
+    def _json_default(obj):
+        """JSON serializer for objects not handled by default encoder."""
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        if isinstance(obj, timedelta):
+            return obj.total_seconds()
+        if isinstance(obj, set):
+            return list(obj)
+        return str(obj)
+
+    def save_signal_buffer(self) -> int:
         """Persist in-memory signal buffer and alerter state to disk.
 
         Saves only signals that are still within their domain convergence
         window — expired signals are not worth carrying across restarts.
         Uses atomic writes (write to .tmp then rename) for thread safety,
         matching the pattern used by ThompsonSampler.
+
+        Returns the number of signals saved (0 if buffer was empty).
         """
+        _DATA_DIR.mkdir(parents=True, exist_ok=True)
         now = datetime.now()
+        total_in_memory = sum(len(v) for v in self.signals.values())
+        logger.info(
+            "Signal buffer save starting: %d signals across %d domains in memory",
+            total_in_memory,
+            len(self.signals),
+        )
 
         # Build serialisable buffer — only keep live (non-expired) signals.
         buffer: Dict[str, list] = {}
-        for domain, sigs in self.signals.items():
+        for domain, sigs in list(self.signals.items()):
             window = self._domain_windows.get(domain, self.convergence_window)
             cutoff = now - window
-            live = [
-                {
-                    "signal_id": s.signal_id,
-                    "strength": s.strength,
-                    "domain": s.domain,
-                    "direction": s.direction,
-                    "timestamp": s.timestamp.isoformat(),
-                    "metadata": s.metadata,
-                    "velocity": s.velocity,
-                    "confidence": s.confidence,
-                    "source": s.source,
-                }
-                for s in sigs
-                if s.timestamp >= cutoff
-            ]
+            live = []
+            for s in sigs:
+                try:
+                    if s.timestamp >= cutoff:
+                        live.append({
+                            "signal_id": s.signal_id,
+                            "strength": s.strength,
+                            "domain": s.domain,
+                            "direction": s.direction,
+                            "timestamp": s.timestamp.isoformat(),
+                            "metadata": s.metadata,
+                            "velocity": s.velocity,
+                            "confidence": s.confidence,
+                            "source": s.source,
+                        })
+                except Exception:
+                    logger.debug("Skipping non-serializable signal in %s", domain)
             if live:
                 buffer[domain] = live
 
@@ -286,19 +308,20 @@ class ConvergenceAlerter:
         buf_path = _DATA_DIR / "signal_buffer.json"
         tmp_buf = buf_path.with_suffix(".tmp")
         try:
-            tmp_buf.write_text(json.dumps(buffer, indent=2))
+            tmp_buf.write_text(json.dumps(buffer, indent=2, default=self._json_default))
             os.replace(tmp_buf, buf_path)
         except Exception:
             logger.warning("Failed to save signal buffer", exc_info=True)
             if tmp_buf.exists():
                 tmp_buf.unlink(missing_ok=True)
-            return
+            return 0
 
         # Atomically write alerter state (counter + dedup times).
         state = {
             "alert_counter": self._alert_counter,
             "last_alert_times": {
-                k: v.isoformat() for k, v in self._last_alert_times.items()
+                k: (v.isoformat() if isinstance(v, datetime) else str(v))
+                for k, v in self._last_alert_times.items()
             },
         }
         state_path = _DATA_DIR / "alerter_state.json"
@@ -310,7 +333,7 @@ class ConvergenceAlerter:
             logger.warning("Failed to save alerter state", exc_info=True)
             if tmp_state.exists():
                 tmp_state.unlink(missing_ok=True)
-            return
+            return 0
 
         total_signals = sum(len(v) for v in buffer.values())
         logger.info(
@@ -318,6 +341,7 @@ class ConvergenceAlerter:
             total_signals,
             len(buffer),
         )
+        return total_signals
 
     def load_signal_buffer(self) -> None:
         """Restore signal buffer and alerter state from disk.
