@@ -1,12 +1,8 @@
 """Bootstrap Layer 33a: Market system instantiation.
 
-One job: construct all market system objects and attach them to ctx.
-Every instantiation is wrapped in try/except — failures set ctx.attr = None
-so the rest of the organ continues (graceful degradation).
-
-Also handles:
-- BoundaryMembrane trust registration for market data sources
-- ApiGateway registration of MarketDataProvider
+Construct all market system objects on ctx. Every instantiation is wrapped in
+try/except — failures set ctx.attr = None (graceful degradation).
+Also handles BoundaryMembrane trust and ApiGateway registration.
 """
 
 from __future__ import annotations
@@ -476,17 +472,16 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
 
     # --- Trust registration with BoundaryMembrane ---
     market_sources = [
-        ("sec_edgar", 0.90), ("yfinance", 0.75), ("alpha_vantage", 0.80),
-        ("rapidapi", 0.65), ("usa_spending", 0.85), ("sam_gov", 0.80),
-        ("senate_free", 0.80), ("apewisdom", 0.45), ("finra_short", 0.85),
-        ("sec_efts", 0.90), ("finnhub", 0.75), ("fred_macro", 0.95),
+        ("sec_edgar", 0.90), ("yfinance", 0.75), ("alpha_vantage", 0.80), ("rapidapi", 0.65),
+        ("usa_spending", 0.85), ("sam_gov", 0.80), ("senate_free", 0.80), ("apewisdom", 0.45),
+        ("finra_short", 0.85), ("sec_efts", 0.90), ("finnhub", 0.75), ("fred_macro", 0.95),
         ("session_sweep", 0.60),
     ]
-    if getattr(ctx, "boundary_membrane", None) is not None:
+    bm = getattr(ctx, "boundary_membrane", None)
+    if bm is not None and hasattr(bm, "register_source"):
         for source_name, trust in market_sources:
             try:
-                if hasattr(ctx.boundary_membrane, "register_source"):
-                    ctx.boundary_membrane.register_source(source_name, trust=trust)
+                bm.register_source(source_name, trust=trust)
             except Exception:
                 logger.debug("Could not register %s with BoundaryMembrane", source_name)
 
@@ -499,10 +494,5 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
             logger.debug("Could not register MarketDataProvider with ApiGateway", exc_info=True)
 
     logger.info(
-        "Layer 33a - Market systems instantiated: %d systems (construction failures: %d)",
-        45 - failures, failures,
-    )
-    logger.info(
-        "            Operational dependencies: Qdrant, RAPIDAPI_KEY, ALPHA_VANTAGE_KEY, "
-        "SAM_GOV_API_KEY — failures deferred to first use"
+        "Layer 33a - Market systems: %d instantiated (%d failures)", 45 - failures, failures,
     )
