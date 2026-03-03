@@ -343,12 +343,14 @@ class ConvergenceAlerter:
         )
         return total_signals
 
-    def load_signal_buffer(self) -> None:
+    def load_signal_buffer(self) -> int:
         """Restore signal buffer and alerter state from disk.
 
         Signals older than their domain convergence window are discarded
         on load — only signals that are still relevant are restored.
         Missing or corrupt files are handled gracefully.
+
+        Returns the number of signals restored (0 if none found).
         """
         now = datetime.now()
 
@@ -387,8 +389,10 @@ class ConvergenceAlerter:
                 )
             except Exception:
                 logger.warning("Failed to load signal buffer — starting fresh", exc_info=True)
+                loaded = 0
         else:
             logger.debug("No signal buffer file found — starting with empty buffer")
+            loaded = 0
 
         # Restore alerter state.
         state_path = _DATA_DIR / "alerter_state.json"
@@ -409,6 +413,8 @@ class ConvergenceAlerter:
                 logger.warning("Failed to load alerter state — using defaults", exc_info=True)
         else:
             logger.debug("No alerter state file found — using defaults")
+
+        return loaded
 
     def record_signal(
         self,

@@ -320,8 +320,13 @@ class RunReport:
             "latency_ms": latency_ms, "tokens_in": tokens_in, "tokens_out": tokens_out,
         })
 
-    def write(self, path: str, agents, systems) -> None:
-        """Write the full run report as markdown."""
+    def write(self, path: str, agents, systems, *, overwrite: bool = False) -> None:
+        """Write the full run report as markdown.
+
+        Args:
+            overwrite: If True, overwrite the file instead of appending.
+                       Daemon mode uses this to prevent unbounded file growth.
+        """
         import datetime
         lines = []
         w = lines.append
@@ -952,21 +957,23 @@ def _daemon_persistence_flush(systems: dict) -> None:
         try:
             convergence_alerter.save_signal_buffer()
         except Exception:
-            logger.debug("Daemon flush: signal buffer save failed", exc_info=True)
+            logger.warning("Daemon flush: signal buffer save failed", exc_info=True)
+    elif convergence_alerter is None:
+        logger.warning("Daemon flush: convergence_alerter is None — skipping signal buffer save")
 
     somatic_anticipation = systems.get("somatic_anticipation")
     if somatic_anticipation is not None and hasattr(somatic_anticipation, "save_state"):
         try:
             somatic_anticipation.save_state()
         except Exception:
-            logger.debug("Daemon flush: somatic state save failed", exc_info=True)
+            logger.warning("Daemon flush: somatic state save failed", exc_info=True)
 
     deception_detector = systems.get("deception_detector")
     if deception_detector is not None and hasattr(deception_detector, "save_state"):
         try:
             deception_detector.save_state()
         except Exception:
-            logger.debug("Daemon flush: deception state save failed", exc_info=True)
+            logger.warning("Daemon flush: deception state save failed", exc_info=True)
 
 
 def _write_alerts() -> None:
