@@ -2,6 +2,33 @@
 
 ## What Happened
 
+### Always-On Wave 1 — Foundation (2026-03-02)
+
+Three work packages making MIDGE resilient across restarts and capable of running as a continuous service. **137 systems (92 core + 45 market), 3,810 tests, 422 connections, 155 holons, 80 market files.**
+
+**WP-A Signal Persistence:**
+- `convergence_alerter.py`: `save_state()`/`load_state()` — persists signal buffer (last 200 per domain), alert counters, and last-seen timestamps to `data/market/convergence_state.json`. Survives restart without losing domain context.
+- `somatic_anticipation.py`: `save_state()`/`load_state()` — persists domain-activation windows (ticker→[timestamps]) to `data/market/somatic_state.json`. Prevents false "first activation" dopamine spikes after restart.
+- `deception_detector.py`: `save_state()`/`load_state()` — persists volume history and price history deques to `data/market/deception_state.json`. Preserves anomaly baseline across restarts.
+- `main.py` shutdown: calls `save_state()` on all three in the `finally` block, after StepTimer.save and before report. Bootstrap load: calls `load_state()` on all three during Layer 33 init.
+- **30 new tests** in `test_signal_persistence.py`.
+
+**WP-B MarketClock:**
+- New file `mae_core/market/market_clock.py`: Canonical time-zone-aware clock. `MarketClock` knows NYSE trading calendar, session boundaries (pre-market/regular/after-hours), and kill-zone windows (Asia/London/NY). Exposes `current_session()`, `is_market_open()`, `time_to_open()`, `active_kill_zone()`.
+- `sensing_hook.py`: Integrates MarketClock. Source selection now skips intraday sources (session_sweep, order_flow) when market is closed. Reduces failed API calls and noisy signals during off-hours.
+- Registered as system `market_clock` in bootstrap (Layer 33), holon, somatic entry.
+- **42 new tests** in `test_market_clock.py`.
+
+**WP-C Daemon Mode:**
+- `main.py --daemon` flag: infinite loop with wall-clock pacing. Runs `N` steps, sleeps until the next 15-minute boundary, repeats. Auto-persistence flush every cycle. Auto-recovery on exception (30s backoff, max 5 retries before exit).
+- Heartbeat file `data/midge/daemon_heartbeat.json` updated every cycle with last-run timestamp, cycle count, and error count. External monitors can check staleness.
+- `--daemon-interval` flag (default 15 minutes) configures cycle period.
+- **26 new tests** in `test_daemon_mode.py`.
+
+**Document parity updated:** CLAUDE.md, README.md, data/MAES-MATHEMATICAL-IDENTITY.md all reflect 137 systems / 3,810 tests / 80 market files.
+
+---
+
 ### Ten Gifts — MIDGE's Sensory Evolution (2026-03-02)
 
 Ten new market intelligence systems across three waves. **136 systems (92 core + 44 market), 3,710 tests, 422 connections (103 market, Groups 14-32), 155 holons, 78 market files.**
