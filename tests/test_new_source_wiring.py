@@ -267,11 +267,11 @@ def _make_analyst_rec(
 
 
 class TestSourceRotation:
-    """Verify SOURCE_ROTATION contains exactly the expected 20 entries."""
+    """Verify SOURCE_ROTATION contains exactly the expected 21 entries."""
 
-    def test_rotation_length_is_20(self):
-        assert len(SOURCE_ROTATION) == 20, (
-            f"Expected 20 sources in SOURCE_ROTATION, got {len(SOURCE_ROTATION)}"
+    def test_rotation_length_is_21(self):
+        assert len(SOURCE_ROTATION) == 21, (
+            f"Expected 21 sources in SOURCE_ROTATION, got {len(SOURCE_ROTATION)}"
         )
 
     def test_rotation_contains_all_expected_sources(self):

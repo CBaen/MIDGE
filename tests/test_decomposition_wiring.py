@@ -56,12 +56,12 @@ class TestSignalReexports:
         assert callable(getattr(sig, name))
 
     def test_total_converter_count(self):
-        """Exactly 25 from_* functions must be re-exported."""
+        """Exactly 27 from_* functions must be re-exported."""
         import mae_core.market.signal as sig
 
         exported = [n for n in dir(sig) if n.startswith("from_")]
-        assert len(exported) == 26, (
-            f"Expected 26 from_* converters, found {len(exported)}: {exported}"
+        assert len(exported) == 27, (
+            f"Expected 27 from_* converters, found {len(exported)}: {exported}"
         )
 
 
