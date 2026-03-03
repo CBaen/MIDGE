@@ -709,6 +709,258 @@ def run(
         logger.info("MIDGE is resting.")
 
 
+def run_daemon(
+    num_agents: int = 5,
+    steps_per_round: int = 100,
+    cycle_length: int = 100,
+    pace: float = 1.0,
+) -> None:
+    """Daemon mode: single organism, repeating rounds, no cold restarts.
+
+    Unlike run() which creates the organism once and runs N rounds then exits,
+    daemon mode runs indefinitely with wall-clock pacing between steps.
+    State stays hot in memory — persistence flushes are periodic safety nets,
+    not the primary state transfer mechanism.
+
+    Args:
+        num_agents: Number of agents (min 3)
+        steps_per_round: Steps per daemon round before persistence flush
+        cycle_length: Circadian cycle length
+        pace: Seconds per step (0 = fast mode, no pacing)
+    """
+    import signal
+    import time as _time
+
+    from mae_core.market.daemon_monitor import DaemonMonitor
+
+    logger.info("=" * 60)
+    logger.info("MIDGE daemon mode — she never sleeps.")
+    logger.info("Pace: %.2fs/step | Steps/round: %d", pace, steps_per_round)
+    logger.info("=" * 60)
+
+    model, systems = create_mae(
+        num_agents=num_agents,
+        cycle_length=cycle_length,
+    )
+
+    agents = systems["agents"]
+    deep_store = systems.get("deep_store")
+
+    from mae_core.backbone.journal_writer import JournalWriter
+    from mae_core.backbone.growth_tracker import GrowthTracker
+    journal = JournalWriter(output_dir="data/midge", deep_store=deep_store)
+    growth = GrowthTracker(output_dir="data/midge", deep_store=deep_store)
+
+    monitor = DaemonMonitor(heartbeat_cadence=100)
+    report = RunReport()
+
+    # Graceful shutdown via SIGINT/SIGTERM
+    shutdown_requested = False
+
+    def _handle_shutdown(signum, frame):
+        nonlocal shutdown_requested
+        if shutdown_requested:
+            logger.warning("Force shutdown requested. Exiting immediately.")
+            raise SystemExit(1)
+        shutdown_requested = True
+        logger.info("Shutdown signal received. Finishing current round...")
+
+    signal.signal(signal.SIGINT, _handle_shutdown)
+    signal.signal(signal.SIGTERM, _handle_shutdown)
+
+    # Step hook for daemon pacing
+    step_start = [0.0]
+
+    def pace_hook():
+        """Wall-clock pacing: ensure minimum time between steps."""
+        step_num = int(model.time)
+        monitor.record_step(step_num, systems)
+
+        if pace > 0:
+            elapsed = _time.monotonic() - step_start[0]
+            remaining = pace - elapsed
+            if remaining > 0:
+                _time.sleep(remaining)
+            step_start[0] = _time.monotonic()
+
+    def narrator_hook():
+        step = int(model.time)
+        if step > 0:
+            report.record_step(step, agents)
+
+    def journal_hook():
+        step = int(model.time)
+        if step > 0:
+            journal.record_step(step, agents, systems)
+        for agent in agents:
+            agent._inhibited_this_step = False
+            agent._last_inhibit_reason = ""
+            agent._inhibit_veto_sources = []
+
+    model.add_step_hook(narrator_hook)
+    model.add_step_hook(journal_hook)
+    model.add_step_hook(pace_hook)
+
+    # Hook into gateway for oracle capture (same as run())
+    gw = systems.get("api_gateway")
+    if gw is not None:
+        _orig_process = gw._process_request
+
+        def _capturing_process(request):
+            _orig_process(request)
+            pool = systems.get("task_pool")
+            if pool is not None:
+                task = pool._tasks.get(request.request_id)
+                if task is not None:
+                    spec = getattr(task, "external_spec", None)
+                    if spec is not None and spec.response is not None:
+                        report.record_oracle(
+                            step=int(model.time),
+                            agent_id=request.agent_id,
+                            provider=request.provider,
+                            question=spec.payload.get("question", ""),
+                            response_text=spec.response.get("text", ""),
+                            latency_ms=spec.response.get("latency_ms", 0),
+                            tokens_in=spec.response.get("tokens_in", 0),
+                            tokens_out=spec.response.get("tokens_out", 0),
+                        )
+
+        gw._process_request = _capturing_process
+
+    round_num = 0
+    round_times = []
+
+    try:
+        while not shutdown_requested:
+            round_num += 1
+            monitor.begin_round(round_num)
+
+            logger.info("=" * 60)
+            logger.info("DAEMON ROUND %d", round_num)
+            if round_times:
+                avg = sum(round_times) / len(round_times)
+                logger.info("Avg round: %.1fs | Uptime: %.0fs", avg, monitor.get_uptime())
+            logger.info("=" * 60)
+
+            report = RunReport()
+            journal.begin_run(
+                step_count=steps_per_round, agent_count=num_agents, round_num=round_num,
+            )
+
+            round_start = _time.time()
+            step_start[0] = _time.monotonic()
+
+            try:
+                model.run(steps_per_round)
+            except KeyboardInterrupt:
+                shutdown_requested = True
+            except Exception:
+                logger.exception("Daemon round %d failed — continuing", round_num)
+
+            round_elapsed = _time.time() - round_start
+            round_times.append(round_elapsed)
+
+            stats = model.get_system_stats()
+            steps_done = stats["current_step"]
+
+            report_path = "data/midge/run-log.md"
+            report.write(report_path, agents, systems)
+            journal.end_run(steps_completed=steps_done)
+            growth.record_run(agents, systems, report, steps_done, round_num=round_num)
+
+            _write_alerts()
+
+            logger.info(
+                "Daemon round %d done: %d steps in %.1fs (%.2f steps/s)",
+                round_num, steps_per_round, round_elapsed,
+                steps_per_round / max(round_elapsed, 0.001),
+            )
+
+            # Periodic persistence flush (every round — state stays hot in memory)
+            _daemon_persistence_flush(systems)
+
+    finally:
+        total_time = sum(round_times)
+        logger.info("=" * 60)
+        logger.info(
+            "MIDGE daemon shutting down after %d rounds, %.1fs (%.1fh) uptime.",
+            round_num, monitor.get_uptime(), monitor.get_uptime() / 3600,
+        )
+        logger.info("=" * 60)
+
+        # Full persistence flush on shutdown
+        _daemon_persistence_flush(systems)
+
+        # Save StepTimer snapshot
+        step_timer = systems.get("step_timer")
+        if step_timer is not None:
+            try:
+                step_timer.save_session_stats("data/midge/step_timer_snapshot.json")
+            except Exception:
+                logger.debug("StepTimer save failed", exc_info=True)
+
+        # Marathon report
+        try:
+            from marathon_report import generate_report
+            generate_report(
+                output_path="data/midge/marathon-report.md",
+                round_times=round_times,
+            )
+        except Exception:
+            logger.debug("Marathon report generation failed", exc_info=True)
+
+        model.shutdown()
+        logger.info("MIDGE daemon stopped.")
+
+
+def _daemon_persistence_flush(systems: dict) -> None:
+    """Flush all persistent state to disk. Called periodically and at shutdown."""
+    # Hypothesis engine
+    hypothesis_engine = systems.get("hypothesis_engine")
+    if hypothesis_engine is not None:
+        try:
+            hypothesis_engine._save_retirement_window()
+        except Exception:
+            logger.debug("Daemon flush: retirement window save failed", exc_info=True)
+
+    # Hypothesis generator pair outcomes
+    hypothesis_generator = systems.get("hypothesis_generator")
+    if hypothesis_generator is not None:
+        try:
+            hypothesis_generator.save_pair_outcomes()
+        except Exception:
+            logger.debug("Daemon flush: pair outcomes save failed", exc_info=True)
+
+    # Learning config
+    try:
+        from mae_core.market.intelligence.learning_config import save_snapshot
+        save_snapshot()
+    except Exception:
+        logger.debug("Daemon flush: config snapshot save failed", exc_info=True)
+
+    # Signal persistence (WP-A)
+    convergence_alerter = systems.get("convergence_alerter")
+    if convergence_alerter is not None and hasattr(convergence_alerter, "save_signal_buffer"):
+        try:
+            convergence_alerter.save_signal_buffer()
+        except Exception:
+            logger.debug("Daemon flush: signal buffer save failed", exc_info=True)
+
+    somatic_anticipation = systems.get("somatic_anticipation")
+    if somatic_anticipation is not None and hasattr(somatic_anticipation, "save_state"):
+        try:
+            somatic_anticipation.save_state()
+        except Exception:
+            logger.debug("Daemon flush: somatic state save failed", exc_info=True)
+
+    deception_detector = systems.get("deception_detector")
+    if deception_detector is not None and hasattr(deception_detector, "save_state"):
+        try:
+            deception_detector.save_state()
+        except Exception:
+            logger.debug("Daemon flush: deception state save failed", exc_info=True)
+
+
 def _write_alerts() -> None:
     """Read convergence_state.json and append high-confidence alerts to alerts.jsonl.
 
@@ -758,6 +1010,8 @@ def main() -> None:
     parser.add_argument("--cycle", type=int, default=100, help="Circadian cycle length")
     parser.add_argument("--rounds", type=int, default=1, help="Number of rounds (state persists between rounds)")
     parser.add_argument("--continuous", action="store_true", help="Run forever, restarting on error (overrides --rounds)")
+    parser.add_argument("--daemon", action="store_true", help="Daemon mode: single organism, repeating rounds, no cold restarts")
+    parser.add_argument("--pace", type=float, default=1.0, help="Seconds per step in daemon mode (0 = fast, default 1.0)")
     args = parser.parse_args()
 
     if args.continuous:
