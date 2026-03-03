@@ -60,6 +60,7 @@ from mae_core.market.sensing_fetchers import (
     fetch_13f_holdings,
     fetch_finviz,
     fetch_economic_calendar,
+    fetch_massive_snapshot,
 )
 from mae_core.market.sensing_lifecycle import (
     enrich_signal,
@@ -123,6 +124,8 @@ TIER_ROUTING = {
     "finviz_unusual_volume": "tactical",
     "finviz_short_squeeze": "strategic",
     "economic_calendar": "thematic",
+    # Massive/Polygon.io
+    "massive_snapshot": "tactical",
 }
 
 # Source names for rotation — 27 sources, full cycle every 1350 steps

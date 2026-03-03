@@ -429,3 +429,85 @@ def from_suppression_event(event) -> MarketSignal:
             "suppress": True,
         },
     )
+
+
+def from_massive_snapshot(snapshot) -> MarketSignal:
+    """Convert a TickerSnapshot (Massive/Polygon) to a MarketSignal.
+
+    Generates signals from daily return magnitude, volume anomalies, and
+    price gaps.  Free tier provides institutional-grade EOD data that
+    complements yfinance (different data source = domain diversity).
+
+    Signal priority:
+    - Volume anomaly (volume_ratio > 2.0): strongest indicator
+    - Large daily return (>2%): directional conviction
+    - Gap (>1% open vs prev close): overnight news impact
+    Picks the strongest signal type for this snapshot.
+    """
+    ticker = getattr(snapshot, "ticker", "") or ""
+    daily_return = getattr(snapshot, "daily_return_pct", 0.0) or 0.0
+    volume_ratio = getattr(snapshot, "volume_ratio", 0.0) or 0.0
+    gap_pct = getattr(snapshot, "gap_pct", 0.0) or 0.0
+    close = getattr(snapshot, "close", 0.0) or 0.0
+    prev_close = getattr(snapshot, "prev_close", 0.0) or 0.0
+    volume = getattr(snapshot, "volume", 0.0) or 0.0
+    bar_date = getattr(snapshot, "bar_date", "") or ""
+
+    # Determine signal type by strongest feature
+    vol_strength = min(1.0, max(0.0, (volume_ratio - 1.0) / 3.0)) if volume_ratio > 1.5 else 0.0
+    move_strength = min(1.0, abs(daily_return) / 5.0) if abs(daily_return) > 1.0 else 0.0
+    gap_strength = min(1.0, abs(gap_pct) / 3.0) if abs(gap_pct) > 0.5 else 0.0
+
+    strength = max(vol_strength, move_strength, gap_strength)
+    if strength <= 0.0:
+        # Sub-threshold — still create signal but with minimal strength
+        strength = 0.1
+
+    # Pick dominant signal type for the ID
+    if vol_strength >= move_strength and vol_strength >= gap_strength:
+        signal_type = "volume_anomaly"
+    elif gap_strength >= move_strength:
+        signal_type = "gap"
+    else:
+        signal_type = "price_move"
+
+    # Direction from daily return
+    if daily_return > 1.0:
+        direction = "bullish"
+    elif daily_return < -1.0:
+        direction = "bearish"
+    else:
+        direction = "neutral"
+
+    signal_id = f"massive:{signal_type}:{ticker}:{bar_date}"
+
+    return MarketSignal(
+        signal_id=signal_id,
+        source="massive_snapshot",
+        symbol=ticker,
+        asset_class="stock",
+        domain="technical",
+        direction=direction,
+        strength=strength,
+        confidence=0.55,
+        decay_rate=0.30,
+        timestamp=datetime.now(),
+        received_at=datetime.now(),
+        outcome_symbol=ticker,
+        outcome_window_days=5,
+        raw_id="",
+        raw_type="TickerSnapshot",
+        metadata={
+            "close": close,
+            "prev_close": prev_close,
+            "daily_return_pct": daily_return,
+            "volume": volume,
+            "volume_ratio": volume_ratio,
+            "gap_pct": gap_pct,
+            "signal_type": signal_type,
+            "vwap": getattr(snapshot, "vwap", 0.0),
+            "high": getattr(snapshot, "high", 0.0),
+            "low": getattr(snapshot, "low", 0.0),
+            "data_source": "massive_polygon",
+        },
+    )

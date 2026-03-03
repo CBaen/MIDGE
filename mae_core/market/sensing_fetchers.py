@@ -646,3 +646,34 @@ def fetch_economic_calendar(calendar_client: Any, converter: Callable) -> list:
     except Exception as e:
         logger.debug("Economic calendar fetch failed: %s", e)
     return signals
+
+
+def fetch_massive_snapshot(
+    massive_client: Any,
+    watchlist: dict,
+    converter: Callable,
+) -> list:
+    """Fetch Massive/Polygon grouped daily data and generate signals.
+
+    Uses ONE API call (grouped daily) to get ALL tickers' OHLCV, then
+    filters to watchlist and generates volume/price/gap signals.
+    Free tier: 5 calls/min — grouped daily is the most efficient endpoint.
+    """
+    if massive_client is None:
+        return []
+
+    signals = []
+    tickers = watchlist.get("tickers", [])
+    if not tickers:
+        return []
+
+    try:
+        snapshots = massive_client.build_snapshots(tickers)
+        for snap in snapshots:
+            try:
+                signals.append(converter(snap))
+            except Exception:
+                pass
+    except Exception as e:
+        logger.debug("Massive snapshot fetch failed: %s", e)
+    return signals
