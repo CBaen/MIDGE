@@ -107,6 +107,19 @@ class TestBootstrap:
             "stocktwits_client",
             "vix_client",
             "trends_client",
+            # Ten Gifts: Wave 1 (Foundation)
+            "portfolio_tracker",
+            "order_flow_detector",
+            "catalyst_calendar",
+            "cross_asset_confirmer",
+            # Ten Gifts: Wave 2 (Intelligence)
+            "deception_detector",
+            "consolidation_engine",
+            "fractal_resonance_detector",
+            "pattern_archetype_engine",
+            # Ten Gifts: Wave 3 (Synthesis)
+            "somatic_anticipation",
+            "pattern_completion_engine",
         ]
         for key in market_keys:
             assert key in systems, f"Missing market system: {key}"
