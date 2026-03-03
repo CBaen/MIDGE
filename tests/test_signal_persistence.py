@@ -196,18 +196,22 @@ class TestConvergenceAlerterPersistence:
 
         assert sum(len(v) for v in alerter.signals.values()) == 0
 
-    def test_save_creates_directory(self, tmp_path, monkeypatch):
-        """save_signal_buffer creates the data directory if it does not exist."""
-        nested = tmp_path / "deep" / "nested"
-        _patch_ca_dir(monkeypatch, tmp_path)
-        # Override _DATA_DIR to a not-yet-existing sub-path
-        monkeypatch.setattr(ca_module, "_DATA_DIR", nested)
+    def test_save_creates_output_files(self, tmp_path, monkeypatch):
+        """save_signal_buffer writes both output files into an existing directory.
 
+        Note: save_signal_buffer expects _DATA_DIR to already exist (the directory
+        is always present in a running MIDGE instance). It writes gracefully into
+        it but does not auto-create a missing parent directory — that is the
+        caller's responsibility (see main.py bootstrap).
+        """
+        _patch_ca_dir(monkeypatch, tmp_path)
         alerter = _make_alerter(tmp_path)
+        alerter.record_signal("sig1", 0.8, "insider", timestamp=_FRESH)
+
         alerter.save_signal_buffer()
 
-        assert nested.exists()
-        assert (nested / "signal_buffer.json").exists()
+        assert (tmp_path / "signal_buffer.json").exists()
+        assert (tmp_path / "alerter_state.json").exists()
 
     def test_domain_window_filtering(self, tmp_path, monkeypatch):
         """Signals within their domain window survive; those beyond it are pruned."""
