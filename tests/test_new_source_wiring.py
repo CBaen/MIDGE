@@ -58,7 +58,7 @@ NEW_ROTATION_SOURCES = [
     "finnhub_extras",
 ]
 
-# Full expected SOURCE_ROTATION (all 27)
+# Full expected SOURCE_ROTATION (all 28)
 EXPECTED_ROTATION = [
     "sec_form4",
     "sec_form8k",
@@ -91,6 +91,8 @@ EXPECTED_ROTATION = [
     "institutional_13f",
     "finviz",
     "economic_calendar",
+    # Massive/Polygon.io
+    "massive_snapshot",
 ]
 
 VALID_TIERS = {"tactical", "strategic", "thematic"}
