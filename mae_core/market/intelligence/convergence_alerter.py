@@ -137,6 +137,9 @@ class ConvergenceAlerter:
         "ta_candle": "ta_candle",
         # Ten Gifts: Wave 1
         "order_flow": "order_flow",
+        # Ten Gifts: Wave 2
+        "fractal_resonance": "fractal_resonance",
+        "archetype_match": "archetype_match",
         # New sources (Layer 6)
         "cot_positioning": "cot_positioning",
         "stocktwits_sentiment": "stocktwits_sentiment",
@@ -159,6 +162,8 @@ class ConvergenceAlerter:
         event_bus=None,
         catalyst_calendar=None,
         cross_asset_confirmer=None,
+        deception_detector=None,
+        pattern_archetype_engine=None,
     ):
         """
         Initialize convergence alerter.
@@ -174,6 +179,8 @@ class ConvergenceAlerter:
             event_bus: Optional EventBus for publishing CH_CONTRADICTION_DETECTED
             catalyst_calendar: Optional CatalystCalendar for timing context modifiers
             cross_asset_confirmer: Optional CrossAssetConfirmer for cross-asset confirmation
+            deception_detector: Optional DeceptionDetector for manipulation detection
+            pattern_archetype_engine: Optional PatternArchetypeEngine for archetype context
         """
         self.min_domains = min_domains
         self.min_strength = min_strength

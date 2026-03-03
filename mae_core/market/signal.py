@@ -117,6 +117,7 @@ from mae_core.market.signal_adapters import (  # noqa: E402
     from_ta_signal,
     from_session_sweep,
     from_order_flow,
+    from_fractal_resonance,
     from_government_contract,
     from_contract_opportunity,
     from_contract_prediction,
@@ -155,6 +156,7 @@ __all__ = [
     "from_ta_signal",
     "from_session_sweep",
     "from_order_flow",
+    "from_fractal_resonance",
     # Adapter re-exports (contracts)
     "from_government_contract",
     "from_contract_opportunity",
