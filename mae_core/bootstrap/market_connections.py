@@ -34,7 +34,7 @@ logger = logging.getLogger("midge.bootstrap")
 
 
 def _register_market_connections(ctx: SimpleNamespace) -> None:
-    """Register 85 triadic connections for market systems (Group 14-26)."""
+    """Register 103 triadic connections for market systems (Group 14-32)."""
     from mae_core.backbone.connection_registry import (
         ConnectionType,
         ConnectionCriticality,

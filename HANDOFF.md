@@ -484,7 +484,7 @@ Welcome. MIDGE is Mae differentiated for financial markets. Here is what you nee
 5. **Thompson Sampling** uses Bayesian explore/exploit. 50 distributions with 9,470 total samples from 12,544 evaluated outcomes. Learned distributions in `data/market/thompson_distributions.json`. Bayesian forgetting prevents stale evidence.
 6. **OutcomeCollector** closes the feedback loop: scan signals → register_signals() → per-type windows → price check → Thompson update. Success threshold: 5%. Signal archives: 901 files spanning 414 days across 15 backfill sources.
 7. **All 8 Mathematical Laws are satisfied.** See implementation plan Section 12 for compliance map.
-8. **3,429 tests must keep passing.** Zero regressions. Run `python -m pytest tests/ -q` to verify.
+8. **3,663 tests must keep passing.** Zero regressions. Run `python -m pytest tests/ -q` to verify.
    **Pattern recognition capabilities (2026-03-02):** 6 capabilities — composite hypotheses, contextual Thompson, coherence scoring, auto causal stories, temporal freshness, intra-domain combination.
    **Completing the Circle (2026-03-02):** 3 cognitive dimensions — causal bridge (contradiction → causation), absence monitor (silence detection), correlation tracker activation (relationships in motion).
 9. **Deep memory runs on Qdrant** container (port 6333). Start with `docker compose up -d`.
