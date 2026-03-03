@@ -754,6 +754,8 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
             consolidation_engine=getattr(ctx, "consolidation_engine", None),
             fractal_resonance_detector=getattr(ctx, "fractal_resonance_detector", None),
             pattern_archetype_engine=getattr(ctx, "pattern_archetype_engine", None),
+            somatic_anticipation=getattr(ctx, "somatic_anticipation", None),
+            pattern_completion_engine=getattr(ctx, "pattern_completion_engine", None),
         )
     except Exception:
         logger.warning("MarketSensingHook construction failed — agents will not sense market data", exc_info=True)
@@ -765,6 +767,11 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
 
     # Inject AbsenceMonitor (Package B of "Completing the Circle")
     hook._absence_monitor = getattr(ctx, "absence_monitor", None)
+
+    # Wire endocrine system into somatic anticipation (Gift 9 — two-phase init)
+    somatic = getattr(ctx, "somatic_anticipation", None)
+    if somatic is not None:
+        somatic._endocrine_system = getattr(ctx, "endocrine", None)
 
     # --- Store tiered alerters on ctx for agent access ---
     ctx._tiered_alerters = tiered_alerters

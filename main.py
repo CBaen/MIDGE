@@ -228,6 +228,19 @@ def _build_systems_dict(ctx) -> dict:
         "stocktwits_client":        getattr(ctx, "stocktwits_client", None),
         "vix_client":               getattr(ctx, "vix_client", None),
         "trends_client":            getattr(ctx, "trends_client", None),
+        # Ten Gifts: Wave 1 (Foundation)
+        "portfolio_tracker":        getattr(ctx, "portfolio_tracker", None),
+        "order_flow_detector":      getattr(ctx, "order_flow_detector", None),
+        "catalyst_calendar":        getattr(ctx, "catalyst_calendar", None),
+        "cross_asset_confirmer":    getattr(ctx, "cross_asset_confirmer", None),
+        # Ten Gifts: Wave 2 (Intelligence)
+        "deception_detector":       getattr(ctx, "deception_detector", None),
+        "consolidation_engine":     getattr(ctx, "consolidation_engine", None),
+        "fractal_resonance_detector": getattr(ctx, "fractal_resonance_detector", None),
+        "pattern_archetype_engine": getattr(ctx, "pattern_archetype_engine", None),
+        # Ten Gifts: Wave 3 (Synthesis)
+        "somatic_anticipation":     getattr(ctx, "somatic_anticipation", None),
+        "pattern_completion_engine": getattr(ctx, "pattern_completion_engine", None),
     }
 
 

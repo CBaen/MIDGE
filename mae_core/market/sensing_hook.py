@@ -223,6 +223,8 @@ class MarketSensingHook:
         consolidation_engine: Any = None,
         fractal_resonance_detector: Any = None,
         pattern_archetype_engine: Any = None,
+        somatic_anticipation: Any = None,
+        pattern_completion_engine: Any = None,
     ):
         # API clients (all optional — graceful degradation)
         self._sec_client = sec_client
@@ -388,6 +390,18 @@ class MarketSensingHook:
             except Exception:
                 logger.debug("Consolidation engine step failed", exc_info=True)
 
+        # Somatic anticipation: pre-conscious pattern response (cadence 25)
+        if self._step_counter % 25 == 0 and self._somatic_anticipation is not None:
+            try:
+                events = self._somatic_anticipation.check_anticipation()
+                if events:
+                    logger.info(
+                        "Somatic anticipation: %d tickers building pre-convergence",
+                        len(events),
+                    )
+            except Exception:
+                logger.debug("Somatic anticipation check failed", exc_info=True)
+
         # Pattern archetype scanning: check watchlist tickers (cadence 100)
         if self._step_counter % 100 == 0 and self._pattern_archetype_engine is not None:
             try:
@@ -397,6 +411,20 @@ class MarketSensingHook:
                     )
             except Exception:
                 logger.debug("Pattern archetype scan failed", exc_info=True)
+
+        # Pattern completion: review partial archetype matches for active hunts (cadence 100)
+        if self._step_counter % 100 == 0 and self._pattern_completion_engine is not None:
+            try:
+                new_hunts = self._pattern_completion_engine.review_partial_matches()
+                if new_hunts:
+                    logger.info(
+                        "Pattern completion: %d new hunts created",
+                        len(new_hunts),
+                    )
+                # Prune expired hunts
+                self._pattern_completion_engine._prune_expired()
+            except Exception:
+                logger.debug("Pattern completion review failed", exc_info=True)
 
     # ------------------------------------------------------------------
     # Async fetch lifecycle
@@ -564,6 +592,34 @@ class MarketSensingHook:
                         )
                 except Exception:
                     logger.debug("Deception detector record failed", exc_info=True)
+
+        # Feed somatic anticipation (Gift 9) — accumulate per-ticker signal state
+        if self._somatic_anticipation is not None:
+            for sig in signals:
+                try:
+                    sym = getattr(sig, "symbol", "") or sig.metadata.get("symbol", "")
+                    if sym:
+                        self._somatic_anticipation.record_signal(
+                            ticker=sym,
+                            domain=sig.domain,
+                            direction=sig.direction,
+                            strength=sig.strength,
+                            timestamp=sig.timestamp,
+                        )
+                except Exception:
+                    logger.debug("Somatic anticipation record failed", exc_info=True)
+
+        # Check pattern completions (Gift 10) — match signals against active hunts
+        if self._pattern_completion_engine is not None:
+            try:
+                completion_events = self._pattern_completion_engine.check_completions(signals)
+                if completion_events:
+                    logger.info(
+                        "Pattern completion: %d hunts matched by incoming signals",
+                        len(completion_events),
+                    )
+            except Exception:
+                logger.debug("Pattern completion check failed", exc_info=True)
 
         self._total_signals_fed += len(signals)
         logger.info(
