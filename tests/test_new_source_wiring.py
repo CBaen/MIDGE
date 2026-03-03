@@ -58,7 +58,7 @@ NEW_ROTATION_SOURCES = [
     "finnhub_extras",
 ]
 
-# Full expected SOURCE_ROTATION (all 21)
+# Full expected SOURCE_ROTATION (all 27)
 EXPECTED_ROTATION = [
     "sec_form4",
     "sec_form8k",
@@ -84,6 +84,13 @@ EXPECTED_ROTATION = [
     "order_flow",
     # Ten Gifts: Wave 2
     "fractal_resonance",
+    # Always-On Waves 2+3
+    "crypto_prices",
+    "crypto_exchange",
+    "openinsider",
+    "institutional_13f",
+    "finviz",
+    "economic_calendar",
 ]
 
 VALID_TIERS = {"tactical", "strategic", "thematic"}
