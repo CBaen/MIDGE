@@ -128,6 +128,8 @@ class TestBootstrap:
             "finviz_client",
             "economic_calendar_client",
             "finnhub_websocket",
+            # Massive/Polygon.io
+            "massive_client",
         ]
         for key in market_keys:
             assert key in systems, f"Missing market system: {key}"

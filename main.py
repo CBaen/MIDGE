@@ -249,6 +249,7 @@ def _build_systems_dict(ctx) -> dict:
         "finviz_client":            getattr(ctx, "finviz_client", None),
         "economic_calendar_client": getattr(ctx, "economic_calendar_client", None),
         "finnhub_websocket":        getattr(ctx, "finnhub_websocket", None),
+        "massive_client":           getattr(ctx, "massive_client", None),
     }
 
 

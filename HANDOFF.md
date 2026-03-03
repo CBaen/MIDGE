@@ -2,6 +2,23 @@
 
 ## What Happened
 
+### Massive/Polygon.io Integration + Bug Fixes (2026-03-03)
+
+**Massive/Polygon.io** wired as 28th data source. Polygon.io rebranded to Massive.com (October 2025) — same API, same key. Free tier: 5 calls/min, 15-min delayed, 2 years historical.
+
+**New files:**
+- `mae_core/market/apis/massive_client.py` — REST client with rate limiting, grouped daily endpoint (ALL tickers' OHLCV in 1 call), volume/price/gap anomaly detection via `build_snapshots()`.
+- `tests/test_massive_client.py` — 42 tests (client unit, signal adapter, fetcher, wiring, rate limiting).
+
+**Integration:** SOURCE_ROTATION (28), TIER_ROUTING (tactical), MarketClock (MARKET_HOURS), Thompson key `massive_snapshot` (0.55 prior), sensing_hook router case, fetch_massive_snapshot in sensing_fetchers, `from_massive_snapshot()` signal adapter in wave2_3.py. Bootstrap: `_instantiate_wave2_3_clients()` auto-constructs from `MASSIVE_API_KEY` env var.
+
+**Bug fixes (prior session):**
+- **Signal persistence serialization**: `_json_default()` method added to convergence_alerter.py — handles `datetime`, `set`, `timedelta` types that crashed `json.dump()`. Signal buffer now persists correctly.
+- **Run-log bloat**: `main.py` daemon mode now overwrites `run_log.jsonl` each round instead of appending infinitely.
+- **Daemon kill on Windows**: `kill -SIGTERM` doesn't work on Windows. Must use `powershell Stop-Process -Force`.
+
+---
+
 ### Always-On Waves 2+3 — Real-Time + Data Enrichment (2026-03-02)
 
 Seven new API clients + signal adapters + sensing integration + economic calendar suppression. **144 systems (92 core + 52 market), 4,190 tests, 422 connections, 155 holons, 89 market files.**
@@ -531,7 +548,7 @@ All 17 planned items from the Layer 5 roadmap are done. Roadmap history at `C:\U
 
 Welcome. MIDGE is Mae differentiated for financial markets. Here is what you need to know:
 
-1. **MIDGE = mae-core + market intelligence.** 144 systems, same 8 laws, 33-layer bootstrap. Market organ is Layer 33 (33a-33i). Always-On Waves 1-3 complete: signal persistence, MarketClock, daemon mode, real-time WebSocket, crypto 24/7, 4 new data sources, economic calendar suppression.
+1. **MIDGE = mae-core + market intelligence.** 144 systems, same 8 laws, 33-layer bootstrap. Market organ is Layer 33 (33a-33i). Always-On Waves 1-3 complete: signal persistence, MarketClock, daemon mode, real-time WebSocket, crypto 24/7, 4 new data sources, economic calendar suppression. Massive/Polygon.io integrated as 28th source (grouped daily OHLCV).
 2. **Mae-core is upstream.** Changes to Mae's genome should be made in `C:\Users\baenb\projects\mae-core` and pulled here. Market-specific changes stay here.
 3. **Agents actively sense the market.** MarketSensingHook (Layer 33h) fetches data on cadence and feeds convergence_alerter. Three agents are differentiated into market roles (Layer 33i). Endocrine coupling and market advisory carry signals to all agents.
 4. **The crown jewel is `convergence_alerter.py`** — synthesizes signals across ALL domains (insider + congressional + contract + hiring + velocity) into actionable alerts. Now with per-ticker and multi-timeframe convergence.
@@ -542,7 +559,7 @@ Welcome. MIDGE is Mae differentiated for financial markets. Here is what you nee
    **Pattern recognition capabilities (2026-03-02):** 6 capabilities — composite hypotheses, contextual Thompson, coherence scoring, auto causal stories, temporal freshness, intra-domain combination.
    **Completing the Circle (2026-03-02):** 3 cognitive dimensions — causal bridge (contradiction → causation), absence monitor (silence detection), correlation tracker activation (relationships in motion).
 9. **Deep memory runs on Qdrant** container (port 6333). Start with `docker compose up -d`.
-10. **API keys** needed: RAPIDAPI_KEY (job tracker, congressional trades), ALPHA_VANTAGE_KEY (price fallback), SAM_GOV_API_KEY, MAE_TAVILY_API_KEY, MAE_FINNHUB_API_KEY (news sentiment + earnings), FRED_API_KEY (macro indicators). Free/no-key: SEC EDGAR, yfinance, USASpending, Senate Stock Watcher, ApeWisdom, FINRA short volume, SEC EFTS.
+10. **API keys** needed: RAPIDAPI_KEY (job tracker, congressional trades), ALPHA_VANTAGE_KEY (price fallback), SAM_GOV_API_KEY, MAE_TAVILY_API_KEY, MAE_FINNHUB_API_KEY (news sentiment + earnings), FRED_API_KEY (macro indicators), MASSIVE_API_KEY (Polygon.io/Massive grouped daily OHLCV). Free/no-key: SEC EDGAR, yfinance, USASpending, Senate Stock Watcher, ApeWisdom, FINRA short volume, SEC EFTS.
 11. **`python main.py --agents 6 --steps 500`** runs MIDGE with agents sensing the market. Requires 6 agents (K3 general + K3 market per Law 2).
 12. **`python midge_scan.py`** runs a standalone 7-phase scan (no bootstrap needed). Reports go to `data/midge/scans/`, signal archives to `data/midge/signals/`. Use `--dry-run` to skip Qdrant.
 13. **`python test_live_apis.py`** tests all 8 API connections individually.
