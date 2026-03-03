@@ -82,10 +82,10 @@ class TestMassiveClient:
     def test_parse_bars_invalid_entry_skipped(self):
         results = [
             {"T": "AAPL", "o": 150.0, "h": 155.0, "l": 149.0, "c": 154.0, "v": 1000000, "vw": 152.0, "n": 5000},
-            {"T": "BAD", "o": "not_a_number"},  # Invalid
+            {"T": "BAD", "o": "not_a_number"},  # Invalid — float() will raise, try/except skips
         ]
         bars = MassiveClient._parse_bars(results, "2026-03-02")
-        assert len(bars) == 2  # Both parse — float("not_a_number") would fail but get() defaults
+        assert len(bars) == 1  # Bad entry skipped
 
     def test_get_no_api_key(self, monkeypatch):
         monkeypatch.delenv("MASSIVE_API_KEY", raising=False)
@@ -350,8 +350,8 @@ class TestSensingHookWiring:
         assert "massive_snapshot" in _ABSENCE_SOURCE_DOMAINS
 
     def test_thompson_key_in_config(self):
-        from mae_core.market.intelligence.learning_config import DEFAULT_CONFIG
-        assert "massive_snapshot" in DEFAULT_CONFIG["source_reliability"]
+        from mae_core.market.intelligence.learning_config import LEARNING_CONFIG
+        assert "massive_snapshot" in LEARNING_CONFIG["source_reliability"]
 
     def test_market_clock_category(self):
         from mae_core.market.market_clock import MARKET_HOURS
