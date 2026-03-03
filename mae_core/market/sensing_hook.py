@@ -225,6 +225,7 @@ class MarketSensingHook:
         pattern_archetype_engine: Any = None,
         somatic_anticipation: Any = None,
         pattern_completion_engine: Any = None,
+        market_clock: Any = None,
     ):
         # API clients (all optional — graceful degradation)
         self._sec_client = sec_client
@@ -252,6 +253,7 @@ class MarketSensingHook:
         self._pattern_archetype_engine = pattern_archetype_engine
         self._somatic_anticipation = somatic_anticipation
         self._pattern_completion_engine = pattern_completion_engine
+        self._market_clock = market_clock
 
         # EventBus (injected by bootstrap for signal bridge)
         self._bus = None
@@ -449,7 +451,15 @@ class MarketSensingHook:
             return
 
         # Identify eligible sources (not already in-flight)
-        eligible = [s for s in SOURCE_ROTATION if s not in self._pending_futures]
+        # Filter by market clock availability (if available)
+        if self._market_clock is not None:
+            available = set(self._market_clock.get_available_sources())
+            eligible = [s for s in SOURCE_ROTATION if s not in self._pending_futures and s in available]
+            if not eligible:
+                # Fall back to always-available sources if nothing matches
+                eligible = [s for s in SOURCE_ROTATION if s not in self._pending_futures]
+        else:
+            eligible = [s for s in SOURCE_ROTATION if s not in self._pending_futures]
         if not eligible:
             return
 

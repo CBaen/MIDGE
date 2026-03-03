@@ -269,6 +269,15 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
     if getattr(ctx, "convergence_alerter", None) is not None and ctx.regime_classifier is not None:
         ctx.convergence_alerter._regime_classifier = ctx.regime_classifier
 
+    # Warm-start: restore signal buffer from prior session (WP-A persistence)
+    if getattr(ctx, "convergence_alerter", None) is not None:
+        try:
+            restored = ctx.convergence_alerter.load_signal_buffer()
+            if restored:
+                logger.info("Market: convergence alerter signal buffer restored from prior session (%d signals)", restored)
+        except Exception:
+            logger.debug("Market: convergence alerter signal buffer restore failed", exc_info=True)
+
     # --- Feedback loop (requires price_fetcher + thompson_sampler) ---
 
     try:
@@ -423,6 +432,22 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         _instantiate_gift_systems(ctx)
     except Exception:
         logger.debug("Market: gift systems instantiation failed", exc_info=True)
+
+    # Warm-start: restore somatic anticipation state (WP-A persistence)
+    if getattr(ctx, "somatic_anticipation", None) is not None:
+        try:
+            ctx.somatic_anticipation.load_state()
+            logger.info("Market: somatic anticipation state restored from prior session")
+        except Exception:
+            logger.debug("Market: somatic anticipation state restore failed", exc_info=True)
+
+    # Warm-start: restore deception detector state (WP-A persistence)
+    if getattr(ctx, "deception_detector", None) is not None:
+        try:
+            ctx.deception_detector.load_state()
+            logger.info("Market: deception detector state restored from prior session")
+        except Exception:
+            logger.debug("Market: deception detector state restore failed", exc_info=True)
 
     # --- StepTimer (performance metabolism monitoring) ---
     try:
