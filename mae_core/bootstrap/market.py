@@ -99,6 +99,8 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
         "somatic_anticipation", "pattern_completion_engine",
         # Layer 6
         "cot_client", "stocktwits_client", "vix_client", "trends_client",
+        # WP-B: Market Clock
+        "market_clock",
     ]
     active = sum(1 for a in market_attrs if getattr(ctx, a, None) is not None)
     holon_count = len([

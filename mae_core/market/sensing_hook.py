@@ -300,6 +300,18 @@ class MarketSensingHook:
         """Called every model step. Non-blocking."""
         self._step_counter += 1
 
+        # Log market session status periodically
+        if self._step_counter % 1000 == 0 and self._market_clock is not None:
+            try:
+                session = self._market_clock.get_session()
+                available = self._market_clock.get_available_sources()
+                logger.info(
+                    "Market clock: session=%s, %d/%d sources available",
+                    session, len(available), len(SOURCE_ROTATION),
+                )
+            except Exception:
+                logger.debug("Market clock session check failed", exc_info=True)
+
         # Collect results from previous async fetch (if ready)
         self._collect_results()
 

@@ -718,6 +718,16 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
     except Exception:
         logger.debug("Form8KSentimentAnalyzer construction failed", exc_info=True)
 
+    # --- Market clock for time-aware source selection (WP-B) ---
+    market_clock = None
+    try:
+        from mae_core.market.market_clock import MarketClock
+        market_clock = MarketClock()
+        ctx.market_clock = market_clock
+        logger.info("Market clock initialized (timezone: US/Eastern)")
+    except Exception:
+        logger.debug("Market clock initialization failed", exc_info=True)
+
     # --- Instantiate the sensing hook (with optional CorrelationTracker) ---
     try:
         hook = MarketSensingHook(
@@ -756,6 +766,7 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
             pattern_archetype_engine=getattr(ctx, "pattern_archetype_engine", None),
             somatic_anticipation=getattr(ctx, "somatic_anticipation", None),
             pattern_completion_engine=getattr(ctx, "pattern_completion_engine", None),
+            market_clock=market_clock,
         )
     except Exception:
         logger.warning("MarketSensingHook construction failed — agents will not sense market data", exc_info=True)
