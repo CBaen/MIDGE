@@ -212,6 +212,10 @@ class MarketSensingHook:
         order_flow_detector: Any = None,
         portfolio_tracker: Any = None,
         catalyst_calendar: Any = None,
+        deception_detector: Any = None,
+        consolidation_engine: Any = None,
+        fractal_resonance_detector: Any = None,
+        pattern_archetype_engine: Any = None,
     ):
         # API clients (all optional — graceful degradation)
         self._sec_client = sec_client
@@ -233,6 +237,10 @@ class MarketSensingHook:
         self._order_flow_detector = order_flow_detector
         self._portfolio_tracker = portfolio_tracker
         self._catalyst_calendar = catalyst_calendar
+        self._deception_detector = deception_detector
+        self._consolidation_engine = consolidation_engine
+        self._fractal_resonance_detector = fractal_resonance_detector
+        self._pattern_archetype_engine = pattern_archetype_engine
 
         # EventBus (injected by bootstrap for signal bridge)
         self._bus = None
@@ -263,6 +271,9 @@ class MarketSensingHook:
         self._step_counter = 0
         self._fetch_cadence = fetch_cadence
         self._outcome_cadence = outcome_cadence
+
+        # Recent signal domains per ticker (for archetype scanning)
+        self._recent_domains: Dict[str, set] = {}
 
         # Stats
         self._total_signals_fed = 0
