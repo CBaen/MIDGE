@@ -30,34 +30,36 @@ class MockPriceBar:
     close: float
 
 
-def _make_bullish_bars(n: int = 30, start: float = 100.0) -> List[MockPriceBar]:
-    """Create a series of bars with bullish market structure (HH + HL)."""
+def _make_bullish_bars(n: int = 40, start: float = 100.0) -> List[MockPriceBar]:
+    """Create bars with bullish market structure (HH + HL).
+
+    Large oscillation (±15) with gentle upward drift (0.3/bar).
+    The oscillation dominates so swing points are clearly detected,
+    while the drift ensures each successive peak/trough is higher
+    than the prior one (HH + HL = bullish structure).
+    """
+    import math
     bars = []
-    price = start
     for i in range(n):
-        # Uptrend: each bar slightly higher than last
-        swing = 2.0 * (1 + (i % 5) * 0.3)
-        o = price
-        h = price + swing
-        l = price - swing * 0.3
-        c = price + swing * 0.7
-        bars.append(MockPriceBar(open=o, high=h, low=l, close=c))
-        price += 1.5  # Trend up
+        cycle = math.sin(i * math.pi / 4) * 15.0  # Large 8-bar oscillation
+        drift = i * 0.3  # Gentle upward drift
+        mid = start + drift + cycle
+        bars.append(MockPriceBar(open=mid - 1, high=mid + 3, low=mid - 3, close=mid + 1))
     return bars
 
 
-def _make_bearish_bars(n: int = 30, start: float = 200.0) -> List[MockPriceBar]:
-    """Create a series of bars with bearish market structure (LL + LH)."""
+def _make_bearish_bars(n: int = 40, start: float = 200.0) -> List[MockPriceBar]:
+    """Create bars with bearish market structure (LL + LH).
+
+    Large oscillation with gentle downward drift.
+    """
+    import math
     bars = []
-    price = start
     for i in range(n):
-        swing = 2.0 * (1 + (i % 5) * 0.3)
-        o = price
-        h = price + swing * 0.3
-        l = price - swing
-        c = price - swing * 0.7
-        bars.append(MockPriceBar(open=o, high=h, low=l, close=c))
-        price -= 1.5  # Trend down
+        cycle = math.sin(i * math.pi / 4) * 15.0
+        drift = -i * 0.3  # Gentle downward drift
+        mid = start + drift + cycle
+        bars.append(MockPriceBar(open=mid + 1, high=mid + 3, low=mid - 3, close=mid - 1))
     return bars
 
 
