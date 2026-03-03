@@ -297,7 +297,6 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
             logger.debug("Market: convergence alerter signal buffer restore failed", exc_info=True)
 
     # --- Feedback loop (requires price_fetcher + thompson_sampler) ---
-
     try:
         from mae_core.market.outcome_tracker import OutcomeTracker
         ctx.outcome_tracker = OutcomeTracker(
@@ -311,8 +310,6 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         failures += 1
 
     # --- Phase 4: Signal archive, lag-correlation, calibration, Kelly ---
-    # (placed after intelligence layer so thompson_sampler is already set)
-
     try:
         from mae_core.market.intelligence.signal_archive_reader import SignalArchiveReader
         ctx.signal_archive_reader = SignalArchiveReader()

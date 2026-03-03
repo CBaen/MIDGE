@@ -95,7 +95,7 @@ class FinnhubWebSocket:
         api_key: Optional[str] = None,
         tickers: Optional[List[str]] = None,
     ) -> None:
-        self._api_key: str = api_key or os.environ.get("MAE_FINNHUB_API_KEY", "")
+        self._api_key: str = api_key if api_key is not None else os.environ.get("MAE_FINNHUB_API_KEY", "")
         self._tickers: List[str] = list(tickers or DEFAULT_TICKERS)
 
         self._ws = None
