@@ -468,6 +468,34 @@ def fetch_finnhub_extras(
     return signals
 
 
+def fetch_fractal_resonance(
+    fractal_detector: Any,
+    watchlist: dict,
+    converter: Callable,
+) -> list:
+    """Fetch fractal resonance signals — multi-timeframe structure alignment.
+
+    Calls FractalResonanceDetector.detect_resonance() for each ticker.
+    Cadence 200 in SOURCE_ROTATION (weekly refresh rate).
+    """
+    if fractal_detector is None:
+        return []
+
+    signals = []
+    tickers = watchlist.get("tickers", [])[:10]
+    for ticker in tickers:
+        try:
+            result = fractal_detector.detect_resonance(ticker)
+            if result is not None and result.resonance_score > 0.3:
+                try:
+                    signals.append(converter(result))
+                except Exception:
+                    pass
+        except Exception as e:
+            logger.debug("Fractal resonance fetch failed for %s: %s", ticker, e)
+    return signals
+
+
 def fetch_order_flow(
     order_flow_detector: Any,
     watchlist: dict,

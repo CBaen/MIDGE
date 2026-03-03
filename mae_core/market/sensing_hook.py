@@ -16,7 +16,7 @@ convergence_alerter because collection happens in the main thread.
 
 Decomposed into three files:
   sensing_hook.py      — this file: MarketSensingHook class + constants
-  sensing_fetchers.py  — 19 standalone fetch functions
+  sensing_fetchers.py  — 21 standalone fetch functions
   sensing_lifecycle.py — enrich_signal, store_signals, load_watchlist
 """
 
@@ -53,6 +53,7 @@ from mae_core.market.sensing_fetchers import (
     fetch_trends,
     fetch_finnhub_extras,
     fetch_order_flow,
+    fetch_fractal_resonance,
 )
 from mae_core.market.sensing_lifecycle import (
     enrich_signal,
@@ -94,6 +95,9 @@ TIER_ROUTING = {
     "ta_candle": "tactical",
     # Ten Gifts: Wave 1
     "order_flow": "tactical",
+    # Ten Gifts: Wave 2
+    "fractal_resonance": "strategic",
+    "archetype_match": "strategic",
     # New sources (Layer 6)
     "cot_positioning": "strategic",
     "stocktwits_sentiment": "thematic",
@@ -104,7 +108,7 @@ TIER_ROUTING = {
     "finnhub_earnings_calendar": "tactical",
 }
 
-# Source names for rotation — 19 sources, full cycle every 950 steps
+# Source names for rotation — 21 sources, full cycle every 1050 steps
 SOURCE_ROTATION = [
     "sec_form4",
     "sec_form8k",
@@ -122,6 +126,8 @@ SOURCE_ROTATION = [
     "ta_indicators",
     # Ten Gifts: Wave 1
     "order_flow",
+    # Ten Gifts: Wave 2
+    "fractal_resonance",
     # New sources (Layer 6)
     "cot_positioning",
     "stocktwits",
@@ -148,6 +154,7 @@ _ROTATION_TO_THOMPSON = {
     "session_sweep": "session_sweep",
     "ta_indicators": "ta_rsi",
     "order_flow": "order_flow",
+    "fractal_resonance": "fractal_resonance",
     "cot_positioning": "cot_positioning",
     "stocktwits": "stocktwits_sentiment",
     "vix_structure": "vix_term_structure",
@@ -532,6 +539,30 @@ class MarketSensingHook:
                 except Exception:
                     logger.debug("Failed to feed signal to %s alerter", tier, exc_info=True)
 
+        # Track per-ticker signal domains for archetype scanning (Gift 8)
+        for sig in signals:
+            sym = getattr(sig, "symbol", "") or sig.metadata.get("symbol", "")
+            if sym:
+                if sym not in self._recent_domains:
+                    self._recent_domains[sym] = set()
+                self._recent_domains[sym].add(sig.domain)
+
+        # Feed deception detector (Gift 5) — track signal patterns for manipulation detection
+        if self._deception_detector is not None:
+            for sig in signals:
+                try:
+                    sym = getattr(sig, "symbol", "") or sig.metadata.get("symbol", "")
+                    if sym:
+                        self._deception_detector.record_signal(
+                            ticker=sym,
+                            domain=sig.domain,
+                            direction=sig.direction,
+                            strength=sig.strength,
+                            timestamp=sig.timestamp,
+                        )
+                except Exception:
+                    logger.debug("Deception detector record failed", exc_info=True)
+
         self._total_signals_fed += len(signals)
         logger.info(
             "Market sensing: fed %d signals from [%s] (total: %d)",
@@ -622,6 +653,7 @@ class MarketSensingHook:
             from_economic_event,
             from_analyst_recommendation,
             from_order_flow,
+            from_fractal_resonance,
         )
 
         signals = []
@@ -687,6 +719,11 @@ class MarketSensingHook:
 
         elif source_name == "order_flow":
             signals = fetch_order_flow(self._order_flow_detector, self._watchlist, from_order_flow)
+
+        elif source_name == "fractal_resonance":
+            signals = fetch_fractal_resonance(
+                self._fractal_resonance_detector, self._watchlist, from_fractal_resonance
+            )
 
         # Enrich in background thread (velocity, filing-time, Ollama sentiment)
         # Moved from _collect_results() so Ollama's 15s timeout doesn't block

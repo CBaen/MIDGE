@@ -82,6 +82,48 @@ def from_order_flow(signal) -> MarketSignal:
     )
 
 
+def from_fractal_resonance(result) -> MarketSignal:
+    """Convert a FractalResonanceResult to a MarketSignal.
+
+    Multi-timeframe structure alignment signal. Slow decay (fractal signals
+    persist over weeks). Outcome window 14 days (weekly-scale patterns).
+    """
+    signal_id = (
+        f"fractal_resonance:{result.ticker}:{result.dominant_direction}:"
+        f"{result.aligned_timeframes}tf"
+    )
+
+    return MarketSignal(
+        signal_id=signal_id,
+        source="fractal_resonance",
+        symbol=result.ticker,
+        asset_class="stock",
+        domain="technical",
+        direction=result.dominant_direction,
+        strength=result.resonance_score,
+        confidence=0.55,  # Slightly optimistic prior
+        decay_rate=0.05,  # Slow decay — multi-timeframe signals persist
+        timestamp=datetime.now(),
+        received_at=datetime.now(),
+        outcome_symbol=result.ticker,
+        outcome_window_days=14,
+        raw_id=signal_id,
+        raw_type="FractalResonanceResult",
+        metadata={
+            "aligned_timeframes": result.aligned_timeframes,
+            "resonance_score": result.resonance_score,
+            "patterns": {
+                tf: {
+                    "structure": p.structure,
+                    "pattern_type": p.pattern_type,
+                    "strength": p.strength,
+                }
+                for tf, p in result.patterns_by_timeframe.items()
+            },
+        },
+    )
+
+
 def from_session_sweep(sweep) -> MarketSignal:
     """Convert a SessionSweepSignal to a MarketSignal.
 
