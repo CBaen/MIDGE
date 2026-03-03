@@ -16,11 +16,14 @@ focused sensing — that makes formal convergence more likely to be captured.
 
 from __future__ import annotations
 
+import json
 import logging
+import os
 import time
 from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Dict, List, Optional, Set
 
 logger = logging.getLogger(__name__)
@@ -28,6 +31,9 @@ logger = logging.getLogger(__name__)
 # Default anticipation parameters
 _DEFAULT_THRESHOLD = 2  # domains before somatic response fires
 _DEFAULT_WINDOW_HOURS = 48.0  # signals older than this are forgotten
+
+# Persistence path — resolves to data/market/ at the project root
+_STATE_DIR = Path(__file__).resolve().parents[3] / "data" / "market"
 
 
 @dataclass
