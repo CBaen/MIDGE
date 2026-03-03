@@ -61,7 +61,7 @@ class TestSignalReexports:
 
         exported = [n for n in dir(sig) if n.startswith("from_")]
         assert len(exported) == 26, (
-            f"Expected 25 from_* converters, found {len(exported)}: {exported}"
+            f"Expected 26 from_* converters, found {len(exported)}: {exported}"
         )
 
 
@@ -87,8 +87,8 @@ class TestSignalAdapters:
         import mae_core.market.signal_adapters as sa
 
         assert hasattr(sa, "__all__"), "signal_adapters __init__ must define __all__"
-        assert len(sa.__all__) == 25, (
-            f"Expected 25 entries in __all__, found {len(sa.__all__)}"
+        assert len(sa.__all__) == 26, (
+            f"Expected 26 entries in __all__, found {len(sa.__all__)}"
         )
 
     def test_regulatory_adapters(self):
