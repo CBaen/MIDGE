@@ -71,6 +71,15 @@ def _register_market_somatic(ctx: SimpleNamespace) -> None:
         "stocktwits_client": ("StockTwitsClient", []),
         "vix_client": ("VIXClient", []),
         "trends_client": ("TrendsClient", []),
+        # Always-On Wave 2+3: Real-Time + Data Enrichment
+        "coingecko_client": ("CoinGeckoClient", []),
+        "coincap_client": ("CoinCapClient", []),
+        "openinsider_client": ("OpenInsiderClient", []),
+        "edgar_enhanced_client": ("EdgarEnhancedClient", []),
+        "finviz_client": ("FinVizClient", []),
+        "economic_calendar_client": ("EconomicCalendarClient", []),
+        "finnhub_websocket": ("FinnhubWebSocket", []),
+        "massive_client": ("MassiveClient", []),
     }
 
     for sys_id, (desc, deps) in market_systems.items():
@@ -113,6 +122,10 @@ def _register_market_holons(ctx: SimpleNamespace) -> None:
         "somatic_anticipation", "pattern_completion_engine",
         # Layer 6
         "cot_client", "stocktwits_client", "vix_client", "trends_client",
+        # Always-On Wave 2+3
+        "coingecko_client", "coincap_client", "openinsider_client",
+        "edgar_enhanced_client", "finviz_client", "economic_calendar_client",
+        "finnhub_websocket", "massive_client",
     ]
 
     registered = 0
@@ -193,6 +206,10 @@ def _register_market_fractal(ctx: SimpleNamespace) -> None:
         "somatic_anticipation", "pattern_completion_engine",
         # Layer 6
         "cot_client", "stocktwits_client", "vix_client", "trends_client",
+        # Always-On Wave 2+3
+        "coingecko_client", "coincap_client", "openinsider_client",
+        "edgar_enhanced_client", "finviz_client", "economic_calendar_client",
+        "finnhub_websocket", "massive_client",
     ]
     for sys_id in extras:
         if ctx.holon_registry.get_entry(sys_id) is not None:
