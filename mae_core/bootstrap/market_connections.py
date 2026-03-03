@@ -1,7 +1,7 @@
 """Bootstrap Layer 33d: Market triadic connections.
 
-One job: register all 97 triadic connections for the market intelligence organ
-(Groups 14-30). No bare dyads — every A<->B has witness C.
+One job: register all 103 triadic connections for the market intelligence organ
+(Groups 14-32). No bare dyads — every A<->B has witness C.
 
 Groups:
   14 - Market K3 subsystems + EventBus pub/sub + TA indicators
@@ -17,6 +17,12 @@ Groups:
   24 - Order Flow Detector (Gift 2: intraday volume imbalance)
   25 - Catalyst Calendar (Gift 3: timing context for signals)
   26 - Cross-Asset Confirmer (Gift 4: cross-asset regime confirmation)
+  27 - Deception Detector (Gift 5: manipulation immune response)
+  28 - Consolidation Engine (Gift 6: sleep cycle / memory pruning)
+  29 - Fractal Resonance (Gift 7: multi-timeframe structure alignment)
+  30 - Pattern Archetypes (Gift 8: canonical pattern templates)
+  31 - Somatic Anticipation (Gift 9: pre-conscious pattern response)
+  32 - Pattern Completion Engine (Gift 10: active pattern seeking)
 """
 
 from __future__ import annotations
@@ -398,4 +404,26 @@ def _register_market_connections(ctx: SimpleNamespace) -> None:
         witnesses=["convergence_alerter", "auditor"],
         description="Thompson learns archetype match signal reliability")
 
-    logger.info("Layer 33d - Market connections: 97 triadic connections registered (Group 14-30)")
+    # --- Group 31: Somatic Anticipation (Gift 9 — pre-conscious pattern response) ---
+    reg("somatic_anticipation", "convergence_alerter", dr,
+        witnesses=["thompson_sampler", "auditor"],
+        description="Somatic anticipation fires before convergence — preparatory state")
+    reg("somatic_anticipation", "event_bus", dr,
+        witnesses=["convergence_alerter", "auditor"],
+        description="Somatic anticipation publishes hormone release events")
+    reg("somatic_anticipation", "correlation_tracker", dr,
+        witnesses=["convergence_alerter", "auditor"],
+        description="Somatic anticipation tracks cross-domain signal accumulation")
+
+    # --- Group 32: Pattern Completion Engine (Gift 10 — active pattern seeking) ---
+    reg("pattern_completion_engine", "pattern_archetype_engine", dr,
+        witnesses=["convergence_alerter", "auditor"],
+        description="Completion engine reads partial matches from archetype engine")
+    reg("pattern_completion_engine", "convergence_alerter", dr,
+        witnesses=["pattern_archetype_engine", "auditor"],
+        description="Completed patterns boost convergence confidence (+0.15)")
+    reg("pattern_completion_engine", "event_bus", dr,
+        witnesses=["convergence_alerter", "auditor"],
+        description="Completion events published for hypothesis engine consumption")
+
+    logger.info("Layer 33d - Market connections: 103 triadic connections registered (Group 14-32)")

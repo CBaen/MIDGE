@@ -63,6 +63,9 @@ def _register_market_somatic(ctx: SimpleNamespace) -> None:
         "consolidation_engine": ("ConsolidationEngine", ["thompson_sampler", "hypothesis_registry"]),
         "fractal_resonance_detector": ("FractalResonanceDetector", ["price_fetcher"]),
         "pattern_archetype_engine": ("PatternArchetypeEngine", ["price_fetcher"]),
+        # Ten Gifts: Wave 3
+        "somatic_anticipation": ("SomaticAnticipation", []),
+        "pattern_completion_engine": ("PatternCompletionEngine", ["pattern_archetype_engine"]),
         # Layer 6 clients
         "cot_client": ("COTClient", []),
         "stocktwits_client": ("StockTwitsClient", []),
@@ -106,6 +109,8 @@ def _register_market_holons(ctx: SimpleNamespace) -> None:
         # Ten Gifts: Wave 2
         "deception_detector", "consolidation_engine",
         "fractal_resonance_detector", "pattern_archetype_engine",
+        # Ten Gifts: Wave 3
+        "somatic_anticipation", "pattern_completion_engine",
         # Layer 6
         "cot_client", "stocktwits_client", "vix_client", "trends_client",
     ]
@@ -184,6 +189,8 @@ def _register_market_fractal(ctx: SimpleNamespace) -> None:
         # Ten Gifts: Wave 2
         "deception_detector", "consolidation_engine",
         "fractal_resonance_detector", "pattern_archetype_engine",
+        # Ten Gifts: Wave 3
+        "somatic_anticipation", "pattern_completion_engine",
         # Layer 6
         "cot_client", "stocktwits_client", "vix_client", "trends_client",
     ]
