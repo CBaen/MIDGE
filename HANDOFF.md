@@ -451,9 +451,9 @@ Fixed 3 bugs found in live scan output, defined data schema:
 
 ## Current State
 
-- **3,810 tests pass, 0 failures** (Wave 1 adds 98 tests: test_signal_persistence.py 30, test_market_clock.py 42, test_daemon_mode.py 26)
-- **137 systems** (92 core + 45 market), **155 holons**, **422 connections** (217 core + 47 fractal + 55 bootstrap + 103 market)
-- **80 market files** in `mae_core/market/` (decomposed: signal_adapters/ subpackage, sensing_fetchers.py, sensing_lifecycle.py, + 10 gift modules + market_clock.py + daemon_monitor.py)
+- **4,148 tests pass, 0 failures** (Waves 2+3 add 338 tests: 215 client unit + 123 integration)
+- **144 systems** (92 core + 52 market), **155 holons**, **422 connections** (217 core + 47 fractal + 55 bootstrap + 103 market)
+- **88 market files** in `mae_core/market/` (28 API + 12 edge + 27 intelligence + 8 signal_adapters + 13 root)
 - **10 mae-core infrastructure fixes ported** (VDN epsilon-greedy, EventBus injection, tie-breaking, microbiome feed-before-step, EpisodicMemory stats, 6 channel registrations, SomaticMap names, agent.shared normalization, auto-healer starvation fix, Phi forced measurement)
 - **Bootstrap sub-modules** — `market.py` orchestrator (123 lines) + 5 sub-modules (market_systems, market_registration, market_connections, market_hooks, market_agents)
 - **33-layer bootstrap** runs cleanly (Layers 33a-33i)
