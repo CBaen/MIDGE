@@ -1014,7 +1014,14 @@ def main() -> None:
     parser.add_argument("--pace", type=float, default=1.0, help="Seconds per step in daemon mode (0 = fast, default 1.0)")
     args = parser.parse_args()
 
-    if args.continuous:
+    if args.daemon:
+        run_daemon(
+            num_agents=args.agents,
+            steps_per_round=args.steps,
+            cycle_length=args.cycle,
+            pace=args.pace,
+        )
+    elif args.continuous:
         import time as _time_cont
         round_num = 0
         logger.info("MIDGE continuous mode — running indefinitely. Ctrl-C to stop.")
