@@ -25,6 +25,7 @@ def _instantiate_wave2_3_clients(ctx: SimpleNamespace) -> None:
         ("finviz_client", "mae_core.market.apis.finviz_client", "FinVizClient"),
         ("economic_calendar_client", "mae_core.market.apis.economic_calendar_client", "EconomicCalendarClient"),
         ("finnhub_websocket", "mae_core.market.apis.finnhub_websocket", "FinnhubWebSocket"),
+        ("massive_client", "mae_core.market.apis.massive_client", "MassiveClient"),
     ]:
         try:
             setattr(ctx, attr, getattr(importlib.import_module(mod_path), cls)())

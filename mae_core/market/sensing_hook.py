@@ -162,6 +162,8 @@ SOURCE_ROTATION = [
     "institutional_13f",
     "finviz",
     "economic_calendar",
+    # Massive/Polygon.io
+    "massive_snapshot",
 ]
 
 # Map rotation source names → Thompson distribution keys for guided selection.
@@ -194,6 +196,7 @@ _ROTATION_TO_THOMPSON = {
     "institutional_13f": "institutional_13f",
     "finviz": "finviz_unusual_volume",
     "economic_calendar": "finnhub_economic",  # reuse existing key
+    "massive_snapshot": "massive_snapshot",
 }
 
 # Map absence source names back to convergence domains
@@ -208,6 +211,7 @@ _ABSENCE_SOURCE_DOMAINS = {
     "openinsider_purchase": "insider", "institutional_13f": "institutional",
     "activist_13d": "institutional",
     "finviz_unusual_volume": "technical", "finviz_short_squeeze": "institutional",
+    "massive_snapshot": "technical",
 }
 
 
@@ -271,6 +275,7 @@ class MarketSensingHook:
         finviz_client: Any = None,
         economic_calendar_client: Any = None,
         finnhub_websocket: Any = None,
+        massive_client: Any = None,
     ):
         # API clients (all optional — graceful degradation)
         self._sec_client = sec_client
@@ -306,6 +311,7 @@ class MarketSensingHook:
         self._finviz_client = finviz_client
         self._economic_calendar_client = economic_calendar_client
         self._finnhub_websocket = finnhub_websocket
+        self._massive_client = massive_client
 
         # EventBus (injected by bootstrap for signal bridge)
         self._bus = None
@@ -954,6 +960,10 @@ class MarketSensingHook:
 
         elif source_name == "economic_calendar":
             signals = fetch_economic_calendar(self._economic_calendar_client, from_suppression_event)
+
+        elif source_name == "massive_snapshot":
+            from mae_core.market.signal_adapters.wave2_3 import from_massive_snapshot
+            signals = fetch_massive_snapshot(self._massive_client, self._watchlist, from_massive_snapshot)
 
         # Enrich in background thread (velocity, filing-time, Ollama sentiment)
         # Moved from _collect_results() so Ollama's 15s timeout doesn't block
