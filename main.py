@@ -669,6 +669,31 @@ def run(
             except Exception:
                 logger.debug("StepTimer save failed", exc_info=True)
 
+        # Signal persistence — save convergence state across restarts (WP-A)
+        convergence_alerter = systems.get("convergence_alerter")
+        if convergence_alerter is not None and hasattr(convergence_alerter, "save_signal_buffer"):
+            try:
+                convergence_alerter.save_signal_buffer()
+                logger.debug("Shutdown flush: convergence signal buffer saved")
+            except Exception:
+                logger.debug("Shutdown flush: convergence signal buffer save failed", exc_info=True)
+
+        somatic_anticipation = systems.get("somatic_anticipation")
+        if somatic_anticipation is not None and hasattr(somatic_anticipation, "save_state"):
+            try:
+                somatic_anticipation.save_state()
+                logger.debug("Shutdown flush: somatic anticipation state saved")
+            except Exception:
+                logger.debug("Shutdown flush: somatic anticipation state save failed", exc_info=True)
+
+        deception_detector = systems.get("deception_detector")
+        if deception_detector is not None and hasattr(deception_detector, "save_state"):
+            try:
+                deception_detector.save_state()
+                logger.debug("Shutdown flush: deception detector state saved")
+            except Exception:
+                logger.debug("Shutdown flush: deception detector state save failed", exc_info=True)
+
         # Generate marathon post-mortem report
         try:
             from marathon_report import generate_report
