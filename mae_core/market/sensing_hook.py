@@ -856,6 +856,13 @@ class MarketSensingHook:
             from_analyst_recommendation,
             from_order_flow,
             from_fractal_resonance,
+            from_crypto_signal,
+            from_openinsider,
+            from_13f_holding,
+            from_activist_filing,
+            from_finviz_unusual_volume,
+            from_finviz_short_squeeze,
+            from_suppression_event,
         )
 
         signals = []
@@ -926,6 +933,24 @@ class MarketSensingHook:
             signals = fetch_fractal_resonance(
                 self._fractal_resonance_detector, self._watchlist, from_fractal_resonance
             )
+
+        elif source_name == "crypto_prices":
+            signals = fetch_crypto_prices(self._coingecko_client, from_crypto_signal)
+
+        elif source_name == "crypto_exchange":
+            signals = fetch_crypto_exchange(self._coincap_client, from_crypto_signal)
+
+        elif source_name == "openinsider":
+            signals = fetch_openinsider(self._openinsider_client, from_openinsider)
+
+        elif source_name == "institutional_13f":
+            signals = fetch_13f_holdings(self._edgar_enhanced_client, from_13f_holding, from_activist_filing)
+
+        elif source_name == "finviz":
+            signals = fetch_finviz(self._finviz_client, from_finviz_unusual_volume, from_finviz_short_squeeze)
+
+        elif source_name == "economic_calendar":
+            signals = fetch_economic_calendar(self._economic_calendar_client, from_suppression_event)
 
         # Enrich in background thread (velocity, filing-time, Ollama sentiment)
         # Moved from _collect_results() so Ollama's 15s timeout doesn't block

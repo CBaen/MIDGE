@@ -164,6 +164,57 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         logger.debug("Market: trends_client failed to construct", exc_info=True)
         ctx.trends_client = None
 
+    # --- Wave 2+3: Real-Time + Crypto + Data Enrichment (Always-On MIDGE) ---
+
+    try:
+        from mae_core.market.apis.coingecko_client import CoinGeckoClient
+        ctx.coingecko_client = CoinGeckoClient()
+    except Exception:
+        logger.debug("Market: coingecko_client failed to construct", exc_info=True)
+        ctx.coingecko_client = None
+
+    try:
+        from mae_core.market.apis.coincap_client import CoinCapClient
+        ctx.coincap_client = CoinCapClient()
+    except Exception:
+        logger.debug("Market: coincap_client failed to construct", exc_info=True)
+        ctx.coincap_client = None
+
+    try:
+        from mae_core.market.apis.openinsider_client import OpenInsiderClient
+        ctx.openinsider_client = OpenInsiderClient()
+    except Exception:
+        logger.debug("Market: openinsider_client failed to construct", exc_info=True)
+        ctx.openinsider_client = None
+
+    try:
+        from mae_core.market.apis.edgar_enhanced_client import EdgarEnhancedClient
+        ctx.edgar_enhanced_client = EdgarEnhancedClient()
+    except Exception:
+        logger.debug("Market: edgar_enhanced_client failed to construct", exc_info=True)
+        ctx.edgar_enhanced_client = None
+
+    try:
+        from mae_core.market.apis.finviz_client import FinVizClient
+        ctx.finviz_client = FinVizClient()
+    except Exception:
+        logger.debug("Market: finviz_client failed to construct", exc_info=True)
+        ctx.finviz_client = None
+
+    try:
+        from mae_core.market.apis.economic_calendar_client import EconomicCalendarClient
+        ctx.economic_calendar_client = EconomicCalendarClient()
+    except Exception:
+        logger.debug("Market: economic_calendar_client failed to construct", exc_info=True)
+        ctx.economic_calendar_client = None
+
+    try:
+        from mae_core.market.apis.finnhub_websocket import FinnhubWebSocket
+        ctx.finnhub_websocket = FinnhubWebSocket()
+    except Exception:
+        logger.debug("Market: finnhub_websocket failed to construct", exc_info=True)
+        ctx.finnhub_websocket = None
+
     # --- Edge detectors ---
 
     try:
