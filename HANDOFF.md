@@ -2,6 +2,28 @@
 
 ## What Happened
 
+### Ten Gifts — MIDGE's Sensory Evolution (2026-03-02)
+
+Ten new market intelligence systems across three waves. **136 systems (92 core + 44 market), 3,663 tests, 422 connections (103 market, Groups 14-32), 155 holons, 78 market files.**
+
+**Wave 1 (Foundation — Gifts 1-4):**
+- **Gift 1 Portfolio Tracker** — `portfolio_tracker.py`: Paper trade position tracking, mark-to-market, exit signals (stop-loss/take-profit/time-decay). Feeds exit signals to convergence pipeline. `ExitSignal` → domain="portfolio".
+- **Gift 2 Order Flow** — `order_flow_detector.py`: Volume imbalance detection (2σ threshold). 5-min intraday candles, buying/selling pressure. Thompson key `order_flow` prior 0.50, decay 0.30.
+- **Gift 3 Catalyst Calendar** — `catalyst_calendar.py`: Earnings + FOMC dates. Catalyst modifier (0.5-1.5x) applied in convergence alerter. Insider + catalyst < 14d = 1.5x.
+- **Gift 4 Cross-Asset** — `cross_asset_confirmer.py`: Pairwise confirmation (SPY↔QQQ, GC=F↔DXY, etc.). Score -1.0 to 1.0 applied as confidence multiplier 0.4x-1.2x.
+
+**Wave 2 (Intelligence — Gifts 5-8):**
+- **Gift 5 Deception Detector** — `deception_detector.py`: Pump-and-dump, retail trap, wash trading detection. Signals with deception_prob > 0.5 get confidence multiplied by (1-prob). EventBus `CH_DECEPTION_DETECTED`.
+- **Gift 6 Consolidation Engine** — `consolidation_engine.py`: Memory consolidation — prunes weak Thompson dists, archives stale hypotheses, compresses discovery log. Cadence 5000. EventBus `CH_CONSOLIDATION_COMPLETE`.
+- **Gift 7 Fractal Resonance** — `fractal_resonance.py`: Multi-timeframe pattern detection (daily/weekly/monthly). Thompson key `fractal_resonance` prior 0.55, decay 0.05. 21 sources in rotation.
+- **Gift 8 Pattern Archetypes** — `pattern_archetypes.py`: 8 canonical patterns (accumulation, distribution, squeeze, capitulation, momentum ignition, failed breakout, sector rotation, smart money divergence). Match score > 0.7 → +0.10 confidence. Thompson key `archetype_match` prior 0.55.
+
+**Wave 3 (Synthesis — Gifts 9-10):**
+- **Gift 9 Somatic Anticipation** — `somatic_anticipation.py`: Pre-conscious pattern response. When 2+ signal domains activate on same ticker within 48h, releases hormones (DOPAMINE for aligned, CORTISOL for conflicting). Cadence 25 (fires before convergence at 50).
+- **Gift 10 Pattern Completion** — `pattern_completion.py`: Active pattern seeking from partial archetype matches. Creates hunts for missing signals. Completion events get +0.15 confidence boost. 72h TTL, max 5 concurrent hunts.
+
+**Bootstrap wiring:** `market_gifts.py` extracted (500-line cap). Groups 23-32 (30 connections). Two-phase init for convergence alerter attributes. Sensing hook: somatic at cadence 25, archetype scan + completion review at cadence 100.
+
 ### Completing the Circle — 3 Cognitive Dimensions Added (2026-03-02)
 
 The Pattern Recognition Gift taught MIDGE to see better. This teaches her to **reason about contradictions** (causal bridge), **notice silence** (absence detection), and **sense relationships in motion** (correlation tracking).
@@ -24,7 +46,7 @@ The Pattern Recognition Gift taught MIDGE to see better. This teaches her to **r
 - `learning_config.py`: `absence_signal` Thompson prior 0.50, `absence` decay rate 0.15.
 - 3 Group 22 triadic connections. 33 new tests in `test_absence_monitor.py`.
 
-**Totals:** 126 systems (92 core + 34 market), 392 connections (73 market), 145 holons, 68 market files.
+**Totals:** 136 systems (92 core + 44 market), 422 connections (103 market), 155 holons, 78 market files.
 
 ### Pattern Recognition Gift — 6 Capabilities Built (2026-03-02)
 
@@ -375,9 +397,9 @@ Fixed 3 bugs found in live scan output, defined data schema:
 
 ## Current State
 
-- **3,429 tests pass, 0 failures** (78 tests across correlation tracker wiring, causal bridge, absence monitor — including 12 audit-gap tests)
-- **126 systems** (92 core + 34 market), **145 holons**, **392 connections** (217 core + 47 fractal + 55 bootstrap + 73 market)
-- **68 market files** in `mae_core/market/` (decomposed: signal_adapters/ subpackage, sensing_fetchers.py, sensing_lifecycle.py)
+- **3,663 tests pass, 0 failures** (including Ten Gifts: ~265 new tests across 10 gift test files)
+- **136 systems** (92 core + 44 market), **155 holons**, **422 connections** (217 core + 47 fractal + 55 bootstrap + 103 market)
+- **78 market files** in `mae_core/market/` (decomposed: signal_adapters/ subpackage, sensing_fetchers.py, sensing_lifecycle.py, + 10 gift modules)
 - **10 mae-core infrastructure fixes ported** (VDN epsilon-greedy, EventBus injection, tie-breaking, microbiome feed-before-step, EpisodicMemory stats, 6 channel registrations, SomaticMap names, agent.shared normalization, auto-healer starvation fix, Phi forced measurement)
 - **Bootstrap sub-modules** — `market.py` orchestrator (123 lines) + 5 sub-modules (market_systems, market_registration, market_connections, market_hooks, market_agents)
 - **33-layer bootstrap** runs cleanly (Layers 33a-33i)
@@ -455,7 +477,7 @@ All 17 planned items from the Layer 5 roadmap are done. Roadmap history at `C:\U
 
 Welcome. MIDGE is Mae differentiated for financial markets. Here is what you need to know:
 
-1. **MIDGE = mae-core + market intelligence.** 126 systems, same 8 laws, 33-layer bootstrap. Market organ is Layer 33 (33a-33i).
+1. **MIDGE = mae-core + market intelligence.** 136 systems, same 8 laws, 33-layer bootstrap. Market organ is Layer 33 (33a-33i).
 2. **Mae-core is upstream.** Changes to Mae's genome should be made in `C:\Users\baenb\projects\mae-core` and pulled here. Market-specific changes stay here.
 3. **Agents actively sense the market.** MarketSensingHook (Layer 33h) fetches data on cadence and feeds convergence_alerter. Three agents are differentiated into market roles (Layer 33i). Endocrine coupling and market advisory carry signals to all agents.
 4. **The crown jewel is `convergence_alerter.py`** — synthesizes signals across ALL domains (insider + congressional + contract + hiring + velocity) into actionable alerts. Now with per-ticker and multi-timeframe convergence.
