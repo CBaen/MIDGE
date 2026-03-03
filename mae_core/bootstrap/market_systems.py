@@ -110,7 +110,6 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         failures += 1
 
     # --- Phase 2 API clients (new free sources) ---
-
     try:
         from mae_core.market.apis.senate_stock_watcher import SenateStockWatcherClient
         ctx.senate_stock_watcher = SenateStockWatcherClient(provider=provider)
@@ -186,7 +185,6 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
     _instantiate_wave2_3_clients(ctx)
 
     # --- Edge detectors ---
-
     try:
         from mae_core.market.edge.cluster_detector import ClusterDetector
         ctx.cluster_detector = ClusterDetector(qdrant_url=qdrant_url)
@@ -237,7 +235,6 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         failures += 1
 
     # --- Intelligence layer ---
-
     try:
         from mae_core.market.intelligence.thompson_sampler import ThompsonSampler
         ctx.thompson_sampler = ThompsonSampler()
@@ -277,7 +274,6 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         failures += 1
 
     # --- Regime classifier (requires price_fetcher) ---
-
     try:
         from mae_core.market.intelligence.regime_classifier import RegimeClassifier
         ctx.regime_classifier = RegimeClassifier(price_fetcher=ctx.price_fetcher)
