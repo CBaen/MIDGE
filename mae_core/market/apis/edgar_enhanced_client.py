@@ -52,6 +52,22 @@ class ActivistFiling:
     purpose: str  # Purpose of transaction (if extractable)
 
 
+def _extract_hits(data: dict) -> list:
+    """Extract the hits list from an EFTS response regardless of nesting depth.
+
+    EFTS can return:
+      - {"hits": {"hits": [...]}}   — standard nested format
+      - {"hits": [...]}             — flat list format (less common)
+      - {}                          — empty / error response
+    """
+    raw = data.get("hits", [])
+    if isinstance(raw, dict):
+        return raw.get("hits", [])
+    if isinstance(raw, list):
+        return raw
+    return []
+
+
 class EdgarEnhancedClient:
     def __init__(self):
         self._session = requests.Session()

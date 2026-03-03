@@ -504,10 +504,18 @@ class TestDirectionalBias(unittest.TestCase):
 
     def test_emit_signal_resolves_direction_when_not_provided(self):
         ws = make_ws()
-        inject_trades(ws, "AAPL", prices=[100.0] * 5 + [102.0] * 5)
+        # Use a flat price sequence so _process_trade does NOT trigger rapid_move,
+        # then emit a volume_spike explicitly and check direction resolution.
+        inject_trades(ws, "AAPL", prices=[100.0] * 10)
+        # Manually push the last price high within the buffer so close-in-range = bullish
+        ws._buffers["AAPL"].prices.append(100.0)
+        for _ in range(9):
+            ws._buffers["AAPL"].prices.append(102.0)
+        ws.get_pending_signals()  # drain any rapid_move signals from inject_trades
         ws._emit_signal("AAPL", "volume_spike", 102.0, 5000.0, 1000.0)
         signals = ws.get_pending_signals()
         self.assertEqual(len(signals), 1)
+        self.assertEqual(signals[0]["signal_type"], "volume_spike")
         self.assertEqual(signals[0]["direction"], "bullish")
 
 
