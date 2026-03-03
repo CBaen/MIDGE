@@ -463,6 +463,47 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         if getattr(ctx, "cross_asset_confirmer", None) is not None:
             ctx.convergence_alerter._cross_asset_confirmer = ctx.cross_asset_confirmer
 
+    # --- Ten Gifts: Wave 2 (Intelligence) ---
+
+    try:
+        from mae_core.market.edge.deception_detector import DeceptionDetector
+        ctx.deception_detector = DeceptionDetector(
+            event_bus=getattr(ctx, "bus", None),
+        )
+    except Exception:
+        logger.debug("Market: deception_detector failed to construct", exc_info=True)
+        ctx.deception_detector = None
+
+    try:
+        from mae_core.market.intelligence.consolidation_engine import ConsolidationEngine
+        ctx.consolidation_engine = ConsolidationEngine(
+            thompson_sampler=getattr(ctx, "thompson_sampler", None),
+            hypothesis_registry=getattr(ctx, "hypothesis_registry", None),
+            hypothesis_engine=getattr(ctx, "hypothesis_engine", None),
+            event_bus=getattr(ctx, "bus", None),
+        )
+    except Exception:
+        logger.debug("Market: consolidation_engine failed to construct", exc_info=True)
+        ctx.consolidation_engine = None
+
+    try:
+        from mae_core.market.edge.fractal_resonance import FractalResonanceDetector
+        ctx.fractal_resonance_detector = FractalResonanceDetector(
+            price_fetcher=getattr(ctx, "price_fetcher", None),
+        )
+    except Exception:
+        logger.debug("Market: fractal_resonance_detector failed to construct", exc_info=True)
+        ctx.fractal_resonance_detector = None
+
+    try:
+        from mae_core.market.intelligence.pattern_archetypes import PatternArchetypeEngine
+        ctx.pattern_archetype_engine = PatternArchetypeEngine(
+            price_fetcher=getattr(ctx, "price_fetcher", None),
+        )
+    except Exception:
+        logger.debug("Market: pattern_archetype_engine failed to construct", exc_info=True)
+        ctx.pattern_archetype_engine = None
+
     # --- StepTimer (performance metabolism monitoring) ---
     try:
         from mae_core.market.step_timer import StepTimer
