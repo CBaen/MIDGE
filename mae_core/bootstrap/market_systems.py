@@ -15,7 +15,7 @@ logger = logging.getLogger("midge.bootstrap")
 
 
 def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
-    """Create all 49 market system objects on ctx."""
+    """Create all 56 market system objects on ctx."""
     # Warm-start: restore meta-learned config from prior sessions
     try:
         from mae_core.market.intelligence.learning_config import load_snapshot
