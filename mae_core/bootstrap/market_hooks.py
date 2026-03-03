@@ -767,6 +767,13 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
             somatic_anticipation=getattr(ctx, "somatic_anticipation", None),
             pattern_completion_engine=getattr(ctx, "pattern_completion_engine", None),
             market_clock=market_clock,
+            coingecko_client=getattr(ctx, "coingecko_client", None),
+            coincap_client=getattr(ctx, "coincap_client", None),
+            openinsider_client=getattr(ctx, "openinsider_client", None),
+            edgar_enhanced_client=getattr(ctx, "edgar_enhanced_client", None),
+            finviz_client=getattr(ctx, "finviz_client", None),
+            economic_calendar_client=getattr(ctx, "economic_calendar_client", None),
+            finnhub_websocket=getattr(ctx, "finnhub_websocket", None),
         )
     except Exception:
         logger.warning("MarketSensingHook construction failed — agents will not sense market data", exc_info=True)
