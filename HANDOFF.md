@@ -4,7 +4,7 @@
 
 ### Always-On Waves 2+3 — Real-Time + Data Enrichment (2026-03-02)
 
-Seven new API clients + signal adapters + sensing integration + economic calendar suppression. **144 systems (92 core + 52 market), 4,148 tests, 422 connections, 155 holons, 88 market files.**
+Seven new API clients + signal adapters + sensing integration + economic calendar suppression. **144 systems (92 core + 52 market), 4,190 tests, 422 connections, 155 holons, 89 market files.**
 
 **Wave 2 — Real-Time (24/7 Coverage):**
 - **Finnhub WebSocket** — `finnhub_websocket.py`: Real-time trade data streaming via free Finnhub WebSocket API. Volume spike detection (2σ), rapid price moves (>1% in 60s). Signals bypass SOURCE_ROTATION — collected EVERY step via `_process_realtime_signals()`. Auto-reconnect with exponential backoff.
@@ -20,18 +20,18 @@ Seven new API clients + signal adapters + sensing integration + economic calenda
 **Integration:**
 - 8 signal adapters in `wave2_3.py` (from_crypto_signal, from_openinsider, from_13f_holding, from_activist_filing, from_finviz_unusual_volume, from_finviz_short_squeeze, from_finnhub_realtime, from_suppression_event).
 - 6 fetch functions in `sensing_fetchers.py`.
-- SOURCE_ROTATION: 21 → 27 sources. TIER_ROUTING: +9 entries. _ROTATION_TO_THOMPSON: +6 mappings.
-- 9 new Thompson keys in learning_config.py (finnhub_realtime, crypto_coingecko, crypto_coincap, openinsider_purchase, institutional_13f, activist_13d, finviz_unusual_volume, finviz_short_squeeze, economic_calendar). Total: 70.
+- SOURCE_ROTATION: 21 → 28 sources (27 from Waves 2+3 + massive_snapshot). TIER_ROUTING: +10 entries. _ROTATION_TO_THOMPSON: +7 mappings.
+- 10 new Thompson keys in learning_config.py (finnhub_realtime, crypto_coingecko, crypto_coincap, openinsider_purchase, institutional_13f, activist_13d, finviz_unusual_volume, finviz_short_squeeze, economic_calendar, massive_snapshot). Total: 71.
 - MarketClock: 6 new sources in availability sets (ALWAYS: crypto_prices, crypto_exchange, openinsider, economic_calendar; MARKET_HOURS: finviz; PERIODIC: institutional_13f).
 - **338 new tests** (215 client unit tests + 123 integration tests).
 
-**Document parity updated:** CLAUDE.md, README.md, HANDOFF.md, data/MAES-MATHEMATICAL-IDENTITY.md, test_integration.py, main.py all reflect 144 systems / 4,148 tests / 88 market files.
+**Document parity updated:** CLAUDE.md, README.md, HANDOFF.md, data/MAES-MATHEMATICAL-IDENTITY.md, test_integration.py, main.py all reflect 144 systems / 4,190 tests / 89 market files.
 
 ---
 
 ### Always-On Wave 1 — Foundation (2026-03-02)
 
-Three work packages making MIDGE resilient across restarts and capable of running as a continuous service. **144 systems (92 core + 52 market), 4,148 tests, 422 connections, 155 holons, 88 market files.**
+Three work packages making MIDGE resilient across restarts and capable of running as a continuous service. **144 systems (92 core + 52 market), 4,190 tests, 422 connections, 155 holons, 89 market files.**
 
 **WP-A Signal Persistence:**
 - `convergence_alerter.py`: `save_state()`/`load_state()` — persists signal buffer (last 200 per domain), alert counters, and last-seen timestamps to `data/market/convergence_state.json`. Survives restart without losing domain context.
@@ -451,9 +451,9 @@ Fixed 3 bugs found in live scan output, defined data schema:
 
 ## Current State
 
-- **4,148 tests pass, 0 failures** (Waves 2+3 add 338 tests: 215 client unit + 123 integration)
+- **4,190 tests pass, 0 failures** (Waves 2+3 add 338 tests + 42 Massive/Polygon tests)
 - **144 systems** (92 core + 52 market), **155 holons**, **422 connections** (217 core + 47 fractal + 55 bootstrap + 103 market)
-- **88 market files** in `mae_core/market/` (28 API + 12 edge + 27 intelligence + 8 signal_adapters + 13 root)
+- **89 market files** in `mae_core/market/` (29 API + 12 edge + 27 intelligence + 8 signal_adapters + 13 root)
 - **10 mae-core infrastructure fixes ported** (VDN epsilon-greedy, EventBus injection, tie-breaking, microbiome feed-before-step, EpisodicMemory stats, 6 channel registrations, SomaticMap names, agent.shared normalization, auto-healer starvation fix, Phi forced measurement)
 - **Bootstrap sub-modules** — `market.py` orchestrator (123 lines) + 5 sub-modules (market_systems, market_registration, market_connections, market_hooks, market_agents)
 - **33-layer bootstrap** runs cleanly (Layers 33a-33i)
@@ -466,7 +466,7 @@ Fixed 3 bugs found in live scan output, defined data schema:
 
 ```
 Bootstrap Layer 33h: MarketSensingHook wired as step hook
-  ├─ Async fetch on 50-step cadence (27-source rotation: form4 → 8k → congress → senate → hiring → usaspending → sam.gov → reddit → finra → efts → finnhub → fred → cot → stocktwits → vix → trends → finnhub_earnings → finnhub_insider → ta_indicators → session_sweep → order_flow → crypto_prices → crypto_exchange → openinsider → institutional_13f → finviz → economic_calendar)
+  ├─ Async fetch on 50-step cadence (28-source rotation: form4 → 8k → congress → senate → hiring → usaspending → sam.gov → reddit → finra → efts → finnhub → fred → cot → stocktwits → vix → trends → finnhub_earnings → finnhub_insider → ta_indicators → session_sweep → order_flow → crypto_prices → crypto_exchange → openinsider → institutional_13f → finviz → economic_calendar → massive_snapshot)
   ├─ Signals → convergence_alerter (global) + 3 tiered alerters
   ├─ Signals → Qdrant + JSONL archive
   └─ Outcome evaluation on 200-step cadence → Thompson update
@@ -499,7 +499,7 @@ Phase 7/7: Report — markdown intelligence report with all sections
 | Subpackage | Files | Purpose |
 |------------|-------|---------|
 | `apis/sec_edgar/` | 4 (models, client, efts, __init__) | SEC insider trades + material events + full-text search |
-| `apis/` | 17 (price_fetcher, house_stock_watcher, senate_stock_watcher, job_tracker, usa_spending, sam_gov, apewisdom, finra_short_interest, finnhub_client, fred_client, ticker_resolver, market_data_provider, cot_client, stocktwits_client, vix_client, trends_client) | 19 data sources + utilities |
+| `apis/` | 18 (price_fetcher, house_stock_watcher, senate_stock_watcher, job_tracker, usa_spending, sam_gov, apewisdom, finra_short_interest, finnhub_client, fred_client, ticker_resolver, market_data_provider, cot_client, stocktwits_client, vix_client, trends_client, massive_client) | 20 data sources + utilities |
 | `edge/` | 7 (cluster_detector, politician_tracker, filing_time_analyzer, contract_predictor, form8k_sentiment, session_sweep_detector, ta_indicators) | Pattern recognition + text analysis |
 | `intelligence/` | 19 (thompson_sampler, velocity_detector, correlation_tracker, convergence_alerter, learning_config, regime_classifier, outcome_collector, signal_archive_reader, lag_correlation_analyzer, thompson_calibrator, kelly_position_sizer, backtest_analyzer, backtest_scheduler, hypothesis, hypothesis_registry, hypothesis_generator, hypothesis_validator, hypothesis_engine) | Bayesian learning + feedback loop + calibration + sizing + hypothesis lifecycle + meta-learning |
 | `root` | 7 (signal.py, channels.py, outcome_tracker.py, memory.py, sensing_hook.py, step_timer.py, market_actions.py) | Integration layer + sensing + Qdrant persistence + performance timing + agent actions |
@@ -538,7 +538,7 @@ Welcome. MIDGE is Mae differentiated for financial markets. Here is what you nee
 5. **Thompson Sampling** uses Bayesian explore/exploit. 50 distributions with 9,470 total samples from 12,544 evaluated outcomes. Learned distributions in `data/market/thompson_distributions.json`. Bayesian forgetting prevents stale evidence.
 6. **OutcomeCollector** closes the feedback loop: scan signals → register_signals() → per-type windows → price check → Thompson update. Success threshold: 5%. Signal archives: 901 files spanning 414 days across 15 backfill sources.
 7. **All 8 Mathematical Laws are satisfied.** See implementation plan Section 12 for compliance map.
-8. **4,148 tests must keep passing.** Zero regressions. Run `python -m pytest tests/ -q` to verify.
+8. **4,190 tests must keep passing.** Zero regressions. Run `python -m pytest tests/ -q` to verify.
    **Pattern recognition capabilities (2026-03-02):** 6 capabilities — composite hypotheses, contextual Thompson, coherence scoring, auto causal stories, temporal freshness, intra-domain combination.
    **Completing the Circle (2026-03-02):** 3 cognitive dimensions — causal bridge (contradiction → causation), absence monitor (silence detection), correlation tracker activation (relationships in motion).
 9. **Deep memory runs on Qdrant** container (port 6333). Start with `docker compose up -d`.
