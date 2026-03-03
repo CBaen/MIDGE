@@ -48,6 +48,10 @@ ALWAYS_AVAILABLE: Set[str] = {
     "stocktwits",
     "google_trends",
     "finnhub_extras",
+    "crypto_prices",       # CoinGecko API serves data 24/7
+    "crypto_exchange",     # CoinCap API serves data 24/7
+    "openinsider",         # Website serves cached SEC data anytime
+    "economic_calendar",   # Hardcoded calendar, always available
 }
 
 # Requires CME Globex futures session (Sun 6PM – Fri 5PM ET, daily halt 5–6 PM Mon–Thu)
@@ -62,12 +66,14 @@ MARKET_HOURS: Set[str] = {
     "finnhub",
     "fractal_resonance",
     "vix_structure",
+    "finviz",              # FinViz data is most useful during market hours
 }
 
 # Available on business days only (T+2 delay / weekly cadence don't change this)
 PERIODIC: Set[str] = {
     "cot_positioning",
     "finra_short",
+    "institutional_13f",   # SEC EDGAR serves data on business days
 }
 
 # ---------------------------------------------------------------------------

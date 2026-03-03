@@ -16,7 +16,7 @@ convergence_alerter because collection happens in the main thread.
 
 Decomposed into three files:
   sensing_hook.py      — this file: MarketSensingHook class + constants
-  sensing_fetchers.py  — 21 standalone fetch functions
+  sensing_fetchers.py  — 27 standalone fetch functions
   sensing_lifecycle.py — enrich_signal, store_signals, load_watchlist
 """
 
@@ -54,6 +54,12 @@ from mae_core.market.sensing_fetchers import (
     fetch_finnhub_extras,
     fetch_order_flow,
     fetch_fractal_resonance,
+    fetch_crypto_prices,
+    fetch_crypto_exchange,
+    fetch_openinsider,
+    fetch_13f_holdings,
+    fetch_finviz,
+    fetch_economic_calendar,
 )
 from mae_core.market.sensing_lifecycle import (
     enrich_signal,
@@ -106,9 +112,20 @@ TIER_ROUTING = {
     "finnhub_economic": "tactical",
     "finnhub_analyst": "strategic",
     "finnhub_earnings_calendar": "tactical",
+    # Wave 2: Real-Time + Crypto
+    "finnhub_realtime": "tactical",
+    "crypto_coingecko": "thematic",
+    "crypto_coincap": "thematic",
+    # Wave 3: Data Enrichment
+    "openinsider_purchase": "tactical",
+    "institutional_13f": "strategic",
+    "activist_13d": "strategic",
+    "finviz_unusual_volume": "tactical",
+    "finviz_short_squeeze": "strategic",
+    "economic_calendar": "thematic",
 }
 
-# Source names for rotation — 21 sources, full cycle every 1050 steps
+# Source names for rotation — 27 sources, full cycle every 1350 steps
 SOURCE_ROTATION = [
     "sec_form4",
     "sec_form8k",
@@ -134,6 +151,14 @@ SOURCE_ROTATION = [
     "vix_structure",
     "google_trends",
     "finnhub_extras",
+    # Wave 2: Real-Time + Crypto (Always-On)
+    "crypto_prices",
+    "crypto_exchange",
+    # Wave 3: Data Enrichment
+    "openinsider",
+    "institutional_13f",
+    "finviz",
+    "economic_calendar",
 ]
 
 # Map rotation source names → Thompson distribution keys for guided selection.
