@@ -128,7 +128,7 @@ TIER_ROUTING = {
     "massive_snapshot": "tactical",
 }
 
-# Source names for rotation — 27 sources, full cycle every 1350 steps
+# Source names for rotation — 28 sources, full cycle every 1400 steps
 SOURCE_ROTATION = [
     "sec_form4",
     "sec_form8k",

@@ -260,7 +260,7 @@ class MassiveClient:
         if not ts_ms:
             return ""
         try:
-            return datetime.utcfromtimestamp(ts_ms / 1000).strftime("%Y-%m-%d")
+            return datetime.fromtimestamp(ts_ms / 1000, tz=None).strftime("%Y-%m-%d")
         except (ValueError, OSError):
             return ""
 
