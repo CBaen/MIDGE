@@ -4,7 +4,7 @@
 
 ### Ten Gifts — MIDGE's Sensory Evolution (2026-03-02)
 
-Ten new market intelligence systems across three waves. **136 systems (92 core + 44 market), 3,663 tests, 422 connections (103 market, Groups 14-32), 155 holons, 78 market files.**
+Ten new market intelligence systems across three waves. **136 systems (92 core + 44 market), 3,710 tests, 422 connections (103 market, Groups 14-32), 155 holons, 78 market files.**
 
 **Wave 1 (Foundation — Gifts 1-4):**
 - **Gift 1 Portfolio Tracker** — `portfolio_tracker.py`: Paper trade position tracking, mark-to-market, exit signals (stop-loss/take-profit/time-decay). Feeds exit signals to convergence pipeline. `ExitSignal` → domain="portfolio".
@@ -397,7 +397,7 @@ Fixed 3 bugs found in live scan output, defined data schema:
 
 ## Current State
 
-- **3,663 tests pass, 0 failures** (including Ten Gifts: ~265 new tests across 10 gift test files)
+- **3,710 tests pass, 0 failures** (including Ten Gifts: ~265 new tests across 10 gift test files)
 - **136 systems** (92 core + 44 market), **155 holons**, **422 connections** (217 core + 47 fractal + 55 bootstrap + 103 market)
 - **78 market files** in `mae_core/market/` (decomposed: signal_adapters/ subpackage, sensing_fetchers.py, sensing_lifecycle.py, + 10 gift modules)
 - **10 mae-core infrastructure fixes ported** (VDN epsilon-greedy, EventBus injection, tie-breaking, microbiome feed-before-step, EpisodicMemory stats, 6 channel registrations, SomaticMap names, agent.shared normalization, auto-healer starvation fix, Phi forced measurement)
@@ -484,7 +484,7 @@ Welcome. MIDGE is Mae differentiated for financial markets. Here is what you nee
 5. **Thompson Sampling** uses Bayesian explore/exploit. 50 distributions with 9,470 total samples from 12,544 evaluated outcomes. Learned distributions in `data/market/thompson_distributions.json`. Bayesian forgetting prevents stale evidence.
 6. **OutcomeCollector** closes the feedback loop: scan signals → register_signals() → per-type windows → price check → Thompson update. Success threshold: 5%. Signal archives: 901 files spanning 414 days across 15 backfill sources.
 7. **All 8 Mathematical Laws are satisfied.** See implementation plan Section 12 for compliance map.
-8. **3,663 tests must keep passing.** Zero regressions. Run `python -m pytest tests/ -q` to verify.
+8. **3,710 tests must keep passing.** Zero regressions. Run `python -m pytest tests/ -q` to verify.
    **Pattern recognition capabilities (2026-03-02):** 6 capabilities — composite hypotheses, contextual Thompson, coherence scoring, auto causal stories, temporal freshness, intra-domain combination.
    **Completing the Circle (2026-03-02):** 3 cognitive dimensions — causal bridge (contradiction → causation), absence monitor (silence detection), correlation tracker activation (relationships in motion).
 9. **Deep memory runs on Qdrant** container (port 6333). Start with `docker compose up -d`.
