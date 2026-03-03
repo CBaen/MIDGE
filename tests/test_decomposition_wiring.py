@@ -75,6 +75,7 @@ class TestSignalAdapters:
         "technical",
         "contracts",
         "layer6",
+        "wave2_3",
     ]
 
     @pytest.mark.parametrize("mod", ADAPTER_MODULES)
@@ -83,12 +84,12 @@ class TestSignalAdapters:
         assert m is not None
 
     def test_adapter_init_importable(self):
-        """The signal_adapters __init__ must re-export all 27 converters."""
+        """The signal_adapters __init__ must re-export all 35 converters."""
         import mae_core.market.signal_adapters as sa
 
         assert hasattr(sa, "__all__"), "signal_adapters __init__ must define __all__"
-        assert len(sa.__all__) == 27, (
-            f"Expected 27 entries in __all__, found {len(sa.__all__)}"
+        assert len(sa.__all__) == 35, (
+            f"Expected 35 entries in __all__, found {len(sa.__all__)}"
         )
 
     def test_regulatory_adapters(self):
