@@ -2,6 +2,33 @@
 
 ## What Happened
 
+### Always-On Waves 2+3 — Real-Time + Data Enrichment (2026-03-02)
+
+Seven new API clients + signal adapters + sensing integration + economic calendar suppression. **144 systems (92 core + 52 market), 4,148 tests, 422 connections, 155 holons, 88 market files.**
+
+**Wave 2 — Real-Time (24/7 Coverage):**
+- **Finnhub WebSocket** — `finnhub_websocket.py`: Real-time trade data streaming via free Finnhub WebSocket API. Volume spike detection (2σ), rapid price moves (>1% in 60s). Signals bypass SOURCE_ROTATION — collected EVERY step via `_process_realtime_signals()`. Auto-reconnect with exponential backoff.
+- **CoinGecko Client** — `coingecko_client.py`: Crypto prices, global market data, trending coins. BTC/ETH/SOL/XRP/ADA default watchlist. 30 calls/min free tier. Domain: crypto.
+- **CoinCap Client** — `coincap_client.py`: 100% free crypto data (no API key). Asset prices + history. Complements CoinGecko for domain diversity.
+
+**Wave 3 — Data Enrichment (Free, High-Signal):**
+- **OpenInsider Client** — `openinsider_client.py`: Pre-filtered insider purchases from openinsider.com. RSU/gift/10b5-1 already stripped upstream. Cluster buy detection (3+ insiders). 1 req/3s rate limit.
+- **EDGAR Enhanced Client** — `edgar_enhanced_client.py`: 13F institutional holdings + SC 13D activist filings (>5% stake). SEC EFTS search. Free, no API key.
+- **FinViz Client** — `finviz_client.py`: Unusual volume (>2x average), high short float (>20%, squeeze setups), insider trades. Via finvizfinance library. 1 req/5s.
+- **Economic Calendar** — `economic_calendar_client.py`: Hardcoded FOMC/CPI/NFP 2026 dates. Suppression windows (event ± 24h/4h). Convergence alerter halves confidence (0.5x) during suppression. Used DEFENSIVELY.
+
+**Integration:**
+- 8 signal adapters in `wave2_3.py` (from_crypto_signal, from_openinsider, from_13f_holding, from_activist_filing, from_finviz_unusual_volume, from_finviz_short_squeeze, from_finnhub_realtime, from_suppression_event).
+- 6 fetch functions in `sensing_fetchers.py`.
+- SOURCE_ROTATION: 21 → 27 sources. TIER_ROUTING: +9 entries. _ROTATION_TO_THOMPSON: +6 mappings.
+- 9 new Thompson keys in learning_config.py (finnhub_realtime, crypto_coingecko, crypto_coincap, openinsider_purchase, institutional_13f, activist_13d, finviz_unusual_volume, finviz_short_squeeze, economic_calendar). Total: 70.
+- MarketClock: 6 new sources in availability sets (ALWAYS: crypto_prices, crypto_exchange, openinsider, economic_calendar; MARKET_HOURS: finviz; PERIODIC: institutional_13f).
+- **338 new tests** (215 client unit tests + 123 integration tests).
+
+**Document parity updated:** CLAUDE.md, README.md, HANDOFF.md, data/MAES-MATHEMATICAL-IDENTITY.md, test_integration.py, main.py all reflect 144 systems / 4,148 tests / 88 market files.
+
+---
+
 ### Always-On Wave 1 — Foundation (2026-03-02)
 
 Three work packages making MIDGE resilient across restarts and capable of running as a continuous service. **144 systems (92 core + 52 market), 4,148 tests, 422 connections, 155 holons, 88 market files.**
