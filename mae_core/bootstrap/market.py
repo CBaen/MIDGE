@@ -1,7 +1,7 @@
 """Bootstrap Layer 33: Market Intelligence Organ.
 
-Creates 45 market systems, registers holons, wires fractal hierarchy,
-registers triadic connections (Group 14-26),
+Creates 49 market systems, registers holons, wires fractal hierarchy,
+registers triadic connections (Group 14-30),
 wires EventBus channels, and hooks into the step lifecycle.
 
 Biological analogy: Growing a new sensory organ specialized for
@@ -19,7 +19,7 @@ This mirrors how Mae handles all optional systems — advisory, never blocking.
 Sub-module responsibilities:
   market_systems.py       — Layer 33a: construct all market objects on ctx
   market_registration.py — Layer 33b-e: somatic, holons, fractal, stem roles
-  market_connections.py  — Layer 33d: 73 triadic connections (Groups 14-22)
+  market_connections.py  — Layer 33d: 97 triadic connections (Groups 14-30)
   market_hooks.py        — Layer 33f-h: EventBus callbacks, step hooks, sensing hook
   market_agents.py       — Layer 33i: agent differentiation + market reflexes
 """
@@ -48,7 +48,7 @@ logger = logging.getLogger("midge.bootstrap")
 
 
 def bootstrap_market(ctx: SimpleNamespace) -> None:
-    """Wire Layer 33: Market Intelligence organ (45 systems, 85 connections).
+    """Wire Layer 33: Market Intelligence organ (49 systems, 97 connections).
 
     Call order is load-bearing — sub-modules have dependencies:
       1. _instantiate_market_systems: build all objects first
@@ -92,6 +92,9 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
         # Ten Gifts: Wave 1
         "portfolio_tracker", "order_flow_detector",
         "catalyst_calendar", "cross_asset_confirmer",
+        # Ten Gifts: Wave 2
+        "deception_detector", "consolidation_engine",
+        "fractal_resonance_detector", "pattern_archetype_engine",
         # Layer 6
         "cot_client", "stocktwits_client", "vix_client", "trends_client",
     ]
@@ -102,7 +105,7 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
     ])
 
     logger.info(
-        "Layer 33  - Market Intelligence organ complete: %d systems, %d holons, 85 connections",
+        "Layer 33  - Market Intelligence organ complete: %d systems, %d holons, 97 connections",
         active, holon_count,
     )
     logger.info(

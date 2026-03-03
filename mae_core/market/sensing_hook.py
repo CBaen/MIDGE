@@ -360,6 +360,24 @@ class MarketSensingHook:
             except Exception:
                 logger.debug("CorrelationTracker anomaly scan failed", exc_info=True)
 
+        # Consolidation engine: memory pruning (cadence 5000)
+        if self._step_counter % 5000 == 0 and self._consolidation_engine is not None:
+            try:
+                if self._consolidation_engine.should_consolidate(self._step_counter):
+                    self._consolidation_engine.consolidate()
+            except Exception:
+                logger.debug("Consolidation engine step failed", exc_info=True)
+
+        # Pattern archetype scanning: check watchlist tickers (cadence 100)
+        if self._step_counter % 100 == 0 and self._pattern_archetype_engine is not None:
+            try:
+                for ticker in list(self._watchlist.get("tickers", []))[:5]:
+                    self._pattern_archetype_engine.scan_for_archetypes(
+                        ticker, signal_domains=list(self._recent_domains.get(ticker, [])),
+                    )
+            except Exception:
+                logger.debug("Pattern archetype scan failed", exc_info=True)
+
     # ------------------------------------------------------------------
     # Async fetch lifecycle
     # ------------------------------------------------------------------
