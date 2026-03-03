@@ -497,14 +497,15 @@ class RunReport:
                 pass
         w(f"")
 
-        # Append to log file
+        # Write to log file
         import pathlib
         p = pathlib.Path(path)
         p.parent.mkdir(parents=True, exist_ok=True)
-        with open(p, "a", encoding="utf-8") as f:
+        mode = "w" if overwrite else "a"
+        with open(p, mode, encoding="utf-8") as f:
             f.write("\n".join(lines))
             f.write("\n")
-        logger.info("Run appended to %s", path)
+        logger.info("Run %s to %s", "written" if overwrite else "appended", path)
 
 
 def run(
@@ -877,7 +878,7 @@ def run_daemon(
             steps_done = stats["current_step"]
 
             report_path = "data/midge/run-log.md"
-            report.write(report_path, agents, systems)
+            report.write(report_path, agents, systems, overwrite=True)
             journal.end_run(steps_completed=steps_done)
             growth.record_run(agents, systems, report, steps_done, round_num=round_num)
 
