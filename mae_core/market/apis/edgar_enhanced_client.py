@@ -120,9 +120,7 @@ class EdgarEnhancedClient:
             })
 
         filings = []
-        hits = data.get("hits", {}).get("hits", [])
-        if not hits:
-            hits = data.get("hits", [])
+        hits = _extract_hits(data)
 
         for hit in hits[:20]:
             source = hit.get("_source", hit)
@@ -137,7 +135,7 @@ class EdgarEnhancedClient:
                     percent_owned=0.0,  # Would need to parse the actual filing
                     purpose="Activist position (>5% ownership)",
                 ))
-            except (TypeError, ValueError, IndexError):
+            except (TypeError, ValueError, IndexError, AttributeError):
                 continue
         return filings
 
@@ -154,9 +152,7 @@ class EdgarEnhancedClient:
         })
 
         filers = []
-        hits = data.get("hits", {}).get("hits", [])
-        if not hits:
-            hits = data.get("hits", [])
+        hits = _extract_hits(data)
 
         for hit in hits[:20]:
             source = hit.get("_source", hit)
@@ -179,9 +175,7 @@ class EdgarEnhancedClient:
             params["forms"] = forms
         data = self._get(f"{_BASE_URL}/search-index", params)
         results = []
-        hits = data.get("hits", {}).get("hits", [])
-        if not hits:
-            hits = data.get("hits", [])
+        hits = _extract_hits(data)
         for hit in hits[:limit]:
             source = hit.get("_source", hit)
             results.append(source)
