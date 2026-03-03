@@ -352,4 +352,50 @@ def _register_market_connections(ctx: SimpleNamespace) -> None:
         witnesses=["convergence_alerter", "auditor"],
         description="Cross-asset confirmer uses regime context for pair weighting")
 
-    logger.info("Layer 33d - Market connections: 85 triadic connections registered (Group 14-26)")
+    # --- Group 27: Deception Detector (Gift 5 — manipulation immune response) ---
+    reg("deception_detector", "convergence_alerter", dr,
+        witnesses=["thompson_sampler", "auditor"],
+        description="Deception assessments reduce convergence confidence on flagged tickers")
+    reg("deception_detector", "event_bus", eb,
+        channel="market.edge.deception_detected",
+        witnesses=["convergence_alerter", "auditor"],
+        description="Deception detector publishes manipulation pattern alerts")
+    reg("deception_detector", "correlation_tracker", dr,
+        witnesses=["convergence_alerter", "auditor"],
+        description="Deception detector monitors cross-domain signal composition")
+
+    # --- Group 28: Consolidation Engine (Gift 6 — sleep cycle / memory pruning) ---
+    reg("consolidation_engine", "thompson_sampler", dr,
+        witnesses=["hypothesis_engine", "auditor"],
+        description="Consolidation engine prunes thin/stale Thompson distributions")
+    reg("consolidation_engine", "hypothesis_registry", dr,
+        witnesses=["hypothesis_engine", "auditor"],
+        description="Consolidation engine archives old retired hypotheses")
+    reg("consolidation_engine", "event_bus", eb,
+        channel="market.intel.consolidation_complete",
+        witnesses=["thompson_sampler", "auditor"],
+        description="Consolidation engine publishes completion reports on EventBus")
+
+    # --- Group 29: Fractal Resonance (Gift 7 — multi-timeframe structure) ---
+    reg("fractal_resonance_detector", "price_fetcher", dr,
+        witnesses=["convergence_alerter", "auditor"],
+        description="Fractal resonance reads daily/weekly/monthly price history")
+    reg("fractal_resonance_detector", "convergence_alerter", dr,
+        witnesses=["thompson_sampler", "auditor"],
+        description="Fractal resonance signals feed into convergence pipeline")
+    reg("fractal_resonance_detector", "thompson_sampler", dr,
+        witnesses=["convergence_alerter", "auditor"],
+        description="Thompson learns fractal resonance signal reliability")
+
+    # --- Group 30: Pattern Archetypes (Gift 8 — canonical pattern templates) ---
+    reg("pattern_archetype_engine", "convergence_alerter", dr,
+        witnesses=["thompson_sampler", "auditor"],
+        description="Archetype matches boost convergence confidence on matching tickers")
+    reg("pattern_archetype_engine", "price_fetcher", dr,
+        witnesses=["convergence_alerter", "auditor"],
+        description="Archetype engine reads price data for structure analysis")
+    reg("pattern_archetype_engine", "thompson_sampler", dr,
+        witnesses=["convergence_alerter", "auditor"],
+        description="Thompson learns archetype match signal reliability")
+
+    logger.info("Layer 33d - Market connections: 97 triadic connections registered (Group 14-30)")
