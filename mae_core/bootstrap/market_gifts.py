@@ -53,7 +53,7 @@ def _instantiate_gift_systems(ctx: SimpleNamespace) -> None:
         logger.debug("Market: cross_asset_confirmer failed to construct", exc_info=True)
         ctx.cross_asset_confirmer = None
 
-    # Wire Wave 1 gifts into convergence alerter (two-phase init)
+    # Wire Wave 1 gifts into convergence alerter (two-phase init — alerter exists before gifts)
     if getattr(ctx, "convergence_alerter", None) is not None:
         if getattr(ctx, "catalyst_calendar", None) is not None:
             ctx.convergence_alerter._catalyst_calendar = ctx.catalyst_calendar
@@ -100,3 +100,10 @@ def _instantiate_gift_systems(ctx: SimpleNamespace) -> None:
     except Exception:
         logger.debug("Market: pattern_archetype_engine failed to construct", exc_info=True)
         ctx.pattern_archetype_engine = None
+
+    # Wire Wave 2 gifts into convergence alerter (two-phase init)
+    if getattr(ctx, "convergence_alerter", None) is not None:
+        if getattr(ctx, "deception_detector", None) is not None:
+            ctx.convergence_alerter._deception_detector = ctx.deception_detector
+        if getattr(ctx, "pattern_archetype_engine", None) is not None:
+            ctx.convergence_alerter._pattern_archetype_engine = ctx.pattern_archetype_engine

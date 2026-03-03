@@ -192,6 +192,8 @@ class ConvergenceAlerter:
         self._bus = event_bus
         self._catalyst_calendar = catalyst_calendar
         self._cross_asset_confirmer = cross_asset_confirmer
+        self._deception_detector = deception_detector
+        self._pattern_archetype_engine = pattern_archetype_engine
         self._cached_regime = ("default", 0.0)  # (regime_str, timestamp)
 
         # Per-domain convergence windows — slow-moving data sources need longer lookback.
@@ -804,6 +806,29 @@ class ConvergenceAlerter:
                     score = getattr(result, "confirmation_score", 0.0)
                     cross_multiplier = 0.8 + 0.4 * score
                     final_confidence = max(0.05, min(0.95, final_confidence * cross_multiplier))
+            except Exception:
+                pass  # Graceful degradation
+
+        # Gift 5: Deception detection — penalize confidence on suspected manipulation.
+        if primary_ticker and self._deception_detector is not None:
+            try:
+                assessment = self._deception_detector.assess_signal_authenticity(primary_ticker)
+                if assessment is not None and assessment.deception_probability > 0.5:
+                    deception_penalty = 1.0 - assessment.deception_probability
+                    final_confidence = max(0.05, final_confidence * deception_penalty)
+            except Exception:
+                pass  # Graceful degradation
+
+        # Gift 8: Pattern Archetype context — boost confidence when signals match a known archetype.
+        if primary_ticker and self._pattern_archetype_engine is not None:
+            try:
+                matches = self._pattern_archetype_engine.scan_for_archetypes(
+                    primary_ticker, signal_domains=list(domains_seen),
+                )
+                if matches:
+                    best = max(matches, key=lambda m: m.match_score)
+                    if best.match_score > 0.7:
+                        final_confidence = min(0.95, final_confidence + 0.10)
             except Exception:
                 pass  # Graceful degradation
 
