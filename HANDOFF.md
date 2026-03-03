@@ -4,7 +4,7 @@
 
 ### Always-On Wave 1 — Foundation (2026-03-02)
 
-Three work packages making MIDGE resilient across restarts and capable of running as a continuous service. **137 systems (92 core + 45 market), 3,810 tests, 422 connections, 155 holons, 80 market files.**
+Three work packages making MIDGE resilient across restarts and capable of running as a continuous service. **144 systems (92 core + 52 market), 4,148 tests, 422 connections, 155 holons, 88 market files.**
 
 **WP-A Signal Persistence:**
 - `convergence_alerter.py`: `save_state()`/`load_state()` — persists signal buffer (last 200 per domain), alert counters, and last-seen timestamps to `data/market/convergence_state.json`. Survives restart without losing domain context.

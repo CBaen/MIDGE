@@ -64,7 +64,7 @@ def create_mae(
 
     logger.info("=" * 60)
     logger.info("MIDGE is fully wired: %d shared systems, %d agents, %d per-agent systems, %d holons, %d connections",
-                45, ctx.num_agents, len(ctx.per_agent_systems) * 5, len(ctx.holon_registry.get_all_ids()),
+                52, ctx.num_agents, len(ctx.per_agent_systems) * 5, len(ctx.holon_registry.get_all_ids()),
                 ctx.connection_registry.get_statistics()["total_connections"])
     logger.info("=" * 60)
 
@@ -241,6 +241,14 @@ def _build_systems_dict(ctx) -> dict:
         # Ten Gifts: Wave 3 (Synthesis)
         "somatic_anticipation":     getattr(ctx, "somatic_anticipation", None),
         "pattern_completion_engine": getattr(ctx, "pattern_completion_engine", None),
+        # Always-On Wave 2+3: Real-Time + Data Enrichment
+        "coingecko_client":         getattr(ctx, "coingecko_client", None),
+        "coincap_client":           getattr(ctx, "coincap_client", None),
+        "openinsider_client":       getattr(ctx, "openinsider_client", None),
+        "edgar_enhanced_client":    getattr(ctx, "edgar_enhanced_client", None),
+        "finviz_client":            getattr(ctx, "finviz_client", None),
+        "economic_calendar_client": getattr(ctx, "economic_calendar_client", None),
+        "finnhub_websocket":        getattr(ctx, "finnhub_websocket", None),
     }
 
 

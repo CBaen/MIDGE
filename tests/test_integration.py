@@ -120,6 +120,14 @@ class TestBootstrap:
             # Ten Gifts: Wave 3 (Synthesis)
             "somatic_anticipation",
             "pattern_completion_engine",
+            # Always-On Wave 2+3: Real-Time + Data Enrichment
+            "coingecko_client",
+            "coincap_client",
+            "openinsider_client",
+            "edgar_enhanced_client",
+            "finviz_client",
+            "economic_calendar_client",
+            "finnhub_websocket",
         ]
         for key in market_keys:
             assert key in systems, f"Missing market system: {key}"
