@@ -14,10 +14,13 @@ Detection rules:
 
 from __future__ import annotations
 
+import json
 import logging
+import os
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
@@ -26,6 +29,8 @@ logger = logging.getLogger(__name__)
 _MAX_HISTORY = 100
 # Window for pattern detection
 _DETECTION_WINDOW_HOURS = 48.0
+# Persistence directory
+_STATE_DIR = Path(__file__).resolve().parents[3] / "data" / "market"
 
 
 @dataclass
@@ -60,6 +65,71 @@ class DeceptionDetector:
     def __init__(self, event_bus=None):
         self._event_bus = event_bus
         self._signal_history: Dict[str, deque] = {}
+
+    def save_state(self) -> None:
+        """Persist signal history to disk as JSON (atomic write)."""
+        payload: Dict[str, list] = {}
+        for ticker, dq in self._signal_history.items():
+            payload[ticker] = [
+                {
+                    "ticker": r.ticker,
+                    "domain": r.domain,
+                    "direction": r.direction,
+                    "strength": r.strength,
+                    "timestamp": r.timestamp.isoformat(),
+                }
+                for r in dq
+            ]
+
+        _STATE_DIR.mkdir(parents=True, exist_ok=True)
+        target = _STATE_DIR / "deception_state.json"
+        tmp = target.with_suffix(".json.tmp")
+        try:
+            tmp.write_text(json.dumps(payload), encoding="utf-8")
+            os.replace(tmp, target)
+            total = sum(len(v) for v in payload.values())
+            logger.debug("DeceptionDetector: saved %d records for %d tickers", total, len(payload))
+        except Exception as exc:
+            logger.warning("DeceptionDetector: save_state failed: %s", exc)
+            tmp.unlink(missing_ok=True)
+
+    def load_state(self) -> None:
+        """Restore signal history from disk, dropping expired entries."""
+        state_file = _STATE_DIR / "deception_state.json"
+        if not state_file.exists():
+            return
+
+        try:
+            raw = json.loads(state_file.read_text(encoding="utf-8"))
+        except Exception as exc:
+            logger.warning("DeceptionDetector: load_state failed to parse JSON: %s", exc)
+            return
+
+        cutoff = datetime.now() - timedelta(hours=_DETECTION_WINDOW_HOURS)
+        loaded = 0
+        for ticker, records in raw.items():
+            dq: deque = deque(maxlen=_MAX_HISTORY)
+            for entry in records:
+                try:
+                    ts = datetime.fromisoformat(entry["timestamp"])
+                    if ts < cutoff:
+                        continue
+                    dq.append(
+                        _SignalRecord(
+                            ticker=entry["ticker"],
+                            domain=entry["domain"],
+                            direction=entry["direction"],
+                            strength=float(entry["strength"]),
+                            timestamp=ts,
+                        )
+                    )
+                    loaded += 1
+                except Exception:
+                    continue
+            if dq:
+                self._signal_history[ticker] = dq
+
+        logger.debug("DeceptionDetector: loaded %d records for %d tickers", loaded, len(self._signal_history))
 
     def record_signal(
         self,

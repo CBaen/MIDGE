@@ -22,6 +22,7 @@ Usage:
 import json
 import logging
 import math
+import os
 import threading
 import time
 from dataclasses import dataclass, field
@@ -240,6 +241,147 @@ class ConvergenceAlerter:
         self._last_alert_times: Dict[str, datetime] = {}
         self._alert_lock = threading.Lock()
         self._min_alert_interval_hours = 4.0
+
+    # ------------------------------------------------------------------
+    # Signal buffer persistence
+    # ------------------------------------------------------------------
+
+    def save_signal_buffer(self) -> None:
+        """Persist in-memory signal buffer and alerter state to disk.
+
+        Saves only signals that are still within their domain convergence
+        window — expired signals are not worth carrying across restarts.
+        Uses atomic writes (write to .tmp then rename) for thread safety,
+        matching the pattern used by ThompsonSampler.
+        """
+        now = datetime.now()
+
+        # Build serialisable buffer — only keep live (non-expired) signals.
+        buffer: Dict[str, list] = {}
+        for domain, sigs in self.signals.items():
+            window = self._domain_windows.get(domain, self.convergence_window)
+            cutoff = now - window
+            live = [
+                {
+                    "signal_id": s.signal_id,
+                    "strength": s.strength,
+                    "domain": s.domain,
+                    "direction": s.direction,
+                    "timestamp": s.timestamp.isoformat(),
+                    "metadata": s.metadata,
+                    "velocity": s.velocity,
+                    "confidence": s.confidence,
+                    "source": s.source,
+                }
+                for s in sigs
+                if s.timestamp >= cutoff
+            ]
+            if live:
+                buffer[domain] = live
+
+        # Atomically write signal buffer.
+        buf_path = _DATA_DIR / "signal_buffer.json"
+        tmp_buf = buf_path.with_suffix(".tmp")
+        try:
+            tmp_buf.write_text(json.dumps(buffer, indent=2))
+            os.replace(tmp_buf, buf_path)
+        except Exception:
+            logger.warning("Failed to save signal buffer", exc_info=True)
+            if tmp_buf.exists():
+                tmp_buf.unlink(missing_ok=True)
+            return
+
+        # Atomically write alerter state (counter + dedup times).
+        state = {
+            "alert_counter": self._alert_counter,
+            "last_alert_times": {
+                k: v.isoformat() for k, v in self._last_alert_times.items()
+            },
+        }
+        state_path = _DATA_DIR / "alerter_state.json"
+        tmp_state = state_path.with_suffix(".tmp")
+        try:
+            tmp_state.write_text(json.dumps(state, indent=2))
+            os.replace(tmp_state, state_path)
+        except Exception:
+            logger.warning("Failed to save alerter state", exc_info=True)
+            if tmp_state.exists():
+                tmp_state.unlink(missing_ok=True)
+            return
+
+        total_signals = sum(len(v) for v in buffer.values())
+        logger.info(
+            "Signal buffer saved: %d signals across %d domains",
+            total_signals,
+            len(buffer),
+        )
+
+    def load_signal_buffer(self) -> None:
+        """Restore signal buffer and alerter state from disk.
+
+        Signals older than their domain convergence window are discarded
+        on load — only signals that are still relevant are restored.
+        Missing or corrupt files are handled gracefully.
+        """
+        now = datetime.now()
+
+        # Restore signal buffer.
+        buf_path = _DATA_DIR / "signal_buffer.json"
+        if buf_path.exists():
+            try:
+                raw: Dict[str, list] = json.loads(buf_path.read_text())
+                loaded = 0
+                for domain, entries in raw.items():
+                    window = self._domain_windows.get(domain, self.convergence_window)
+                    cutoff = now - window
+                    for entry in entries:
+                        ts = datetime.fromisoformat(entry["timestamp"])
+                        if ts < cutoff:
+                            continue  # expired — skip
+                        self.signals[domain].append(
+                            Signal(
+                                signal_id=entry["signal_id"],
+                                strength=entry["strength"],
+                                domain=entry["domain"],
+                                direction=entry["direction"],
+                                timestamp=ts,
+                                metadata=entry.get("metadata", {}),
+                                velocity=entry.get("velocity", 0.0),
+                                confidence=entry.get("confidence", 0.5),
+                                source=entry.get("source", ""),
+                            )
+                        )
+                        loaded += 1
+                domain_count = len(self.signals)
+                logger.info(
+                    "Signal buffer loaded: %d signals across %d domains",
+                    loaded,
+                    domain_count,
+                )
+            except Exception:
+                logger.warning("Failed to load signal buffer — starting fresh", exc_info=True)
+        else:
+            logger.debug("No signal buffer file found — starting with empty buffer")
+
+        # Restore alerter state.
+        state_path = _DATA_DIR / "alerter_state.json"
+        if state_path.exists():
+            try:
+                state = json.loads(state_path.read_text())
+                self._alert_counter = int(state.get("alert_counter", 0))
+                raw_times = state.get("last_alert_times", {})
+                self._last_alert_times = {
+                    k: datetime.fromisoformat(v) for k, v in raw_times.items()
+                }
+                logger.debug(
+                    "Alerter state loaded: counter=%d, dedup_entries=%d",
+                    self._alert_counter,
+                    len(self._last_alert_times),
+                )
+            except Exception:
+                logger.warning("Failed to load alerter state — using defaults", exc_info=True)
+        else:
+            logger.debug("No alerter state file found — using defaults")
 
     def record_signal(
         self,

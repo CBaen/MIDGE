@@ -92,6 +92,76 @@ class SomaticAnticipation:
         self._last_fired: Dict[str, float] = {}
         self._fire_cooldown_seconds = 300.0  # 5 min cooldown per ticker
 
+    def save_state(self) -> None:
+        """Persist _ticker_states and _last_fired to data/market/somatic_state.json."""
+        ticker_states_serialized = {}
+        for ticker, state in self._ticker_states.items():
+            ticker_states_serialized[ticker] = {
+                "ticker": state.ticker,
+                "domains_active": sorted(state.domains_active),
+                "directions": dict(state.directions),
+                "total_strength": state.total_strength,
+                "signal_count": state.signal_count,
+                "first_signal_time": state.first_signal_time.isoformat() if state.first_signal_time else None,
+                "last_signal_time": state.last_signal_time.isoformat() if state.last_signal_time else None,
+            }
+
+        payload = {
+            "ticker_states": ticker_states_serialized,
+            "last_fired": self._last_fired,
+        }
+
+        dest = _STATE_DIR / "somatic_state.json"
+        tmp = dest.with_suffix(".json.tmp")
+        _STATE_DIR.mkdir(parents=True, exist_ok=True)
+        try:
+            tmp.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+            os.replace(tmp, dest)
+            logger.debug("SomaticAnticipation: saved %d ticker states", len(ticker_states_serialized))
+        except Exception:
+            logger.warning("SomaticAnticipation: save_state failed", exc_info=True)
+            tmp.unlink(missing_ok=True)
+
+    def load_state(self) -> None:
+        """Restore _ticker_states and _last_fired from data/market/somatic_state.json."""
+        src = _STATE_DIR / "somatic_state.json"
+        if not src.exists():
+            return
+
+        try:
+            payload = json.loads(src.read_text(encoding="utf-8"))
+        except Exception:
+            logger.warning("SomaticAnticipation: load_state corrupt JSON, skipping", exc_info=True)
+            return
+
+        cutoff = datetime.now() - timedelta(hours=self._response_window_hours)
+        loaded = 0
+
+        for ticker, raw in payload.get("ticker_states", {}).items():
+            last_str = raw.get("last_signal_time")
+            last_dt = datetime.fromisoformat(last_str) if last_str else None
+            # Drop states whose last signal is older than the response window
+            if last_dt is not None and last_dt < cutoff:
+                continue
+
+            first_str = raw.get("first_signal_time")
+            first_dt = datetime.fromisoformat(first_str) if first_str else None
+
+            state = TickerState(
+                ticker=raw["ticker"],
+                domains_active=set(raw.get("domains_active", [])),
+                directions=Counter(raw.get("directions", {})),
+                total_strength=float(raw.get("total_strength", 0.0)),
+                signal_count=int(raw.get("signal_count", 0)),
+                first_signal_time=first_dt,
+                last_signal_time=last_dt,
+            )
+            self._ticker_states[ticker] = state
+            loaded += 1
+
+        self._last_fired = {k: float(v) for k, v in payload.get("last_fired", {}).items()}
+        logger.debug("SomaticAnticipation: loaded %d ticker states", loaded)
+
     def record_signal(
         self,
         ticker: str,
