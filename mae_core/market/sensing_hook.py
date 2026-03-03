@@ -248,6 +248,8 @@ class MarketSensingHook:
         self._consolidation_engine = consolidation_engine
         self._fractal_resonance_detector = fractal_resonance_detector
         self._pattern_archetype_engine = pattern_archetype_engine
+        self._somatic_anticipation = somatic_anticipation
+        self._pattern_completion_engine = pattern_completion_engine
 
         # EventBus (injected by bootstrap for signal bridge)
         self._bus = None
