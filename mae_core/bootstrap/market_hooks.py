@@ -506,7 +506,8 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                         }
 
                     # Register combo-level prediction for Thompson feedback loop.
-                    # Extracts primary symbol from contributing signals' metadata.
+                    # Extracts primary symbol from contributing signals' metadata,
+                    # falling back to alert.ticker if signals lack symbol metadata.
                     _oc = getattr(ctx, "outcome_collector", None)
                     if _oc is not None:
                         _sym = None
@@ -514,6 +515,8 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                             _sym = getattr(_sig, "metadata", {}).get("symbol", "")
                             if _sym:
                                 break
+                        if not _sym:
+                            _sym = getattr(alert, "ticker", None) or ""
                         if _sym:
                             try:
                                 _oc.register_convergence_alert(alert, _sym)
