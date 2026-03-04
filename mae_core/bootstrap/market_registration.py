@@ -129,6 +129,8 @@ def _register_market_holons(ctx: SimpleNamespace) -> None:
         "coingecko_client", "coincap_client", "openinsider_client",
         "edgar_enhanced_client", "finviz_client", "economic_calendar_client",
         "finnhub_websocket", "massive_client",
+        # Pattern Archaeology
+        "pattern_library", "pattern_watcher",
     ]
 
     registered = 0
@@ -213,6 +215,8 @@ def _register_market_fractal(ctx: SimpleNamespace) -> None:
         "coingecko_client", "coincap_client", "openinsider_client",
         "edgar_enhanced_client", "finviz_client", "economic_calendar_client",
         "finnhub_websocket", "massive_client",
+        # Pattern Archaeology
+        "pattern_library", "pattern_watcher",
     ]
     for sys_id in extras:
         if ctx.holon_registry.get_entry(sys_id) is not None:
