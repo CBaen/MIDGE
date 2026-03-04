@@ -1,4 +1,4 @@
-"""Tests for Pattern Archaeology: Excavator + DigSites + Fingerprint."""
+"""Tests for Pattern Archaeology: Excavator + DigSites + Fingerprint + Templates."""
 
 import json
 import pytest
@@ -8,6 +8,8 @@ from pathlib import Path
 from mae_core.market.archaeology.fingerprint import (
     MoveFingerprint,
     PrecursorSignal,
+    PatternTemplate,
+    TemplateInstance,
     lag_bucket_for_days,
 )
 from mae_core.market.archaeology.dig_sites import DigSite, find_dig_sites
@@ -80,10 +82,10 @@ class TestMoveFingerprint:
             precursor_signals=[
                 PrecursorSignal("sec_form4", "insider", "bullish", 0.5, 3, "short"),
                 PrecursorSignal("fred_macro", "macro", "bullish", 0.4, 7, "medium"),
-                PrecursorSignal("ta_rsi", "price", "bullish", 0.6, 1, "immediate"),
+                PrecursorSignal("ta_rsi", "technical", "bullish", 0.6, 1, "immediate"),
             ],
         )
-        assert fp.domain_signature == "insider+macro+price"
+        assert fp.domain_signature == "insider+macro+technical"
 
     def test_lag_profile(self):
         fp = MoveFingerprint(
@@ -124,6 +126,17 @@ class TestMoveFingerprint:
         )
         assert fp.win_rate == 0.0
 
+    def test_template_key(self):
+        fp = MoveFingerprint(
+            fingerprint_id="", symbol="NVDA", direction="bullish",
+            move_date="2024-01-15", move_pct=10.0,
+            precursor_signals=[
+                PrecursorSignal("sec_form4", "insider", "bullish", 0.5, 3, "short"),
+                PrecursorSignal("fred_macro", "macro", "bullish", 0.5, 7, "medium"),
+            ],
+        )
+        assert fp.template_key == "bullish:insider+macro"
+
     def test_roundtrip_json(self):
         fp = MoveFingerprint(
             fingerprint_id="", symbol="TSLA", direction="bearish",
@@ -141,6 +154,148 @@ class TestMoveFingerprint:
         assert restored.losses == 3
         assert len(restored.precursor_signals) == 1
         assert restored.precursor_signals[0].source == "src_a"
+
+
+# ── PatternTemplate tests ─────────────────────────────────────────────
+
+
+class TestPatternTemplate:
+    def test_auto_id(self):
+        t = PatternTemplate(
+            template_id="", direction="bullish",
+            domain_signature="insider+macro",
+        )
+        assert t.template_id != ""
+        assert len(t.template_id) == 16
+
+    def test_deterministic_id(self):
+        t1 = PatternTemplate(
+            template_id="", direction="bullish",
+            domain_signature="insider+macro",
+        )
+        t2 = PatternTemplate(
+            template_id="", direction="bullish",
+            domain_signature="insider+macro",
+        )
+        assert t1.template_id == t2.template_id
+
+    def test_different_direction_different_id(self):
+        t1 = PatternTemplate(
+            template_id="", direction="bullish",
+            domain_signature="insider+macro",
+        )
+        t2 = PatternTemplate(
+            template_id="", direction="bearish",
+            domain_signature="insider+macro",
+        )
+        assert t1.template_id != t2.template_id
+
+    def test_from_fingerprint(self):
+        fp = MoveFingerprint(
+            fingerprint_id="", symbol="NVDA", direction="bullish",
+            move_date="2024-01-15", move_pct=10.0,
+            precursor_signals=[
+                PrecursorSignal("sec_form4", "insider", "bullish", 0.8, 3, "short"),
+                PrecursorSignal("fred_macro", "macro", "bullish", 0.5, 7, "medium"),
+            ],
+        )
+        t = PatternTemplate.from_fingerprint(fp)
+        assert t.direction == "bullish"
+        assert t.domain_signature == "insider+macro"
+        assert t.n_instances == 1
+        assert "NVDA" in t.unique_symbols
+        assert t.avg_move_pct == pytest.approx(10.0)
+
+    def test_add_instance(self):
+        fp1 = MoveFingerprint(
+            fingerprint_id="", symbol="NVDA", direction="bullish",
+            move_date="2024-01-15", move_pct=10.0,
+            precursor_signals=[
+                PrecursorSignal("sec_form4", "insider", "bullish", 0.8, 3, "short"),
+            ],
+        )
+        t = PatternTemplate.from_fingerprint(fp1)
+        assert t.n_instances == 1
+
+        fp2 = MoveFingerprint(
+            fingerprint_id="", symbol="AAPL", direction="bullish",
+            move_date="2024-02-15", move_pct=8.0,
+        )
+        t.add_instance(fp2)
+        assert t.n_instances == 2
+        assert "AAPL" in t.unique_symbols
+        assert t.avg_move_pct == pytest.approx(9.0)
+
+    def test_cross_validated(self):
+        fp1 = MoveFingerprint(fingerprint_id="", symbol="NVDA", direction="bullish", move_date="2024-01-15", move_pct=10.0)
+        t = PatternTemplate.from_fingerprint(fp1)
+        assert not t.cross_validated
+
+        fp2 = MoveFingerprint(fingerprint_id="", symbol="AAPL", direction="bullish", move_date="2024-02-15", move_pct=8.0)
+        t.add_instance(fp2)
+        assert not t.cross_validated  # Only 2 symbols
+
+        fp3 = MoveFingerprint(fingerprint_id="", symbol="MSFT", direction="bullish", move_date="2024-03-15", move_pct=6.0)
+        t.add_instance(fp3)
+        assert t.cross_validated  # 3 symbols!
+        assert t.confidence_multiplier == 1.15
+
+    def test_confidence_multiplier_scaling(self):
+        t = PatternTemplate(
+            template_id="", direction="bullish",
+            domain_signature="insider+macro",
+        )
+        assert t.confidence_multiplier == 1.0  # 0 symbols
+        t.symbols_seen = ["A"]
+        assert t.confidence_multiplier == 1.0
+        t.symbols_seen = ["A", "B", "C"]
+        assert t.confidence_multiplier == 1.15
+        t.symbols_seen = ["A", "B", "C", "D", "E"]
+        assert t.confidence_multiplier == 1.3
+        t.symbols_seen = list("ABCDEFGHIJ")
+        assert t.confidence_multiplier == 1.5
+
+    def test_win_rate(self):
+        t = PatternTemplate(
+            template_id="", direction="bullish",
+            domain_signature="insider+macro",
+            wins=7, losses=3,
+        )
+        assert t.win_rate == pytest.approx(0.7)
+
+    def test_roundtrip_json(self):
+        fp = MoveFingerprint(
+            fingerprint_id="", symbol="NVDA", direction="bullish",
+            move_date="2024-01-15", move_pct=10.0,
+            precursor_signals=[
+                PrecursorSignal("sec_form4", "insider", "bullish", 0.8, 3, "short"),
+            ],
+        )
+        t = PatternTemplate.from_fingerprint(fp)
+        t.wins = 5
+        t.losses = 3
+        json_str = t.to_json()
+        d = json.loads(json_str)
+        restored = PatternTemplate.from_dict(d)
+        assert restored.template_id == t.template_id
+        assert restored.direction == "bullish"
+        assert restored.domain_signature == t.domain_signature
+        assert restored.wins == 5
+        assert restored.losses == 3
+        assert restored.n_instances == 1
+
+
+class TestTemplateInstance:
+    def test_roundtrip(self):
+        inst = TemplateInstance(
+            symbol="NVDA", move_date="2024-01-15",
+            move_pct=10.0, fingerprint_id="abc123",
+        )
+        d = inst.to_dict()
+        restored = TemplateInstance.from_dict(d)
+        assert restored.symbol == "NVDA"
+        assert restored.move_pct == 10.0
+        assert restored.fingerprint_id == "abc123"
 
 
 # ── DigSites tests ─────────────────────────────────────────────────────
@@ -226,7 +381,7 @@ class TestExcavator:
         sig_file2 = signal_dir / "2024-01-13.jsonl"
         sig_file2.write_text(json.dumps({
             "signal_id": "test-3", "source": "ta_rsi", "symbol": "NVDA",
-            "domain": "price", "direction": "bullish", "strength": 0.6,
+            "domain": "technical", "direction": "bullish", "strength": 0.6,
             "timestamp": "2024-01-13T00:00:00", "received_at": "2024-01-13T00:00:00",
         }) + "\n")
 
@@ -237,13 +392,13 @@ class TestExcavator:
         )
 
         excavator = Excavator(signal_dir=signal_dir, min_precursors=2)
-        fp = excavator.excavate(site, lookback_days=10)
+        fp = excavator.excavate(site, price_history=[], lookback_days=10)
 
         assert fp is not None
         assert fp.symbol == "NVDA"
         assert fp.direction == "bullish"
         assert len(fp.precursor_signals) == 3  # 2 from day -5 + 1 from day -2
-        assert fp.domain_signature == "insider+macro+price"
+        assert fp.domain_signature == "insider+macro+technical"
 
     def test_excavate_too_few_signals(self, tmp_path):
         signal_dir = tmp_path / "signals"
@@ -264,7 +419,7 @@ class TestExcavator:
         )
 
         excavator = Excavator(signal_dir=signal_dir, min_precursors=3)
-        fp = excavator.excavate(site, lookback_days=10)
+        fp = excavator.excavate(site, price_history=[], lookback_days=10)
         assert fp is None
 
     def test_look_ahead_bias_filter(self, tmp_path):
@@ -286,7 +441,7 @@ class TestExcavator:
         )
 
         excavator = Excavator(signal_dir=signal_dir, min_precursors=1)
-        fp = excavator.excavate(site, lookback_days=10)
+        fp = excavator.excavate(site, price_history=[], lookback_days=10)
         assert fp is None  # The only signal was future-biased
 
     def test_symbol_agnostic_signals_included(self, tmp_path):
@@ -320,7 +475,7 @@ class TestExcavator:
         )
 
         excavator = Excavator(signal_dir=signal_dir, min_precursors=2)
-        fp = excavator.excavate(site, lookback_days=10)
+        fp = excavator.excavate(site, price_history=[], lookback_days=10)
         assert fp is not None
         assert len(fp.precursor_signals) == 3  # macro + events + insider
 
@@ -342,7 +497,7 @@ class TestExcavator:
         )
 
         excavator = Excavator(signal_dir=signal_dir, min_precursors=1)
-        fp = excavator.excavate(site, lookback_days=10)
+        fp = excavator.excavate(site, price_history=[], lookback_days=10)
         assert fp is None  # AAPL signal doesn't match NVDA dig site
 
     def test_batch_excavation(self, tmp_path):
@@ -366,6 +521,53 @@ class TestExcavator:
         ]
 
         excavator = Excavator(signal_dir=signal_dir, min_precursors=3)
-        fps = excavator.excavate_batch(sites, lookback_days=10)
+        fps = excavator.excavate_batch(sites, [], lookback_days=10)
         assert len(fps) == 1  # Only NVDA has enough matching signals
         assert fps[0].symbol == "NVDA"
+
+    def test_template_accumulation(self, tmp_path):
+        """Verify excavator groups fingerprints into PatternTemplates."""
+        signal_dir = tmp_path / "signals"
+        signal_dir.mkdir()
+
+        # Signals for two symbols with same domains
+        for sym, dates in [("NVDA", "2024-01-10"), ("AAPL", "2024-02-10")]:
+            sig_file = signal_dir / f"{dates}.jsonl"
+            lines = [
+                json.dumps({
+                    "signal_id": f"{sym}-insider", "source": "sec_form4", "symbol": sym,
+                    "domain": "insider", "direction": "bullish", "strength": 0.8,
+                    "timestamp": f"{dates}T00:00:00", "received_at": f"{dates}T00:00:00",
+                }),
+                json.dumps({
+                    "signal_id": f"{sym}-macro", "source": "fred_macro", "symbol": "",
+                    "domain": "macro", "direction": "bullish", "strength": 0.5,
+                    "timestamp": f"{dates}T00:00:00", "received_at": f"{dates}T00:00:00",
+                }),
+                json.dumps({
+                    "signal_id": f"{sym}-ta", "source": "ta_rsi", "symbol": sym,
+                    "domain": "technical", "direction": "bullish", "strength": 0.6,
+                    "timestamp": f"{dates}T00:00:00", "received_at": f"{dates}T00:00:00",
+                }),
+            ]
+            sig_file.write_text("\n".join(lines) + "\n")
+
+        excavator = Excavator(signal_dir=signal_dir, min_precursors=2)
+
+        site1 = DigSite("NVDA", "bullish", "2024-01-15", "2024-01-15", 10.0)
+        fp1 = excavator.excavate(site1, price_history=[], lookback_days=10)
+        assert fp1 is not None
+
+        site2 = DigSite("AAPL", "bullish", "2024-02-15", "2024-02-15", 8.0)
+        fp2 = excavator.excavate(site2, price_history=[], lookback_days=10)
+        assert fp2 is not None
+
+        # Same domain_signature → same template
+        assert fp1.template_key == fp2.template_key
+
+        # Template should have 2 instances from 2 symbols
+        templates = excavator.templates
+        assert len(templates) == 1
+        key = fp1.template_key
+        assert templates[key].n_instances == 2
+        assert len(templates[key].unique_symbols) == 2
