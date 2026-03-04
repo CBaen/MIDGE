@@ -15,31 +15,6 @@ from types import SimpleNamespace
 logger = logging.getLogger("midge.bootstrap")
 
 
-def _seed_combo_thompson(thompson_sampler) -> int:
-    """Seed combo Thompson distributions from replay results. Returns count seeded."""
-    import json
-    replay_path = Path(__file__).resolve().parents[2] / "data" / "midge" / "replay_results.json"
-    if not replay_path.exists():
-        return 0
-    results = json.loads(replay_path.read_text())
-    combos = results.get("report", {}).get("domain_combos", {})
-    seeded = 0
-    for combo_str, stats in combos.items():
-        total = stats.get("total", 0)
-        if total < 3:
-            continue
-        key = f"combo:{combo_str}"
-        if thompson_sampler.get_distribution(key).samples >= total:
-            continue  # Idempotent: live data already exceeds replay seed
-        wins = stats.get("wins", 0)
-        for _ in range(wins):
-            thompson_sampler.update(key, success=True)
-        for _ in range(total - wins):
-            thompson_sampler.update(key, success=False)
-        seeded += 1
-    return seeded
-
-
 def _instantiate_wave2_3_clients(ctx: SimpleNamespace) -> None:
     """Construct Wave 2+3 API clients (Always-On MIDGE)."""
     import importlib
@@ -270,34 +245,12 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         ctx.thompson_sampler = None
         failures += 1
 
-    # Seed combo Thompson distributions from replay results (if available).
-    # Converts historical domain-combo win/loss rates into Beta distributions
-    # so the confidence engine knows which combos are reliable from day one.
+    # Seed combo Thompson from replay results (historical domain-combo win rates).
     if ctx.thompson_sampler is not None:
         try:
-            import json as _json
-            _replay_path = Path(__file__).resolve().parents[2] / "data" / "midge" / "replay_results.json"
-            if _replay_path.exists():
-                _results = _json.loads(_replay_path.read_text())
-                _combos = _results.get("report", {}).get("domain_combos", {})
-                _seeded = 0
-                for _combo_str, _stats in _combos.items():
-                    if _stats.get("total", 0) < 3:
-                        continue
-                    _key = f"combo:{_combo_str}"
-                    # Idempotency: skip if live data already exceeds replay seed
-                    _existing = ctx.thompson_sampler.get_distribution(_key)
-                    if _existing.samples >= _stats["total"]:
-                        continue
-                    _wins = _stats.get("wins", 0)
-                    _losses = _stats["total"] - _wins
-                    for _ in range(_wins):
-                        ctx.thompson_sampler.update(_key, success=True)
-                    for _ in range(_losses):
-                        ctx.thompson_sampler.update(_key, success=False)
-                    _seeded += 1
-                if _seeded:
-                    logger.info("Market: seeded %d combo Thompson distributions from replay results", _seeded)
+            seeded = _seed_combo_thompson(ctx.thompson_sampler)
+            if seeded:
+                logger.info("Market: seeded %d combo Thompson distributions from replay results", seeded)
         except Exception:
             logger.debug("Market: combo Thompson seeding failed", exc_info=True)
 
