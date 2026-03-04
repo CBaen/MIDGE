@@ -1,13 +1,17 @@
-"""Pattern Library — storage, querying, and management of pattern fingerprints.
+"""Pattern Library — storage, querying, and management of fingerprints AND templates.
 
-Stores MoveFingerprints in an append-only JSONL file. Provides similarity
-matching: given a set of live signals, find fingerprints whose precursor
-profile matches the current state.
+Two levels of storage:
+  1. MoveFingerprints: symbol-specific observations in pattern_library.jsonl
+  2. PatternTemplates: symbol-agnostic patterns in pattern_templates.jsonl
+
+The PatternWatcher queries TEMPLATES, not fingerprints. Templates are the
+transferable truth — a pattern that works across 47 symbols is real.
+Fingerprints are the evidence that backs a template.
 
 Stats tracking:
   - Win rate with Clopper-Pearson 95% CI
+  - Cross-symbol validation count
   - Regime-conditional performance
-  - Freshness weighting (exponential decay, 90-day half-life)
 """
 
 from __future__ import annotations
@@ -20,74 +24,105 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from mae_core.market.archaeology.fingerprint import MoveFingerprint, PrecursorSignal
+from mae_core.market.archaeology.fingerprint import (
+    MoveFingerprint,
+    PatternTemplate,
+)
 
 logger = logging.getLogger(__name__)
 
 LIBRARY_PATH = Path(__file__).resolve().parents[3] / "data" / "market" / "pattern_library.jsonl"
-STATS_PATH = Path(__file__).resolve().parents[3] / "data" / "market" / "pattern_stats.json"
-DEFAULT_MATCH_THRESHOLD = 0.60  # 60% of precursor signals must match to "activate"
+TEMPLATES_PATH = Path(__file__).resolve().parents[3] / "data" / "market" / "pattern_templates.jsonl"
+DEFAULT_MATCH_THRESHOLD = 0.60
 
 
 @dataclass
 class PatternMatch:
-    """Result of matching live signals against a fingerprint."""
-    fingerprint: MoveFingerprint
-    match_score: float      # 0-1, fraction of precursor signals matched
-    matched_sources: list[str]   # Which precursor sources matched
-    missing_sources: list[str]   # Which precursor sources are absent
+    """Result of matching live signals against a template."""
+    template: PatternTemplate
+    match_score: float          # 0-1, fraction of template domains matched
+    matched_domains: list[str]  # Which template domains matched
+    missing_domains: list[str]  # Which template domains are absent
+    matched_sources: list[str]  # Specific sources that matched
+    missing_sources: list[str]  # For backward compatibility
+
+    @property
+    def fingerprint(self) -> Optional[MoveFingerprint]:
+        """Backward compatibility: return None (templates don't have a single fingerprint)."""
+        return None
 
 
 class PatternLibrary:
-    """Stores and queries pattern fingerprints.
+    """Stores and queries pattern fingerprints and templates.
 
-    All fingerprints are loaded into memory on init. For MIDGE's scale
-    (hundreds to low thousands of patterns), this is efficient.
+    Fingerprints are the raw evidence. Templates are the generalized patterns.
+    The PatternWatcher queries templates (symbol-agnostic matching).
     """
 
     def __init__(
         self,
         library_path: Optional[Path] = None,
+        templates_path: Optional[Path] = None,
         match_threshold: float = DEFAULT_MATCH_THRESHOLD,
     ):
         self._path = library_path or LIBRARY_PATH
+        self._templates_path = templates_path or TEMPLATES_PATH
         self._match_threshold = match_threshold
         self._fingerprints: dict[str, MoveFingerprint] = {}
+        self._templates: dict[str, PatternTemplate] = {}
         self._load()
 
     def _load(self) -> None:
-        """Load all fingerprints from disk."""
-        if not self._path.exists():
-            return
+        """Load fingerprints and templates from disk."""
+        fp_count = 0
+        if self._path.exists():
+            try:
+                with open(self._path, "r") as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            data = json.loads(line)
+                            fp = MoveFingerprint.from_dict(data)
+                            self._fingerprints[fp.fingerprint_id] = fp
+                            fp_count += 1
+                        except (json.JSONDecodeError, KeyError) as e:
+                            logger.debug("Skipping malformed fingerprint: %s", e)
+            except OSError as e:
+                logger.warning("Could not load pattern library: %s", e)
 
-        count = 0
-        try:
-            with open(self._path, "r") as f:
-                for line in f:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        data = json.loads(line)
-                        fp = MoveFingerprint.from_dict(data)
-                        self._fingerprints[fp.fingerprint_id] = fp
-                        count += 1
-                    except (json.JSONDecodeError, KeyError) as e:
-                        logger.debug("Skipping malformed fingerprint: %s", e)
-                        continue
-        except OSError as e:
-            logger.warning("Could not load pattern library: %s", e)
+        tmpl_count = 0
+        if self._templates_path.exists():
+            try:
+                with open(self._templates_path, "r") as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            data = json.loads(line)
+                            t = PatternTemplate.from_dict(data)
+                            self._templates[t.template_id] = t
+                            tmpl_count += 1
+                        except (json.JSONDecodeError, KeyError) as e:
+                            logger.debug("Skipping malformed template: %s", e)
+            except OSError as e:
+                logger.warning("Could not load pattern templates: %s", e)
 
-        logger.info("Pattern library loaded: %d fingerprints", count)
+        if fp_count or tmpl_count:
+            logger.info(
+                "Pattern library loaded: %d fingerprints, %d templates",
+                fp_count, tmpl_count,
+            )
 
     def store(self, fingerprint: MoveFingerprint) -> bool:
-        """Store a fingerprint. Returns False if duplicate (already exists)."""
+        """Store a fingerprint. Returns False if duplicate."""
         if fingerprint.fingerprint_id in self._fingerprints:
             return False
 
         self._fingerprints[fingerprint.fingerprint_id] = fingerprint
 
-        # Append to file
         try:
             self._path.parent.mkdir(parents=True, exist_ok=True)
             with open(self._path, "a") as f:
@@ -95,177 +130,274 @@ class PatternLibrary:
         except OSError as e:
             logger.warning("Could not persist fingerprint: %s", e)
 
+        # Update or create template
+        self._update_template(fingerprint)
         return True
 
     def store_batch(self, fingerprints: list[MoveFingerprint]) -> int:
-        """Store multiple fingerprints. Returns count of new (non-duplicate) entries."""
+        """Store multiple fingerprints. Returns count of new entries."""
         stored = 0
         for fp in fingerprints:
             if self.store(fp):
                 stored += 1
         return stored
 
+    def store_template(self, template: PatternTemplate) -> bool:
+        """Store or update a template. Returns True if new."""
+        is_new = template.template_id not in self._templates
+        self._templates[template.template_id] = template
+        self._persist_templates()
+        return is_new
+
+    def store_templates(self, templates: dict[str, PatternTemplate]) -> int:
+        """Store multiple templates. Returns count of new entries."""
+        new_count = 0
+        for t in templates.values():
+            if t.template_id not in self._templates:
+                new_count += 1
+            self._templates[t.template_id] = t
+        self._persist_templates()
+        return new_count
+
+    def _update_template(self, fingerprint: MoveFingerprint) -> None:
+        """Update or create the template for a fingerprint."""
+        key = fingerprint.template_key
+        # Find template by direction + domain_signature match
+        for t in self._templates.values():
+            if t.direction == fingerprint.direction and t.domain_signature == fingerprint.domain_signature:
+                t.add_instance(fingerprint)
+                self._persist_templates()
+                return
+
+        # Create new template
+        template = PatternTemplate.from_fingerprint(fingerprint)
+        self._templates[template.template_id] = template
+        self._persist_templates()
+
     def get(self, fingerprint_id: str) -> Optional[MoveFingerprint]:
-        """Get a fingerprint by ID."""
         return self._fingerprints.get(fingerprint_id)
+
+    def get_template(self, template_id: str) -> Optional[PatternTemplate]:
+        return self._templates.get(template_id)
 
     @property
     def size(self) -> int:
         return len(self._fingerprints)
 
+    @property
+    def template_count(self) -> int:
+        return len(self._templates)
+
     def query_similar(
         self,
         live_sources: set[str],
-        symbol: str,
-        direction: str,
+        symbol: str = "",
+        direction: str = "",
         regime: str = "default",
     ) -> list[PatternMatch]:
-        """Find fingerprints whose precursor profile matches live signal state.
+        """Find templates whose domain profile matches live signal state.
+
+        This is the key change from v1: we match against TEMPLATES (symbol-
+        agnostic) instead of fingerprints (symbol-specific). A pattern
+        discovered on NVDA can now activate on ANY symbol.
 
         Args:
-            live_sources: Set of source names currently active for this symbol
+            live_sources: Set of source names currently active
                           (e.g. {"sec_form4", "fred_macro", "ta_rsi"})
-            symbol: Ticker symbol to match against.
+            symbol: Ticker symbol (for logging, NOT for filtering).
             direction: "bullish" or "bearish".
             regime: Current market regime (optional filter).
 
         Returns:
-            List of PatternMatch objects with match_score >= threshold,
-            sorted by match_score descending.
+            List of PatternMatch objects sorted by match_score descending.
         """
+        # Build domain set from live sources
+        live_domains = self._sources_to_domains(live_sources)
+
         matches: list[PatternMatch] = []
 
-        for fp in self._fingerprints.values():
+        for template in self._templates.values():
             # Direction must match
-            if fp.direction != direction:
+            if template.direction != direction:
                 continue
 
-            # Symbol must match (fingerprints are symbol-specific)
-            if fp.symbol != symbol:
+            template_domains = set(template.domains)
+            if not template_domains:
                 continue
 
-            # Compute match score
-            fp_sources = set(s.source for s in fp.precursor_signals)
-            if not fp_sources:
+            # Domain overlap matching
+            matched_domains = template_domains & live_domains
+            missing_domains = template_domains - live_domains
+
+            if not matched_domains:
                 continue
 
-            matched = fp_sources & live_sources
-            missing = fp_sources - live_sources
+            # Weighted score: more important domains count more
+            # Lag profile weighting: immediate/short signals matter more
+            lag_weights = template.lag_profile_normalized
+            # Base: fraction of domains matched
+            domain_score = len(matched_domains) / len(template_domains)
 
-            # Weight by lag bucket: immediate signals matter more
-            weighted_match = 0.0
-            weighted_total = 0.0
-            bucket_weights = {
-                "immediate": 2.0,
-                "short": 1.5,
-                "medium": 1.0,
-                "long": 0.8,
-                "extended": 0.6,
-            }
+            # Boost for cross-validated templates
+            cross_boost = template.confidence_multiplier
 
-            for precursor in fp.precursor_signals:
-                weight = bucket_weights.get(precursor.lag_bucket, 1.0)
-                weighted_total += weight
-                if precursor.source in live_sources:
-                    weighted_match += weight
-
-            if weighted_total <= 0:
-                continue
-
-            score = weighted_match / weighted_total
+            score = domain_score * cross_boost
 
             if score >= self._match_threshold:
+                # Find which specific sources matched for reporting
+                matched_sources = sorted(s for s in live_sources if self._source_domain(s) in matched_domains)
+                missing_source_domains = sorted(missing_domains)
+
                 matches.append(PatternMatch(
-                    fingerprint=fp,
-                    match_score=round(score, 3),
-                    matched_sources=sorted(matched),
-                    missing_sources=sorted(missing),
+                    template=template,
+                    match_score=round(min(score, 1.0), 3),
+                    matched_domains=sorted(matched_domains),
+                    missing_domains=sorted(missing_domains),
+                    matched_sources=matched_sources,
+                    missing_sources=missing_source_domains,
                 ))
 
-        # Sort by match score descending
         matches.sort(key=lambda m: m.match_score, reverse=True)
         return matches
 
     def update_outcome(
         self,
-        fingerprint_id: str,
-        won: bool,
+        fingerprint_id: str = "",
+        template_id: str = "",
+        won: bool = False,
         return_pct: float = 0.0,
     ) -> None:
-        """Update a fingerprint's stats after an outcome is graded."""
-        fp = self._fingerprints.get(fingerprint_id)
-        if fp is None:
-            return
+        """Update stats after an outcome is graded."""
+        if fingerprint_id:
+            fp = self._fingerprints.get(fingerprint_id)
+            if fp is not None:
+                fp.total_activations += 1
+                if won:
+                    fp.wins += 1
+                else:
+                    fp.losses += 1
+                fp.last_activation = datetime.now().isoformat()
 
-        fp.total_activations += 1
-        if won:
-            fp.wins += 1
-        else:
-            fp.losses += 1
-        fp.last_activation = datetime.now().isoformat()
+        if template_id:
+            t = self._templates.get(template_id)
+            if t is not None:
+                if won:
+                    t.wins += 1
+                else:
+                    t.losses += 1
+                self._persist_templates()
 
-        # Persist updated stats
-        self._persist_all()
+        if fingerprint_id:
+            self._persist_fingerprints()
 
-    def _persist_all(self) -> None:
-        """Rewrite the full library file (for stat updates)."""
+    def _persist_fingerprints(self) -> None:
+        """Rewrite fingerprints file."""
         try:
             with open(self._path, "w") as f:
                 for fp in self._fingerprints.values():
                     f.write(fp.to_json() + "\n")
         except OSError as e:
-            logger.warning("Could not persist pattern library: %s", e)
+            logger.warning("Could not persist fingerprints: %s", e)
+
+    def _persist_templates(self) -> None:
+        """Rewrite templates file."""
+        try:
+            self._templates_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(self._templates_path, "w") as f:
+                for t in self._templates.values():
+                    f.write(t.to_json() + "\n")
+        except OSError as e:
+            logger.warning("Could not persist templates: %s", e)
 
     def get_statistics(self) -> dict:
         """Return summary statistics about the library."""
-        if not self._fingerprints:
-            return {"total": 0}
-
-        total = len(self._fingerprints)
-        bullish = sum(1 for fp in self._fingerprints.values() if fp.direction == "bullish")
-        with_outcomes = sum(1 for fp in self._fingerprints.values() if fp.wins + fp.losses > 0)
-
-        # Domain signature distribution
-        domain_sigs: dict[str, int] = {}
-        for fp in self._fingerprints.values():
-            domain_sigs[fp.domain_signature] = domain_sigs.get(fp.domain_signature, 0) + 1
+        templates = list(self._templates.values())
+        cross_validated = [t for t in templates if t.cross_validated]
+        with_outcomes = [t for t in templates if t.wins + t.losses > 0]
 
         return {
-            "total": total,
-            "bullish": bullish,
-            "bearish": total - bullish,
-            "with_outcomes": with_outcomes,
-            "top_domain_signatures": sorted(domain_sigs.items(), key=lambda x: -x[1])[:10],
+            "total_fingerprints": len(self._fingerprints),
+            "total_templates": len(templates),
+            "cross_validated_templates": len(cross_validated),
+            "templates_with_outcomes": len(with_outcomes),
+            "top_templates": [
+                {
+                    "domain_signature": t.domain_signature,
+                    "direction": t.direction,
+                    "symbols": len(t.unique_symbols),
+                    "instances": t.n_instances,
+                    "win_rate": round(t.win_rate, 3) if t.wins + t.losses > 0 else None,
+                }
+                for t in sorted(templates, key=lambda x: x.n_instances, reverse=True)[:10]
+            ],
         }
 
-    def clopper_pearson_ci(self, fingerprint_id: str, alpha: float = 0.05) -> tuple[float, float]:
-        """Compute Clopper-Pearson confidence interval for a fingerprint's win rate.
-
-        Returns (lower_bound, upper_bound) at 1-alpha confidence level.
-        """
-        fp = self._fingerprints.get(fingerprint_id)
-        if fp is None:
+    def clopper_pearson_ci(self, template_id: str = "", fingerprint_id: str = "", alpha: float = 0.05) -> tuple[float, float]:
+        """Compute Clopper-Pearson CI for win rate."""
+        if template_id:
+            t = self._templates.get(template_id)
+            k = t.wins if t else 0
+            n = (t.wins + t.losses) if t else 0
+        elif fingerprint_id:
+            fp = self._fingerprints.get(fingerprint_id)
+            k = fp.wins if fp else 0
+            n = (fp.wins + fp.losses) if fp else 0
+        else:
             return (0.0, 1.0)
 
-        n = fp.wins + fp.losses
         if n == 0:
             return (0.0, 1.0)
 
-        k = fp.wins
-
-        # Clopper-Pearson uses the Beta distribution quantile function
-        # For a pure-Python implementation without scipy, use the approximation
-        # based on the F-distribution relationship
         try:
             from scipy.stats import beta as beta_dist
             lower = beta_dist.ppf(alpha / 2, k, n - k + 1) if k > 0 else 0.0
             upper = beta_dist.ppf(1 - alpha / 2, k + 1, n - k) if k < n else 1.0
             return (round(lower, 4), round(upper, 4))
         except ImportError:
-            # Fallback: Wilson score interval (simpler, still good)
             p = k / n
-            z = 1.96  # 95% CI
+            z = 1.96
             denom = 1 + z * z / n
             center = (p + z * z / (2 * n)) / denom
             spread = z * math.sqrt((p * (1 - p) + z * z / (4 * n)) / n) / denom
             return (round(max(0, center - spread), 4), round(min(1, center + spread), 4))
+
+    # ── Domain mapping ────────────────────────────────────────────────────
+
+    # Source → domain mapping (covers all 29 known sources)
+    _SOURCE_DOMAIN_MAP = {
+        "sec_form4": "insider", "openinsider_purchase": "insider",
+        "sec_form8k": "events", "sec_efts": "events",
+        "finnhub_earnings": "events", "finnhub_news": "events",
+        "finnhub_realtime": "events", "finnhub_earnings_calendar": "events",
+        "massive_snapshot": "events", "hiring_tracker": "events",
+        "fred_macro": "macro", "economic_calendar": "macro",
+        "ta_rsi": "technical", "ta_macd": "technical", "ta_bollinger": "technical",
+        "ta_structure": "technical", "ta_candle": "technical",
+        "session_sweep": "technical", "session_sweep_ifvg": "technical",
+        "fractal_resonance": "technical", "order_flow": "technical",
+        "finviz_unusual_volume": "technical", "finviz_short_squeeze": "technical",
+        "social_sentiment": "sentiment", "google_trends": "sentiment",
+        "stocktwits_sentiment": "sentiment",
+        "congressional": "government", "contract_award": "contracts",
+        "sam_gov": "contracts",
+        "finnhub_analyst": "fundamentals",
+        "cot_positioning": "positioning",
+        "vix_term_structure": "volatility",
+        "crypto_coingecko": "crypto", "crypto_coincap": "crypto",
+        "activist_13d": "institutional", "institutional_13f": "institutional",
+        "finra_short": "institutional",
+        "yfinance_price": "technical",
+        "absence_signal": "meta",
+        "archetype_match": "meta",
+        "convergence_alert": "convergence",
+    }
+
+    @classmethod
+    def _source_domain(cls, source: str) -> str:
+        """Map a source name to its domain."""
+        return cls._SOURCE_DOMAIN_MAP.get(source, "unknown")
+
+    @classmethod
+    def _sources_to_domains(cls, sources: set[str]) -> set[str]:
+        """Convert a set of source names to their domains."""
+        return {cls._source_domain(s) for s in sources} - {"unknown"}
