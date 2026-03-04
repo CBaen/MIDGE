@@ -301,7 +301,7 @@ class ThompsonSampler:
 
     def _log_update(self, result: UpdateResult) -> None:
         """Append update to history file."""
-        with open(HISTORY_FILE, "a") as f:
+        with open(self.history_path, "a") as f:
             f.write(json.dumps(asdict(result)) + "\n")
 
     def select_top_n(
