@@ -716,6 +716,10 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
     except Exception:
         logger.debug("OutcomeCollector construction failed", exc_info=True)
 
+    # Store on ctx so combo Thompson feedback can find it (lines 265, 509)
+    if outcome_collector is not None:
+        ctx.outcome_collector = outcome_collector
+
     # --- SignalMemory (Qdrant persistence) ---
     memory = None
     try:

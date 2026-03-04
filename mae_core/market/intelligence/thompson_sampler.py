@@ -442,10 +442,13 @@ class ThompsonSampler:
 
 def main():
     """Demo and test the Thompson Sampler."""
+    import tempfile
     print("Thompson Sampler Demo")
     print("=" * 50)
 
-    sampler = ThompsonSampler()
+    # Use temp directory so demo doesn't touch production data
+    tmp = Path(tempfile.mkdtemp()) / "thompson_distributions.json"
+    sampler = ThompsonSampler(persistence_path=tmp)
 
     # Show initial stats
     stats = sampler.get_stats()

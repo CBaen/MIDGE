@@ -49,7 +49,8 @@ def phase_evaluate():
     from mae_core.market.intelligence.outcome_collector import OutcomeCollector
 
     price_fetcher = PriceFetcher()
-    thompson = ThompsonSampler()
+    # Explicit path — immune to test-time monkeypatching
+    thompson = ThompsonSampler(persistence_path=MARKET_DATA_DIR / "thompson_distributions.json")
     collector = OutcomeCollector(price_fetcher, thompson, data_dir=MARKET_DATA_DIR)
 
     before_stats = collector.get_statistics()
@@ -82,7 +83,8 @@ def phase_resolve():
     from mae_core.market.intelligence.outcome_collector import OutcomeCollector
 
     price_fetcher = PriceFetcher()
-    thompson = ThompsonSampler()
+    # Explicit path — immune to test-time monkeypatching
+    thompson = ThompsonSampler(persistence_path=MARKET_DATA_DIR / "thompson_distributions.json")
     collector = OutcomeCollector(price_fetcher, thompson, data_dir=MARKET_DATA_DIR)
 
     before_stats = collector.get_statistics()
