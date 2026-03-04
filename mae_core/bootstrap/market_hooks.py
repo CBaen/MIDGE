@@ -612,7 +612,7 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                 except Exception:
                     logger.debug("Thompson calibration step failed", exc_info=True)
 
-        # Every 5000 steps: backtest scheduler staleness check
+        # Every 5000 steps: backtest scheduler staleness check + excavation
         if step % 5000 == 0:
             scheduler = getattr(ctx, "backtest_scheduler", None)
             if scheduler is not None:
@@ -620,6 +620,22 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                     scheduler.check_and_schedule()
                 except Exception:
                     logger.debug("Backtest scheduler check failed", exc_info=True)
+
+            # Excavation daemon: continuous background pattern discovery
+            daemon = getattr(ctx, "excavation_daemon", None)
+            if daemon is not None:
+                try:
+                    summary = daemon.step()
+                    if summary.get("fingerprints_found", 0) > 0:
+                        logger.info(
+                            "Excavation: %d fingerprints, %d new templates (%d/%d symbols done)",
+                            summary.get("fingerprints_found", 0),
+                            summary.get("new_templates", 0),
+                            summary.get("symbols_done", 0),
+                            summary.get("symbols_done", 0) + summary.get("symbols_remaining", 0),
+                        )
+                except Exception:
+                    logger.debug("Excavation daemon step failed", exc_info=True)
 
         # Every step: hypothesis engine (manages its own cadence internally)
         hyp_engine = getattr(ctx, "hypothesis_engine", None)

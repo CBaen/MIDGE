@@ -102,7 +102,7 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
         # WP-B: Market Clock
         "market_clock",
         # Pattern Archaeology
-        "pattern_library", "pattern_watcher",
+        "pattern_library", "pattern_watcher", "excavation_daemon",
     ]
     active = sum(1 for a in market_attrs if getattr(ctx, a, None) is not None)
     holon_count = len([
