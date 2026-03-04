@@ -426,4 +426,16 @@ def _register_market_connections(ctx: SimpleNamespace) -> None:
         witnesses=["convergence_alerter", "auditor"],
         description="Completion events published for hypothesis engine consumption")
 
-    logger.info("Layer 33d - Market connections: 103 triadic connections registered (Group 14-32)")
+    # --- Group 33: Pattern Archaeology (reverse-engineered historical patterns) ---
+    if getattr(ctx, "pattern_library", None) is not None:
+        reg("pattern_library", "pattern_watcher", dr,
+            witnesses=["convergence_alerter", "auditor"],
+            description="Watcher queries library for fingerprint matches")
+        reg("pattern_watcher", "convergence_alerter", dr,
+            witnesses=["pattern_library", "auditor"],
+            description="Pattern stacks cross-validate with live convergence")
+        reg("pattern_library", "hypothesis_engine", dr,
+            witnesses=["pattern_watcher", "auditor"],
+            description="Excavated patterns feed hypothesis generation pipeline")
+
+    logger.info("Layer 33d - Market connections: triadic connections registered (Group 14-33)")

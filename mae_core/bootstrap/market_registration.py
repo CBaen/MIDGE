@@ -80,6 +80,9 @@ def _register_market_somatic(ctx: SimpleNamespace) -> None:
         "economic_calendar_client": ("EconomicCalendarClient", []),
         "finnhub_websocket": ("FinnhubWebSocket", []),
         "massive_client": ("MassiveClient", []),
+        # Pattern Archaeology
+        "pattern_library": ("PatternLibrary", []),
+        "pattern_watcher": ("PatternWatcher", ["pattern_library", "convergence_alerter"]),
     }
 
     for sys_id, (desc, deps) in market_systems.items():

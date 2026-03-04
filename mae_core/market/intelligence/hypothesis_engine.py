@@ -61,6 +61,7 @@ class HypothesisEngine:
         regime_classifier: Any = None,
         thompson_sampler: Any = None,
         backtest_analyzer: Any = None,
+        archaeological_analyzer: Any = None,
         thompson_calibrator: Any = None,
         generation_cadence: int = 500,
         validation_cadence: int = 1000,
@@ -73,6 +74,7 @@ class HypothesisEngine:
         self._regime_classifier = regime_classifier
         self._thompson_sampler = thompson_sampler
         self._backtest_analyzer = backtest_analyzer
+        self._archaeological_analyzer = archaeological_analyzer
         self._thompson_calibrator = thompson_calibrator
 
         self._generation_cadence = generation_cadence
@@ -266,6 +268,14 @@ class HypothesisEngine:
                 all_new.extend(bt_hypotheses)
             except Exception:
                 logger.debug("Backtest analysis failed", exc_info=True)
+
+        # Path 3: Archaeological hypotheses (reverse-engineered from historical moves)
+        if self._archaeological_analyzer is not None:
+            try:
+                arch_hypotheses = self._archaeological_analyzer.analyze()
+                all_new.extend(arch_hypotheses)
+            except Exception:
+                logger.debug("Archaeological analysis failed", exc_info=True)
 
         self._hypotheses_generated += len(all_new)
 
