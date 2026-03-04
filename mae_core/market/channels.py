@@ -43,6 +43,9 @@ CH_CONTRADICTION_DETECTED = "market.intel.contradiction_detected"
 # Absence detection channels (the dog that didn't bark)
 CH_ABSENCE_DETECTED = "market.intel.absence_detected"
 
+# Pattern Archaeology channels (reverse-engineered historical patterns)
+CH_PATTERN_STACK_DETECTED = "market.archaeology.pattern_stack_detected"
+
 # Ten Gifts channels (Wave 1-3)
 CH_EXIT_SIGNAL = "market.intel.exit_signal"
 CH_DECEPTION_DETECTED = "market.edge.deception_detected"

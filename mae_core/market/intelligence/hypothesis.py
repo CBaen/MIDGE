@@ -35,6 +35,7 @@ class SourceType(Enum):
     MANUAL = "manual"                      # Human-specified
     AGENT_DISCOVERED = "agent_discovered"  # Discovered by HYPOTHESIS_EXPLORER agent
     BACKTEST_DERIVED = "backtest_derived"  # From historical backtest performance analysis
+    ARCHAEOLOGICAL = "archaeological"      # Reverse-engineered from historical price moves
 
 
 @dataclass

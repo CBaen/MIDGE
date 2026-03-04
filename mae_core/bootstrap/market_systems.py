@@ -430,6 +430,30 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
     except Exception:
         ctx.step_timer = None
 
+    # --- Pattern Archaeology (reverse-engineered historical patterns) ---
+    try:
+        from mae_core.market.archaeology.pattern_library import PatternLibrary
+        ctx.pattern_library = PatternLibrary()
+        logger.info("Market: PatternLibrary loaded (%d fingerprints)", ctx.pattern_library.size)
+    except Exception:
+        ctx.pattern_library = None
+        failures += 1
+        logger.debug("Market: PatternLibrary failed", exc_info=True)
+
+    try:
+        from mae_core.market.archaeology.pattern_watcher import PatternWatcher
+        if ctx.pattern_library is not None:
+            ctx.pattern_watcher = PatternWatcher(
+                library=ctx.pattern_library,
+                bus=getattr(ctx, "bus", None),
+            )
+        else:
+            ctx.pattern_watcher = None
+    except Exception:
+        ctx.pattern_watcher = None
+        failures += 1
+        logger.debug("Market: PatternWatcher failed", exc_info=True)
+
     # --- Trust registration with BoundaryMembrane ---
     market_sources = [
         ("sec_edgar", 0.90), ("yfinance", 0.75), ("alpha_vantage", 0.80), ("rapidapi", 0.65),
