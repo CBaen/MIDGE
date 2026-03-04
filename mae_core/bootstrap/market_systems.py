@@ -454,6 +454,35 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         failures += 1
         logger.debug("Market: PatternWatcher failed", exc_info=True)
 
+    # --- Excavation Daemon (continuous background pattern discovery) ---
+    try:
+        from mae_core.market.archaeology.excavator import Excavator
+        from mae_core.market.archaeology.historical_fetcher import HistoricalDataFetcher
+        from mae_core.market.archaeology.excavation_daemon import ExcavationDaemon
+
+        if ctx.pattern_library is not None:
+            fetcher = HistoricalDataFetcher(
+                sec_client=getattr(ctx, "sec_edgar_client", None),
+                fred_client=getattr(ctx, "fred_client", None),
+                cot_client=getattr(ctx, "cot_client", None),
+                congress_client=getattr(ctx, "house_stock_watcher", None),
+                senate_client=getattr(ctx, "senate_stock_watcher", None),
+            )
+            excavator = Excavator(fetcher=fetcher)
+            ctx.excavation_daemon = ExcavationDaemon(
+                library=ctx.pattern_library,
+                excavator=excavator,
+                price_fetcher=getattr(ctx, "price_fetcher", None),
+                bus=getattr(ctx, "bus", None),
+            )
+            logger.info("Market: ExcavationDaemon initialized (continuous pattern discovery)")
+        else:
+            ctx.excavation_daemon = None
+    except Exception:
+        ctx.excavation_daemon = None
+        failures += 1
+        logger.debug("Market: ExcavationDaemon failed", exc_info=True)
+
     # --- Trust registration with BoundaryMembrane ---
     market_sources = [
         ("sec_edgar", 0.90), ("yfinance", 0.75), ("alpha_vantage", 0.80), ("rapidapi", 0.65),
