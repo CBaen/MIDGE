@@ -2,6 +2,22 @@
 
 ## What Happened
 
+### Combo Thompson — Domain Combination Learning (2026-03-03)
+
+Replay harness found 288 convergence alerts with 19.9% win rate, but confidence was flat between winners (0.560) and losers (0.565). Root cause: confidence used per-signal Thompson but ignored *which domain combinations* work. Example: `events+macro+price+sentiment+technical` wins 66.7% vs `events+insider+institutional+macro+price` at 8.3% — an 8x difference the confidence engine completely missed.
+
+**Fix:** Combo-level Thompson distributions that track win rates per domain combination.
+
+**Changes:**
+- `convergence_alerter.py`: Added `combo_key` field to `ConvergenceAlert` dataclass. Combo Thompson weight in `_check_direction_convergence()` — multiplicative modifier using `0.5 + dist.mean` scale (same as per-signal). Maturity guard: skips when samples < 5.
+- `outcome_collector.py`: New `register_convergence_alert()` method registers combo-level predictions for Thompson feedback. Added `"convergence_combo": 14` to `OUTCOME_WINDOWS`.
+- `market_hooks.py`: Wired `register_convergence_alert()` in `_market_sense_hook` after alert detection. Primary symbol extracted from alert signals.
+- `thompson_sampler.py`: New `seed_combo_distributions(replay_path)` method — reads replay_results.json domain_combos, seeds Beta distributions. Idempotent (skips if live samples >= replay total).
+- `market_systems.py`: Calls `seed_combo_distributions()` at bootstrap. Refactored Phase 2 + Layer 6 API clients to table-driven loop (458 lines, under 500-line cap).
+- `tests/test_combo_thompson.py`: **22 new tests** — combo key format (4), combo weight (5), combo registration (5), replay seeding (4), hooks wiring (2), feedback loop (2).
+
+---
+
 ### Massive/Polygon.io Integration + Bug Fixes (2026-03-03)
 
 **Massive/Polygon.io** wired as 28th data source. Polygon.io rebranded to Massive.com (October 2025) — same API, same key. Free tier: 5 calls/min, 15-min delayed, 2 years historical.
