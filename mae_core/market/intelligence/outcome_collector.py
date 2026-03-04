@@ -49,6 +49,7 @@ OUTCOME_WINDOWS = {
     "hiring_tracker": 90,
     "sam_gov": 90,
     "correlation": 21,
+    "convergence_combo": 14,  # Combo-level convergence alert outcome window
 }
 
 # 5% move required — 2% was too close to random noise after transaction costs
@@ -131,6 +132,43 @@ class OutcomeCollector:
             logger.info(f"Registered {count} signals as predictions (window varies by type)")
 
         return count
+
+    def register_convergence_alert(self, alert, primary_symbol: str) -> bool:
+        """
+        Register a convergence alert as a combo-level prediction for Thompson feedback.
+
+        The combo key (e.g. "combo:events+macro+price") flows through OutcomeTracker
+        to Thompson Sampler — when the outcome resolves, Thompson learns which domain
+        combinations actually predict price movement.
+        """
+        if not primary_symbol:
+            return False
+
+        combo_key = "combo:" + "+".join(alert.domains_converging)
+        alert_id = f"combo_{alert.alert_id}"
+
+        if alert_id in self._registered:
+            return False
+
+        direction = {"bullish": "up", "bearish": "down"}.get(alert.direction, "")
+        window = OUTCOME_WINDOWS.get("convergence_combo", 14)
+
+        ts = alert.timestamp.isoformat() if alert.timestamp else ""
+        self.tracker.record_prediction(
+            source=combo_key,
+            symbol=primary_symbol,
+            direction=direction,
+            outcome_window_days=window,
+            metadata={"combo_key": combo_key, "alert_id": alert.alert_id},
+            timestamp=ts,
+        )
+        self._registered[alert_id] = datetime.now()
+        self._save_registered()
+        logger.info(
+            "Registered combo prediction: %s for %s (%s)",
+            combo_key, primary_symbol, alert.direction,
+        )
+        return True
 
     def evaluate(self) -> int:
         """

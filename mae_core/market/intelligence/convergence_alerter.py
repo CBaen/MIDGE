@@ -85,6 +85,7 @@ class ConvergenceAlert:
             "urgency": self.urgency,
             "coherence": round(self.coherence, 3),
             "contradiction_details": self.contradiction_details,
+            "combo_key": self.combo_key,
         }
 
 
@@ -1022,6 +1023,20 @@ class ConvergenceAlerter:
             except Exception:
                 pass  # Graceful degradation
 
+        # Combo Thompson — historical domain combination reliability.
+        # Different domain combos have vastly different win rates (8% to 67%).
+        # The combo key tracks per-combination Thompson distributions.
+        combo_key = "combo:" + "+".join(sorted(domains_seen))
+        if self._thompson is not None:
+            try:
+                regime = self._get_regime()
+                combo_dist = self._thompson.get_distribution(combo_key, regime)
+                if combo_dist.samples >= 5:
+                    combo_multiplier = 0.5 + combo_dist.mean
+                    final_confidence = max(0.05, min(0.95, final_confidence * combo_multiplier))
+            except Exception:
+                pass  # Graceful degradation
+
         # Determine urgency based on velocity (directional signals only)
         avg_velocity = sum(abs(s.velocity) for s in directional_signals) / len(directional_signals)
         if avg_velocity > 0.1:
@@ -1058,6 +1073,7 @@ class ConvergenceAlerter:
             urgency=urgency,
             coherence=coherence,
             contradiction_details=contradiction_details,
+            combo_key=combo_key,
         )
 
         return alert

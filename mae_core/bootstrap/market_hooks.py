@@ -503,6 +503,21 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                             "direction": direction,
                             "strength": strength,
                         }
+
+                    # Register combo-level prediction for Thompson feedback loop.
+                    # Extracts primary symbol from contributing signals' metadata.
+                    _oc = getattr(ctx, "outcome_collector", None)
+                    if _oc is not None:
+                        _sym = None
+                        for _sig in (alert.signals if hasattr(alert, "signals") else []):
+                            _sym = getattr(_sig, "metadata", {}).get("symbol", "")
+                            if _sym:
+                                break
+                        if _sym:
+                            try:
+                                _oc.register_convergence_alert(alert, _sym)
+                            except Exception:
+                                logger.debug("Combo registration failed", exc_info=True)
             except Exception:
                 logger.debug("Convergence alerter step failed", exc_info=True)
 
