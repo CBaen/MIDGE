@@ -49,7 +49,8 @@ def _make_alerter(thompson=None, min_domains=3):
 def _build_thompson_with_combo(combo_key, wins, losses):
     """Build a ThompsonSampler with a specific combo distribution."""
     from mae_core.market.intelligence.thompson_sampler import ThompsonSampler
-    ts = ThompsonSampler()
+    tmp = tempfile.mkdtemp()
+    ts = ThompsonSampler(persistence_path=Path(tmp) / "thompson.json")
     for _ in range(wins):
         ts.update(combo_key, success=True)
     for _ in range(losses):
