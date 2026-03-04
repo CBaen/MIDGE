@@ -1,50 +1,50 @@
 {
   "sec_edgar": {
     "default": {
-      "alpha": 1.122168258882,
+      "alpha": 1.0,
       "beta": 1.0
     }
   },
   "13f_filing": {
     "default": {
-      "alpha": 1.6278877350158483,
+      "alpha": 1.0,
       "beta": 1.0
     }
   },
   "form_4": {
     "default": {
-      "alpha": 1.6278877350158483,
+      "alpha": 1.0,
       "beta": 1.0
     }
   },
   "capitol_trades": {
     "default": {
-      "alpha": 1.2449157284124757,
+      "alpha": 1.0,
       "beta": 1.0
     }
   },
   "unusual_whales": {
     "default": {
-      "alpha": 1.308651100155569,
+      "alpha": 1.0,
       "beta": 1.0
     }
   },
   "polygon": {
     "default": {
-      "alpha": 1.80688109481,
+      "alpha": 1.0,
       "beta": 1.0
     }
   },
   "twitter_verified": {
     "default": {
-      "alpha": 1.1527152119999997,
+      "alpha": 1.0,
       "beta": 1.0
     }
   },
   "reddit": {
     "default": {
       "alpha": 1.0,
-      "beta": 1.3048914870697856
+      "beta": 1.0
     }
   },
   "stocktwits": {
@@ -55,13 +55,13 @@
   },
   "gemini": {
     "default": {
-      "alpha": 1.120758141497394,
+      "alpha": 1.0,
       "beta": 1.0
     }
   },
   "deepseek": {
     "default": {
-      "alpha": 1.3048914870697856,
+      "alpha": 1.0,
       "beta": 1.0
     }
   },
@@ -73,8 +73,8 @@
   },
   "session_sweep": {
     "default": {
-      "alpha": 1.1,
-      "beta": 0.8999999999999999
+      "alpha": 1.0,
+      "beta": 1.0
     },
     "sideways": {
       "alpha": 1.0,
@@ -83,76 +83,88 @@
   },
   "sec_form4": {
     "default": {
-      "alpha": 3.2178137401298184,
-      "beta": 5.721880150309971
+      "alpha": 1.0,
+      "beta": 1.0
     },
     "sideways": {
-      "alpha": 1.0430868020811226,
-      "beta": 1.4861347837072947
+      "alpha": 1.0,
+      "beta": 1.0
     }
   },
   "sec_form8k": {
     "default": {
-      "alpha": 1.1293695565996715,
+      "alpha": 1.0,
+      "beta": 1.0
+    },
+    "sideways": {
+      "alpha": 1.0,
       "beta": 1.0
     }
   },
   "sec_efts": {
     "default": {
-      "alpha": 1.3048914870697856,
+      "alpha": 1.0,
+      "beta": 1.0
+    },
+    "sideways": {
+      "alpha": 1.0,
       "beta": 1.0
     }
   },
   "congressional": {
     "default": {
-      "alpha": 4.0235611003326275,
-      "beta": 20.54675144884035
+      "alpha": 1.0,
+      "beta": 1.9560443758173949
+    },
+    "sideways": {
+      "alpha": 1.0,
+      "beta": 1.0
     }
   },
   "senate": {
     "default": {
-      "alpha": 1.120758141497394,
+      "alpha": 1.0,
       "beta": 1.0
     }
   },
   "insider_cluster": {
     "default": {
-      "alpha": 1.2449157284124757,
+      "alpha": 1.0,
       "beta": 1.0
     }
   },
   "contract_award": {
     "default": {
-      "alpha": 2.9832192548217202,
-      "beta": 16.38538406679675
+      "alpha": 1.0,
+      "beta": 1.5598834895759004
     },
     "sideways": {
-      "alpha": 1.302693980375435,
-      "beta": 3.4738506143344936
+      "alpha": 1.0,
+      "beta": 1.0
     }
   },
   "contract_prediction": {
     "default": {
-      "alpha": 1.1527152119999997,
+      "alpha": 1.0,
       "beta": 1.0
     }
   },
   "hiring_tracker": {
     "default": {
-      "alpha": 1.1527152119999997,
+      "alpha": 1.0,
       "beta": 1.0
     }
   },
   "sam_gov": {
     "default": {
       "alpha": 1.0,
-      "beta": 1.1527152119999997
+      "beta": 1.0
     }
   },
   "social_sentiment": {
     "default": {
       "alpha": 1.0,
-      "beta": 1.3048914870697856
+      "beta": 1.0
     },
     "sideways": {
       "alpha": 1.0,
@@ -161,56 +173,60 @@
   },
   "finra_short": {
     "default": {
-      "alpha": 318.41590195386425,
-      "beta": 571.667844108242
+      "alpha": 30.31309527145875,
+      "beta": 54.422601747425816
     },
     "sideways": {
-      "alpha": 560.7101145650679,
-      "beta": 865.0905872450551
+      "alpha": 54.67943273322564,
+      "beta": 84.9563629291026
     }
   },
   "finnhub_news": {
     "default": {
-      "alpha": 1.1527152119999997,
+      "alpha": 1.0,
       "beta": 1.0
     }
   },
   "finnhub_earnings": {
     "default": {
-      "alpha": 13.412128686000395,
-      "beta": 36.932135515637114
+      "alpha": 1.2768304979652108,
+      "beta": 3.5159278653932935
     },
     "sideways": {
-      "alpha": 20.235667697581867,
-      "beta": 36.61692250038618
+      "alpha": 6.476441357746996,
+      "beta": 12.325943112324579
     }
   },
   "fred_macro": {
     "default": {
-      "alpha": 1.3048914870697856,
+      "alpha": 1.0,
+      "beta": 1.0
+    },
+    "sideways": {
+      "alpha": 1.0,
       "beta": 1.0
     }
   },
   "yfinance_price": {
     "default": {
-      "alpha": 59.81965611687693,
-      "beta": 200.78597618360442
+      "alpha": 5.694812739721526,
+      "beta": 19.114762761152264
     },
     "sideways": {
-      "alpha": 100.70672949840555,
-      "beta": 352.3500039516515
+      "alpha": 9.717249809872646,
+      "beta": 34.97361506415115
     }
   },
   "ta_rsi": {
     "default": {
-      "alpha": 1.1527152119999997,
+      "alpha": 1.0,
       "beta": 1.0
     }
   },
   "ta_macd": {
     "default": {
-      "alpha": 1.06,
-      "beta": 0.94
+      "alpha": 1.0,
+      "beta": 1.0
     },
     "sideways": {
       "alpha": 1.0,
@@ -219,14 +235,18 @@
   },
   "ta_bollinger": {
     "default": {
-      "alpha": 1.1,
-      "beta": 0.8999999999999999
+      "alpha": 1.0,
+      "beta": 1.0
+    },
+    "sideways": {
+      "alpha": 1.0,
+      "beta": 1.0
     }
   },
   "ta_structure": {
     "default": {
-      "alpha": 1.1,
-      "beta": 0.8999999999999999
+      "alpha": 1.0,
+      "beta": 1.0
     },
     "sideways": {
       "alpha": 1.0,
@@ -235,8 +255,8 @@
   },
   "ta_candle": {
     "default": {
-      "alpha": 1.1,
-      "beta": 0.8999999999999999
+      "alpha": 1.0,
+      "beta": 1.0
     },
     "sideways": {
       "alpha": 1.0,
@@ -245,7 +265,7 @@
   },
   "session_sweep_ifvg": {
     "default": {
-      "alpha": 1.1483999999999999,
+      "alpha": 1.0,
       "beta": 1.0
     },
     "sideways": {
@@ -273,12 +293,12 @@
   },
   "cot_positioning": {
     "default": {
-      "alpha": 1.1,
-      "beta": 0.8999999999999999
+      "alpha": 1.0,
+      "beta": 1.0
     },
     "sideways": {
-      "alpha": 16.242892187984246,
-      "beta": 41.91322515779916
+      "alpha": 1.9363193404392611,
+      "beta": 4.380127090583637
     }
   },
   "stocktwits_sentiment": {
@@ -289,20 +309,20 @@
   },
   "vix_term_structure": {
     "default": {
-      "alpha": 1.1527152119999997,
+      "alpha": 1.0,
       "beta": 1.0
     }
   },
   "google_trends": {
     "default": {
-      "alpha": 0.9,
-      "beta": 1.1
+      "alpha": 1.0,
+      "beta": 1.0
     }
   },
   "finnhub_economic": {
     "default": {
-      "alpha": 1.1,
-      "beta": 0.8999999999999999
+      "alpha": 1.0,
+      "beta": 1.0
     }
   },
   "finnhub_analyst": {
@@ -317,8 +337,8 @@
   },
   "finnhub_earnings_calendar": {
     "default": {
-      "alpha": 1.1,
-      "beta": 0.8999999999999999
+      "alpha": 1.0,
+      "beta": 1.0
     }
   },
   "sweep_bt:NQ=F:bullish": {
@@ -335,20 +355,20 @@
   },
   "sweep_bt:CL=F": {
     "default": {
-      "alpha": 10.464974975682665,
-      "beta": 9.50966605674067
+      "alpha": 1.0,
+      "beta": 1.0
     }
   },
   "sweep_bt:YM=F:bearish": {
     "default": {
-      "alpha": 6.122661707764546,
-      "beta": 4.298890135238936
+      "alpha": 1.0,
+      "beta": 1.0
     }
   },
   "sweep_bt:CL=F:bearish": {
     "default": {
-      "alpha": 6.122661707764546,
-      "beta": 4.298890135238936
+      "alpha": 1.0,
+      "beta": 1.0
     }
   },
   "sweep_bt:ES=F:bullish": {
@@ -371,92 +391,92 @@
   },
   "sec_form4:officer": {
     "default": {
-      "alpha": 0.9,
-      "beta": 1.1
+      "alpha": 1.0,
+      "beta": 1.0
     }
   },
   "sec_form4:officer:large": {
     "default": {
-      "alpha": 1.1,
-      "beta": 0.8999999999999999
+      "alpha": 1.0,
+      "beta": 1.0
     }
   },
   "sec_form4:director": {
     "default": {
       "alpha": 1.0,
-      "beta": 1.156636073369821
+      "beta": 1.0
     }
   },
   "sec_form4:10pct_owner": {
     "default": {
       "alpha": 1.0,
-      "beta": 1.27413
+      "beta": 1.0
     }
   },
   "congressional:senate": {
     "default": {
       "alpha": 1.0,
-      "beta": 1.2392529357533797
+      "beta": 1.0
     }
   },
   "congressional:house": {
     "default": {
       "alpha": 1.0,
-      "beta": 1.3549165430903622
+      "beta": 1.0
     }
   },
   "finra_short:large_change": {
     "default": {
-      "alpha": 0.9,
-      "beta": 1.1
+      "alpha": 1.0,
+      "beta": 1.0
     }
   },
   "finra_short:small_change": {
     "default": {
       "alpha": 1.0,
-      "beta": 1.156636073369821
+      "beta": 1.0
     }
   },
   "finnhub_earnings:beat": {
     "default": {
       "alpha": 1.0,
-      "beta": 1.188
+      "beta": 1.0
     }
   },
   "finnhub_earnings:miss": {
     "default": {
       "alpha": 1.0,
-      "beta": 1.27413
+      "beta": 1.0
     }
   },
   "contract_award:defense": {
     "default": {
       "alpha": 1.0,
-      "beta": 1.3218697981369383
+      "beta": 1.0
     }
   },
   "contract_award:tech": {
     "default": {
       "alpha": 1.0,
-      "beta": 1.3549165430903622
+      "beta": 1.0
     }
   },
   "ta_rsi:oversold": {
     "default": {
-      "alpha": 1.27413,
+      "alpha": 1.0,
       "beta": 1.0
     }
   },
   "ta_rsi:overbought": {
     "default": {
-      "alpha": 1.1483999999999999,
+      "alpha": 1.0,
       "beta": 1.0
     }
   },
   "ta_macd:crossover": {
     "default": {
-      "alpha": 1.1,
-      "beta": 0.8999999999999999
+      "alpha": 1.0,
+      "beta": 1.0
     }
   },
   "absence_signal": {
@@ -473,14 +493,86 @@
   },
   "fractal_resonance": {
     "default": {
-      "alpha": 1.1,
-      "beta": 0.8999999999999999
+      "alpha": 1.0,
+      "beta": 1.0
+    },
+    "sideways": {
+      "alpha": 1.0,
+      "beta": 1.0
     }
   },
   "archetype_match": {
     "default": {
-      "alpha": 1.1,
-      "beta": 0.8999999999999999
+      "alpha": 1.0,
+      "beta": 1.0
+    }
+  },
+  "finnhub_realtime": {
+    "default": {
+      "alpha": 1.0,
+      "beta": 1.0
+    }
+  },
+  "crypto_coingecko": {
+    "default": {
+      "alpha": 1.0,
+      "beta": 1.0
+    },
+    "sideways": {
+      "alpha": 1.0,
+      "beta": 1.0
+    }
+  },
+  "crypto_coincap": {
+    "default": {
+      "alpha": 1.0,
+      "beta": 1.0
+    }
+  },
+  "openinsider_purchase": {
+    "default": {
+      "alpha": 1.0,
+      "beta": 1.0
+    },
+    "sideways": {
+      "alpha": 1.0,
+      "beta": 1.0
+    }
+  },
+  "institutional_13f": {
+    "default": {
+      "alpha": 1.0,
+      "beta": 1.0
+    }
+  },
+  "activist_13d": {
+    "default": {
+      "alpha": 1.0,
+      "beta": 1.0
+    }
+  },
+  "finviz_unusual_volume": {
+    "default": {
+      "alpha": 1.0,
+      "beta": 1.0
+    }
+  },
+  "finviz_short_squeeze": {
+    "default": {
+      "alpha": 1.0,
+      "beta": 1.0
+    }
+  },
+  "economic_calendar": {
+    "default": {
+      "alpha": 1.0,
+      "beta": 1.0
+    }
+  },
+  "massive_snapshot": {
+    "default": {
+      "alpha": 1.0,
+      "beta": 1.0
     }
   }
 }
