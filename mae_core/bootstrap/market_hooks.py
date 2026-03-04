@@ -905,6 +905,30 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
                 except Exception:
                     logger.debug("Tiered alerter %s query failed", tier_name, exc_info=True)
 
+        # Every 10 steps: pattern archaeology stacking detection
+        if step % 10 == 0 and getattr(ctx, "pattern_watcher", None) is not None:
+            try:
+                # Build active signals from convergence alerter's signal buffer
+                _alerter = getattr(ctx, "convergence_alerter", None)
+                if _alerter is not None and hasattr(_alerter, "signals"):
+                    _active: dict = {}
+                    for _domain, _sigs in _alerter.signals.items():
+                        for _sig in _sigs:
+                            _sym = getattr(_sig, "metadata", {}).get("symbol", "")
+                            _dir = getattr(_sig, "direction", "")
+                            _src = getattr(_sig, "source", "")
+                            if not _sym or not _dir or not _src:
+                                continue
+                            if _sym not in _active:
+                                _active[_sym] = {}
+                            if _dir not in _active[_sym]:
+                                _active[_sym][_dir] = set()
+                            _active[_sym][_dir].add(_src)
+                    if _active:
+                        ctx.pattern_watcher.check(_active)
+            except Exception:
+                logger.debug("Pattern watcher check failed", exc_info=True)
+
     # Register the wrapped step hook
     ctx.model.add_step_hook(_sensing_step_with_advisory)
 
