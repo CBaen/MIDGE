@@ -180,3 +180,206 @@ class MoveFingerprint:
 
     def to_json(self) -> str:
         return json.dumps(self.to_dict())
+
+    @property
+    def template_key(self) -> str:
+        """Key for grouping into PatternTemplates: direction + domain_signature."""
+        return f"{self.direction}:{self.domain_signature}"
+
+
+@dataclass
+class TemplateInstance:
+    """One observation of a PatternTemplate on a specific symbol."""
+    symbol: str
+    move_date: str
+    move_pct: float
+    fingerprint_id: str
+    regime: str = "default"
+
+    def to_dict(self) -> dict:
+        return {
+            "symbol": self.symbol,
+            "move_date": self.move_date,
+            "move_pct": self.move_pct,
+            "fingerprint_id": self.fingerprint_id,
+            "regime": self.regime,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> TemplateInstance:
+        return cls(
+            symbol=d["symbol"],
+            move_date=d["move_date"],
+            move_pct=d.get("move_pct", 0.0),
+            fingerprint_id=d.get("fingerprint_id", ""),
+            regime=d.get("regime", "default"),
+        )
+
+
+@dataclass
+class PatternTemplate:
+    """Symbol-agnostic pattern — the transferable truth across the market.
+
+    A PatternTemplate groups MoveFingerprints that share the same
+    direction + domain_signature. "insider+macro+technical bullish"
+    is one template — it doesn't matter if it was NVDA, AAPL, or AMD.
+
+    Cross-validation: a template seen on 3+ different symbols is
+    structurally stronger than one seen on a single symbol. The market
+    is telling us this pattern is REAL, not a coincidence.
+    """
+    template_id: str                         # hash(direction + domain_signature)
+    direction: str                           # "bullish" or "bearish"
+    domain_signature: str                    # "insider+macro+technical"
+    domains: list[str] = field(default_factory=list)  # sorted domain list
+    lag_profile_normalized: dict[str, float] = field(default_factory=dict)
+    source_examples: dict[str, list[str]] = field(default_factory=dict)
+
+    # Cross-symbol validation
+    instances: list[TemplateInstance] = field(default_factory=list)
+    symbols_seen: list[str] = field(default_factory=list)  # list for JSON serialization
+    n_instances: int = 0
+    avg_move_pct: float = 0.0
+
+    # Stats (updated as outcomes are graded)
+    wins: int = 0
+    losses: int = 0
+    created_at: str = ""
+
+    def __post_init__(self):
+        if not self.template_id:
+            self.template_id = self._compute_id()
+        if not self.domains and self.domain_signature:
+            self.domains = self.domain_signature.split("+")
+        if not self.created_at:
+            self.created_at = datetime.now().isoformat()
+
+    def _compute_id(self) -> str:
+        raw = f"{self.direction}:{self.domain_signature}"
+        return hashlib.sha256(raw.encode()).hexdigest()[:16]
+
+    @property
+    def unique_symbols(self) -> set[str]:
+        return set(self.symbols_seen)
+
+    @property
+    def cross_validated(self) -> bool:
+        """Template is cross-validated if seen on 3+ different symbols."""
+        return len(self.unique_symbols) >= 3
+
+    @property
+    def confidence_multiplier(self) -> float:
+        """Cross-symbol validation boosts confidence.
+
+        1 symbol = 1.0 (no boost, might be coincidence)
+        3 symbols = 1.15 (pattern recurring across stocks)
+        5 symbols = 1.3 (strong cross-validation)
+        10+ symbols = 1.5 (market-wide pattern)
+        """
+        n = len(self.unique_symbols)
+        if n >= 10:
+            return 1.5
+        if n >= 5:
+            return 1.3
+        if n >= 3:
+            return 1.15
+        return 1.0
+
+    @property
+    def win_rate(self) -> float:
+        total = self.wins + self.losses
+        if total == 0:
+            return 0.0
+        return self.wins / total
+
+    @property
+    def domain_set(self) -> set[str]:
+        return set(self.domains)
+
+    def add_instance(self, fingerprint: MoveFingerprint) -> None:
+        """Register a new fingerprint observation for this template."""
+        inst = TemplateInstance(
+            symbol=fingerprint.symbol,
+            move_date=fingerprint.move_date,
+            move_pct=fingerprint.move_pct,
+            fingerprint_id=fingerprint.fingerprint_id,
+            regime=fingerprint.regime,
+        )
+        self.instances.append(inst)
+        if fingerprint.symbol not in self.symbols_seen:
+            self.symbols_seen.append(fingerprint.symbol)
+        self.n_instances = len(self.instances)
+        self._recompute_averages()
+
+    def _recompute_averages(self) -> None:
+        if not self.instances:
+            return
+        self.avg_move_pct = sum(abs(i.move_pct) for i in self.instances) / len(self.instances)
+
+    def to_dict(self) -> dict:
+        return {
+            "template_id": self.template_id,
+            "direction": self.direction,
+            "domain_signature": self.domain_signature,
+            "domains": self.domains,
+            "lag_profile_normalized": self.lag_profile_normalized,
+            "source_examples": self.source_examples,
+            "instances": [i.to_dict() for i in self.instances],
+            "symbols_seen": self.symbols_seen,
+            "n_instances": self.n_instances,
+            "avg_move_pct": self.avg_move_pct,
+            "wins": self.wins,
+            "losses": self.losses,
+            "created_at": self.created_at,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> PatternTemplate:
+        instances = [TemplateInstance.from_dict(i) for i in d.get("instances", [])]
+        return cls(
+            template_id=d.get("template_id", ""),
+            direction=d["direction"],
+            domain_signature=d["domain_signature"],
+            domains=d.get("domains", []),
+            lag_profile_normalized=d.get("lag_profile_normalized", {}),
+            source_examples=d.get("source_examples", {}),
+            instances=instances,
+            symbols_seen=d.get("symbols_seen", []),
+            n_instances=d.get("n_instances", 0),
+            avg_move_pct=d.get("avg_move_pct", 0.0),
+            wins=d.get("wins", 0),
+            losses=d.get("losses", 0),
+            created_at=d.get("created_at", ""),
+        )
+
+    def to_json(self) -> str:
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_fingerprint(cls, fingerprint: MoveFingerprint) -> PatternTemplate:
+        """Create a new template from the first fingerprint observation."""
+        # Compute normalized lag profile
+        total_signals = sum(fingerprint.lag_profile.values()) or 1
+        normalized = {
+            bucket: count / total_signals
+            for bucket, count in fingerprint.lag_profile.items()
+        }
+
+        # Build source examples by domain
+        source_examples: dict[str, list[str]] = {}
+        for sig in fingerprint.precursor_signals:
+            if sig.domain not in source_examples:
+                source_examples[sig.domain] = []
+            if sig.source not in source_examples[sig.domain]:
+                source_examples[sig.domain].append(sig.source)
+
+        template = cls(
+            template_id="",  # auto-computed
+            direction=fingerprint.direction,
+            domain_signature=fingerprint.domain_signature,
+            domains=sorted(set(s.domain for s in fingerprint.precursor_signals)),
+            lag_profile_normalized=normalized,
+            source_examples=source_examples,
+        )
+        template.add_instance(fingerprint)
+        return template
