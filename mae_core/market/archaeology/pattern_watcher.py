@@ -1,65 +1,86 @@
 """Pattern Watcher — live stacking detection engine.
 
 Runs alongside the existing ConvergenceAlerter during each sensing cycle.
-Compares current signal state against the Pattern Library and detects
-when multiple independent historical patterns activate on the same
-ticker — that's where the 95%+ confidence comes from.
+Compares current signal state against PatternTemplates (symbol-AGNOSTIC)
+and detects when multiple independent patterns activate on the same
+ticker — that's where the overwhelming confidence comes from.
+
+Key change from v1: matches against TEMPLATES, not fingerprints.
+A pattern discovered on NVDA can now fire on ANY symbol. Cross-validated
+templates (seen on 3+ symbols) get a confidence boost.
 
 Stacking tiers:
   N=1: Log only (single pattern = 30-50% WR)
   N=2: Low-confidence advisory
   N=3: Medium-confidence alert
-  N=4+: High-confidence alert
+  N=4+: High-confidence alert ("4+ independent patterns converging")
 
-Independence check: Two patterns are "independent" if their precursor
-signal sets overlap < 30%. Prevents double-counting.
+Independence check: Two patterns are "independent" if their domain
+sets overlap < 30%. Prevents double-counting.
 """
 
 from __future__ import annotations
 
-import json
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from pathlib import Path
 from typing import Any, Optional
 
-from mae_core.market.archaeology.fingerprint import MoveFingerprint
+from mae_core.market.archaeology.fingerprint import MoveFingerprint, PatternTemplate
 from mae_core.market.archaeology.pattern_library import PatternLibrary, PatternMatch
 
 logger = logging.getLogger(__name__)
 
-INDEPENDENCE_THRESHOLD = 0.30  # Max source overlap for "independent" patterns
+INDEPENDENCE_THRESHOLD = 0.30
 
 
 @dataclass
 class PatternActivation:
-    """A single pattern that has activated in the live market."""
-    fingerprint: MoveFingerprint
+    """A single pattern template that has activated in the live market."""
+    template: PatternTemplate
     match_score: float
+    matched_domains: list[str]
+    missing_domains: list[str]
     matched_sources: list[str]
     missing_sources: list[str]
     description: str = ""
 
+    # Backward compatibility: also accept fingerprint kwarg
+    fingerprint: Optional[MoveFingerprint] = None
+
     @property
     def win_rate(self) -> float:
-        return self.fingerprint.win_rate
+        return self.template.win_rate
 
     @property
     def sample_size(self) -> int:
-        return self.fingerprint.wins + self.fingerprint.losses
+        return self.template.wins + self.template.losses
+
+    @property
+    def cross_validated(self) -> bool:
+        return self.template.cross_validated
+
+    @property
+    def symbols_seen(self) -> int:
+        return len(self.template.unique_symbols)
 
 
 @dataclass
 class PatternStack:
-    """Multiple independent patterns activating on the same symbol+direction."""
+    """Multiple independent patterns activating on the same symbol+direction.
+
+    This is what MIDGE surfaces to Guiding Light: "4 independent pattern
+    templates are converging on NVDA bullish right now. Here's what each
+    pattern is, where it was validated across the market, and what signals
+    are driving the activation."
+    """
     symbol: str
     direction: str
     activations: list[PatternActivation]
     stack_confidence: float = 0.0
     independent_pairs: int = 0
     total_pairs: int = 0
-    tier: str = ""  # "low", "medium", "high"
+    tier: str = ""
     created_at: str = ""
 
     def __post_init__(self):
@@ -83,27 +104,26 @@ class PatternStack:
     def _compute_confidence(self) -> float:
         """Compute stack confidence from individual pattern win rates.
 
-        Uses independence-weighted combination. If all patterns are truly
-        independent, the probability they're ALL wrong simultaneously is
-        the product of their individual failure rates. But we discount
-        for non-independent pairs.
+        Cross-validated templates get boosted. Independence-weighted
+        combination: if patterns are truly independent, the probability
+        they're ALL wrong is the product of individual failure rates.
         """
         if not self.activations:
             return 0.0
 
-        # Get win rates (use 0.5 if no data yet)
         wrs = []
         for a in self.activations:
-            wr = a.win_rate if a.sample_size >= 5 else 0.5
-            wrs.append(wr)
+            base_wr = a.win_rate if a.sample_size >= 5 else 0.5
+            # Cross-validated templates get a confidence boost
+            if a.cross_validated:
+                base_wr = min(0.95, base_wr * a.template.confidence_multiplier)
+            wrs.append(base_wr)
 
         if len(wrs) == 1:
             return wrs[0]
 
-        # P(at least one is right) = 1 - product(1 - wr_i)
-        # But discount for non-independence
         independence_ratio = self.independent_pairs / max(self.total_pairs, 1)
-        discount = 0.5 + 0.5 * independence_ratio  # range [0.5, 1.0]
+        discount = 0.5 + 0.5 * independence_ratio
 
         prob_all_wrong = 1.0
         for wr in wrs:
@@ -123,13 +143,16 @@ class PatternStack:
             "total_pairs": self.total_pairs,
             "activations": [
                 {
-                    "fingerprint_id": a.fingerprint.fingerprint_id,
+                    "template_id": a.template.template_id,
                     "match_score": a.match_score,
                     "win_rate": a.win_rate,
                     "sample_size": a.sample_size,
+                    "cross_validated": a.cross_validated,
+                    "symbols_seen": a.symbols_seen,
+                    "matched_domains": a.matched_domains,
+                    "missing_domains": a.missing_domains,
                     "matched_sources": a.matched_sources,
-                    "missing_sources": a.missing_sources,
-                    "domain_signature": a.fingerprint.domain_signature,
+                    "domain_signature": a.template.domain_signature,
                     "description": a.description,
                 }
                 for a in self.activations
@@ -138,20 +161,27 @@ class PatternStack:
         }
 
     def format_alert(self) -> str:
-        """Format the stack as a human-readable alert — what Guiding Light sees."""
+        """Format the stack as a human-readable alert.
+
+        This is what MIDGE surfaces: what patterns are converging, what kind
+        of patterns, where they come from, how many symbols they've been
+        validated on, and what the thresholds are.
+        """
         lines = [
             f"PATTERN STACK: {self.symbol} {self.direction.upper()} | "
             f"{len(self.activations)} patterns | stack_confidence: {self.stack_confidence:.2f}",
         ]
         for i, a in enumerate(self.activations, 1):
             wr_str = f"WR: {a.win_rate:.0%}" if a.sample_size >= 5 else "WR: pending"
+            cross_str = f", validated on {a.symbols_seen} symbols" if a.cross_validated else ""
             lines.append(
-                f"  Pattern {i}: \"{a.fingerprint.domain_signature}\" "
-                f"({wr_str}, n={a.sample_size}, move={a.fingerprint.move_pct:+.1f}%)"
+                f"  Pattern {i}: \"{a.template.domain_signature}\" "
+                f"({wr_str}, n={a.sample_size}, "
+                f"instances={a.template.n_instances}{cross_str})"
             )
             lines.append(f"    - Activated by: {', '.join(a.matched_sources)}")
-            if a.missing_sources:
-                lines.append(f"    - Missing: {', '.join(a.missing_sources)}")
+            if a.missing_domains:
+                lines.append(f"    - Missing domains: {', '.join(a.missing_domains)}")
 
         if self.total_pairs > 0:
             lines.append(
@@ -164,8 +194,8 @@ class PatternStack:
 class PatternWatcher:
     """Live stacking detection engine.
 
-    On each check cycle, compares current signal state against the
-    Pattern Library and detects pattern stacking.
+    Matches current signal state against PatternTemplates (symbol-agnostic)
+    and detects when multiple independent templates activate on the same ticker.
     """
 
     def __init__(
@@ -179,7 +209,7 @@ class PatternWatcher:
         self._bus = bus
         self._min_stack = min_stack
         self._independence_threshold = independence_threshold
-        self._recent_stacks: dict[str, str] = {}  # dedup_key -> ISO timestamp
+        self._recent_stacks: dict[str, str] = {}
         self._stacks_detected = 0
         self._checks_performed = 0
 
@@ -190,11 +220,10 @@ class PatternWatcher:
         """Check for pattern stacking across all symbols with active signals.
 
         Args:
-            active_signals: Nested dict of {symbol: {direction: {source1, source2, ...}}}
-                           Built from recent signals in the sensing hook.
+            active_signals: {symbol: {direction: {source1, source2, ...}}}
 
         Returns:
-            List of PatternStack alerts (only those meeting min_stack threshold).
+            List of PatternStack alerts meeting min_stack threshold.
         """
         self._checks_performed += 1
         stacks: list[PatternStack] = []
@@ -204,7 +233,7 @@ class PatternWatcher:
                 if not sources:
                     continue
 
-                # Query library for matching fingerprints
+                # Query templates (symbol-agnostic matching)
                 matches = self._library.query_similar(
                     live_sources=sources,
                     symbol=symbol,
@@ -214,26 +243,26 @@ class PatternWatcher:
                 if len(matches) < self._min_stack:
                     if matches:
                         logger.debug(
-                            "Single pattern match for %s %s: %s (score=%.2f)",
+                            "Single template match for %s %s: %s (score=%.2f)",
                             symbol, direction,
-                            matches[0].fingerprint.domain_signature,
+                            matches[0].template.domain_signature,
                             matches[0].match_score,
                         )
                     continue
 
-                # Build activations
                 activations = [
                     PatternActivation(
-                        fingerprint=m.fingerprint,
+                        template=m.template,
                         match_score=m.match_score,
+                        matched_domains=m.matched_domains,
+                        missing_domains=m.missing_domains,
                         matched_sources=m.matched_sources,
                         missing_sources=m.missing_sources,
-                        description=m.fingerprint.domain_signature,
+                        description=m.template.domain_signature,
                     )
                     for m in matches
                 ]
 
-                # Compute independence
                 independent_pairs, total_pairs = self._compute_independence(activations)
 
                 # Dedup: don't re-alert the same stack within 24 hours
@@ -256,10 +285,8 @@ class PatternWatcher:
                 self._recent_stacks[dedup_key] = now.isoformat()
                 self._stacks_detected += 1
 
-                # Log the alert
                 logger.info(stack.format_alert())
 
-                # Publish to EventBus
                 if self._bus is not None:
                     try:
                         from mae_core.market.channels import CH_PATTERN_STACK_DETECTED
@@ -270,14 +297,13 @@ class PatternWatcher:
         return stacks
 
     def _compute_independence(
-        self, activations: list[PatternActivation]
+        self, activations: list[PatternActivation],
     ) -> tuple[int, int]:
-        """Compute how many pairs of activations are truly independent.
+        """Compute independence between activation pairs.
 
-        Two patterns are independent if their precursor source sets overlap
-        less than the threshold (default 30%).
-
-        Returns: (independent_pairs, total_pairs)
+        Two templates are independent if their domain sets overlap < threshold.
+        Domain-level independence (not source-level) is the right granularity
+        because templates ARE domain-level abstractions.
         """
         n = len(activations)
         if n < 2:
@@ -289,26 +315,21 @@ class PatternWatcher:
         for i in range(n):
             for j in range(i + 1, n):
                 total += 1
-                sources_i = activations[i].fingerprint.source_set
-                sources_j = activations[j].fingerprint.source_set
-                union = sources_i | sources_j
+                domains_i = set(activations[i].template.domains)
+                domains_j = set(activations[j].template.domains)
+                union = domains_i | domains_j
                 if not union:
                     independent += 1
                     continue
-                overlap = len(sources_i & sources_j) / len(union)
+                overlap = len(domains_i & domains_j) / len(union)
                 if overlap < self._independence_threshold:
                     independent += 1
 
         return (independent, total)
 
     def build_active_signals(self, recent_signals: list[dict]) -> dict[str, dict[str, set[str]]]:
-        """Convert a list of signal dicts into the format check() expects.
-
-        Helper for integration — takes raw signal records and groups them
-        into {symbol: {direction: {sources}}}.
-        """
+        """Convert signal dicts into the format check() expects."""
         result: dict[str, dict[str, set[str]]] = {}
-
         for sig in recent_signals:
             symbol = sig.get("symbol", "")
             direction = sig.get("direction", "")
@@ -320,14 +341,13 @@ class PatternWatcher:
             if direction not in result[symbol]:
                 result[symbol][direction] = set()
             result[symbol][direction].add(source)
-
         return result
 
     def get_statistics(self) -> dict:
-        """Return watcher stats for monitoring."""
         return {
             "checks_performed": self._checks_performed,
             "stacks_detected": self._stacks_detected,
             "library_size": self._library.size,
+            "template_count": self._library.template_count,
             "active_dedup_keys": len(self._recent_stacks),
         }
