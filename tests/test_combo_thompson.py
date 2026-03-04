@@ -268,13 +268,15 @@ class TestComboRegistration:
     """OutcomeCollector.register_convergence_alert creates combo predictions."""
 
     def _make_collector(self):
-        """Create an OutcomeCollector with mocked dependencies."""
+        """Create an OutcomeCollector with mocked tracker."""
         from mae_core.market.intelligence.outcome_collector import OutcomeCollector
         mock_pf = MagicMock()
         mock_ts = MagicMock()
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             collector = OutcomeCollector(mock_pf, mock_ts, data_dir=tmp_path)
+            # Replace tracker's record_prediction with a mock so we can assert calls
+            collector.tracker.record_prediction = MagicMock()
             yield collector, mock_ts, tmp_path
 
     def _make_alert(self, direction="bullish", domains=None):
@@ -304,10 +306,10 @@ class TestComboRegistration:
             assert result is True
             # Verify record_prediction was called with combo source
             collector.tracker.record_prediction.assert_called_once()
-            call_kwargs = collector.tracker.record_prediction.call_args
-            assert call_kwargs[1]["source"] == "combo:events+macro+price"
-            assert call_kwargs[1]["symbol"] == "AAPL"
-            assert call_kwargs[1]["direction"] == "up"
+            kwargs = collector.tracker.record_prediction.call_args.kwargs
+            assert kwargs["source"] == "combo:events+macro+price"
+            assert kwargs["symbol"] == "AAPL"
+            assert kwargs["direction"] == "up"
 
     def test_deduplicates(self):
         """Same alert_id not registered twice."""
