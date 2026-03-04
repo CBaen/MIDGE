@@ -245,9 +245,10 @@ def _write_paper_trade(alert, ctx: SimpleNamespace) -> None:
         with open(trade_path, "a", encoding="utf-8") as f:
             f.write(json.dumps(record) + "\n")
 
-        # --- Update dedup dict ---
+        # --- Update dedup dict (evict entries older than 24h to prevent unbounded growth) ---
         dedup[dedup_key] = now
-        ctx._paper_trade_dedup = dedup
+        _cutoff = now - timedelta(hours=24)
+        ctx._paper_trade_dedup = {k: v for k, v in dedup.items() if v > _cutoff}
 
         logger.info(
             "Paper trade written: %s %s %s (confidence=%.2f, strength=%.2f, kelly=%s)",
