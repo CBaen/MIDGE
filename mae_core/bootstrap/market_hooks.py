@@ -871,8 +871,9 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
                         # Combo filter: block combos with poor historical WR
                         _pass_combo = True
                         _ts = getattr(ctx, "thompson_sampler", None)
-                        if hasattr(alert, "domains") and _ts is not None:
-                            _domains = sorted(alert.domains) if alert.domains else []
+                        _raw_domains = getattr(alert, "domains_converging", None)
+                        if _raw_domains and _ts is not None:
+                            _domains = sorted(_raw_domains)
                             if len(_domains) >= 2:
                                 _combo_key = "combo:" + "+".join(_domains)
                                 _cd = _ts.get_distribution(_combo_key)
