@@ -25,6 +25,11 @@ LEARNING_CONFIG = {
     # Paper trading account — denominator for Kelly fraction position sizing
     "paper_account_value": 50000,
 
+    # Paper trading confidence gate — replay-proven edge lives at 0.45
+    "paper_trade_min_confidence": 0.45,
+    "paper_trade_min_strength": 0.65,
+    "paper_trade_min_combo_mean": 0.25,  # Block combos with <25% historical WR
+
     # Learning parameters (can be adjusted by meta-learner)
     "learning_rate": 0.1,
     "min_reliability": 0.1,

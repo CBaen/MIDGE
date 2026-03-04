@@ -141,7 +141,7 @@ def _check_sweep_bypass(alerter, ctx: SimpleNamespace) -> None:
 def _write_paper_trade(alert, ctx: SimpleNamespace) -> None:
     """Convert a high-confidence ConvergenceAlert into a TradeSignal and persist it.
 
-    Called only when alert.confidence > 0.75 AND alert.strength > 0.65.
+    Called when alert passes confidence + strength + combo gates (see learning_config).
 
     Dedup gate: same direction+ticker combination is suppressed for 4 hours.
     Writes to data/midge/paper_trades.jsonl (atomic append).
@@ -855,15 +855,31 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
                 logger.debug("Advisory bridge failed", exc_info=True)
 
             # Paper trading gate — convert high-confidence convergence to TradeSignal
+            # Thresholds from learning_config (replay-proven edge at 0.45)
             try:
+                from mae_core.market.intelligence.learning_config import LEARNING_CONFIG
+                _pt_conf = LEARNING_CONFIG.get("paper_trade_min_confidence", 0.45)
+                _pt_str = LEARNING_CONFIG.get("paper_trade_min_strength", 0.65)
+                _pt_combo = LEARNING_CONFIG.get("paper_trade_min_combo_mean", 0.25)
                 for alert in alerts:
                     if (
                         hasattr(alert, "confidence")
                         and hasattr(alert, "strength")
-                        and alert.confidence > 0.75
-                        and alert.strength > 0.65
+                        and alert.confidence > _pt_conf
+                        and alert.strength > _pt_str
                     ):
-                        _write_paper_trade(alert, ctx)
+                        # Combo filter: block combos with poor historical WR
+                        _pass_combo = True
+                        if hasattr(alert, "domains") and ctx.outcome_collector:
+                            _domains = sorted(alert.domains) if alert.domains else []
+                            if len(_domains) >= 2:
+                                _combo_key = "combo:" + "+".join(_domains)
+                                _cd = ctx.outcome_collector._thompson.get_distribution(_combo_key)
+                                # Let unseen combos through (samples < 3), block known losers
+                                if _cd.samples >= 3 and _cd.mean < _pt_combo:
+                                    _pass_combo = False
+                        if _pass_combo:
+                            _write_paper_trade(alert, ctx)
             except Exception:
                 logger.debug("Paper trading gate failed", exc_info=True)
 
