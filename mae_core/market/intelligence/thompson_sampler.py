@@ -108,11 +108,12 @@ class ThompsonSampler:
             seed_from_reliability: Whether to seed from existing reliability scores
         """
         self.persistence_path = persistence_path or DISTRIBUTIONS_FILE
+        self.history_path = self.persistence_path.parent / "thompson_history.jsonl"
         self.prior_scale = prior_scale
         self._lock = threading.Lock()
 
         # Ensure data directory exists
-        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        self.persistence_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Load or initialize distributions
         # Format: {signal_id: {regime: {"alpha": float, "beta": float}}}
