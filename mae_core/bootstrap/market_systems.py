@@ -110,77 +110,26 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         ctx.sam_gov_client = None
         failures += 1
 
-    # --- Phase 2 API clients (new free sources) ---
-    try:
-        from mae_core.market.apis.senate_stock_watcher import SenateStockWatcherClient
-        ctx.senate_stock_watcher = SenateStockWatcherClient(provider=provider)
-    except Exception:
-        logger.debug("Market: senate_stock_watcher failed to construct", exc_info=True)
-        ctx.senate_stock_watcher = None
-
-    try:
-        from mae_core.market.apis.apewisdom import ApeWisdomClient
-        ctx.apewisdom_client = ApeWisdomClient(provider=provider)
-    except Exception:
-        logger.debug("Market: apewisdom_client failed to construct", exc_info=True)
-        ctx.apewisdom_client = None
-
-    try:
-        from mae_core.market.apis.finra_short_interest import FINRAShortInterestClient
-        ctx.finra_client = FINRAShortInterestClient(provider=provider)
-    except Exception:
-        logger.debug("Market: finra_client failed to construct", exc_info=True)
-        ctx.finra_client = None
-
-    try:
-        from mae_core.market.apis.sec_edgar.efts import SECFullTextSearchClient
-        ctx.sec_efts_client = SECFullTextSearchClient(provider=provider)
-    except Exception:
-        logger.debug("Market: sec_efts_client failed to construct", exc_info=True)
-        ctx.sec_efts_client = None
-
-    try:
-        from mae_core.market.apis.finnhub_client import FinnhubClient
-        ctx.finnhub_client = FinnhubClient(provider=provider)
-    except Exception:
-        logger.debug("Market: finnhub_client failed to construct", exc_info=True)
-        ctx.finnhub_client = None
-
-    try:
-        from mae_core.market.apis.fred_client import FREDClient
-        ctx.fred_client = FREDClient(provider=provider)
-    except Exception:
-        logger.debug("Market: fred_client failed to construct", exc_info=True)
-        ctx.fred_client = None
-
-    # --- Layer 6 API clients (new free sources) ---
-    try:
-        from mae_core.market.apis.cot_client import COTClient
-        ctx.cot_client = COTClient(provider=provider)
-    except Exception:
-        logger.debug("Market: cot_client failed to construct", exc_info=True)
-        ctx.cot_client = None
-
-    try:
-        from mae_core.market.apis.stocktwits_client import StockTwitsClient
-        ctx.stocktwits_client = StockTwitsClient(provider=provider)
-    except Exception:
-        logger.debug("Market: stocktwits_client failed to construct", exc_info=True)
-        ctx.stocktwits_client = None
-
-    try:
-        from mae_core.market.apis.vix_client import VIXClient
-        ctx.vix_client = VIXClient(provider=provider)
-    except Exception:
-        logger.debug("Market: vix_client failed to construct", exc_info=True)
-        ctx.vix_client = None
-
-    try:
-        from mae_core.market.apis.trends_client import TrendsClient
-        ctx.trends_client = TrendsClient()  # pytrends library, not HTTP provider
-    except Exception:
-        logger.debug("Market: trends_client failed to construct", exc_info=True)
-        ctx.trends_client = None
+    # --- Phase 2 + Layer 6 API clients (free sources) ---
+    for _attr, _mod, _cls, _kw in [
+        ("senate_stock_watcher", "mae_core.market.apis.senate_stock_watcher", "SenateStockWatcherClient", {"provider": provider}),
+        ("apewisdom_client", "mae_core.market.apis.apewisdom", "ApeWisdomClient", {"provider": provider}),
+        ("finra_client", "mae_core.market.apis.finra_short_interest", "FINRAShortInterestClient", {"provider": provider}),
+        ("sec_efts_client", "mae_core.market.apis.sec_edgar.efts", "SECFullTextSearchClient", {"provider": provider}),
+        ("finnhub_client", "mae_core.market.apis.finnhub_client", "FinnhubClient", {"provider": provider}),
+        ("fred_client", "mae_core.market.apis.fred_client", "FREDClient", {"provider": provider}),
+        ("cot_client", "mae_core.market.apis.cot_client", "COTClient", {"provider": provider}),
+        ("stocktwits_client", "mae_core.market.apis.stocktwits_client", "StockTwitsClient", {"provider": provider}),
+        ("vix_client", "mae_core.market.apis.vix_client", "VIXClient", {"provider": provider}),
+        ("trends_client", "mae_core.market.apis.trends_client", "TrendsClient", {}),
+    ]:
+        try:
+            import importlib as _imp
+            _m = _imp.import_module(_mod)
+            setattr(ctx, _attr, getattr(_m, _cls)(**_kw))
+        except Exception:
+            logger.debug("Market: %s failed to construct", _attr, exc_info=True)
+            setattr(ctx, _attr, None)
 
     # --- Wave 2+3: Real-Time + Crypto + Data Enrichment (Always-On MIDGE) ---
     _instantiate_wave2_3_clients(ctx)
@@ -246,6 +195,7 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
 
     if ctx.thompson_sampler is not None:  # Seed combo Thompson from replay results
         try:
+            from pathlib import Path
             _rp = Path(__file__).resolve().parents[2] / "data" / "midge" / "replay_results.json"
             _n = ctx.thompson_sampler.seed_combo_distributions(_rp)
             if _n:
