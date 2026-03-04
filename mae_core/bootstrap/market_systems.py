@@ -15,6 +15,31 @@ from types import SimpleNamespace
 logger = logging.getLogger("midge.bootstrap")
 
 
+def _seed_combo_thompson(thompson_sampler) -> int:
+    """Seed combo Thompson distributions from replay results. Returns count seeded."""
+    import json
+    replay_path = Path(__file__).resolve().parents[2] / "data" / "midge" / "replay_results.json"
+    if not replay_path.exists():
+        return 0
+    results = json.loads(replay_path.read_text())
+    combos = results.get("report", {}).get("domain_combos", {})
+    seeded = 0
+    for combo_str, stats in combos.items():
+        total = stats.get("total", 0)
+        if total < 3:
+            continue
+        key = f"combo:{combo_str}"
+        if thompson_sampler.get_distribution(key).samples >= total:
+            continue  # Idempotent: live data already exceeds replay seed
+        wins = stats.get("wins", 0)
+        for _ in range(wins):
+            thompson_sampler.update(key, success=True)
+        for _ in range(total - wins):
+            thompson_sampler.update(key, success=False)
+        seeded += 1
+    return seeded
+
+
 def _instantiate_wave2_3_clients(ctx: SimpleNamespace) -> None:
     """Construct Wave 2+3 API clients (Always-On MIDGE)."""
     import importlib

@@ -417,43 +417,47 @@ class TestReplaySeeding:
     def test_idempotent_seeding(self):
         """Second seed run skips combos where live data exceeds replay total."""
         from mae_core.market.intelligence.thompson_sampler import ThompsonSampler
-        ts = ThompsonSampler()
 
-        combo_key = "combo:events+macro+price"
-        # First seed: 10 wins, 22 losses = 32 total
-        for _ in range(10):
-            ts.update(combo_key, success=True)
-        for _ in range(22):
-            ts.update(combo_key, success=False)
+        with tempfile.TemporaryDirectory() as tmp:
+            ts = ThompsonSampler(persistence_path=Path(tmp) / "thompson.json")
 
-        assert ts.get_distribution(combo_key).samples == 32
-
-        # Simulate re-seed check (same logic as market_systems.py)
-        replay_stats = {"wins": 10, "total": 32}
-        existing = ts.get_distribution(combo_key)
-        if existing.samples >= replay_stats["total"]:
-            pass  # Skip — already seeded
-        else:
-            for _ in range(replay_stats["wins"]):
+            combo_key = "combo:idem+test+combo"
+            # First seed: 10 wins, 22 losses = 32 total
+            for _ in range(10):
                 ts.update(combo_key, success=True)
+            for _ in range(22):
+                ts.update(combo_key, success=False)
 
-        # Should still be 32, not 42
-        assert ts.get_distribution(combo_key).samples == 32
+            assert ts.get_distribution(combo_key).samples == 32
+
+            # Simulate re-seed check (same logic as market_systems.py)
+            replay_stats = {"wins": 10, "total": 32}
+            existing = ts.get_distribution(combo_key)
+            if existing.samples >= replay_stats["total"]:
+                pass  # Skip — already seeded
+            else:
+                for _ in range(replay_stats["wins"]):
+                    ts.update(combo_key, success=True)
+
+            # Should still be 32, not 42+
+            assert ts.get_distribution(combo_key).samples == 32
 
     def test_seeded_mean_matches_win_rate(self):
         """Seeded distribution mean approximates replay win rate."""
         from mae_core.market.intelligence.thompson_sampler import ThompsonSampler
-        ts = ThompsonSampler()
 
-        # 66.7% win rate: 2 wins, 1 loss
-        for _ in range(2):
-            ts.update("combo:a+b+c+d+e", success=True)
-        for _ in range(1):
-            ts.update("combo:a+b+c+d+e", success=False)
+        with tempfile.TemporaryDirectory() as tmp:
+            ts = ThompsonSampler(persistence_path=Path(tmp) / "thompson.json")
 
-        dist = ts.get_distribution("combo:a+b+c+d+e")
-        # Beta(1+2, 1+1) = Beta(3, 2) → mean = 3/5 = 0.6
-        assert abs(dist.mean - 0.6) < 0.05
+            # 66.7% win rate: 2 wins, 1 loss
+            for _ in range(2):
+                ts.update("combo:mean+test+key", success=True)
+            for _ in range(1):
+                ts.update("combo:mean+test+key", success=False)
+
+            dist = ts.get_distribution("combo:mean+test+key")
+            # Beta(1+2, 1+1) = Beta(3, 2) → mean = 3/5 = 0.6
+            assert abs(dist.mean - 0.6) < 0.05
 
 
 # ── Wire in Market Hooks ────────────────────────────────────────────────
@@ -498,14 +502,15 @@ class TestComboFeedbackLoop:
         from mae_core.market.intelligence.outcome_collector import OutcomeCollector
         from mae_core.market.intelligence.convergence_alerter import ConvergenceAlert
 
-        ts = ThompsonSampler()
-        mock_pf = MagicMock()
-
         with tempfile.TemporaryDirectory() as tmp:
-            collector = OutcomeCollector(mock_pf, ts, data_dir=Path(tmp))
+            tmp_path = Path(tmp)
+            ts = ThompsonSampler(persistence_path=tmp_path / "thompson.json")
+            mock_pf = MagicMock()
+
+            collector = OutcomeCollector(mock_pf, ts, data_dir=tmp_path)
 
             alert = ConvergenceAlert(
-                alert_id="CONV-20260303-0001",
+                alert_id="CONV-20260303-FLOW",
                 timestamp=datetime.now() - timedelta(days=20),
                 direction="bullish",
                 strength=0.8,
