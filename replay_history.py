@@ -348,7 +348,7 @@ def phase_grade(
         if key not in price_cache:
             try:
                 pd = price_fetcher.get_historical_price(symbol, dt.isoformat())
-                price_cache[key] = pd.close if pd else None
+                price_cache[key] = pd.price if pd else None
             except Exception:
                 price_cache[key] = None
             time_module.sleep(PRICE_LOOKUP_DELAY)
