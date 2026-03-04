@@ -6,11 +6,11 @@
         "crypto"
       ],
       "directions": {
-        "bullish": 3,
-        "neutral": 47
+        "bullish": 30,
+        "neutral": 72
       },
-      "total_strength": 6.896647000000001,
-      "signal_count": 50,
+      "total_strength": 26.890007000000004,
+      "signal_count": 102,
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-04T00:00:00"
     },
@@ -20,12 +20,12 @@
         "crypto"
       ],
       "directions": {
-        "neutral": 30,
-        "bullish": 1,
+        "neutral": 56,
+        "bullish": 27,
         "bearish": 19
       },
-      "total_strength": 12.390204,
-      "signal_count": 50,
+      "total_strength": 30.975751,
+      "signal_count": 102,
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-04T00:00:00"
     },
@@ -35,11 +35,12 @@
         "crypto"
       ],
       "directions": {
-        "neutral": 46,
-        "bearish": 4
+        "neutral": 75,
+        "bearish": 4,
+        "bullish": 23
       },
-      "total_strength": 9.569272,
-      "signal_count": 50,
+      "total_strength": 22.633911999999995,
+      "signal_count": 102,
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-04T00:00:00"
     },
@@ -49,12 +50,12 @@
         "crypto"
       ],
       "directions": {
-        "bullish": 3,
-        "neutral": 41,
+        "bullish": 30,
+        "neutral": 66,
         "bearish": 6
       },
-      "total_strength": 7.788755999999998,
-      "signal_count": 50,
+      "total_strength": 28.786837,
+      "signal_count": 102,
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-04T00:00:00"
     },
@@ -64,260 +65,14 @@
         "crypto"
       ],
       "directions": {
-        "neutral": 12,
-        "bearish": 38
-      },
-      "total_strength": 22.539116,
-      "signal_count": 50,
-      "first_signal_time": "2026-03-03T00:00:00",
-      "last_signal_time": "2026-03-04T00:00:00"
-    },
-    "ASPI": {
-      "ticker": "ASPI",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 19
-      },
-      "total_strength": -33.49563199999999,
-      "signal_count": 19,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "INDI": {
-      "ticker": "INDI",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 69
-      },
-      "total_strength": -18.341019999999997,
-      "signal_count": 69,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "DLPN": {
-      "ticker": "DLPN",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 17
-      },
-      "total_strength": 0.16969399999999998,
-      "signal_count": 17,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "GSIT": {
-      "ticker": "GSIT",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 16
-      },
-      "total_strength": -5.353920000000001,
-      "signal_count": 16,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "IDYA": {
-      "ticker": "IDYA",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 16
-      },
-      "total_strength": 16.0,
-      "signal_count": 16,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "NRIX": {
-      "ticker": "NRIX",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 16
-      },
-      "total_strength": -4.0253760000000005,
-      "signal_count": 16,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "ENSG": {
-      "ticker": "ENSG",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 16
-      },
-      "total_strength": -4.771648,
-      "signal_count": 16,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "ORKA": {
-      "ticker": "ORKA",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 14
-      },
-      "total_strength": -4.699015999999999,
-      "signal_count": 14,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "CTNM": {
-      "ticker": "CTNM",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 28
-      },
-      "total_strength": -3.2705399999999987,
-      "signal_count": 28,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "RGLD": {
-      "ticker": "RGLD",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 14
-      },
-      "total_strength": -11.793907999999998,
-      "signal_count": 14,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "NAMS": {
-      "ticker": "NAMS",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 14
-      },
-      "total_strength": -413.0912239999999,
-      "signal_count": 14,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "GENB": {
-      "ticker": "GENB",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 69
-      },
-      "total_strength": 28.702399999999987,
-      "signal_count": 69,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "VEL": {
-      "ticker": "VEL",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 14
-      },
-      "total_strength": -0.8068759999999998,
-      "signal_count": 14,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "EW": {
-      "ticker": "EW",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 14
-      },
-      "total_strength": -27.28404,
-      "signal_count": 14,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "ROG": {
-      "ticker": "ROG",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 14
-      },
-      "total_strength": -2.9733479999999997,
-      "signal_count": 14,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "NPO": {
-      "ticker": "NPO",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 11
-      },
-      "total_strength": -2.9574600000000006,
-      "signal_count": 11,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "MDGL": {
-      "ticker": "MDGL",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 11
-      },
-      "total_strength": -11.118558,
-      "signal_count": 11,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "JOUT": {
-      "ticker": "JOUT",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 11
-      },
-      "total_strength": -1.7143059999999999,
-      "signal_count": 11,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "MORN": {
-      "ticker": "MORN",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
+        "neutral": 40,
+        "bearish": 55,
         "bullish": 7
       },
-      "total_strength": -7.968674,
-      "signal_count": 7,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
+      "total_strength": 37.41117799999999,
+      "signal_count": 102,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-04T00:00:00"
     },
     "AAPL": {
       "ticker": "AAPL",
@@ -328,14 +83,14 @@
         "technical"
       ],
       "directions": {
-        "neutral": 192,
-        "bearish": 40,
-        "bullish": 94
+        "neutral": 385,
+        "bearish": 56,
+        "bullish": 291
       },
-      "total_strength": 164.70992314481813,
-      "signal_count": 326,
+      "total_strength": 403.3770990742537,
+      "signal_count": 732,
       "first_signal_time": "2026-03-03T00:00:00",
-      "last_signal_time": "2026-03-01T00:00:00"
+      "last_signal_time": "2026-02-24T00:00:00"
     },
     "MSFT": {
       "ticker": "MSFT",
@@ -346,14 +101,14 @@
         "technical"
       ],
       "directions": {
-        "neutral": 50,
-        "bullish": 103,
-        "bearish": 271
+        "neutral": 103,
+        "bullish": 263,
+        "bearish": 771
       },
-      "total_strength": 190.01642725180017,
-      "signal_count": 424,
+      "total_strength": 506.8184059500078,
+      "signal_count": 1137,
       "first_signal_time": "2026-03-03T00:00:00",
-      "last_signal_time": "2026-03-01T00:00:00"
+      "last_signal_time": "2026-02-17T00:00:00"
     },
     "GOOGL": {
       "ticker": "GOOGL",
@@ -365,14 +120,14 @@
         "technical"
       ],
       "directions": {
-        "neutral": 137,
-        "bullish": 128,
-        "bearish": 1196
+        "neutral": 278,
+        "bullish": 337,
+        "bearish": 3219
       },
-      "total_strength": 447.01108726302664,
-      "signal_count": 1461,
+      "total_strength": 1161.678145039377,
+      "signal_count": 3834,
       "first_signal_time": "2026-03-03T00:00:00",
-      "last_signal_time": "2026-03-01T00:00:00"
+      "last_signal_time": "2026-02-02T00:00:00"
     },
     "AMZN": {
       "ticker": "AMZN",
@@ -384,14 +139,14 @@
         "technical"
       ],
       "directions": {
-        "neutral": 182,
-        "bullish": 119,
-        "bearish": 910
+        "neutral": 375,
+        "bullish": 280,
+        "bearish": 2439
       },
-      "total_strength": 384.9065223262619,
-      "signal_count": 1211,
+      "total_strength": 948.1767790439119,
+      "signal_count": 3094,
       "first_signal_time": "2026-03-03T00:00:00",
-      "last_signal_time": "2026-03-01T00:00:00"
+      "last_signal_time": "2026-02-12T00:00:00"
     },
     "NVDA": {
       "ticker": "NVDA",
@@ -403,331 +158,14 @@
         "technical"
       ],
       "directions": {
-        "neutral": 137,
-        "bullish": 141,
-        "bearish": 750
+        "neutral": 276,
+        "bullish": 321,
+        "bearish": 2030
       },
-      "total_strength": 377.13318976134883,
-      "signal_count": 1028,
+      "total_strength": 931.5936038523049,
+      "signal_count": 2627,
       "first_signal_time": "2026-03-03T00:00:00",
-      "last_signal_time": "2026-03-01T00:00:00"
-    },
-    "ALEC": {
-      "ticker": "ALEC",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 24
-      },
-      "total_strength": -3.2429959999999998,
-      "signal_count": 24,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-03T00:00:00"
-    },
-    "FENC": {
-      "ticker": "FENC",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 7
-      },
-      "total_strength": -1.17964,
-      "signal_count": 7,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "CRTO": {
-      "ticker": "CRTO",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 13
-      },
-      "total_strength": -8.1439,
-      "signal_count": 13,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "VNT": {
-      "ticker": "VNT",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 7
-      },
-      "total_strength": -3.0861319999999997,
-      "signal_count": 7,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "NOC": {
-      "ticker": "NOC",
-      "domains_active": [
-        "contracts",
-        "insider",
-        "institutional",
-        "technical"
-      ],
-      "directions": {
-        "bullish": 122,
-        "neutral": 44,
-        "bearish": 388
-      },
-      "total_strength": 143.74576906729195,
-      "signal_count": 554,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-03T00:00:00"
-    },
-    "HON": {
-      "ticker": "HON",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 13
-      },
-      "total_strength": -10.210674000000001,
-      "signal_count": 13,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "REGN": {
-      "ticker": "REGN",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 6
-      },
-      "total_strength": -0.9426,
-      "signal_count": 6,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "EFSI": {
-      "ticker": "EFSI",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 9
-      },
-      "total_strength": 0.3930199999999999,
-      "signal_count": 9,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "WM": {
-      "ticker": "WM",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 17
-      },
-      "total_strength": -42.78499200000001,
-      "signal_count": 17,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "AORT": {
-      "ticker": "AORT",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 26
-      },
-      "total_strength": -8.441068,
-      "signal_count": 26,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "LRCX": {
-      "ticker": "LRCX",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 10
-      },
-      "total_strength": -102.14542,
-      "signal_count": 10,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "RCG": {
-      "ticker": "RCG",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 4
-      },
-      "total_strength": 0.026128,
-      "signal_count": 4,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "WMB": {
-      "ticker": "WMB",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 4
-      },
-      "total_strength": -1.20384,
-      "signal_count": 4,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "LRHC": {
-      "ticker": "LRHC",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 7
-      },
-      "total_strength": 0.020662,
-      "signal_count": 7,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "AVAV": {
-      "ticker": "AVAV",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 4
-      },
-      "total_strength": -0.6,
-      "signal_count": 4,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "VZ": {
-      "ticker": "VZ",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 4
-      },
-      "total_strength": -3.4276,
-      "signal_count": 4,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "LEE": {
-      "ticker": "LEE",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 7
-      },
-      "total_strength": 4.336068,
-      "signal_count": 7,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "VICR": {
-      "ticker": "VICR",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 4
-      },
-      "total_strength": -3.765224,
-      "signal_count": 4,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "LSCC": {
-      "ticker": "LSCC",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 4
-      },
-      "total_strength": -2.464624,
-      "signal_count": 4,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "FMAO": {
-      "ticker": "FMAO",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 4
-      },
-      "total_strength": -0.057024,
-      "signal_count": 4,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "AVBH": {
-      "ticker": "AVBH",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 4
-      },
-      "total_strength": -0.579968,
-      "signal_count": 4,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "TPL": {
-      "ticker": "TPL",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 4
-      },
-      "total_strength": 0.004192,
-      "signal_count": 4,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "SKWD": {
-      "ticker": "SKWD",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 7
-      },
-      "total_strength": 1.2668,
-      "signal_count": 7,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "GCBC": {
-      "ticker": "GCBC",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 4
-      },
-      "total_strength": 0.22932,
-      "signal_count": 4,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
+      "last_signal_time": "2026-02-04T00:00:00"
     },
     "SRBK": {
       "ticker": "SRBK",
@@ -742,344 +180,6 @@
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-03T00:00:00"
     },
-    "AVBC": {
-      "ticker": "AVBC",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 8
-      },
-      "total_strength": 0.322048,
-      "signal_count": 8,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "BHB": {
-      "ticker": "BHB",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 4
-      },
-      "total_strength": 0.13016,
-      "signal_count": 4,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "OPY": {
-      "ticker": "OPY",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 4
-      },
-      "total_strength": -3.389608,
-      "signal_count": 4,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "KO": {
-      "ticker": "KO",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 7
-      },
-      "total_strength": -57.035908,
-      "signal_count": 7,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "MKSI": {
-      "ticker": "MKSI",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 4
-      },
-      "total_strength": -0.574656,
-      "signal_count": 4,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "VIR": {
-      "ticker": "VIR",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 4
-      },
-      "total_strength": -1.673448,
-      "signal_count": 4,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "CCFN": {
-      "ticker": "CCFN",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 4
-      },
-      "total_strength": 0.105408,
-      "signal_count": 4,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "XOM": {
-      "ticker": "XOM",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 4
-      },
-      "total_strength": -2.714504,
-      "signal_count": 4,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "TEL": {
-      "ticker": "TEL",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 4
-      },
-      "total_strength": -16.733296,
-      "signal_count": 4,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "TTMI": {
-      "ticker": "TTMI",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 4
-      },
-      "total_strength": -13.657728,
-      "signal_count": 4,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "ECAT": {
-      "ticker": "ECAT",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 4
-      },
-      "total_strength": -29.687088,
-      "signal_count": 4,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "PDX": {
-      "ticker": "PDX",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 4
-      },
-      "total_strength": -2.677688,
-      "signal_count": 4,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "SXI": {
-      "ticker": "SXI",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 3
-      },
-      "total_strength": -0.07769999999999999,
-      "signal_count": 3,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "EOSE": {
-      "ticker": "EOSE",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 3
-      },
-      "total_strength": 2.07,
-      "signal_count": 3,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "PENN": {
-      "ticker": "PENN",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 3
-      },
-      "total_strength": 0.72432,
-      "signal_count": 3,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "HSIC": {
-      "ticker": "HSIC",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 3
-      },
-      "total_strength": -21.374124000000002,
-      "signal_count": 3,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "MSDL": {
-      "ticker": "MSDL",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 12
-      },
-      "total_strength": 2.2090080000000003,
-      "signal_count": 12,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "FBLG": {
-      "ticker": "FBLG",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 3
-      },
-      "total_strength": 0.173838,
-      "signal_count": 3,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "RDZN": {
-      "ticker": "RDZN",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 3
-      },
-      "total_strength": 0.156876,
-      "signal_count": 3,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "ONTF": {
-      "ticker": "ONTF",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 9
-      },
-      "total_strength": -2.9449579999999997,
-      "signal_count": 9,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "RXT": {
-      "ticker": "RXT",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 6
-      },
-      "total_strength": -0.6287320000000001,
-      "signal_count": 6,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "TDOC": {
-      "ticker": "TDOC",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 17
-      },
-      "total_strength": -4.579505999999999,
-      "signal_count": 17,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "PARR": {
-      "ticker": "PARR",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 25
-      },
-      "total_strength": -19.92973,
-      "signal_count": 25,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-02-27T00:00:00"
-    },
-    "ADI": {
-      "ticker": "ADI",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 5
-      },
-      "total_strength": -35.0,
-      "signal_count": 5,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "VOYA": {
-      "ticker": "VOYA",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 5
-      },
-      "total_strength": -1.09785,
-      "signal_count": 5,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "EME": {
-      "ticker": "EME",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 5
-      },
-      "total_strength": -24.673949999999998,
-      "signal_count": 5,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
     "LMT": {
       "ticker": "LMT",
       "domains_active": [
@@ -1089,14 +189,14 @@
         "technical"
       ],
       "directions": {
-        "neutral": 44,
-        "bearish": 123,
-        "bullish": 83
+        "neutral": 87,
+        "bearish": 296,
+        "bullish": 397
       },
-      "total_strength": 144.0,
-      "signal_count": 250,
+      "total_strength": 527.1249002512192,
+      "signal_count": 780,
       "first_signal_time": "2026-03-03T00:00:00",
-      "last_signal_time": "2026-03-03T00:00:00"
+      "last_signal_time": "2026-03-04T00:00:00"
     },
     "RTX": {
       "ticker": "RTX",
@@ -1106,14 +206,14 @@
         "technical"
       ],
       "directions": {
-        "neutral": 44,
-        "bullish": 191,
-        "bearish": 375
+        "neutral": 87,
+        "bullish": 461,
+        "bearish": 1023
       },
-      "total_strength": 214.94641037796842,
-      "signal_count": 610,
+      "total_strength": 561.0946162798783,
+      "signal_count": 1571,
       "first_signal_time": "2026-03-03T00:00:00",
-      "last_signal_time": "2026-03-03T00:00:00"
+      "last_signal_time": "2026-03-04T00:00:00"
     },
     "GD": {
       "ticker": "GD",
@@ -1124,122 +224,32 @@
         "technical"
       ],
       "directions": {
-        "neutral": 44,
-        "bearish": 218,
-        "bullish": 119
+        "neutral": 92,
+        "bearish": 539,
+        "bullish": 419
       },
-      "total_strength": 172.57370901821992,
-      "signal_count": 381,
+      "total_strength": 511.715199800106,
+      "signal_count": 1050,
       "first_signal_time": "2026-03-03T00:00:00",
-      "last_signal_time": "2026-03-03T00:00:00"
+      "last_signal_time": "2026-03-04T00:00:00"
     },
     "BA": {
       "ticker": "BA",
       "domains_active": [
         "contracts",
         "insider",
-        "institutional"
+        "institutional",
+        "technical"
       ],
       "directions": {
-        "neutral": 44,
-        "bearish": 280,
-        "bullish": 12
+        "neutral": 87,
+        "bearish": 772,
+        "bullish": 205
       },
-      "total_strength": 69.12337489027996,
-      "signal_count": 336,
+      "total_strength": 363.24711153937267,
+      "signal_count": 1064,
       "first_signal_time": "2026-03-03T00:00:00",
-      "last_signal_time": "2026-03-03T00:00:00"
-    },
-    "ALGM": {
-      "ticker": "ALGM",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 5
-      },
-      "total_strength": -0.9093,
-      "signal_count": 5,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "HURN": {
-      "ticker": "HURN",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 5
-      },
-      "total_strength": -0.69575,
-      "signal_count": 5,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "AGIO": {
-      "ticker": "AGIO",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 21
-      },
-      "total_strength": -8.453948,
-      "signal_count": 21,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "BATRA": {
-      "ticker": "BATRA",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 4
-      },
-      "total_strength": -0.1928,
-      "signal_count": 4,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "CF": {
-      "ticker": "CF",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 26
-      },
-      "total_strength": -267.456358,
-      "signal_count": 26,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "MRNA": {
-      "ticker": "MRNA",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 4
-      },
-      "total_strength": -5.808376,
-      "signal_count": 4,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "CSGP": {
-      "ticker": "CSGP",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 4
-      },
-      "total_strength": 4.0,
-      "signal_count": 4,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
+      "last_signal_time": "2026-03-04T00:00:00"
     },
     "MOBX": {
       "ticker": "MOBX",
@@ -1247,25 +257,26 @@
         "sentiment"
       ],
       "directions": {
-        "bullish": 31
+        "bullish": 49
       },
-      "total_strength": 31.0,
-      "signal_count": 31,
+      "total_strength": 49.0,
+      "signal_count": 49,
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-04T00:00:00"
     },
     "PLUG": {
       "ticker": "PLUG",
       "domains_active": [
+        "events",
         "sentiment"
       ],
       "directions": {
-        "bullish": 17
+        "bullish": 20
       },
-      "total_strength": 13.066317162332224,
-      "signal_count": 17,
+      "total_strength": 15.624634561949813,
+      "signal_count": 20,
       "first_signal_time": "2026-03-03T00:00:00",
-      "last_signal_time": "2026-03-03T00:00:00"
+      "last_signal_time": "2026-03-02T00:00:00"
     },
     "WB": {
       "ticker": "WB",
@@ -1273,10 +284,10 @@
         "sentiment"
       ],
       "directions": {
-        "bullish": 31
+        "bullish": 49
       },
-      "total_strength": 31.0,
-      "signal_count": 31,
+      "total_strength": 49.0,
+      "signal_count": 49,
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-04T00:00:00"
     },
@@ -1286,25 +297,27 @@
         "sentiment"
       ],
       "directions": {
-        "bullish": 31
+        "bullish": 49
       },
-      "total_strength": 31.0,
-      "signal_count": 31,
+      "total_strength": 49.0,
+      "signal_count": 49,
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-04T00:00:00"
     },
     "API": {
       "ticker": "API",
       "domains_active": [
+        "events",
         "sentiment"
       ],
       "directions": {
-        "bullish": 31
+        "bullish": 49,
+        "neutral": 3
       },
-      "total_strength": 31.0,
-      "signal_count": 31,
+      "total_strength": 50.199999999999996,
+      "signal_count": 52,
       "first_signal_time": "2026-03-03T00:00:00",
-      "last_signal_time": "2026-03-04T00:00:00"
+      "last_signal_time": "2026-03-02T00:00:00"
     },
     "TROO": {
       "ticker": "TROO",
@@ -1312,10 +325,10 @@
         "sentiment"
       ],
       "directions": {
-        "bullish": 31
+        "bullish": 49
       },
-      "total_strength": 29.767829601462942,
-      "signal_count": 31,
+      "total_strength": 47.05237582166722,
+      "signal_count": 49,
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-04T00:00:00"
     },
@@ -1348,28 +361,31 @@
     "WBD": {
       "ticker": "WBD",
       "domains_active": [
+        "events",
         "sentiment"
       ],
       "directions": {
-        "bullish": 6
+        "bullish": 6,
+        "bearish": 3
       },
-      "total_strength": 4.483330417855284,
-      "signal_count": 6,
+      "total_strength": 7.483330417855284,
+      "signal_count": 9,
       "first_signal_time": "2026-03-03T00:00:00",
-      "last_signal_time": "2026-03-03T00:00:00"
+      "last_signal_time": "2026-02-26T00:00:00"
     },
     "MDB": {
       "ticker": "MDB",
       "domains_active": [
+        "events",
         "sentiment"
       ],
       "directions": {
-        "bullish": 2
+        "bullish": 5
       },
-      "total_strength": 1.4743384505580857,
-      "signal_count": 2,
+      "total_strength": 2.234324794020018,
+      "signal_count": 5,
       "first_signal_time": "2026-03-03T00:00:00",
-      "last_signal_time": "2026-03-03T00:00:00"
+      "last_signal_time": "2026-03-02T00:00:00"
     },
     "META": {
       "ticker": "META",
@@ -1378,130 +394,14 @@
         "technical"
       ],
       "directions": {
-        "bullish": 100,
-        "bearish": 808
+        "bullish": 267,
+        "bearish": 2327,
+        "neutral": 2
       },
-      "total_strength": -190.2156123073553,
-      "signal_count": 908,
+      "total_strength": 277.1079087534229,
+      "signal_count": 2596,
       "first_signal_time": "2026-03-03T00:00:00",
-      "last_signal_time": "2026-03-03T00:00:00"
-    },
-    "LQDA": {
-      "ticker": "LQDA",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 54
-      },
-      "total_strength": -2.4782720000000005,
-      "signal_count": 54,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "UTHR": {
-      "ticker": "UTHR",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 9
-      },
-      "total_strength": -88.128342,
-      "signal_count": 9,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "URBN": {
-      "ticker": "URBN",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 9
-      },
-      "total_strength": -5.833350000000001,
-      "signal_count": 9,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "ADUS": {
-      "ticker": "ADUS",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 9
-      },
-      "total_strength": -0.411876,
-      "signal_count": 9,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "RMD": {
-      "ticker": "RMD",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 7
-      },
-      "total_strength": -3.5602,
-      "signal_count": 7,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "SHBI": {
-      "ticker": "SHBI",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 7
-      },
-      "total_strength": -0.4737879999999999,
-      "signal_count": 7,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "KPTI": {
-      "ticker": "KPTI",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 18
-      },
-      "total_strength": -2.1996299999999995,
-      "signal_count": 18,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "CGNX": {
-      "ticker": "CGNX",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 7
-      },
-      "total_strength": -33.263999999999996,
-      "signal_count": 7,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "BLCO": {
-      "ticker": "BLCO",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 12
-      },
-      "total_strength": 1.87641,
-      "signal_count": 12,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
+      "last_signal_time": "2026-02-15T00:00:00"
     },
     "CCB": {
       "ticker": "CCB",
@@ -1516,213 +416,34 @@
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-03T00:00:00"
     },
-    "OKLO": {
-      "ticker": "OKLO",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 6
-      },
-      "total_strength": -11.705039999999999,
-      "signal_count": 6,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "FFIN": {
-      "ticker": "FFIN",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 5
-      },
-      "total_strength": 0.49936,
-      "signal_count": 5,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "COCO": {
-      "ticker": "COCO",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 5
-      },
-      "total_strength": -15.338700000000001,
-      "signal_count": 5,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "AI": {
-      "ticker": "AI",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 5
-      },
-      "total_strength": -1.3753199999999999,
-      "signal_count": 5,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "PEP": {
-      "ticker": "PEP",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 5
-      },
-      "total_strength": -46.7761,
-      "signal_count": 5,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "ETN": {
-      "ticker": "ETN",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 4
-      },
-      "total_strength": -10.458104,
-      "signal_count": 4,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "NTLA": {
-      "ticker": "NTLA",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 4
-      },
-      "total_strength": -0.066912,
-      "signal_count": 4,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "WD": {
-      "ticker": "WD",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 4
-      },
-      "total_strength": 3.797056,
-      "signal_count": 4,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "SEMR": {
-      "ticker": "SEMR",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 10
-      },
-      "total_strength": -9.74302,
-      "signal_count": 10,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "KKR": {
-      "ticker": "KKR",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 25
-      },
-      "total_strength": 25.0,
-      "signal_count": 25,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "SJM": {
-      "ticker": "SJM",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 9
-      },
-      "total_strength": 1.7964180000000003,
-      "signal_count": 9,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "TREX": {
-      "ticker": "TREX",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 9
-      },
-      "total_strength": 9.0,
-      "signal_count": 9,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
     "GTLB": {
       "ticker": "GTLB",
       "domains_active": [
+        "events",
         "sentiment"
       ],
       "directions": {
-        "bullish": 29
+        "bullish": 50
       },
-      "total_strength": 29.0,
-      "signal_count": 29,
+      "total_strength": 48.68573868488472,
+      "signal_count": 50,
       "first_signal_time": "2026-03-03T00:00:00",
-      "last_signal_time": "2026-03-04T00:00:00"
+      "last_signal_time": "2026-03-03T00:00:00"
     },
     "CRWD": {
       "ticker": "CRWD",
       "domains_active": [
+        "events",
         "sentiment"
       ],
       "directions": {
-        "bullish": 29
+        "bullish": 29,
+        "bearish": 3
       },
-      "total_strength": 20.79342852560436,
-      "signal_count": 29,
+      "total_strength": 20.81318468828123,
+      "signal_count": 32,
       "first_signal_time": "2026-03-03T00:00:00",
-      "last_signal_time": "2026-03-04T00:00:00"
-    },
-    "TRU": {
-      "ticker": "TRU",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 17
-      },
-      "total_strength": -7.510720000000001,
-      "signal_count": 17,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "FA": {
-      "ticker": "FA",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 9
-      },
-      "total_strength": 1.9213200000000006,
-      "signal_count": 9,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
+      "last_signal_time": "2026-03-03T00:00:00"
     },
     "WINA": {
       "ticker": "WINA",
@@ -1763,109 +484,35 @@
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-03T00:00:00"
     },
-    "FRSH": {
-      "ticker": "FRSH",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 9
-      },
-      "total_strength": 9.0,
-      "signal_count": 9,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "HGBL": {
-      "ticker": "HGBL",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 9
-      },
-      "total_strength": -0.08737199999999999,
-      "signal_count": 9,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
     "CABO": {
       "ticker": "CABO",
       "domains_active": [
+        "events",
         "insider"
       ],
       "directions": {
-        "bullish": 9
+        "bullish": 9,
+        "bearish": 3
       },
-      "total_strength": 1.79928,
-      "signal_count": 9,
+      "total_strength": 4.7992799999999995,
+      "signal_count": 12,
       "first_signal_time": "2026-03-03T00:00:00",
-      "last_signal_time": "2026-03-03T00:00:00"
-    },
-    "EDSA": {
-      "ticker": "EDSA",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 9
-      },
-      "total_strength": 0.11304,
-      "signal_count": 9,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "TRGP": {
-      "ticker": "TRGP",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 9
-      },
-      "total_strength": -14.006232,
-      "signal_count": 9,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "EXTR": {
-      "ticker": "EXTR",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 9
-      },
-      "total_strength": -12.549690000000002,
-      "signal_count": 9,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
+      "last_signal_time": "2026-02-26T00:00:00"
     },
     "XRAY": {
       "ticker": "XRAY",
       "domains_active": [
+        "events",
         "insider"
       ],
       "directions": {
-        "bullish": 24
+        "bullish": 24,
+        "bearish": 3
       },
-      "total_strength": 17.07752,
-      "signal_count": 24,
+      "total_strength": 17.365249196050772,
+      "signal_count": 27,
       "first_signal_time": "2026-03-03T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "TTWO": {
-      "ticker": "TTWO",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 8
-      },
-      "total_strength": -3.9824960000000003,
-      "signal_count": 8,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
+      "last_signal_time": "2026-02-26T00:00:00"
     },
     "AEE": {
       "ticker": "AEE",
@@ -1880,136 +527,6 @@
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-03T00:00:00"
     },
-    "BIOA": {
-      "ticker": "BIOA",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 8
-      },
-      "total_strength": -2.41424,
-      "signal_count": 8,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "MTG": {
-      "ticker": "MTG",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 8
-      },
-      "total_strength": -12.976799999999999,
-      "signal_count": 8,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "AXTI": {
-      "ticker": "AXTI",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 29
-      },
-      "total_strength": -380.5748360000004,
-      "signal_count": 29,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "NET": {
-      "ticker": "NET",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 16
-      },
-      "total_strength": -7.54528,
-      "signal_count": 16,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "NEM": {
-      "ticker": "NEM",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 8
-      },
-      "total_strength": -1.980736,
-      "signal_count": 8,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "FDP": {
-      "ticker": "FDP",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 24
-      },
-      "total_strength": -4.849904,
-      "signal_count": 24,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "SNX": {
-      "ticker": "SNX",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 8
-      },
-      "total_strength": -12.440799999999998,
-      "signal_count": 8,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "GWRE": {
-      "ticker": "GWRE",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 8
-      },
-      "total_strength": -2.762304,
-      "signal_count": 8,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "RELY": {
-      "ticker": "RELY",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 8
-      },
-      "total_strength": -10.915183999999998,
-      "signal_count": 8,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "MCW": {
-      "ticker": "MCW",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 22
-      },
-      "total_strength": -2.9187960000000004,
-      "signal_count": 22,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
     "APPN": {
       "ticker": "APPN",
       "domains_active": [
@@ -2023,148 +540,34 @@
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-03T00:00:00"
     },
-    "JBSS": {
-      "ticker": "JBSS",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 32
-      },
-      "total_strength": -23.180176000000007,
-      "signal_count": 32,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
     "FIGS": {
       "ticker": "FIGS",
       "domains_active": [
+        "events",
         "insider"
       ],
       "directions": {
-        "bullish": 8
+        "bullish": 11
       },
-      "total_strength": -150.005344,
-      "signal_count": 8,
+      "total_strength": -147.005344,
+      "signal_count": 11,
       "first_signal_time": "2026-03-03T00:00:00",
-      "last_signal_time": "2026-03-03T00:00:00"
+      "last_signal_time": "2026-02-26T00:00:00"
     },
     "BCSF": {
       "ticker": "BCSF",
       "domains_active": [
+        "events",
         "insider"
       ],
       "directions": {
-        "bullish": 8
+        "bullish": 8,
+        "bearish": 3
       },
-      "total_strength": 0.46184,
-      "signal_count": 8,
+      "total_strength": 0.7046435043804753,
+      "signal_count": 11,
       "first_signal_time": "2026-03-03T00:00:00",
-      "last_signal_time": "2026-03-03T00:00:00"
-    },
-    "ISRG": {
-      "ticker": "ISRG",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 12
-      },
-      "total_strength": -34.92860400000001,
-      "signal_count": 12,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-02-27T00:00:00"
-    },
-    "XMTR": {
-      "ticker": "XMTR",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 7
-      },
-      "total_strength": -7.216048000000001,
-      "signal_count": 7,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "CHYM": {
-      "ticker": "CHYM",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 7
-      },
-      "total_strength": -10.915436,
-      "signal_count": 7,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "IRT": {
-      "ticker": "IRT",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 7
-      },
-      "total_strength": -0.11528999999999999,
-      "signal_count": 7,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "AGL": {
-      "ticker": "AGL",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 7
-      },
-      "total_strength": 4.2147,
-      "signal_count": 7,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "EXLS": {
-      "ticker": "EXLS",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 7
-      },
-      "total_strength": -0.7143499999999999,
-      "signal_count": 7,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "CVNA": {
-      "ticker": "CVNA",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 19
-      },
-      "total_strength": -98.51364800000002,
-      "signal_count": 19,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "PRI": {
-      "ticker": "PRI",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 7
-      },
-      "total_strength": -0.6796439999999999,
-      "signal_count": 7,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
+      "last_signal_time": "2026-02-26T00:00:00"
     },
     "MAGA": {
       "ticker": "MAGA",
@@ -2179,96 +582,19 @@
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-03T00:00:00"
     },
-    "AMWL": {
-      "ticker": "AMWL",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 19
-      },
-      "total_strength": -0.8419439999999998,
-      "signal_count": 19,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "LNG": {
-      "ticker": "LNG",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 6
-      },
-      "total_strength": -12.236532,
-      "signal_count": 6,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "EXFY": {
-      "ticker": "EXFY",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 6
-      },
-      "total_strength": -0.324,
-      "signal_count": 6,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "BHC": {
-      "ticker": "BHC",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 6
-      },
-      "total_strength": -0.7815719999999999,
-      "signal_count": 6,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "CVRX": {
-      "ticker": "CVRX",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 18
-      },
-      "total_strength": -1.0230299999999999,
-      "signal_count": 18,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
     "ANIP": {
       "ticker": "ANIP",
       "domains_active": [
+        "events",
         "insider"
       ],
       "directions": {
-        "bullish": 5
+        "bullish": 8
       },
-      "total_strength": -4.4538,
-      "signal_count": 5,
+      "total_strength": -3.585033724758021,
+      "signal_count": 8,
       "first_signal_time": "2026-03-03T00:00:00",
-      "last_signal_time": "2026-03-03T00:00:00"
-    },
-    "DGXX": {
-      "ticker": "DGXX",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 4
-      },
-      "total_strength": -0.6292,
-      "signal_count": 4,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
+      "last_signal_time": "2026-02-27T00:00:00"
     },
     "GSAT": {
       "ticker": "GSAT",
@@ -2289,10 +615,10 @@
         "sentiment"
       ],
       "directions": {
-        "bullish": 19
+        "bullish": 37
       },
-      "total_strength": 16.99821181745835,
-      "signal_count": 19,
+      "total_strength": 34.28275803766263,
+      "signal_count": 37,
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-04T00:00:00"
     },
@@ -2309,58 +635,6 @@
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-03T00:00:00"
     },
-    "IRTC": {
-      "ticker": "IRTC",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 48
-      },
-      "total_strength": -53.998655999999976,
-      "signal_count": 48,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "NE": {
-      "ticker": "NE",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 6
-      },
-      "total_strength": -10.479612,
-      "signal_count": 6,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "CELH": {
-      "ticker": "CELH",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 5
-      },
-      "total_strength": -1.4777299999999998,
-      "signal_count": 5,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "AXON": {
-      "ticker": "AXON",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 19
-      },
-      "total_strength": -48.970172,
-      "signal_count": 19,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-02-27T00:00:00"
-    },
     "DOCU": {
       "ticker": "DOCU",
       "domains_active": [
@@ -2373,45 +647,6 @@
       "signal_count": 8,
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-03T00:00:00"
-    },
-    "STX": {
-      "ticker": "STX",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 6
-      },
-      "total_strength": -47.942730000000005,
-      "signal_count": 6,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "CHWY": {
-      "ticker": "CHWY",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 3
-      },
-      "total_strength": -0.49059,
-      "signal_count": 3,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "ABBV": {
-      "ticker": "ABBV",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 3
-      },
-      "total_strength": -26.253294000000004,
-      "signal_count": 3,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
     },
     "USNA": {
       "ticker": "USNA",
@@ -2439,19 +674,6 @@
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-03T00:00:00"
     },
-    "TSLX": {
-      "ticker": "TSLX",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 3
-      },
-      "total_strength": 0.299736,
-      "signal_count": 3,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
     "ES=F": {
       "ticker": "ES=F",
       "domains_active": [
@@ -2459,14 +681,14 @@
         "technical"
       ],
       "directions": {
-        "bullish": 60,
-        "bearish": 90,
-        "neutral": 24
+        "bullish": 146,
+        "bearish": 175,
+        "neutral": 75
       },
-      "total_strength": 92.04000000000002,
-      "signal_count": 174,
+      "total_strength": 198.2300000000001,
+      "signal_count": 396,
       "first_signal_time": "2026-03-03T00:00:00",
-      "last_signal_time": "2026-02-24T00:00:00"
+      "last_signal_time": "2026-03-04T00:00:00"
     },
     "NQ=F": {
       "ticker": "NQ=F",
@@ -2475,27 +697,14 @@
         "technical"
       ],
       "directions": {
-        "bullish": 90,
-        "bearish": 90,
-        "neutral": 24
+        "bullish": 219,
+        "bearish": 199,
+        "neutral": 75
       },
-      "total_strength": 116.1000000000001,
-      "signal_count": 204,
+      "total_strength": 259.62500000000057,
+      "signal_count": 493,
       "first_signal_time": "2026-03-03T00:00:00",
-      "last_signal_time": "2026-02-24T00:00:00"
-    },
-    "STRA": {
-      "ticker": "STRA",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 13
-      },
-      "total_strength": -27.839448,
-      "signal_count": 13,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
+      "last_signal_time": "2026-03-04T00:00:00"
     },
     "IOSP": {
       "ticker": "IOSP",
@@ -2503,10 +712,10 @@
         "insider"
       ],
       "directions": {
-        "bullish": 99
+        "bullish": 252
       },
-      "total_strength": -10.43104399999998,
-      "signal_count": 99,
+      "total_strength": -21.073327999999957,
+      "signal_count": 252,
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-02-27T00:00:00"
     },
@@ -2523,71 +732,6 @@
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-03T00:00:00"
     },
-    "NFLX": {
-      "ticker": "NFLX",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 25
-      },
-      "total_strength": -1102.194552,
-      "signal_count": 25,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "GPOR": {
-      "ticker": "GPOR",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 39
-      },
-      "total_strength": -173.23085000000006,
-      "signal_count": 39,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "YELP": {
-      "ticker": "YELP",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 13
-      },
-      "total_strength": -0.6795359999999999,
-      "signal_count": 13,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "ROK": {
-      "ticker": "ROK",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 12
-      },
-      "total_strength": -85.51550400000002,
-      "signal_count": 12,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "RARE": {
-      "ticker": "RARE",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 84
-      },
-      "total_strength": -55.813151999999995,
-      "signal_count": 84,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
     "KDOZF": {
       "ticker": "KDOZF",
       "domains_active": [
@@ -2601,96 +745,18 @@
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-03T00:00:00"
     },
-    "SYF": {
-      "ticker": "SYF",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 80
-      },
-      "total_strength": -434.681834,
-      "signal_count": 80,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "BBNX": {
-      "ticker": "BBNX",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 38
-      },
-      "total_strength": -1.411112,
-      "signal_count": 38,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "BBSI": {
-      "ticker": "BBSI",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 7
-      },
-      "total_strength": 0.77441,
-      "signal_count": 7,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "IRM": {
-      "ticker": "IRM",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 35
-      },
-      "total_strength": -678.2255480000001,
-      "signal_count": 35,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
     "EVCM": {
       "ticker": "EVCM",
       "domains_active": [
         "insider"
       ],
       "directions": {
-        "bullish": 24
+        "bullish": 78
       },
-      "total_strength": -10.623839999999998,
-      "signal_count": 24,
+      "total_strength": -34.31515200000002,
+      "signal_count": 78,
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-03T00:00:00"
-    },
-    "VTOL": {
-      "ticker": "VTOL",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 22
-      },
-      "total_strength": -57.002212000000014,
-      "signal_count": 22,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-02-27T00:00:00"
-    },
-    "KRYS": {
-      "ticker": "KRYS",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 12
-      },
-      "total_strength": -41.442288,
-      "signal_count": 12,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-02-27T00:00:00"
     },
     "SCHD": {
       "ticker": "SCHD",
@@ -2731,96 +797,20 @@
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-03T00:00:00"
     },
-    "RNG": {
-      "ticker": "RNG",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 31
-      },
-      "total_strength": -25.752313999999988,
-      "signal_count": 31,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "WDC": {
-      "ticker": "WDC",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 12
-      },
-      "total_strength": -39.120048,
-      "signal_count": 12,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "OPTU": {
-      "ticker": "OPTU",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 12
-      },
-      "total_strength": -0.6720000000000002,
-      "signal_count": 12,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "UUU": {
-      "ticker": "UUU",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 22
-      },
-      "total_strength": 5.727127999999997,
-      "signal_count": 22,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "RBRK": {
-      "ticker": "RBRK",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 22
-      },
-      "total_strength": -31.840336000000004,
-      "signal_count": 22,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
     "SMR": {
       "ticker": "SMR",
       "domains_active": [
+        "events",
         "insider"
       ],
       "directions": {
-        "bullish": 110
+        "bullish": 348,
+        "bearish": 3
       },
-      "total_strength": -92.40726000000006,
-      "signal_count": 110,
+      "total_strength": -298.6405679999994,
+      "signal_count": 351,
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-03T00:00:00"
-    },
-    "CMTG": {
-      "ticker": "CMTG",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 43
-      },
-      "total_strength": 7.113757999999998,
-      "signal_count": 43,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
     },
     "LTH": {
       "ticker": "LTH",
@@ -2828,25 +818,12 @@
         "insider"
       ],
       "directions": {
-        "bullish": 22
+        "bullish": 76
       },
-      "total_strength": -1.5044920000000008,
-      "signal_count": 22,
+      "total_strength": -5.197336000000002,
+      "signal_count": 76,
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-03T00:00:00"
-    },
-    "CI": {
-      "ticker": "CI",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 44
-      },
-      "total_strength": -51.17864399999999,
-      "signal_count": 44,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
     },
     "MTRN": {
       "ticker": "MTRN",
@@ -2854,10 +831,10 @@
         "insider"
       ],
       "directions": {
-        "bullish": 54
+        "bullish": 84
       },
-      "total_strength": -42.20321200000003,
-      "signal_count": 54,
+      "total_strength": -66.5867920000001,
+      "signal_count": 84,
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-03T00:00:00"
     },
@@ -2867,38 +844,12 @@
         "sentiment"
       ],
       "directions": {
-        "bullish": 6
+        "bullish": 8
       },
-      "total_strength": 4.1252642956255015,
-      "signal_count": 6,
+      "total_strength": 6.045769431203756,
+      "signal_count": 8,
       "first_signal_time": "2026-03-04T00:00:00",
       "last_signal_time": "2026-03-04T00:00:00"
-    },
-    "SNOW": {
-      "ticker": "SNOW",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 20
-      },
-      "total_strength": -66.00399999999996,
-      "signal_count": 20,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "ABT": {
-      "ticker": "ABT",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 108
-      },
-      "total_strength": -17.265363999999998,
-      "signal_count": 108,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
     },
     "DKNG": {
       "ticker": "DKNG",
@@ -2906,10 +857,10 @@
         "insider"
       ],
       "directions": {
-        "bullish": 20
+        "bullish": 74
       },
-      "total_strength": -2.8319999999999994,
-      "signal_count": 20,
+      "total_strength": -10.478400000000017,
+      "signal_count": 74,
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-03T00:00:00"
     },
@@ -2919,10 +870,10 @@
         "insider"
       ],
       "directions": {
-        "bullish": 20
+        "bullish": 74
       },
-      "total_strength": 15.179919999999997,
-      "signal_count": 20,
+      "total_strength": 56.1657040000001,
+      "signal_count": 74,
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-03T00:00:00"
     },
@@ -2932,10 +883,10 @@
         "insider"
       ],
       "directions": {
-        "bullish": 19
+        "bullish": 73
       },
-      "total_strength": -3.550947999999999,
-      "signal_count": 19,
+      "total_strength": -13.643116000000013,
+      "signal_count": 73,
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-03T00:00:00"
     },
@@ -2945,23 +896,24 @@
         "insider"
       ],
       "directions": {
-        "bullish": 38
+        "bullish": 146
       },
-      "total_strength": -87.89171999999999,
-      "signal_count": 38,
+      "total_strength": -337.6892399999997,
+      "signal_count": 146,
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-02T00:00:00"
     },
     "TDUP": {
       "ticker": "TDUP",
       "domains_active": [
+        "events",
         "insider"
       ],
       "directions": {
-        "bullish": 57
+        "bullish": 222
       },
-      "total_strength": -49.588099999999976,
-      "signal_count": 57,
+      "total_strength": -190.40505294117628,
+      "signal_count": 222,
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-03T00:00:00"
     },
@@ -2971,90 +923,27 @@
         "insider"
       ],
       "directions": {
-        "bullish": 180
+        "bullish": 774
       },
-      "total_strength": -179.0998919999998,
-      "signal_count": 180,
+      "total_strength": -761.1221519999993,
+      "signal_count": 774,
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-03T00:00:00"
     },
     "ALTG": {
       "ticker": "ALTG",
       "domains_active": [
+        "events",
         "insider"
       ],
       "directions": {
-        "bullish": 36
+        "bullish": 144,
+        "bearish": 3
       },
-      "total_strength": -9.168120000000005,
-      "signal_count": 36,
+      "total_strength": -34.761729492900606,
+      "signal_count": 147,
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-03T00:00:00"
-    },
-    "KHC": {
-      "ticker": "KHC",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 18
-      },
-      "total_strength": -12.386807999999997,
-      "signal_count": 18,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "GNLX": {
-      "ticker": "GNLX",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 18
-      },
-      "total_strength": -1.0424520000000002,
-      "signal_count": 18,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "WRB": {
-      "ticker": "WRB",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 18
-      },
-      "total_strength": 18.0,
-      "signal_count": 18,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "THC": {
-      "ticker": "THC",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 36
-      },
-      "total_strength": -269.3713320000001,
-      "signal_count": 36,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "GRAL": {
-      "ticker": "GRAL",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 41
-      },
-      "total_strength": -95.21717799999999,
-      "signal_count": 41,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
     },
     "CHEF": {
       "ticker": "CHEF",
@@ -3062,10 +951,10 @@
         "insider"
       ],
       "directions": {
-        "bullish": 51
+        "bullish": 213
       },
-      "total_strength": -290.19666400000006,
-      "signal_count": 51,
+      "total_strength": -1211.9978320000005,
+      "signal_count": 213,
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-02-27T00:00:00"
     },
@@ -3075,103 +964,26 @@
         "insider"
       ],
       "directions": {
-        "bullish": 16
+        "bullish": 70
       },
-      "total_strength": -0.3512000000000001,
-      "signal_count": 16,
+      "total_strength": -1.5364999999999986,
+      "signal_count": 70,
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-03T00:00:00"
-    },
-    "ARQT": {
-      "ticker": "ARQT",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 65
-      },
-      "total_strength": -41.01279,
-      "signal_count": 65,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
     },
     "ARLO": {
       "ticker": "ARLO",
       "domains_active": [
+        "events",
         "insider"
       ],
       "directions": {
-        "bullish": 34
+        "bullish": 199
       },
-      "total_strength": -16.412824000000008,
-      "signal_count": 34,
+      "total_strength": -91.01048298507453,
+      "signal_count": 199,
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-03T00:00:00"
-    },
-    "ATOM": {
-      "ticker": "ATOM",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 36
-      },
-      "total_strength": -2.239728,
-      "signal_count": 36,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "RUN": {
-      "ticker": "RUN",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 55
-      },
-      "total_strength": -18.651490000000003,
-      "signal_count": 55,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "RVMD": {
-      "ticker": "RVMD",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 11
-      },
-      "total_strength": -80.175788,
-      "signal_count": 11,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "NTRA": {
-      "ticker": "NTRA",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 33
-      },
-      "total_strength": -44.09569999999998,
-      "signal_count": 33,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
-    },
-    "RMBS": {
-      "ticker": "RMBS",
-      "domains_active": [
-        "insider"
-      ],
-      "directions": {
-        "bullish": 7
-      },
-      "total_strength": -55.113744000000004,
-      "signal_count": 7,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
     },
     "SYRE": {
       "ticker": "SYRE",
@@ -3179,53 +991,1362 @@
         "insider"
       ],
       "directions": {
-        "bullish": 14
+        "bullish": 122
       },
-      "total_strength": -10.282804,
-      "signal_count": 14,
+      "total_strength": -89.60729199999993,
+      "signal_count": 122,
       "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-02T00:00:00"
     },
-    "FLD": {
-      "ticker": "FLD",
+    "KORU": {
+      "ticker": "KORU",
       "domains_active": [
+        "sentiment"
+      ],
+      "directions": {
+        "bullish": 18
+      },
+      "total_strength": 17.94179893989206,
+      "signal_count": 18,
+      "first_signal_time": "2026-03-04T00:00:00",
+      "last_signal_time": "2026-03-04T00:00:00"
+    },
+    "BE": {
+      "ticker": "BE",
+      "domains_active": [
+        "sentiment"
+      ],
+      "directions": {
+        "bullish": 18
+      },
+      "total_strength": 17.284546220204298,
+      "signal_count": 18,
+      "first_signal_time": "2026-03-04T00:00:00",
+      "last_signal_time": "2026-03-04T00:00:00"
+    },
+    "PSKY": {
+      "ticker": "PSKY",
+      "domains_active": [
+        "events",
+        "sentiment"
+      ],
+      "directions": {
+        "bullish": 3,
+        "bearish": 3
+      },
+      "total_strength": 5.677430729906886,
+      "signal_count": 6,
+      "first_signal_time": "2026-03-04T00:00:00",
+      "last_signal_time": "2026-02-25T00:00:00"
+    },
+    "DC": {
+      "ticker": "DC",
+      "domains_active": [
+        "sentiment"
+      ],
+      "directions": {
+        "bullish": 5
+      },
+      "total_strength": 4.801262838945638,
+      "signal_count": 5,
+      "first_signal_time": "2026-03-04T00:00:00",
+      "last_signal_time": "2026-03-04T00:00:00"
+    },
+    "NOC": {
+      "ticker": "NOC",
+      "domains_active": [
+        "contracts",
+        "insider",
+        "institutional",
+        "technical"
+      ],
+      "directions": {
+        "bearish": 466,
+        "bullish": 143,
+        "neutral": 31
+      },
+      "total_strength": 242.69118498043858,
+      "signal_count": 640,
+      "first_signal_time": "2026-03-04T00:00:00",
+      "last_signal_time": "2026-03-04T00:00:00"
+    },
+    "OKLO": {
+      "ticker": "OKLO",
+      "domains_active": [
+        "sentiment"
+      ],
+      "directions": {
+        "bullish": 8
+      },
+      "total_strength": 8.0,
+      "signal_count": 8,
+      "first_signal_time": "2026-03-04T00:00:00",
+      "last_signal_time": "2026-03-04T00:00:00"
+    },
+    "ACIW": {
+      "ticker": "ACIW",
+      "domains_active": [
+        "events",
         "insider"
       ],
       "directions": {
-        "bullish": 21
+        "bullish": 48,
+        "bearish": 3
       },
-      "total_strength": -0.33439,
-      "signal_count": 21,
-      "first_signal_time": "2026-03-02T00:00:00",
+      "total_strength": 12.16855247058824,
+      "signal_count": 51,
+      "first_signal_time": "2026-03-03T00:00:00",
       "last_signal_time": "2026-03-02T00:00:00"
     },
-    "SCHW": {
-      "ticker": "SCHW",
+    "PEBO": {
+      "ticker": "PEBO",
       "domains_active": [
         "insider"
       ],
       "directions": {
-        "bullish": 6
+        "bullish": 9
       },
-      "total_strength": -25.08468,
-      "signal_count": 6,
-      "first_signal_time": "2026-03-02T00:00:00",
-      "last_signal_time": "2026-03-02T00:00:00"
+      "total_strength": -0.5762879999999999,
+      "signal_count": 9,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "CSTE": {
+      "ticker": "CSTE",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bearish": 3
+      },
+      "total_strength": 1.4303405572755414,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-04T00:00:00",
+      "last_signal_time": "2026-03-04T00:00:00"
+    },
+    "RSKD": {
+      "ticker": "RSKD",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 1.1570576540755468,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-04T00:00:00",
+      "last_signal_time": "2026-03-04T00:00:00"
+    },
+    "ASPS": {
+      "ticker": "ASPS",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "neutral": 3
+      },
+      "total_strength": 1.2000000000000002,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-04T00:00:00",
+      "last_signal_time": "2026-03-04T00:00:00"
+    },
+    "STVN": {
+      "ticker": "STVN",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 0.27297391304347907,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-04T00:00:00",
+      "last_signal_time": "2026-03-04T00:00:00"
+    },
+    "EYPT": {
+      "ticker": "EYPT",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bearish": 3
+      },
+      "total_strength": 0.3720991215418907,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-04T00:00:00",
+      "last_signal_time": "2026-03-04T00:00:00"
+    },
+    "DAKT": {
+      "ticker": "DAKT",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bearish": 3
+      },
+      "total_strength": 1.9276018099547514,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-04T00:00:00",
+      "last_signal_time": "2026-03-04T00:00:00"
+    },
+    "GENI": {
+      "ticker": "GENI",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bearish": 3
+      },
+      "total_strength": 3.0,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-04T00:00:00",
+      "last_signal_time": "2026-03-04T00:00:00"
+    },
+    "OCGN": {
+      "ticker": "OCGN",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bearish": 3
+      },
+      "total_strength": 0.08108108108108059,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-04T00:00:00",
+      "last_signal_time": "2026-03-04T00:00:00"
+    },
+    "AFCG": {
+      "ticker": "AFCG",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bearish": 3
+      },
+      "total_strength": 3.0,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-04T00:00:00",
+      "last_signal_time": "2026-03-04T00:00:00"
+    },
+    "DDL": {
+      "ticker": "DDL",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "neutral": 3
+      },
+      "total_strength": 1.2000000000000002,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-04T00:00:00",
+      "last_signal_time": "2026-03-04T00:00:00"
+    },
+    "HLLY": {
+      "ticker": "HLLY",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bearish": 3
+      },
+      "total_strength": 3.0,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-04T00:00:00",
+      "last_signal_time": "2026-03-04T00:00:00"
+    },
+    "EYE": {
+      "ticker": "EYE",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 3.0,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-04T00:00:00",
+      "last_signal_time": "2026-03-04T00:00:00"
+    },
+    "REAX": {
+      "ticker": "REAX",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 2.3855421686746987,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-04T00:00:00",
+      "last_signal_time": "2026-03-04T00:00:00"
+    },
+    "DY": {
+      "ticker": "DY",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 0.8265889474274177,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-04T00:00:00",
+      "last_signal_time": "2026-03-04T00:00:00"
+    },
+    "WIX": {
+      "ticker": "WIX",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 1.5134910751349109,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-04T00:00:00",
+      "last_signal_time": "2026-03-04T00:00:00"
+    },
+    "SMRT": {
+      "ticker": "SMRT",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 0.1176470588235297,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-04T00:00:00",
+      "last_signal_time": "2026-03-04T00:00:00"
+    },
+    "ADV": {
+      "ticker": "ADV",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 3.0,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "OCS": {
+      "ticker": "OCS",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 0.3939423752635274,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "KTB": {
+      "ticker": "KTB",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 0.21780280340241998,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "MEC": {
+      "ticker": "MEC",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 3.0,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "SGC": {
+      "ticker": "SGC",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 0.583969465648855,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "STAA": {
+      "ticker": "STAA",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bearish": 3
+      },
+      "total_strength": 1.88336192109777,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "CYRX": {
+      "ticker": "CYRX",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bearish": 3
+      },
+      "total_strength": 0.008583690987124313,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "THO": {
+      "ticker": "THO",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 0.5753424657534252,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "MRX": {
+      "ticker": "MRX",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 0.5640429857682252,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "CPIX": {
+      "ticker": "CPIX",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "neutral": 3
+      },
+      "total_strength": 1.2000000000000002,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "FSTR": {
+      "ticker": "FSTR",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bearish": 3
+      },
+      "total_strength": 3.0,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "SRRK": {
+      "ticker": "SRRK",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 0.18566237198546426,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "SOPH": {
+      "ticker": "SOPH",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bearish": 3
+      },
+      "total_strength": 0.9335534461411483,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "NPCE": {
+      "ticker": "NPCE",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 2.8932038834951457,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "MASS": {
+      "ticker": "MASS",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 1.7983193277310923,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "ACEL": {
+      "ticker": "ACEL",
+      "domains_active": [
+        "events",
+        "technical"
+      ],
+      "directions": {
+        "bearish": 3,
+        "neutral": 2
+      },
+      "total_strength": 2.3759250123334974,
+      "signal_count": 5,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-04T07:15:47.480135"
+    },
+    "EOLS": {
+      "ticker": "EOLS",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 1.058823529411765,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "CVEO": {
+      "ticker": "CVEO",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bearish": 3
+      },
+      "total_strength": 1.7205882352941189,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "ONON": {
+      "ticker": "ONON",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 1.0811315280464213,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "SRAD": {
+      "ticker": "SRAD",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bearish": 3
+      },
+      "total_strength": 3.0,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "QUIK": {
+      "ticker": "QUIK",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bearish": 3
+      },
+      "total_strength": 3.0,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "CXDO": {
+      "ticker": "CXDO",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 0.9319640564826701,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "HRZN": {
+      "ticker": "HRZN",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bearish": 3
+      },
+      "total_strength": 2.3488843813387428,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "NLST": {
+      "ticker": "NLST",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 0.1176470588235297,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "ANTA": {
+      "ticker": "ANTA",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 3.0,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "WBTN": {
+      "ticker": "WBTN",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 3.0,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "RYAM": {
+      "ticker": "RYAM",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bearish": 3
+      },
+      "total_strength": 3.0,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "BBY": {
+      "ticker": "BBY",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 0.28865151393462296,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "CRCT": {
+      "ticker": "CRCT",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 2.8235294117647065,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "OXSQ": {
+      "ticker": "OXSQ",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bearish": 3
+      },
+      "total_strength": 0.11764705882352927,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "EML": {
+      "ticker": "EML",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bearish": 3
+      },
+      "total_strength": 0.8844884488448843,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "HY": {
+      "ticker": "HY",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bearish": 3
+      },
+      "total_strength": 3.0,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "BGS": {
+      "ticker": "BGS",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bearish": 3
+      },
+      "total_strength": 0.4554455445544548,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "ARCT": {
+      "ticker": "ARCT",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bearish": 3
+      },
+      "total_strength": 2.4960131976904036,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "QSI": {
+      "ticker": "QSI",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 2.1476725521669344,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "AMLX": {
+      "ticker": "AMLX",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 1.1100244498777505,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "GTE": {
+      "ticker": "GTE",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "neutral": 3
+      },
+      "total_strength": 1.2000000000000002,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "VIK": {
+      "ticker": "VIK",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 1.421081779582796,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "AZO": {
+      "ticker": "AZO",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 0.05016623541562481,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "FTEK": {
+      "ticker": "FTEK",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bearish": 3
+      },
+      "total_strength": 1.8431372549019613,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "EVGO": {
+      "ticker": "EVGO",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 2.83794466403162,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "WEYS": {
+      "ticker": "WEYS",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "neutral": 3
+      },
+      "total_strength": 1.2000000000000002,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "SWIM": {
+      "ticker": "SWIM",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 3.0,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "BRCB": {
+      "ticker": "BRCB",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 3.0,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "UPLD": {
+      "ticker": "UPLD",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 1.3133570340274252,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "BOX": {
+      "ticker": "BOX",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 2.6267605633802815,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "PSFE": {
+      "ticker": "PSFE",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 1.4473826227738806,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "SSTI": {
+      "ticker": "SSTI",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bearish": 3
+      },
+      "total_strength": 2.6274509803921573,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "ORN": {
+      "ticker": "ORN",
+      "domains_active": [
+        "events"
+      ],
+      "directions": {
+        "bullish": 3
+      },
+      "total_strength": 2.3916083916083917,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "FMNB": {
+      "ticker": "FMNB",
+      "domains_active": [
+        "insider"
+      ],
+      "directions": {
+        "bullish": 4
+      },
+      "total_strength": 4.0,
+      "signal_count": 4,
+      "first_signal_time": "2026-03-03T00:00:00",
+      "last_signal_time": "2026-03-03T00:00:00"
+    },
+    "AADR": {
+      "ticker": "AADR",
+      "domains_active": [
+        "technical"
+      ],
+      "directions": {
+        "neutral": 2
+      },
+      "total_strength": 2.0,
+      "signal_count": 2,
+      "first_signal_time": "2026-03-04T06:48:13.358312",
+      "last_signal_time": "2026-03-04T07:15:47.480066"
+    },
+    "AAOI": {
+      "ticker": "AAOI",
+      "domains_active": [
+        "events",
+        "technical"
+      ],
+      "directions": {
+        "neutral": 2,
+        "bullish": 1
+      },
+      "total_strength": 3.0,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-04T06:48:13.358341",
+      "last_signal_time": "2026-03-04T07:15:47.480073"
+    },
+    "AARD": {
+      "ticker": "AARD",
+      "domains_active": [
+        "technical"
+      ],
+      "directions": {
+        "neutral": 2
+      },
+      "total_strength": 2.0,
+      "signal_count": 2,
+      "first_signal_time": "2026-03-04T06:48:13.358352",
+      "last_signal_time": "2026-03-04T07:15:47.480094"
+    },
+    "ABNG": {
+      "ticker": "ABNG",
+      "domains_active": [
+        "technical"
+      ],
+      "directions": {
+        "neutral": 2
+      },
+      "total_strength": 2.0,
+      "signal_count": 2,
+      "first_signal_time": "2026-03-04T06:48:13.358359",
+      "last_signal_time": "2026-03-04T07:15:47.480108"
+    },
+    "ABUS": {
+      "ticker": "ABUS",
+      "domains_active": [
+        "technical"
+      ],
+      "directions": {
+        "neutral": 2
+      },
+      "total_strength": 2.0,
+      "signal_count": 2,
+      "first_signal_time": "2026-03-04T06:48:13.358368",
+      "last_signal_time": "2026-03-04T07:15:47.480123"
+    },
+    "ACFN": {
+      "ticker": "ACFN",
+      "domains_active": [
+        "technical"
+      ],
+      "directions": {
+        "neutral": 1
+      },
+      "total_strength": 1.0,
+      "signal_count": 1,
+      "first_signal_time": "2026-03-04T06:48:13.358383",
+      "last_signal_time": "2026-03-04T06:48:13.358383"
+    },
+    "ACNT": {
+      "ticker": "ACNT",
+      "domains_active": [
+        "technical"
+      ],
+      "directions": {
+        "neutral": 2
+      },
+      "total_strength": 2.0,
+      "signal_count": 2,
+      "first_signal_time": "2026-03-04T06:48:13.358390",
+      "last_signal_time": "2026-03-04T07:15:47.480140"
+    },
+    "ACVF": {
+      "ticker": "ACVF",
+      "domains_active": [
+        "technical"
+      ],
+      "directions": {
+        "neutral": 2
+      },
+      "total_strength": 2.0,
+      "signal_count": 2,
+      "first_signal_time": "2026-03-04T06:48:13.358398",
+      "last_signal_time": "2026-03-04T07:15:47.480145"
+    },
+    "ADBG": {
+      "ticker": "ADBG",
+      "domains_active": [
+        "technical"
+      ],
+      "directions": {
+        "neutral": 2
+      },
+      "total_strength": 2.0,
+      "signal_count": 2,
+      "first_signal_time": "2026-03-04T06:48:13.358405",
+      "last_signal_time": "2026-03-04T07:15:47.480157"
+    },
+    "ADIL": {
+      "ticker": "ADIL",
+      "domains_active": [
+        "technical"
+      ],
+      "directions": {
+        "neutral": 2
+      },
+      "total_strength": 2.0,
+      "signal_count": 2,
+      "first_signal_time": "2026-03-04T06:48:13.358413",
+      "last_signal_time": "2026-03-04T07:15:47.480163"
+    },
+    "ADSK": {
+      "ticker": "ADSK",
+      "domains_active": [
+        "events",
+        "technical"
+      ],
+      "directions": {
+        "neutral": 2,
+        "bullish": 1
+      },
+      "total_strength": 2.1141649048625792,
+      "signal_count": 3,
+      "first_signal_time": "2026-03-04T06:48:13.358420",
+      "last_signal_time": "2026-03-04T07:15:47.480168"
+    },
+    "ADVB": {
+      "ticker": "ADVB",
+      "domains_active": [
+        "technical"
+      ],
+      "directions": {
+        "neutral": 2
+      },
+      "total_strength": 2.0,
+      "signal_count": 2,
+      "first_signal_time": "2026-03-04T06:48:13.358428",
+      "last_signal_time": "2026-03-04T07:15:47.480173"
+    },
+    "AEHR": {
+      "ticker": "AEHR",
+      "domains_active": [
+        "technical"
+      ],
+      "directions": {
+        "neutral": 2
+      },
+      "total_strength": 2.0,
+      "signal_count": 2,
+      "first_signal_time": "2026-03-04T06:48:13.358435",
+      "last_signal_time": "2026-03-04T07:15:47.480179"
+    },
+    "AERT": {
+      "ticker": "AERT",
+      "domains_active": [
+        "technical"
+      ],
+      "directions": {
+        "neutral": 1
+      },
+      "total_strength": 1.0,
+      "signal_count": 1,
+      "first_signal_time": "2026-03-04T06:48:13.358442",
+      "last_signal_time": "2026-03-04T06:48:13.358442"
+    },
+    "AES": {
+      "ticker": "AES",
+      "domains_active": [
+        "technical"
+      ],
+      "directions": {
+        "neutral": 1
+      },
+      "total_strength": 1.0,
+      "signal_count": 1,
+      "first_signal_time": "2026-03-04T06:48:13.358449",
+      "last_signal_time": "2026-03-04T06:48:13.358449"
+    },
+    "AETH": {
+      "ticker": "AETH",
+      "domains_active": [
+        "technical"
+      ],
+      "directions": {
+        "neutral": 1
+      },
+      "total_strength": 1.0,
+      "signal_count": 1,
+      "first_signal_time": "2026-03-04T06:48:13.358461",
+      "last_signal_time": "2026-03-04T06:48:13.358461"
+    },
+    "AGD": {
+      "ticker": "AGD",
+      "domains_active": [
+        "technical"
+      ],
+      "directions": {
+        "neutral": 1
+      },
+      "total_strength": 1.0,
+      "signal_count": 1,
+      "first_signal_time": "2026-03-04T06:48:13.358468",
+      "last_signal_time": "2026-03-04T06:48:13.358468"
+    },
+    "AGH": {
+      "ticker": "AGH",
+      "domains_active": [
+        "technical"
+      ],
+      "directions": {
+        "neutral": 1
+      },
+      "total_strength": 1.0,
+      "signal_count": 1,
+      "first_signal_time": "2026-03-04T06:48:13.358475",
+      "last_signal_time": "2026-03-04T06:48:13.358475"
+    },
+    "AGIG": {
+      "ticker": "AGIG",
+      "domains_active": [
+        "technical"
+      ],
+      "directions": {
+        "neutral": 1
+      },
+      "total_strength": 1.0,
+      "signal_count": 1,
+      "first_signal_time": "2026-03-04T06:48:13.358482",
+      "last_signal_time": "2026-03-04T06:48:13.358482"
+    },
+    "AA": {
+      "ticker": "AA",
+      "domains_active": [
+        "technical"
+      ],
+      "directions": {
+        "neutral": 1
+      },
+      "total_strength": 1.0,
+      "signal_count": 1,
+      "first_signal_time": "2026-03-04T07:15:47.480041",
+      "last_signal_time": "2026-03-04T07:15:47.480041"
+    },
+    "AACB": {
+      "ticker": "AACB",
+      "domains_active": [
+        "technical"
+      ],
+      "directions": {
+        "neutral": 1
+      },
+      "total_strength": 1.0,
+      "signal_count": 1,
+      "first_signal_time": "2026-03-04T07:15:47.480059",
+      "last_signal_time": "2026-03-04T07:15:47.480059"
+    },
+    "AAPB": {
+      "ticker": "AAPB",
+      "domains_active": [
+        "technical"
+      ],
+      "directions": {
+        "neutral": 1
+      },
+      "total_strength": 1.0,
+      "signal_count": 1,
+      "first_signal_time": "2026-03-04T07:15:47.480079",
+      "last_signal_time": "2026-03-04T07:15:47.480079"
+    },
+    "AAPX": {
+      "ticker": "AAPX",
+      "domains_active": [
+        "technical"
+      ],
+      "directions": {
+        "neutral": 1
+      },
+      "total_strength": 1.0,
+      "signal_count": 1,
+      "first_signal_time": "2026-03-04T07:15:47.480087",
+      "last_signal_time": "2026-03-04T07:15:47.480087"
+    },
+    "AAXJ": {
+      "ticker": "AAXJ",
+      "domains_active": [
+        "technical"
+      ],
+      "directions": {
+        "neutral": 1
+      },
+      "total_strength": 1.0,
+      "signal_count": 1,
+      "first_signal_time": "2026-03-04T07:15:47.480103",
+      "last_signal_time": "2026-03-04T07:15:47.480103"
+    },
+    "ABTC": {
+      "ticker": "ABTC",
+      "domains_active": [
+        "technical"
+      ],
+      "directions": {
+        "neutral": 1
+      },
+      "total_strength": 1.0,
+      "signal_count": 1,
+      "first_signal_time": "2026-03-04T07:15:47.480119",
+      "last_signal_time": "2026-03-04T07:15:47.480119"
+    },
+    "ACWI": {
+      "ticker": "ACWI",
+      "domains_active": [
+        "technical"
+      ],
+      "directions": {
+        "neutral": 1
+      },
+      "total_strength": 1.0,
+      "signal_count": 1,
+      "first_signal_time": "2026-03-04T07:15:47.480150",
+      "last_signal_time": "2026-03-04T07:15:47.480150"
     }
   },
   "last_fired": {
-    "AAPL": 1772598858.242222,
-    "MSFT": 1772598858.242222,
-    "GOOGL": 1772598858.242222,
-    "AMZN": 1772598858.242222,
-    "NVDA": 1772598858.242222,
-    "NOC": 1772598858.242222,
-    "LMT": 1772598758.210069,
-    "RTX": 1772598758.210069,
-    "GD": 1772598758.210069,
-    "BA": 1772598758.210069,
-    "META": 1772598758.210069,
-    "ES=F": 1772598758.210069,
-    "NQ=F": 1772598758.210069
+    "AAPL": 1772637308.645511,
+    "MSFT": 1772637308.645511,
+    "GOOGL": 1772637308.645511,
+    "AMZN": 1772637308.645511,
+    "NVDA": 1772637308.645511,
+    "NOC": 1772637424.5968454,
+    "LMT": 1772637529.043133,
+    "RTX": 1772637529.043133,
+    "GD": 1772637529.043133,
+    "BA": 1772637529.043133,
+    "META": 1772637529.043133,
+    "ES=F": 1772637529.043133,
+    "NQ=F": 1772637529.043133,
+    "PLUG": 1772637529.043133,
+    "API": 1772637529.043133,
+    "WBD": 1772637529.043133,
+    "MDB": 1772637529.043133,
+    "GTLB": 1772637529.043133,
+    "CRWD": 1772637529.043133,
+    "CABO": 1772637529.043133,
+    "XRAY": 1772637529.043133,
+    "FIGS": 1772637529.043133,
+    "BCSF": 1772637529.043133,
+    "ANIP": 1772637529.043133,
+    "SMR": 1772637529.043133,
+    "TDUP": 1772637529.043133,
+    "ALTG": 1772637529.043133,
+    "ARLO": 1772637529.043133,
+    "PSKY": 1772637529.043133,
+    "ACIW": 1772637529.043133,
+    "ACEL": 1772637308.645511,
+    "AAOI": 1772637424.5968454,
+    "ADSK": 1772637424.5968454
   }
 }
