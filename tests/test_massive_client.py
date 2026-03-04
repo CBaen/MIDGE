@@ -174,10 +174,15 @@ class TestMassiveClient:
     def test_build_snapshots(self):
         client = MassiveClient(api_key="test")
 
-        # Mock grouped daily for two dates
+        # Mock grouped daily for two dates (date-agnostic: first call = today, second = previous)
+        _call_count = {"n": 0}
+
         def mock_grouped(for_date=None):
-            if for_date and for_date < date(2026, 3, 2):
+            _call_count["n"] += 1
+            if for_date is not None:
+                # Second call (previous day)
                 return [TickerBar("AAPL", 148, 150, 147, 149, 800000, 148.5, 4000, "2026-02-27")]
+            # First call (today)
             return [TickerBar("AAPL", 150, 155, 149, 154, 1200000, 152, 5000, "2026-03-02")]
 
         client.get_grouped_daily = mock_grouped

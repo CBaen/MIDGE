@@ -2,6 +2,29 @@
 
 ## What Happened
 
+### From Proven Signal to Profitable System — 4 Operational Fixes (2026-03-03)
+
+Replay analysis proved MIDGE has real statistical edge (z=4.74, p<0.0001) but can't capitalize due to operational gaps. Four work packages close the gap:
+
+**WP1 — Thompson Persistence Protection:**
+- `tests/conftest.py`: NEW autouse fixture monkeypatches `thompson_sampler.DATA_DIR`, `DISTRIBUTIONS_FILE`, `HISTORY_FILE`, plus `thompson_calibrator.DATA_DIR` and `outcome_collector.DATA_DIR` to `tmp_path`. No test can touch production data.
+- `thompson_sampler.py`: `main()` demo uses temp dir instead of production.
+- `accelerate_learning.py`: Both `ThompsonSampler()` calls now use explicit `persistence_path=MARKET_DATA_DIR / "thompson_distributions.json"` — immune to monkeypatching.
+
+**WP2 — ctx.outcome_collector Wiring (1 line):**
+- `market_hooks.py`: Added `ctx.outcome_collector = outcome_collector` after OutcomeCollector construction (line 721). Closes the combo Thompson feedback loop for live operation — `register_convergence_alert()` at line 518 can now find the collector.
+
+**WP3 — Confidence-Gated Paper Trading (replay-proven threshold):**
+- `learning_config.py`: Added `paper_trade_min_confidence: 0.45`, `paper_trade_min_strength: 0.65`, `paper_trade_min_combo_mean: 0.25`.
+- `market_hooks.py`: Paper trading gate reads from config instead of hardcoded 0.75. Combo filter blocks domain combinations with historical win rate < 25% (uses Thompson combo distributions). Unknown combos pass through for learning.
+
+**WP4 — Magnitude-Aware Replay Grading:**
+- `replay_history.py`: New `_compute_excursions()` helper computes MFE (Maximum Favorable Excursion) and MAE (Maximum Adverse Excursion) from daily prices through the outcome window.
+- `phase_grade()`: Now records `mfe_pct` and `mae_pct` per alert alongside existing `pct_change`.
+- `phase_report()`: New metrics — `expectancy_pct` (avg_win * win_rate - avg_loss * loss_rate), `sharpe_ratio` (annualized), winner return percentiles (P25/P50/P75/P90), MFE/MAE percentiles (P50/P90).
+
+---
+
 ### Combo Thompson — Domain Combination Learning (2026-03-03)
 
 Replay harness found 288 convergence alerts with 19.9% win rate, but confidence was flat between winners (0.560) and losers (0.565). Root cause: confidence used per-signal Thompson but ignored *which domain combinations* work. Example: `events+macro+price+sentiment+technical` wins 66.7% vs `events+insider+institutional+macro+price` at 8.3% — an 8x difference the confidence engine completely missed.
