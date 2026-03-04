@@ -316,6 +316,49 @@ def phase_replay(
 
 
 # ---------------------------------------------------------------
+# Magnitude helpers
+# ---------------------------------------------------------------
+
+def _compute_excursions(
+    symbol: str,
+    alert_dt: date,
+    window_days: int,
+    entry_price: float,
+    direction: str,
+    get_price_fn,
+) -> tuple:
+    """Compute Maximum Favorable Excursion and Maximum Adverse Excursion.
+
+    MFE = largest move in the predicted direction during the window.
+    MAE = largest move against the predicted direction during the window.
+    Both returned as positive percentages.
+    """
+    prices = []
+    for d in range(1, window_days + 1):
+        dt = alert_dt + timedelta(days=d)
+        p = get_price_fn(symbol, dt)
+        if p is not None:
+            prices.append(p)
+
+    if not prices:
+        return None, None
+
+    pct_moves = [((p - entry_price) / entry_price) * 100 for p in prices]
+
+    if direction == "bullish":
+        mfe = max(max(pct_moves), 0)
+        mae = max(-min(pct_moves), 0)
+    elif direction == "bearish":
+        mfe = max(-min(pct_moves), 0)
+        mae = max(max(pct_moves), 0)
+    else:
+        mfe = max(abs(m) for m in pct_moves) if pct_moves else 0
+        mae = 0
+
+    return mfe, mae
+
+
+# ---------------------------------------------------------------
 # Phase 2: GRADE
 # ---------------------------------------------------------------
 
@@ -395,7 +438,16 @@ def phase_grade(
         alert["outcome_window_days"] = outcome_window_days
         alert["symbol_graded"] = symbol
 
+        # Magnitude tracking: MFE/MAE from daily prices through the window
         direction = alert.get("direction", "neutral")
+        mfe, mae = _compute_excursions(
+            symbol, alert_dt, outcome_window_days, entry_price,
+            direction, get_price,
+        )
+        if mfe is not None:
+            alert["mfe_pct"] = round(mfe, 2)
+            alert["mae_pct"] = round(mae, 2)
+
         if direction == "bullish" and pct_change >= SUCCESS_THRESHOLD_PCT:
             alert["grade"] = "success"
             successes += 1
@@ -525,6 +577,74 @@ def phase_report(alerts: List[dict] = None) -> dict:
             sum(a.get("confidence", 0) for a in failures) / len(failures), 3
         )
 
+    # --- Magnitude metrics ---
+    winner_returns = [a["pct_change"] for a in successes if "pct_change" in a]
+    loser_returns = [a["pct_change"] for a in failures if "pct_change" in a]
+    all_returns = [a["pct_change"] for a in graded if "pct_change" in a]
+
+    if winner_returns:
+        report["avg_return_winners"] = round(sum(winner_returns) / len(winner_returns), 2)
+    if loser_returns:
+        report["avg_return_losers"] = round(sum(loser_returns) / len(loser_returns), 2)
+
+    # Expectancy: avg_win * win_rate - avg_loss * loss_rate
+    if winner_returns and loser_returns and graded:
+        win_rate = len(successes) / len(graded)
+        loss_rate = len(failures) / len(graded)
+        # For bearish successes, pct_change is negative but it's a win — use absolute values
+        avg_win = sum(abs(r) for r in winner_returns) / len(winner_returns)
+        avg_loss = sum(abs(r) for r in loser_returns) / len(loser_returns)
+        report["expectancy_pct"] = round(avg_win * win_rate - avg_loss * loss_rate, 2)
+        report["avg_win_pct"] = round(avg_win, 2)
+        report["avg_loss_pct"] = round(avg_loss, 2)
+
+    # Sharpe ratio (annualized from outcome window)
+    if len(all_returns) >= 2:
+        # Use directional returns: bullish = pct_change, bearish = -pct_change
+        dir_returns = []
+        for a in graded:
+            if "pct_change" not in a:
+                continue
+            r = a["pct_change"]
+            if a.get("direction") == "bearish":
+                r = -r  # flip so positive = profitable
+            dir_returns.append(r)
+        if len(dir_returns) >= 2:
+            mean_r = sum(dir_returns) / len(dir_returns)
+            std_r = math.sqrt(sum((r - mean_r) ** 2 for r in dir_returns) / (len(dir_returns) - 1))
+            if std_r > 0:
+                # Annualize: sqrt(trades_per_year) where trades_per_year ~ 252/outcome_window
+                outcome_window = graded[0].get("outcome_window_days", DEFAULT_OUTCOME_WINDOW_DAYS)
+                ann_factor = math.sqrt(252 / max(outcome_window, 1))
+                report["sharpe_ratio"] = round((mean_r / std_r) * ann_factor, 2)
+
+    # Percentile returns (P25, P50, P75, P90)
+    def _percentile(vals, p):
+        if not vals:
+            return None
+        s = sorted(vals)
+        k = (len(s) - 1) * p / 100
+        f = int(k)
+        c = f + 1 if f + 1 < len(s) else f
+        return s[f] + (k - f) * (s[c] - s[f])
+
+    if winner_returns:
+        abs_wins = sorted(abs(r) for r in winner_returns)
+        report["winner_return_p25"] = round(_percentile(abs_wins, 25), 2)
+        report["winner_return_p50"] = round(_percentile(abs_wins, 50), 2)
+        report["winner_return_p75"] = round(_percentile(abs_wins, 75), 2)
+        report["winner_return_p90"] = round(_percentile(abs_wins, 90), 2)
+
+    # MFE/MAE summaries
+    mfe_vals = [a["mfe_pct"] for a in graded if "mfe_pct" in a]
+    mae_vals = [a["mae_pct"] for a in graded if "mae_pct" in a]
+    if mfe_vals:
+        report["mfe_p50"] = round(_percentile(sorted(mfe_vals), 50), 2)
+        report["mfe_p90"] = round(_percentile(sorted(mfe_vals), 90), 2)
+    if mae_vals:
+        report["mae_p50"] = round(_percentile(sorted(mae_vals), 50), 2)
+        report["mae_p90"] = round(_percentile(sorted(mae_vals), 90), 2)
+
     # Print human-readable summary
     logger.info("")
     logger.info("=== REPLAY RESULTS ===")
@@ -556,6 +676,26 @@ def phase_report(alerts: List[dict] = None) -> dict:
         logger.info("Avg confidence (winners): %.3f", report["avg_confidence_winners"])
     if "avg_confidence_losers" in report:
         logger.info("Avg confidence (losers):  %.3f", report["avg_confidence_losers"])
+
+    # Magnitude metrics
+    if "expectancy_pct" in report:
+        logger.info("")
+        logger.info("=== MAGNITUDE METRICS ===")
+        logger.info("Avg win:       %.2f%%", report.get("avg_win_pct", 0))
+        logger.info("Avg loss:      %.2f%%", report.get("avg_loss_pct", 0))
+        logger.info("Expectancy:    %.2f%% per trade", report["expectancy_pct"])
+    if "sharpe_ratio" in report:
+        logger.info("Sharpe ratio:  %.2f (annualized)", report["sharpe_ratio"])
+    if "winner_return_p50" in report:
+        logger.info("")
+        logger.info("Winner returns: P25=%.1f%%  P50=%.1f%%  P75=%.1f%%  P90=%.1f%%",
+                     report["winner_return_p25"], report["winner_return_p50"],
+                     report["winner_return_p75"], report["winner_return_p90"])
+    if "mfe_p50" in report:
+        logger.info("MFE (all):  P50=%.1f%%  P90=%.1f%%", report["mfe_p50"], report["mfe_p90"])
+    if "mae_p50" in report:
+        logger.info("MAE (all):  P50=%.1f%%  P90=%.1f%%", report["mae_p50"], report["mae_p90"])
+
     logger.info("")
     logger.info("Monthly distribution:")
     for month, count in report["monthly_distribution"].items():
