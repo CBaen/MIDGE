@@ -331,16 +331,16 @@ class TestComboRegistration:
         for collector, mock_ts, tmp in self._make_collector():
             alert = self._make_alert(direction="bearish")
             collector.register_convergence_alert(alert, "TSLA")
-            call_kwargs = collector.tracker.record_prediction.call_args
-            assert call_kwargs[1]["direction"] == "down"
+            kwargs = collector.tracker.record_prediction.call_args.kwargs
+            assert kwargs["direction"] == "down"
 
     def test_outcome_window_is_14_days(self):
         """Combo predictions use 14-day outcome window."""
         for collector, mock_ts, tmp in self._make_collector():
             alert = self._make_alert()
             collector.register_convergence_alert(alert, "AAPL")
-            call_kwargs = collector.tracker.record_prediction.call_args
-            assert call_kwargs[1]["outcome_window_days"] == 14
+            kwargs = collector.tracker.record_prediction.call_args.kwargs
+            assert kwargs["outcome_window_days"] == 14
 
 
 # ── Replay Seeding ──────────────────────────────────────────────────────
@@ -366,10 +366,11 @@ class TestReplaySeeding:
     def test_seeds_from_replay(self):
         """Combo distributions are seeded from replay win/loss counts."""
         from mae_core.market.intelligence.thompson_sampler import ThompsonSampler
-        ts = ThompsonSampler()
 
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
+            ts = ThompsonSampler(persistence_path=tmp_path / "thompson.json")
+
             combos = {
                 "events+macro+price": {"wins": 10, "total": 32, "win_rate_pct": 31.2},
             }
@@ -395,22 +396,23 @@ class TestReplaySeeding:
     def test_skips_small_combos(self):
         """Combos with total < 3 are not seeded."""
         from mae_core.market.intelligence.thompson_sampler import ThompsonSampler
-        ts = ThompsonSampler()
 
-        combos = {
-            "a+b+c": {"wins": 1, "total": 2, "win_rate_pct": 50.0},
-        }
-        for combo_str, stats in combos.items():
-            if stats["total"] < 3:
-                continue
-            key = f"combo:{combo_str}"
-            for _ in range(stats["wins"]):
-                ts.update(key, success=True)
-            for _ in range(stats["total"] - stats["wins"]):
-                ts.update(key, success=False)
+        with tempfile.TemporaryDirectory() as tmp:
+            ts = ThompsonSampler(persistence_path=Path(tmp) / "thompson.json")
+            combos = {
+                "x+y+z": {"wins": 1, "total": 2, "win_rate_pct": 50.0},
+            }
+            for combo_str, stats in combos.items():
+                if stats["total"] < 3:
+                    continue
+                key = f"combo:{combo_str}"
+                for _ in range(stats["wins"]):
+                    ts.update(key, success=True)
+                for _ in range(stats["total"] - stats["wins"]):
+                    ts.update(key, success=False)
 
-        dist = ts.get_distribution("combo:a+b+c")
-        assert dist.samples == 0  # Not seeded
+            dist = ts.get_distribution("combo:x+y+z")
+            assert dist.samples == 0  # Not seeded
 
     def test_idempotent_seeding(self):
         """Second seed run skips combos where live data exceeds replay total."""
