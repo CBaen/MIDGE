@@ -69,6 +69,7 @@ class ConvergenceAlert:
     # Defaults preserve backward compatibility with existing callers.
     coherence: float = 1.0            # 1.0 = all signals agree, 0.5 = evenly split
     contradiction_details: list = field(default_factory=list)  # [(domain, direction), ...]
+    combo_key: str = ""  # Thompson key for this domain combination (e.g. "combo:events+macro+price")
 
     def to_dict(self) -> dict:
         return {
