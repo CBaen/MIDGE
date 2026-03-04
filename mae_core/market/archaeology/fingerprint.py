@@ -1,11 +1,17 @@
 """Fingerprint dataclasses — the DNA of a historical market move.
 
-A MoveFingerprint encodes what signals preceded a known price move:
-which sources fired, in what domains, how far before the move, how
-strong. This is the pattern that MIDGE watches for in the live market.
+Three levels of abstraction:
 
-A PrecursorSignal is a single signal observed before the move.
-Multiple PrecursorSignals compose a MoveFingerprint.
+1. PrecursorSignal — a single signal observed before a move
+2. MoveFingerprint — the full signal configuration before ONE specific move
+                     (symbol-bound: "what preceded NVDA's 10% move on 2024-01-15")
+3. PatternTemplate — the symbol-AGNOSTIC pattern extracted from many fingerprints
+                     (cross-validated: "insider+macro+technical bullish seen on 47 symbols")
+
+PatternTemplate is the key abstraction. A pattern that only works for NVDA is
+worthless. Real patterns transfer across the entire market. Patterns validate
+each other through cross-symbol observation. The PatternWatcher matches live
+signals against templates, not individual fingerprints.
 """
 
 from __future__ import annotations
