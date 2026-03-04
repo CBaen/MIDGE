@@ -388,8 +388,8 @@ class TestGrading:
 
         mock_pf = MagicMock()
         mock_pf.get_historical_price.side_effect = [
-            SimpleNamespace(close=100.0),   # entry
-            SimpleNamespace(close=106.0),   # exit (+6%)
+            SimpleNamespace(price=100.0),   # entry
+            SimpleNamespace(price=106.0),   # exit (+6%)
         ]
 
         with patch("replay_history.time_module.sleep"):
@@ -406,8 +406,8 @@ class TestGrading:
 
         mock_pf = MagicMock()
         mock_pf.get_historical_price.side_effect = [
-            SimpleNamespace(close=100.0),
-            SimpleNamespace(close=97.0),    # -3%
+            SimpleNamespace(price=100.0),
+            SimpleNamespace(price=97.0),    # -3%
         ]
 
         with patch("replay_history.time_module.sleep"):
@@ -424,8 +424,8 @@ class TestGrading:
 
         mock_pf = MagicMock()
         mock_pf.get_historical_price.side_effect = [
-            SimpleNamespace(close=100.0),
-            SimpleNamespace(close=93.0),    # -7%
+            SimpleNamespace(price=100.0),
+            SimpleNamespace(price=93.0),    # -7%
         ]
 
         with patch("replay_history.time_module.sleep"):
