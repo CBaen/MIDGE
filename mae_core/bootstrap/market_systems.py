@@ -245,15 +245,14 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         ctx.thompson_sampler = None
         failures += 1
 
-    # Seed combo Thompson from replay results (historical domain-combo win rates).
-    if ctx.thompson_sampler is not None:
+    if ctx.thompson_sampler is not None:  # Seed combo Thompson from replay results
         try:
-            seeded = _seed_combo_thompson(ctx.thompson_sampler)
-            if seeded:
-                logger.info("Market: seeded %d combo Thompson distributions from replay results", seeded)
+            _rp = Path(__file__).resolve().parents[2] / "data" / "midge" / "replay_results.json"
+            _n = ctx.thompson_sampler.seed_combo_distributions(_rp)
+            if _n:
+                logger.info("Market: seeded %d combo Thompson distributions from replay", _n)
         except Exception:
             logger.debug("Market: combo Thompson seeding failed", exc_info=True)
-
     try:
         from mae_core.market.intelligence.convergence_alerter import ConvergenceAlerter
         ctx.convergence_alerter = ConvergenceAlerter(

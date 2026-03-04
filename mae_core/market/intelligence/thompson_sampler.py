@@ -172,6 +172,32 @@ class ThompsonSampler:
             # No reliability scores available
             pass
 
+    def seed_combo_distributions(self, replay_path: Path) -> int:
+        """Seed combo Thompson distributions from replay results file.
+
+        Reads domain_combos from replay_results.json and creates Beta
+        distributions for each combo with total >= 3 observations.
+        Idempotent: skips combos where live samples already exceed replay total.
+        """
+        if not replay_path.exists():
+            return 0
+        results = json.loads(replay_path.read_text())
+        combos = results.get("report", {}).get("domain_combos", {})
+        seeded = 0
+        for combo_str, stats in combos.items():
+            total = stats.get("total", 0)
+            if total < 3:
+                continue
+            key = f"combo:{combo_str}"
+            if self.get_distribution(key).samples >= total:
+                continue
+            for _ in range(stats.get("wins", 0)):
+                self.update(key, success=True)
+            for _ in range(total - stats.get("wins", 0)):
+                self.update(key, success=False)
+            seeded += 1
+        return seeded
+
     def get_distribution(
         self,
         signal_id: str,
