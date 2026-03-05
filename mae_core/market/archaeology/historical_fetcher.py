@@ -73,6 +73,78 @@ class HistoricalDataFetcher:
         self._cot_cache: dict[int, list] = {}  # year -> positions
         self._congress_cache: Optional[list] = None
 
+    def preload_archive(self) -> int:
+        """Load all signal archive files into memory at startup.
+
+        Eliminates per-dig-site file I/O. Call once before bulk excavation.
+
+        Returns:
+            Number of archive files loaded.
+        """
+        if self._archive_preloaded:
+            return len(self._signal_cache)
+
+        count = 0
+        signal_dir = self._signal_dir
+        if not signal_dir.exists():
+            self._archive_preloaded = True
+            return 0
+
+        for f in sorted(signal_dir.glob("*.jsonl")):
+            date_str = f.stem  # "2025-01-15"
+            if date_str in self._signal_cache:
+                continue
+            signals: list[dict] = []
+            try:
+                with open(f, "r") as fh:
+                    for line in fh:
+                        line = line.strip()
+                        if line:
+                            try:
+                                signals.append(json.loads(line))
+                            except json.JSONDecodeError:
+                                continue
+            except OSError:
+                continue
+            self._signal_cache[date_str] = signals
+            count += 1
+
+        self._archive_preloaded = True
+        logger.info("Pre-loaded %d archive files into memory", count)
+        return count
+
+    def _get_ta_cached(self, symbol: str, price_history: list) -> list[dict]:
+        """Get TA signals for full price history, computing once per symbol.
+
+        Instead of recomputing RSI/MACD/Bollinger/Volume for every dig site
+        (50+ times per symbol with identical results), compute once and cache.
+        Each dig site filters the cached result by its date window.
+        """
+        if symbol in self._ta_cache:
+            return self._ta_cache[symbol]
+
+        if not price_history or len(price_history) < 35:
+            self._ta_cache[symbol] = []
+            return []
+
+        # Compute for full date range of the price history
+        first_ts = getattr(price_history[0], "timestamp", "")[:10]
+        last_ts = getattr(price_history[-1], "timestamp", "")[:10]
+        if not first_ts or not last_ts:
+            self._ta_cache[symbol] = []
+            return []
+
+        try:
+            full_start = date.fromisoformat(first_ts)
+            full_end = date.fromisoformat(last_ts) + timedelta(days=1)
+        except ValueError:
+            self._ta_cache[symbol] = []
+            return []
+
+        signals = self._compute_ta_signals(symbol, price_history, full_start, full_end)
+        self._ta_cache[symbol] = signals
+        return signals
+
     def fetch_all(
         self,
         symbol: str,
@@ -93,8 +165,16 @@ class HistoricalDataFetcher:
         """
         signals: list[dict] = []
 
-        # Tier 1: TA indicators from price data (always available, zero API calls)
-        signals.extend(self._compute_ta_signals(symbol, price_history, start_date, end_date))
+        # Tier 1: TA indicators — use cached full-history computation, filter by window
+        all_ta = self._get_ta_cached(symbol, price_history)
+        for sig in all_ta:
+            ts = sig.get("timestamp", "")[:10]
+            try:
+                sig_date = date.fromisoformat(ts)
+            except ValueError:
+                continue
+            if start_date <= sig_date < end_date:
+                signals.append(sig)
 
         # Tier 2: API-fetchable history
         signals.extend(self._fetch_sec_signals(symbol, start_date, end_date))
@@ -667,12 +747,18 @@ class HistoricalDataFetcher:
         }
 
     def clear_cache(self) -> None:
-        """Clear all caches to free memory between symbol batches."""
-        self._signal_cache.clear()
+        """Clear per-symbol caches between symbols.
+
+        Preserves the signal archive (pre-loaded or lazily loaded) and
+        bulk API caches. Only clears TA cache (per-symbol computation).
+        """
+        self._ta_cache.clear()
 
     def clear_all_caches(self) -> None:
-        """Clear all caches including bulk data (between full runs)."""
+        """Clear all caches including archive and bulk data (between full runs)."""
         self._signal_cache.clear()
+        self._ta_cache.clear()
+        self._archive_preloaded = False
         self._fred_cache.clear()
         self._cot_cache.clear()
         self._congress_cache = None

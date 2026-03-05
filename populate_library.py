@@ -78,6 +78,11 @@ def main():
 
     library = PatternLibrary()
     fetcher = HistoricalDataFetcher()
+
+    # Pre-load entire signal archive into memory (eliminates per-dig-site I/O)
+    n_files = fetcher.preload_archive()
+    logger.info("Signal archive: %d files pre-loaded into memory", n_files)
+
     excavator = Excavator(fetcher=fetcher)
 
     # Select price data source
