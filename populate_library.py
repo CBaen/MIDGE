@@ -77,7 +77,61 @@ def main():
     logger.info("Initializing excavation components...")
 
     library = PatternLibrary()
-    fetcher = HistoricalDataFetcher()
+
+    # ── Wire Tier 2 API clients (historical data beyond TA indicators) ──
+    # These give the excavator multi-domain signals (insider, macro,
+    # positioning, government) going back years — not just chart patterns.
+    sec_client = None
+    fred_client = None
+    cot_client = None
+    congress_client = None
+
+    try:
+        from mae_core.market.apis.sec_edgar import get_recent_form4s
+        # SEC uses a module-level function, not a class instance.
+        # Wrap it so HistoricalDataFetcher can call .get_recent_form4s()
+        class _SECProxy:
+            @staticmethod
+            def get_recent_form4s(symbol, days=30):
+                return get_recent_form4s(symbol, days=days)
+        sec_client = _SECProxy()
+        logger.info("SEC EDGAR client ready (insider trades, free API)")
+    except Exception as e:
+        logger.info("SEC EDGAR client unavailable: %s", e)
+
+    if os.environ.get("FRED_API_KEY"):
+        try:
+            from mae_core.market.apis.fred_client import FREDClient
+            fred_client = FREDClient()
+            logger.info("FRED client ready (macro indicators)")
+        except Exception as e:
+            logger.info("FRED client unavailable: %s", e)
+    else:
+        logger.info("FRED client skipped (no FRED_API_KEY)")
+
+    try:
+        from mae_core.market.apis.cot_client import COTClient
+        cot_client = COTClient()
+        logger.info("COT client ready (futures positioning)")
+    except Exception as e:
+        logger.info("COT client unavailable: %s", e)
+
+    try:
+        from mae_core.market.apis.house_stock_watcher import HouseStockWatcherClient
+        congress_client = HouseStockWatcherClient()
+        logger.info("Congressional client ready (STOCK Act trades)")
+    except Exception as e:
+        logger.info("Congressional client unavailable: %s", e)
+
+    tier2_count = sum(1 for c in [sec_client, fred_client, cot_client, congress_client] if c)
+    logger.info("Tier 2 clients: %d/4 active", tier2_count)
+
+    fetcher = HistoricalDataFetcher(
+        sec_client=sec_client,
+        fred_client=fred_client,
+        cot_client=cot_client,
+        congress_client=congress_client,
+    )
 
     # Pre-load entire signal archive into memory (eliminates per-dig-site I/O)
     n_files = fetcher.preload_archive()

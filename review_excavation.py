@@ -41,6 +41,8 @@ def main():
     # The templates file can get corrupted by concurrent writes from
     # the running excavation daemon. Fingerprints are append-only and safe.
     if lib.size > 0:
+        import logging
+        logging.getLogger("mae_core.market.archaeology.pattern_library").setLevel(logging.WARNING)
         lib.rebuild_templates()
 
     if args.json:
@@ -135,8 +137,9 @@ def print_human_report(lib: PatternLibrary, top_n: int, show_domain: bool):
     print("-" * 70)
     print()
 
-    multi_domain = [t for t in templates if len(t.domains) >= 2]
-    single_domain = [t for t in templates if len(t.domains) == 1]
+    # Use domain_signature (always reliable) rather than domains list
+    multi_domain = [t for t in templates if "+" in t.domain_signature]
+    single_domain = [t for t in templates if "+" not in t.domain_signature]
 
     print(f"  Single-domain templates: {len(single_domain):,}")
     print(f"  Multi-domain templates:  {len(multi_domain):,}")
@@ -146,7 +149,8 @@ def print_human_report(lib: PatternLibrary, top_n: int, show_domain: bool):
         print("  Multi-domain patterns (where MIDGE's edge lives):")
         print()
         multi_sorted = sorted(multi_domain,
-                               key=lambda t: (len(t.domains), len(t.unique_symbols)),
+                               key=lambda t: (len(t.domain_signature.split("+")),
+                                              len(t.unique_symbols)),
                                reverse=True)
         for t in multi_sorted[:10]:
             n_syms = len(t.unique_symbols)
