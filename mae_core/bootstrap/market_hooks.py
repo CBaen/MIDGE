@@ -289,6 +289,24 @@ def _write_paper_trade(alert, ctx: SimpleNamespace) -> None:
             except Exception:
                 logger.debug("OutcomeCollector registration for paper trade failed", exc_info=True)
 
+        # --- Write plain-language alert for convergence-based paper trade ---
+        try:
+            from mae_core.market.plain_language import (
+                format_convergence_alert, write_plain_alert,
+            )
+            _msg = format_convergence_alert(
+                alert, ticker,
+                window_days=trade_signal.timeframe_days,
+            )
+            write_plain_alert(
+                _msg, ticker, raw_direction,
+                source="convergence_alert",
+                metadata={"confidence": float(alert.confidence),
+                          "strength": float(alert.strength)},
+            )
+        except Exception:
+            logger.debug("Plain-language convergence alert failed", exc_info=True)
+
     except Exception:
         logger.debug("_write_paper_trade failed", exc_info=True)
 
@@ -950,13 +968,44 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
                         _stacks = ctx.pattern_watcher.check(_active)
                         ctx._cached_pattern_stacks = _stacks or []
                         # Register stacks for outcome tracking (Thompson feedback)
+                        # + write plain-language alerts
                         _oc = getattr(ctx, "outcome_collector", None)
-                        if _oc is not None and _stacks:
+                        if _stacks:
                             for _stack in _stacks:
+                                if _oc is not None:
+                                    try:
+                                        _oc.register_pattern_stack(_stack, _stack.symbol)
+                                    except Exception:
+                                        logger.debug("Pattern stack registration failed", exc_info=True)
+                                # Plain-language alert for each pattern stack
                                 try:
-                                    _oc.register_pattern_stack(_stack, _stack.symbol)
+                                    from mae_core.market.plain_language import (
+                                        format_pattern_stack_alert, write_plain_alert,
+                                    )
+                                    _tmpl_windows = []
+                                    for _act in _stack.activations:
+                                        _tw = getattr(_act.template, "expected_move_window_days", None)
+                                        if _tw is not None:
+                                            _tmpl_windows.append(_tw)
+                                    if _tmpl_windows:
+                                        _tmpl_windows.sort()
+                                        _win_days = _tmpl_windows[len(_tmpl_windows) // 2]
+                                        _win_src = "dynamic"
+                                    else:
+                                        _win_days = 14
+                                        _win_src = "fallback"
+                                    _msg = format_pattern_stack_alert(
+                                        _stack, window_days=_win_days, window_source=_win_src,
+                                    )
+                                    write_plain_alert(
+                                        _msg, _stack.symbol, _stack.direction,
+                                        source="pattern_stack",
+                                        metadata={"tier": _stack.tier,
+                                                  "confidence": _stack.stack_confidence,
+                                                  "n_patterns": len(_stack.activations)},
+                                    )
                                 except Exception:
-                                    logger.debug("Pattern stack registration failed", exc_info=True)
+                                    logger.debug("Plain-language alert failed", exc_info=True)
             except Exception:
                 logger.debug("Pattern watcher check failed", exc_info=True)
 
