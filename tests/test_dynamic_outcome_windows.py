@@ -192,6 +192,7 @@ class TestDynamicRegistration:
             thompson_sampler=MagicMock(),
             data_dir=tmp_path,
         )
+        oc.tracker.record_prediction = MagicMock()
 
         # Build a mock stack with templates that have lag data
         tmpl = PatternTemplate(
@@ -226,11 +227,11 @@ class TestDynamicRegistration:
         from mae_core.market.intelligence.outcome_collector import OutcomeCollector
 
         oc = OutcomeCollector(
+            price_fetcher=MagicMock(),
             thompson_sampler=MagicMock(),
-            predictions_path=tmp_path / "predictions.jsonl",
-            outcomes_path=tmp_path / "outcomes.jsonl",
-            registered_path=tmp_path / "registered.json",
+            data_dir=tmp_path,
         )
+        oc.tracker.record_prediction = MagicMock()
 
         # Mock template without the property
         tmpl = SimpleNamespace(

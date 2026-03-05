@@ -232,9 +232,6 @@ class PatternLibrary:
             if not matched_domains:
                 continue
 
-            # Weighted score: more important domains count more
-            # Lag profile weighting: immediate/short signals matter more
-            lag_weights = template.lag_profile_normalized
             # Base: fraction of domains matched
             domain_score = len(matched_domains) / len(template_domains)
 
