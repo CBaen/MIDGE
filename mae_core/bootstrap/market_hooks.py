@@ -1006,8 +1006,70 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
                                     )
                                 except Exception:
                                     logger.debug("Plain-language alert failed", exc_info=True)
+                                # Register with Active Tracker for continuous monitoring
+                                _at = getattr(ctx, "active_tracker", None)
+                                if _at is not None:
+                                    try:
+                                        _pf = getattr(ctx, "price_fetcher", None)
+                                        _entry = 0.0
+                                        if _pf is not None:
+                                            _pd = _pf.get_current_price(_stack.symbol)
+                                            if _pd and _pd.price > 0:
+                                                _entry = _pd.price
+                                        if _entry > 0:
+                                            _at.register(_stack, _entry)
+                                    except Exception:
+                                        logger.debug("Active tracker registration failed", exc_info=True)
             except Exception:
                 logger.debug("Pattern watcher check failed", exc_info=True)
+
+        # Active tracker price check (every 20 steps)
+        _at = getattr(ctx, "active_tracker", None)
+        if _at is not None and step % 20 == 0 and _at.count > 0:
+            try:
+                _events = _at.check_prices()
+                if _events:
+                    # Write plain-language updates for status changes
+                    try:
+                        from mae_core.market.plain_language import write_plain_alert
+                        for _ev in _events:
+                            _status = _ev["new_status"]
+                            _sym = _ev["symbol"]
+                            _pct = _ev.get("current_pct", 0)
+                            if _status == "confirmed":
+                                _msg = (
+                                    f"UPDATE: {_sym} prediction CONFIRMED. "
+                                    f"Price moved {abs(_pct):.1f}% in the expected direction. "
+                                    f"MIDGE was right on this one."
+                                )
+                            elif _status == "failed":
+                                _msg = (
+                                    f"UPDATE: {_sym} prediction DID NOT PLAY OUT. "
+                                    f"Price moved {abs(_pct):.1f}% in the wrong direction. "
+                                    f"MIDGE is learning from this outcome."
+                                )
+                            elif _status == "expired":
+                                _msg = (
+                                    f"UPDATE: {_sym} prediction window expired. "
+                                    f"Final move: {_pct:+.1f}%. "
+                                    f"The expected move did not materialize in time."
+                                )
+                            elif _status == "confirming":
+                                _msg = (
+                                    f"UPDATE: {_sym} is showing early signs of the expected move "
+                                    f"({_pct:+.1f}% so far). MIDGE is watching closely."
+                                )
+                            else:
+                                continue
+                            write_plain_alert(
+                                _msg, _sym, _ev.get("direction", ""),
+                                source="active_tracking",
+                                metadata={"status": _status, "pct_change": _pct},
+                            )
+                    except Exception:
+                        logger.debug("Active tracking alert write failed", exc_info=True)
+            except Exception:
+                logger.debug("Active tracker check failed", exc_info=True)
 
         # Synergy detection: convergence alerts + pattern stacks on same ticker
         _conv_alerts = ctx._cached_alerts[0] or []

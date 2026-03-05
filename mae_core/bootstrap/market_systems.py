@@ -463,6 +463,23 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         failures += 1
         logger.debug("Market: Pattern Archaeology failed", exc_info=True)
 
+    # --- Active Tracker (continuous monitoring of predicted assets) ---
+    ctx.active_tracker = None
+    try:
+        from mae_core.market.archaeology.active_tracker import ActiveTracker
+        ctx.active_tracker = ActiveTracker(
+            price_fetcher=getattr(ctx, "price_fetcher", None),
+            outcome_collector=getattr(ctx, "outcome_collector", None),
+            pattern_library=ctx.pattern_library,
+        )
+        logger.info(
+            "Market: Active Tracker initialized (%d assets tracked)",
+            ctx.active_tracker.count,
+        )
+    except Exception:
+        failures += 1
+        logger.debug("Market: Active Tracker failed", exc_info=True)
+
     # --- Trust registration with BoundaryMembrane ---
     market_sources = [
         ("sec_edgar", 0.90), ("yfinance", 0.75), ("alpha_vantage", 0.80), ("rapidapi", 0.65),
