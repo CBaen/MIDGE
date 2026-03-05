@@ -65,6 +65,9 @@ class HistoricalDataFetcher:
         self._congress_client = congress_client
         self._senate_client = senate_client
         self._signal_cache: dict[str, list[dict]] = {}
+        self._archive_preloaded = False
+        # Per-symbol TA cache: symbol -> list of all TA signals (full history)
+        self._ta_cache: dict[str, list[dict]] = {}
         # Bulk data caches (loaded once, reused across dig sites)
         self._fred_cache: dict[str, list] = {}
         self._cot_cache: dict[int, list] = {}  # year -> positions
