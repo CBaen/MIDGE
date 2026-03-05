@@ -232,6 +232,7 @@ class PatternTemplate:
     direction: str                           # "bullish" or "bearish"
     domain_signature: str                    # "insider+macro+technical"
     domains: list[str] = field(default_factory=list)  # sorted domain list
+    lag_profile_raw: dict[str, int] = field(default_factory=dict)  # accumulated bucket counts
     lag_profile_normalized: dict[str, float] = field(default_factory=dict)
     source_examples: dict[str, list[str]] = field(default_factory=dict)
 
