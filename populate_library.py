@@ -2,12 +2,17 @@
 """Populate the Pattern Library — first excavation pass.
 
 Runs the ExcavationDaemon in a tight loop (no step-hook cadence) to
-excavate all symbols in the signal archive. Uses yfinance for price
-history (free, no API key needed).
+excavate all symbols in the signal archive.
+
+Auto-detects Polygon.io paid API (MASSIVE_API_KEY) for fast bulk
+excavation (~10-15 min for 3,000+ symbols). Falls back to yfinance
+(~8-10 hours) when no API key is set.
 
 Usage:
-    python populate_library.py                    # Full run, all symbols
-    python populate_library.py --batch-size 25    # Larger batches (faster)
+    python populate_library.py                    # Auto-detect source, all symbols
+    python populate_library.py --batch-size 50    # Larger batches (faster)
+    python populate_library.py --source polygon   # Force Polygon.io
+    python populate_library.py --source yfinance  # Force yfinance
     python populate_library.py --symbols NVDA,AAPL,MSFT  # Specific symbols
     python populate_library.py --max-symbols 50   # Cap for testing
     python populate_library.py --reset            # Restart from scratch
@@ -15,6 +20,7 @@ Usage:
 
 import argparse
 import logging
+import os
 import sys
 import time
 from pathlib import Path
@@ -46,6 +52,9 @@ def main():
                         help="Days of price history to fetch (default: 2000)")
     parser.add_argument("--reset", action="store_true",
                         help="Reset progress and start from scratch")
+    parser.add_argument("--source", type=str, default="auto",
+                        choices=["auto", "polygon", "yfinance"],
+                        help="Price data source (default: auto-detect)")
     parser.add_argument("--dry-run", action="store_true",
                         help="Show what would be excavated without doing it")
     args = parser.parse_args()
@@ -61,7 +70,21 @@ def main():
     library = PatternLibrary()
     fetcher = HistoricalDataFetcher()
     excavator = Excavator(fetcher=fetcher)
-    price_fetcher = PriceFetcher()
+
+    # Select price data source
+    use_polygon = False
+    if args.source == "polygon":
+        use_polygon = True
+    elif args.source == "auto" and os.environ.get("MASSIVE_API_KEY"):
+        use_polygon = True
+
+    if use_polygon:
+        from mae_core.market.archaeology.polygon_bulk_fetcher import PolygonBulkFetcher
+        price_fetcher = PolygonBulkFetcher()
+        logger.info("Using Polygon.io paid API for bulk excavation (fast)")
+    else:
+        price_fetcher = PriceFetcher()
+        logger.info("Using yfinance for excavation (slower, no API key needed)")
 
     daemon = ExcavationDaemon(
         library=library,
