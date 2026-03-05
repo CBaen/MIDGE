@@ -297,6 +297,33 @@ class PatternTemplate:
     def domain_set(self) -> set[str]:
         return set(self.domains)
 
+    # Bucket midpoints for computing expected move window
+    _LAG_BUCKET_CENTERS = {
+        "immediate": 1.0, "short": 4.0, "medium": 8.0,
+        "long": 15.0, "extended": 25.0,
+    }
+
+    @property
+    def expected_move_window_days(self) -> int:
+        """Expected days until the move, derived from historical lag data.
+
+        The lag_profile tells us how far BEFORE the move the signals appeared.
+        The weighted mean gives us how long to wait after detecting signals.
+        """
+        if not self.lag_profile_normalized:
+            return 14  # fallback
+        weighted_sum = 0.0
+        weight_total = 0.0
+        for bucket, fraction in self.lag_profile_normalized.items():
+            center = self._LAG_BUCKET_CENTERS.get(bucket, 8.0)
+            weighted_sum += center * fraction
+            weight_total += fraction
+        if weight_total == 0:
+            return 14
+        mean_days = weighted_sum / weight_total
+        window = int(mean_days * 1.2) + 1  # +20% buffer
+        return max(3, min(30, window))
+
     def add_instance(self, fingerprint: MoveFingerprint) -> None:
         """Register a new fingerprint observation for this template."""
         inst = TemplateInstance(
@@ -309,6 +336,9 @@ class PatternTemplate:
         self.instances.append(inst)
         if fingerprint.symbol not in self.symbols_seen:
             self.symbols_seen.append(fingerprint.symbol)
+        # Accumulate raw lag counts from this fingerprint
+        for bucket, count in fingerprint.lag_profile.items():
+            self.lag_profile_raw[bucket] = self.lag_profile_raw.get(bucket, 0) + count
         self.n_instances = len(self.instances)
         self._recompute_averages()
 
@@ -316,6 +346,13 @@ class PatternTemplate:
         if not self.instances:
             return
         self.avg_move_pct = sum(abs(i.move_pct) for i in self.instances) / len(self.instances)
+        # Recompute normalized lag from accumulated raw counts
+        if self.lag_profile_raw:
+            total = sum(self.lag_profile_raw.values()) or 1
+            self.lag_profile_normalized = {
+                bucket: count / total
+                for bucket, count in self.lag_profile_raw.items()
+            }
 
     def to_dict(self) -> dict:
         return {
@@ -323,6 +360,7 @@ class PatternTemplate:
             "direction": self.direction,
             "domain_signature": self.domain_signature,
             "domains": self.domains,
+            "lag_profile_raw": self.lag_profile_raw,
             "lag_profile_normalized": self.lag_profile_normalized,
             "source_examples": self.source_examples,
             "instances": [i.to_dict() for i in self.instances],
@@ -342,6 +380,7 @@ class PatternTemplate:
             direction=d["direction"],
             domain_signature=d["domain_signature"],
             domains=d.get("domains", []),
+            lag_profile_raw=d.get("lag_profile_raw", {}),
             lag_profile_normalized=d.get("lag_profile_normalized", {}),
             source_examples=d.get("source_examples", {}),
             instances=instances,
@@ -359,13 +398,6 @@ class PatternTemplate:
     @classmethod
     def from_fingerprint(cls, fingerprint: MoveFingerprint) -> PatternTemplate:
         """Create a new template from the first fingerprint observation."""
-        # Compute normalized lag profile
-        total_signals = sum(fingerprint.lag_profile.values()) or 1
-        normalized = {
-            bucket: count / total_signals
-            for bucket, count in fingerprint.lag_profile.items()
-        }
-
         # Build source examples by domain
         source_examples: dict[str, list[str]] = {}
         for sig in fingerprint.precursor_signals:
@@ -374,12 +406,14 @@ class PatternTemplate:
             if sig.source not in source_examples[sig.domain]:
                 source_examples[sig.domain].append(sig.source)
 
+        # lag_profile_raw and lag_profile_normalized start empty;
+        # add_instance() will accumulate the first fingerprint's lag data
+        # and _recompute_averages() will normalize it.
         template = cls(
             template_id="",  # auto-computed
             direction=fingerprint.direction,
             domain_signature=fingerprint.domain_signature,
             domains=sorted(set(s.domain for s in fingerprint.precursor_signals)),
-            lag_profile_normalized=normalized,
             source_examples=source_examples,
         )
         template.add_instance(fingerprint)

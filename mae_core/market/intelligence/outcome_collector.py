@@ -222,7 +222,20 @@ class OutcomeCollector:
             return False
 
         direction = {"bullish": "up", "bearish": "down"}.get(stack.direction, "")
-        window = OUTCOME_WINDOWS.get("pattern_stack", 14)
+
+        # Compute dynamic window from pattern timing data
+        windows = []
+        for act in stack.activations:
+            tmpl = act.template
+            if hasattr(tmpl, "expected_move_window_days"):
+                windows.append(tmpl.expected_move_window_days)
+        if windows:
+            windows.sort()
+            window = windows[len(windows) // 2]  # median
+            window_source = "dynamic"
+        else:
+            window = OUTCOME_WINDOWS.get("pattern_stack", 14)
+            window_source = "fallback"
 
         self.tracker.record_prediction(
             source=stack_key,
@@ -236,14 +249,16 @@ class OutcomeCollector:
                 "stack_confidence": stack.stack_confidence,
                 "n_patterns": len(stack.activations),
                 "independent_pairs": stack.independent_pairs,
+                "outcome_window_source": window_source,
             },
             timestamp=stack.created_at,
         )
         self._registered[dedup_id] = datetime.now()
         self._save_registered()
         logger.info(
-            "Registered pattern stack prediction: %s for %s (%s, %d patterns)",
+            "Registered pattern stack prediction: %s for %s (%s, %d patterns, window=%dd/%s)",
             stack_key, primary_symbol, stack.direction, len(stack.activations),
+            window, window_source,
         )
         return True
 
