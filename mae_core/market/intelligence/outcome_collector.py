@@ -171,6 +171,54 @@ class OutcomeCollector:
         )
         return True
 
+    def register_pattern_stack(self, stack, primary_symbol: str) -> bool:
+        """Register a pattern stack as a prediction for Thompson feedback.
+
+        The stack key (e.g. "pattern_stack:insider+macro+technical") flows
+        through OutcomeTracker to Thompson Sampler. Template IDs are stored
+        in metadata so graded outcomes can update template win/loss stats.
+        """
+        if not primary_symbol:
+            return False
+
+        # Build domain key from the stack's activations
+        domains = set()
+        template_ids = []
+        for act in stack.activations:
+            domains.update(act.template.domains)
+            template_ids.append(act.template.template_id)
+        stack_key = "pattern_stack:" + "+".join(sorted(domains))
+        dedup_id = f"pstack_{primary_symbol}_{stack.direction}_{len(stack.activations)}"
+
+        if dedup_id in self._registered:
+            return False
+
+        direction = {"bullish": "up", "bearish": "down"}.get(stack.direction, "")
+        window = OUTCOME_WINDOWS.get("pattern_stack", 14)
+
+        self.tracker.record_prediction(
+            source=stack_key,
+            symbol=primary_symbol,
+            direction=direction,
+            outcome_window_days=window,
+            metadata={
+                "stack_key": stack_key,
+                "template_ids": template_ids,
+                "tier": stack.tier,
+                "stack_confidence": stack.stack_confidence,
+                "n_patterns": len(stack.activations),
+                "independent_pairs": stack.independent_pairs,
+            },
+            timestamp=stack.created_at,
+        )
+        self._registered[dedup_id] = datetime.now()
+        self._save_registered()
+        logger.info(
+            "Registered pattern stack prediction: %s for %s (%s, %d patterns)",
+            stack_key, primary_symbol, stack.direction, len(stack.activations),
+        )
+        return True
+
     def evaluate(self) -> int:
         """
         Evaluate matured predictions — the actual feedback loop.

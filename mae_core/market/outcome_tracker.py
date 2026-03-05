@@ -66,6 +66,7 @@ class OutcomeTracker:
         self.outcomes_path = self.data_dir / "outcomes.jsonl"
         self.min_price_move_pct = 2.0  # 2% move = successful prediction
         self._logger = logger
+        self.on_outcome = None  # Optional callback: (prediction_dict, success, pct_change)
 
         # Ensure data directory exists
         self.data_dir.mkdir(parents=True, exist_ok=True)

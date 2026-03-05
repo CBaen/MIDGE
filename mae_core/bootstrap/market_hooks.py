@@ -941,7 +941,15 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
                                 _active[_sym][_dir] = set()
                             _active[_sym][_dir].add(_src)
                     if _active:
-                        ctx.pattern_watcher.check(_active)
+                        _stacks = ctx.pattern_watcher.check(_active)
+                        # Register stacks for outcome tracking (Thompson feedback)
+                        _oc = getattr(ctx, "outcome_collector", None)
+                        if _oc is not None and _stacks:
+                            for _stack in _stacks:
+                                try:
+                                    _oc.register_pattern_stack(_stack, _stack.symbol)
+                                except Exception:
+                                    logger.debug("Pattern stack registration failed", exc_info=True)
             except Exception:
                 logger.debug("Pattern watcher check failed", exc_info=True)
 
