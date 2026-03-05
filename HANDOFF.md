@@ -17,9 +17,15 @@ Reworked the Pattern Archaeologist from narrow (specific-source matching) to uni
 - `mae_core/market/archaeology/excavation_daemon.py` — NEW. Continuous background excavation as step hook (every 5000 steps). Persistent progress tracking. Replaces standalone `excavate.py` CLI.
 - `mae_core/bootstrap/market_systems.py` — Wires PatternLibrary + PatternWatcher + ExcavationDaemon into Layer 33 bootstrap. Condensed to 491 lines (under 500-line limit).
 
-**Tests:** 68 archaeology tests across 3 files. All pass. Full suite: 746 passed, 1 pre-existing flaky failure (composite_hypotheses test ordering).
+**Feedback loop (2026-03-04):**
+- `outcome_collector.py`: Added `register_pattern_stack()` — registers stacks as predictions with `pattern_stack:` key and `template_ids` in metadata. Added `set_pattern_library()` and `_on_outcome_graded()` callback — when pattern stack outcomes resolve, each template's win/loss stats update in PatternLibrary.
+- `outcome_tracker.py`: Added `on_outcome` callback (fires after each graded prediction with `(pred, success, pct_change)`).
+- `market_hooks.py`: After `pattern_watcher.check()`, registers each stack via `outcome_collector.register_pattern_stack()`. Wires `pattern_library` into `outcome_collector` during bootstrap for feedback.
+- `OUTCOME_WINDOWS["pattern_stack"] = 14` — 14-day outcome window for pattern stacks.
 
-**What's next:** Run first excavation pass (populate the library), wire PatternWatcher into sensing hook cycle, add outcome feedback loop, integrate with ConvergenceAlerter for "both fired" highest-confidence signals.
+**Tests:** 82 tests (68 archaeology + 14 outcome collector). All pass. Full suite: 746 passed, 1 pre-existing flaky.
+
+**What's next:** Run first excavation pass (populate the library with historical data), integrate with ConvergenceAlerter for "both fired" highest-confidence signals.
 
 ### From Proven Signal to Profitable System — 4 Operational Fixes (2026-03-03)
 

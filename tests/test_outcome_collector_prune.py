@@ -178,6 +178,116 @@ class TestRegisteredDedup:
         assert "no-symbol" not in collector._registered
 
 
+class TestPatternStackRegistration:
+    """Tests for register_pattern_stack() — feedback loop for archaeology."""
+
+    def test_register_pattern_stack(self, collector):
+        """Pattern stack is registered as a prediction with template_ids in metadata."""
+        stack = SimpleNamespace(
+            symbol="NVDA",
+            direction="bullish",
+            tier="medium",
+            stack_confidence=0.72,
+            independent_pairs=2,
+            activations=[
+                SimpleNamespace(template=SimpleNamespace(
+                    template_id="tmpl-001", domains=["insider", "macro"],
+                )),
+                SimpleNamespace(template=SimpleNamespace(
+                    template_id="tmpl-002", domains=["technical", "events"],
+                )),
+            ],
+            created_at=datetime.now().isoformat(),
+        )
+
+        with patch.object(collector.tracker, "record_prediction") as mock_record:
+            result = collector.register_pattern_stack(stack, "NVDA")
+
+        assert result is True
+        assert mock_record.call_count == 1
+        call_kwargs = mock_record.call_args
+        assert call_kwargs[1]["source"].startswith("pattern_stack:")
+        assert "insider" in call_kwargs[1]["source"]
+        assert call_kwargs[1]["symbol"] == "NVDA"
+        metadata = call_kwargs[1]["metadata"]
+        assert "tmpl-001" in metadata["template_ids"]
+        assert "tmpl-002" in metadata["template_ids"]
+
+    def test_register_pattern_stack_dedup(self, collector):
+        """Same stack symbol+direction+count is not re-registered."""
+        stack = SimpleNamespace(
+            symbol="NVDA",
+            direction="bullish",
+            tier="low",
+            stack_confidence=0.5,
+            independent_pairs=1,
+            activations=[
+                SimpleNamespace(template=SimpleNamespace(
+                    template_id="tmpl-001", domains=["insider"],
+                )),
+                SimpleNamespace(template=SimpleNamespace(
+                    template_id="tmpl-002", domains=["macro"],
+                )),
+            ],
+            created_at=datetime.now().isoformat(),
+        )
+
+        with patch.object(collector.tracker, "record_prediction"):
+            first = collector.register_pattern_stack(stack, "NVDA")
+            second = collector.register_pattern_stack(stack, "NVDA")
+
+        assert first is True
+        assert second is False
+
+    def test_register_pattern_stack_no_symbol(self, collector):
+        """Empty symbol returns False."""
+        stack = SimpleNamespace(
+            symbol="",
+            direction="bullish",
+            tier="low",
+            stack_confidence=0.5,
+            independent_pairs=0,
+            activations=[],
+            created_at=datetime.now().isoformat(),
+        )
+        result = collector.register_pattern_stack(stack, "")
+        assert result is False
+
+    def test_on_outcome_updates_templates(self, collector):
+        """When a pattern_stack outcome is graded, templates get win/loss updated."""
+        mock_library = MagicMock()
+        collector.set_pattern_library(mock_library)
+
+        pred = {
+            "source": "pattern_stack:insider+macro",
+            "metadata": {"template_ids": ["tmpl-001", "tmpl-002"]},
+        }
+        collector._on_outcome_graded(pred, success=True, pct_change=7.5)
+
+        assert mock_library.update_outcome.call_count == 2
+        mock_library.update_outcome.assert_any_call(template_id="tmpl-001", won=True)
+        mock_library.update_outcome.assert_any_call(template_id="tmpl-002", won=True)
+
+    def test_on_outcome_ignores_non_stack(self, collector):
+        """Non-pattern_stack outcomes don't trigger template updates."""
+        mock_library = MagicMock()
+        collector.set_pattern_library(mock_library)
+
+        pred = {"source": "combo:events+macro+price", "metadata": {}}
+        collector._on_outcome_graded(pred, success=True, pct_change=5.0)
+
+        assert mock_library.update_outcome.call_count == 0
+
+    def test_on_outcome_no_library_noop(self, collector):
+        """Without pattern_library set, callback is a no-op."""
+        pred = {
+            "source": "pattern_stack:insider+macro",
+            "metadata": {"template_ids": ["tmpl-001"]},
+        }
+        # Should not raise
+        collector._on_outcome_graded(pred, success=False, pct_change=-3.0)
+
+
 class TestBackwardCompat:
     def test_registered_backward_compat_list(self, tmp_data_dir, mock_price_fetcher,
                                               mock_thompson):
