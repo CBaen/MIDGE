@@ -309,6 +309,33 @@ class PatternLibrary:
         except OSError as e:
             logger.warning("Could not persist templates: %s", e)
 
+    def rebuild_templates(self) -> int:
+        """Rebuild all templates from fingerprints.
+
+        Useful when templates file is empty/corrupted but fingerprints
+        are intact. Groups fingerprints by direction+domain_signature,
+        builds PatternTemplate objects, and persists.
+
+        Returns:
+            Number of templates rebuilt.
+        """
+        self._templates.clear()
+        for fp in self._fingerprints.values():
+            key = fp.template_key  # "direction:domain_signature"
+            found = False
+            for t in self._templates.values():
+                if t.direction == fp.direction and t.domain_signature == fp.domain_signature:
+                    t.add_instance(fp)
+                    found = True
+                    break
+            if not found:
+                template = PatternTemplate.from_fingerprint(fp)
+                self._templates[template.template_id] = template
+        self._persist_templates()
+        logger.info("Rebuilt %d templates from %d fingerprints",
+                     len(self._templates), len(self._fingerprints))
+        return len(self._templates)
+
     def get_statistics(self) -> dict:
         """Return summary statistics about the library."""
         templates = list(self._templates.values())
