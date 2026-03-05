@@ -50,6 +50,7 @@ OUTCOME_WINDOWS = {
     "sam_gov": 90,
     "correlation": 21,
     "convergence_combo": 14,  # Combo-level convergence alert outcome window
+    "pattern_stack": 14,      # Pattern archaeology stacking detection
 }
 
 # 5% move required — 2% was too close to random noise after transaction costs
