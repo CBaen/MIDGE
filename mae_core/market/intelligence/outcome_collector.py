@@ -88,6 +88,34 @@ class OutcomeCollector:
 
         self._registered_path = self._data_dir / "registered_signals.json"
         self._registered: dict = self._load_registered()
+        self._pattern_library = None  # Set via set_pattern_library() for feedback
+        self.tracker.on_outcome = self._on_outcome_graded
+
+    def set_pattern_library(self, library) -> None:
+        """Wire PatternLibrary for template outcome feedback."""
+        self._pattern_library = library
+
+    def _on_outcome_graded(self, pred: dict, success: bool, pct_change: float) -> None:
+        """Callback fired by OutcomeTracker for each graded outcome.
+
+        For pattern_stack predictions, updates each template's win/loss stats
+        in PatternLibrary — closing the feedback loop so templates improve.
+        """
+        source = pred.get("source", "")
+        if not source.startswith("pattern_stack:") or self._pattern_library is None:
+            return
+        metadata = pred.get("metadata", {})
+        template_ids = metadata.get("template_ids", [])
+        for tid in template_ids:
+            try:
+                self._pattern_library.update_outcome(template_id=tid, won=success)
+            except Exception:
+                logger.debug("Template outcome update failed for %s", tid, exc_info=True)
+        if template_ids:
+            logger.info(
+                "Pattern stack outcome: %s, %d templates updated (%s %.1f%%)",
+                "WIN" if success else "LOSS", len(template_ids), source, pct_change,
+            )
 
     # ── Registration ──────────────────────────────────────────────────
 

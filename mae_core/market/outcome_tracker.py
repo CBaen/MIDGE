@@ -224,6 +224,11 @@ class OutcomeTracker:
                     "min_move_threshold": self.min_price_move_pct,
                 }
                 self._append_outcome(outcome)
+                if self.on_outcome is not None:
+                    try:
+                        self.on_outcome(pred, success, price_change_pct)
+                    except Exception:
+                        self._logger.debug("on_outcome callback failed", exc_info=True)
                 evaluated += 1
 
             except (KeyError, ValueError) as e:

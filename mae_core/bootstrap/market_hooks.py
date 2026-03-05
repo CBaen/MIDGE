@@ -739,6 +739,10 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
     # Store on ctx so combo Thompson feedback can find it (lines 265, 509)
     if outcome_collector is not None:
         ctx.outcome_collector = outcome_collector
+        # Wire pattern library for template outcome feedback
+        _plib = getattr(ctx, "pattern_library", None)
+        if _plib is not None:
+            outcome_collector.set_pattern_library(_plib)
 
     # --- SignalMemory (Qdrant persistence) ---
     memory = None
