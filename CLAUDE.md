@@ -89,6 +89,16 @@ mae_core/market/
     hypothesis_validator.py     # Adversarial validation + Deflated Sharpe Ratio
     hypothesis_engine.py        # RSI Layer 2 orchestrator (generation/validation cadence)
     backtest_analyzer.py        # Bridge 1: backtest results → formal hypotheses (RSI Layer 2)
+  archaeology/                   # Pattern Archaeology (reverse-engineering historical moves)
+    fingerprint.py              # MoveFingerprint, PatternTemplate, PrecursorSignal dataclasses
+    pattern_library.py          # Fingerprint/template storage + querying
+    pattern_watcher.py          # Live signal matching against templates (PatternStack)
+    excavator.py                # Dig site discovery + signal excavation
+    excavation_daemon.py        # Continuous background excavation
+    historical_fetcher.py       # 3-tier historical data (TA, APIs, archive)
+    polygon_bulk_fetcher.py     # Polygon.io bulk OHLCV fetcher
+    active_tracker.py           # Active monitoring of predicted assets (continuous tracking)
+  plain_language.py             # Zero-jargon alert formatter (5-section human-readable alerts)
 ```
 
 ### Market Data Files
@@ -123,7 +133,7 @@ After any structural change, grep for stale references:
 # Key numbers to check (update these values as they change):
 # Systems: 144 (92 core + 52 market) | Tests: 4250 | Bootstrap layers: 33 | Mixins: 14
 # Connections: 422 | Holons: 155 | Fractal depth: 4
-# Market modules: 89 files (29 API + 12 edge + 27 intelligence + 13 root + 8 signal_adapters)
+# Market modules: 100 files (29 API + 12 edge + 27 intelligence + 14 root + 8 signal_adapters + 10 archaeology)
 
 grep -rn "PREVIOUS_COUNT" --include="*.md" --include="*.py"
 ```
