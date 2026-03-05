@@ -23,9 +23,14 @@ Reworked the Pattern Archaeologist from narrow (specific-source matching) to uni
 - `market_hooks.py`: After `pattern_watcher.check()`, registers each stack via `outcome_collector.register_pattern_stack()`. Wires `pattern_library` into `outcome_collector` during bootstrap for feedback.
 - `OUTCOME_WINDOWS["pattern_stack"] = 14` — 14-day outcome window for pattern stacks.
 
+**Synergy detection (2026-03-04):**
+- `market_hooks.py`: Added `ctx._cached_pattern_stacks = []`. After pattern_watcher fires, caches stacks. Synergy block: when ConvergenceAlerter AND PatternWatcher both fire on same ticker+direction, emits `CH_DUAL_CONFIRMATION` with `combined_confidence = 1 - (1-conv_conf)(1-stack_conf)`.
+- `channels.py`: Added `CH_DUAL_CONFIRMATION = "market.intel.dual_confirmation"`.
+- `populate_library.py`: NEW CLI for first excavation pass. Loops `ExcavationDaemon.step()` until idle. Options: `--symbols`, `--batch-size`, `--max-symbols`, `--min-move`, `--reset`, `--dry-run`. Tested: 3 symbols → 144 fingerprints, 4 templates in 2 seconds.
+
 **Tests:** 82 tests (68 archaeology + 14 outcome collector). All pass. Full suite: 746 passed, 1 pre-existing flaky.
 
-**What's next:** Run first excavation pass (populate the library with historical data), integrate with ConvergenceAlerter for "both fired" highest-confidence signals.
+**What's next:** Run `python populate_library.py --batch-size 25` for full excavation (3,235 symbols, ~30min-2hr). All code integration is complete — excavation, feedback loop, synergy detection all wired.
 
 ### From Proven Signal to Profitable System — 4 Operational Fixes (2026-03-03)
 
