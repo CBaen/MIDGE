@@ -126,9 +126,9 @@ class TestRegistration:
 class TestStatusTransitions:
 
     def test_confirming_at_half_expected(self, tmp_path):
-        pf = _make_price_fetcher({"NVDA": 157.5})  # 5% up from 150
+        pf = _make_price_fetcher({"NVDA": 155.0})  # 3.33% up from 150
         at = ActiveTracker(price_fetcher=pf, data_dir=tmp_path)
-        stack = _make_stack(avg_move=10.0)  # expected 10%, confirm at 5%
+        stack = _make_stack(avg_move=6.0)  # expected 6%, partial at 3%
         at.register(stack, entry_price=150.0)
         events = at.check_prices()
         statuses = [e["new_status"] for e in events]
