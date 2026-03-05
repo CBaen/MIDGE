@@ -55,7 +55,7 @@ Her crown jewel is the **Convergence Engine** — it only fires an alert when th
 | Data sources | 27 live feeds across 7 domains |
 | Signal reliability distributions | 70+ learned Bayesian distributions |
 | Evaluated outcomes | 12,500+ real market predictions scored |
-| Automated tests | 4,250 passing (zero failures) |
+| Automated tests | 4,384 passing (zero failures) |
 | System components | 144 interconnected systems |
 | Self-aware subsystems | 155 holons (each implements 10 capabilities) |
 | Verified connections | 422 triadic (no unwitnessed links) |

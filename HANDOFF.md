@@ -49,13 +49,19 @@ Reworked from narrow (specific-source matching) to universal (domain-level templ
 - `outcome_collector.py`: `register_pattern_stack()` registers stacks as predictions. `_on_outcome_graded()` callback updates template win/loss stats via PatternLibrary.
 - `outcome_tracker.py`: `on_outcome` callback (fires after each graded prediction).
 - `market_hooks.py`: Wires pattern stack registration + pattern library feedback.
-- `OUTCOME_WINDOWS["pattern_stack"] = 14` — 14-day outcome window.
+- Dynamic outcome windows: `register_pattern_stack()` computes window from template timing data (median of `expected_move_window_days`), falls back to 14.
 
 **Synergy detection (2026-03-04):**
 - `market_hooks.py`: `ctx._cached_pattern_stacks`. When ConvergenceAlerter AND PatternWatcher both fire on same ticker+direction, emits `CH_DUAL_CONFIRMATION` with `combined_confidence = 1 - (1-conv_conf)(1-stack_conf)`.
 - `channels.py`: `CH_DUAL_CONFIRMATION = "market.intel.dual_confirmation"`.
 
-**Tests:** 82 tests (68 archaeology + 14 outcome collector). All pass. Full suite: 746 passed, 1 pre-existing flaky.
+**Prediction-to-Action (2026-03-05):** Three features — dynamic outcome windows, plain-language alerts, active tracking.
+- `fingerprint.py`: `lag_profile_raw` accumulator, `expected_move_window_days` property (weighted mean + 20% buffer, clamped [3,30]).
+- `plain_language.py`: Zero-jargon 5-section formatter (WHAT/HISTORY/TIMING/ACTION/TRACKING). Output: `data/midge/alerts_human.jsonl`.
+- `active_tracker.py`: TrackedAsset registry, status transitions (tracking→confirming→confirmed|failed|expired), MFE/MAE, 5-min rate limiting, 20 asset cap, force-grading on terminal status.
+- Wired into `market_hooks.py` (pattern stack firing + 20-step cadence) and `market_systems.py` (construction).
+
+**Tests:** 142 tests (68 archaeology + 16 dynamic windows + 25 plain-language + 19 active tracker + 14 outcome collector). All pass.
 
 ---
 
@@ -75,8 +81,8 @@ Replay analysis proved MIDGE has real statistical edge (z=4.74, p<0.0001) but ca
 
 ## Stats
 
-- **146 systems** (92 core + 54 market), **4,292 tests**, **157 holons**, **425 connections**
-- **97 market files** (29 API + 12 edge + 27 intelligence + 8 signal_adapters + 8 archaeology + 1 polygon fetcher + 12 root)
+- **146 systems** (92 core + 54 market), **4,384 tests**, **157 holons**, **425 connections**
+- **100 market files** (29 API + 12 edge + 27 intelligence + 8 signal_adapters + 10 archaeology + 14 root)
 - **33-layer bootstrap**, **14 mixins** on MycelialAgent
 
 ## What's Next
