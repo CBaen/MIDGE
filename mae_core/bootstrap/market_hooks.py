@@ -459,6 +459,7 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
     _step_counter = [0]
     _last_convergence_state = [None]  # {"direction": str, "strength": float}
     ctx._cached_alerts = [None]  # Shared: written by _market_sense_hook, read by advisory bridge
+    ctx._cached_pattern_stacks = []  # Written by pattern watcher, read by synergy detector
 
     def _get_regime():
         """Get current market regime (cached daily, essentially free)."""
@@ -946,6 +947,7 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
                             _active[_sym][_dir].add(_src)
                     if _active:
                         _stacks = ctx.pattern_watcher.check(_active)
+                        ctx._cached_pattern_stacks = _stacks or []
                         # Register stacks for outcome tracking (Thompson feedback)
                         _oc = getattr(ctx, "outcome_collector", None)
                         if _oc is not None and _stacks:
@@ -956,6 +958,64 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
                                     logger.debug("Pattern stack registration failed", exc_info=True)
             except Exception:
                 logger.debug("Pattern watcher check failed", exc_info=True)
+
+        # Synergy detection: convergence alerts + pattern stacks on same ticker
+        _conv_alerts = ctx._cached_alerts[0] or []
+        _p_stacks = getattr(ctx, "_cached_pattern_stacks", [])
+        if _conv_alerts and _p_stacks:
+            try:
+                # Build lookup of pattern stack symbols+directions
+                _stack_keys = set()
+                for _ps in _p_stacks:
+                    _stack_keys.add((_ps.symbol, _ps.direction))
+
+                for _alert in _conv_alerts:
+                    # Extract primary symbol from the convergence alert
+                    _alert_sym = None
+                    for _sig in getattr(_alert, "signals", []):
+                        _alert_sym = getattr(_sig, "metadata", {}).get("symbol", "")
+                        if _alert_sym:
+                            break
+                    if not _alert_sym:
+                        _alert_sym = getattr(_alert, "ticker", "")
+                    _alert_dir = getattr(_alert, "direction", "")
+                    if _alert_sym and (_alert_sym, _alert_dir) in _stack_keys:
+                        # Find the matching stack
+                        _match_stack = next(
+                            (s for s in _p_stacks
+                             if s.symbol == _alert_sym and s.direction == _alert_dir),
+                            None,
+                        )
+                        if _match_stack is not None:
+                            logger.info(
+                                "DUAL CONFIRMATION: %s %s — convergence (%.2f) + "
+                                "pattern stack (%d patterns, %.2f confidence)",
+                                _alert_sym, _alert_dir.upper(),
+                                _alert.confidence, len(_match_stack.activations),
+                                _match_stack.stack_confidence,
+                            )
+                            # Publish dual confirmation event
+                            if getattr(ctx, "bus", None) is not None:
+                                ctx.bus.publish(
+                                    "market.intel.dual_confirmation",
+                                    {
+                                        "symbol": _alert_sym,
+                                        "direction": _alert_dir,
+                                        "convergence_confidence": _alert.confidence,
+                                        "convergence_strength": _alert.strength,
+                                        "convergence_domains": getattr(_alert, "domains_converging", []),
+                                        "stack_confidence": _match_stack.stack_confidence,
+                                        "stack_patterns": len(_match_stack.activations),
+                                        "stack_tier": _match_stack.tier,
+                                        "stack_independent_pairs": _match_stack.independent_pairs,
+                                        "combined_confidence": min(
+                                            0.99,
+                                            1.0 - (1.0 - _alert.confidence) * (1.0 - _match_stack.stack_confidence),
+                                        ),
+                                    },
+                                )
+            except Exception:
+                logger.debug("Synergy detection failed", exc_info=True)
 
     # Register the wrapped step hook
     ctx.model.add_step_hook(_sensing_step_with_advisory)
