@@ -430,58 +430,38 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
     except Exception:
         ctx.step_timer = None
 
-    # --- Pattern Archaeology (reverse-engineered historical patterns) ---
+    # --- Pattern Archaeology (library + watcher + excavation daemon) ---
+    ctx.pattern_library = ctx.pattern_watcher = ctx.excavation_daemon = None
     try:
         from mae_core.market.archaeology.pattern_library import PatternLibrary
-        ctx.pattern_library = PatternLibrary()
-        logger.info("Market: PatternLibrary loaded (%d fingerprints)", ctx.pattern_library.size)
-    except Exception:
-        ctx.pattern_library = None
-        failures += 1
-        logger.debug("Market: PatternLibrary failed", exc_info=True)
-
-    try:
         from mae_core.market.archaeology.pattern_watcher import PatternWatcher
-        if ctx.pattern_library is not None:
-            ctx.pattern_watcher = PatternWatcher(
-                library=ctx.pattern_library,
-                bus=getattr(ctx, "bus", None),
-            )
-        else:
-            ctx.pattern_watcher = None
-    except Exception:
-        ctx.pattern_watcher = None
-        failures += 1
-        logger.debug("Market: PatternWatcher failed", exc_info=True)
-
-    # --- Excavation Daemon (continuous background pattern discovery) ---
-    try:
         from mae_core.market.archaeology.excavator import Excavator
         from mae_core.market.archaeology.historical_fetcher import HistoricalDataFetcher
         from mae_core.market.archaeology.excavation_daemon import ExcavationDaemon
 
-        if ctx.pattern_library is not None:
-            fetcher = HistoricalDataFetcher(
-                sec_client=getattr(ctx, "sec_edgar_client", None),
-                fred_client=getattr(ctx, "fred_client", None),
-                cot_client=getattr(ctx, "cot_client", None),
-                congress_client=getattr(ctx, "house_stock_watcher", None),
-                senate_client=getattr(ctx, "senate_stock_watcher", None),
-            )
-            excavator = Excavator(fetcher=fetcher)
-            ctx.excavation_daemon = ExcavationDaemon(
-                library=ctx.pattern_library,
-                excavator=excavator,
-                price_fetcher=getattr(ctx, "price_fetcher", None),
-                bus=getattr(ctx, "bus", None),
-            )
-            logger.info("Market: ExcavationDaemon initialized (continuous pattern discovery)")
-        else:
-            ctx.excavation_daemon = None
+        ctx.pattern_library = PatternLibrary()
+        ctx.pattern_watcher = PatternWatcher(
+            library=ctx.pattern_library, bus=getattr(ctx, "bus", None),
+        )
+        fetcher = HistoricalDataFetcher(
+            sec_client=getattr(ctx, "sec_edgar_client", None),
+            fred_client=getattr(ctx, "fred_client", None),
+            cot_client=getattr(ctx, "cot_client", None),
+            congress_client=getattr(ctx, "house_stock_watcher", None),
+            senate_client=getattr(ctx, "senate_stock_watcher", None),
+        )
+        ctx.excavation_daemon = ExcavationDaemon(
+            library=ctx.pattern_library, excavator=Excavator(fetcher=fetcher),
+            price_fetcher=getattr(ctx, "price_fetcher", None),
+            bus=getattr(ctx, "bus", None),
+        )
+        logger.info(
+            "Market: Pattern Archaeology initialized (%d fingerprints, %d templates)",
+            ctx.pattern_library.size, ctx.pattern_library.template_count,
+        )
     except Exception:
-        ctx.excavation_daemon = None
         failures += 1
-        logger.debug("Market: ExcavationDaemon failed", exc_info=True)
+        logger.debug("Market: Pattern Archaeology failed", exc_info=True)
 
     # --- Trust registration with BoundaryMembrane ---
     market_sources = [
