@@ -453,7 +453,8 @@ def _write_convergence_heartbeat(ctx: SimpleNamespace, step: int) -> None:
 def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
     """Register step hooks with cadence and deduplication."""
     from mae_core.market.channels import (
-        CH_CONVERGENCE, CH_THOMPSON_STATS, CH_VELOCITY_ANOMALY,
+        CH_CONVERGENCE, CH_DUAL_CONFIRMATION, CH_THOMPSON_STATS,
+        CH_VELOCITY_ANOMALY,
     )
 
     _step_counter = [0]
@@ -997,7 +998,7 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
                             # Publish dual confirmation event
                             if getattr(ctx, "bus", None) is not None:
                                 ctx.bus.publish(
-                                    "market.intel.dual_confirmation",
+                                    CH_DUAL_CONFIRMATION,
                                     {
                                         "symbol": _alert_sym,
                                         "direction": _alert_dir,

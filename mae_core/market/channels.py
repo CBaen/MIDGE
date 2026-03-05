@@ -45,6 +45,7 @@ CH_ABSENCE_DETECTED = "market.intel.absence_detected"
 
 # Pattern Archaeology channels (reverse-engineered historical patterns)
 CH_PATTERN_STACK_DETECTED = "market.archaeology.pattern_stack_detected"
+CH_DUAL_CONFIRMATION = "market.intel.dual_confirmation"
 
 # Ten Gifts channels (Wave 1-3)
 CH_EXIT_SIGNAL = "market.intel.exit_signal"
