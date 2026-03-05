@@ -2,6 +2,25 @@
 
 ## What Happened
 
+### Pattern Archaeologist v2 — Symbol-Agnostic Template Engine (2026-03-04)
+
+Reworked the Pattern Archaeologist from narrow (specific-source matching) to universal (domain-level templates). This is the "convergence of convergences" — when multiple independent historical patterns stack on the same ticker, that's the 95%+ signal.
+
+**Core concept shift:** Fingerprints are instances. **PatternTemplates** are the abstraction — grouped by `direction + domain_signature`. A template like "bullish: insider+macro+technical" accumulates instances across NVDA, AAPL, MSFT. Cross-symbol validation (3+ symbols) boosts confidence.
+
+**New/rewritten files:**
+- `mae_core/market/archaeology/fingerprint.py` — Added `PatternTemplate`, `TemplateInstance` dataclasses. Template auto-ID is deterministic hash of direction+domain_signature.
+- `mae_core/market/archaeology/excavator.py` — Rewritten. Takes `HistoricalDataFetcher`, excavates from all 29 sources via domain mapping. `_SOURCE_DOMAIN_MAP` converts sources → 11 domains.
+- `mae_core/market/archaeology/historical_fetcher.py` — NEW. 3-tier data retrieval: (1) TA from price history (zero API calls), (2) API historical methods (SEC, FRED, COT, Congressional), (3) signal archive fallback.
+- `mae_core/market/archaeology/pattern_library.py` — Rewritten for template-based storage. `query_similar()` matches by domain overlap (not source names). Stores both fingerprints and templates in separate JSONL files.
+- `mae_core/market/archaeology/pattern_watcher.py` — Rewritten. Domain-level independence checks. Stacking tiers (low/medium/high). `PatternActivation` carries `template`, `matched_domains`, `missing_domains`.
+- `mae_core/market/archaeology/excavation_daemon.py` — NEW. Continuous background excavation as step hook (every 5000 steps). Persistent progress tracking. Replaces standalone `excavate.py` CLI.
+- `mae_core/bootstrap/market_systems.py` — Wires PatternLibrary + PatternWatcher + ExcavationDaemon into Layer 33 bootstrap. Condensed to 491 lines (under 500-line limit).
+
+**Tests:** 68 archaeology tests across 3 files. All pass. Full suite: 746 passed, 1 pre-existing flaky failure (composite_hypotheses test ordering).
+
+**What's next:** Run first excavation pass (populate the library), wire PatternWatcher into sensing hook cycle, add outcome feedback loop, integrate with ConvergenceAlerter for "both fired" highest-confidence signals.
+
 ### From Proven Signal to Profitable System — 4 Operational Fixes (2026-03-03)
 
 Replay analysis proved MIDGE has real statistical edge (z=4.74, p<0.0001) but can't capitalize due to operational gaps. Four work packages close the gap:
