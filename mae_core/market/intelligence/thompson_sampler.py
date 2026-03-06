@@ -417,7 +417,9 @@ class ThompsonSampler:
         from dominating recent ones.
 
         Mechanism: alpha *= decay_factor; beta *= decay_factor
-        Floor of 1.0 each (uninformative prior) prevents collapse.
+        Floor of 2.0 each — preserves a non-uniform distribution even after
+        extended decay periods.  A floor of 1.0 collapses everything to the
+        uninformative Beta(1,1) prior; 2.0 keeps a gentle directional memory.
 
         Args:
             decay_factor: Multiplicative decay (0.99 = slow, 0.95 = aggressive)
@@ -430,12 +432,26 @@ class ThompsonSampler:
             for signal_id in self.distributions:
                 for regime in self.distributions[signal_id]:
                     params = self.distributions[signal_id][regime]
-                    params["alpha"] = max(1.0, params["alpha"] * decay_factor)
-                    params["beta"] = max(1.0, params["beta"] * decay_factor)
+                    params["alpha"] = max(2.0, params["alpha"] * decay_factor)
+                    params["beta"] = max(2.0, params["beta"] * decay_factor)
                     count += 1
 
             if count > 0:
                 self._save_distributions_locked()
+
+            # Log one summary entry per forgetting call so decay is visible
+            if count > 0:
+                try:
+                    entry = {
+                        "event": "forgetting_applied",
+                        "decay_factor": decay_factor,
+                        "distributions_affected": count,
+                        "timestamp": datetime.now().isoformat(),
+                    }
+                    with open(self.history_path, "a") as f:
+                        f.write(json.dumps(entry) + "\n")
+                except Exception:
+                    logger.debug("Failed to log forgetting event", exc_info=True)
 
         return count
 
