@@ -687,7 +687,7 @@ class ConvergenceAlerter:
         are down-weighted and reliable sources are up-weighted automatically.
 
         The diversity bonus now uses an effective domain count that discounts
-        correlated domains (e.g. macro+technical at r=0.73 count as ~1.5 domains,
+        correlated domains (e.g. institutional+macro at r=0.57 count as ~1.5 domains,
         not 2). When CorrelationTracker is not available, falls back to the raw
         domain count for backward compatibility.
         """
