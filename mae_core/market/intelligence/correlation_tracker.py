@@ -368,6 +368,75 @@ class CorrelationTracker:
         leading.sort(key=lambda x: abs(x[0].correlation_zscore), reverse=True)
         return leading
 
+    def seed_from_lag_data(self, lag_file_path: str) -> int:
+        """Pre-populate correlation state from lag_correlations.json.
+
+        lag_correlations.json contains measured lag correlations between source
+        pairs computed from the signal archive. This method reads those
+        measurements and seeds CorrelationPair entries so that known structural
+        correlations (e.g. finra_short + fred_macro at |r|=0.73) are available
+        immediately at startup, before the daemon accumulates enough live data
+        to compute them from scratch.
+
+        For source pairs that appear multiple times (different lag windows), we
+        store the maximum absolute correlation — the strongest measured dependency
+        is the most conservative assumption for independence correction.
+
+        Args:
+            lag_file_path: Absolute path to lag_correlations.json
+
+        Returns:
+            Number of unique source pairs seeded. 0 if file is missing or empty.
+        """
+        path = Path(lag_file_path)
+        if not path.exists():
+            logger.warning("seed_from_lag_data: file not found: %s", lag_file_path)
+            return 0
+
+        try:
+            with open(path, "r") as f:
+                entries = json.load(f)
+        except Exception as exc:
+            logger.warning("seed_from_lag_data: could not read %s: %s", lag_file_path, exc)
+            return 0
+
+        # Accumulate max |correlation| per (source_a, source_b) canonical pair.
+        # Canonical = alphabetical order so both directions hash to the same key.
+        best: Dict[Tuple[str, str], float] = {}
+        for entry in entries:
+            src_a = entry.get("source_a", "")
+            src_b = entry.get("source_b", "")
+            corr = entry.get("correlation", 0.0)
+            if not src_a or not src_b or src_a == src_b:
+                continue
+            pair_key = (src_a, src_b) if src_a < src_b else (src_b, src_a)
+            abs_corr = abs(corr)
+            if abs_corr > best.get(pair_key, 0.0):
+                best[pair_key] = abs_corr
+
+        # Write into self.correlations, preserving any live-runtime data that
+        # may already exist (live data takes precedence: only seed if absent).
+        seeded = 0
+        for (sig_a, sig_b), abs_corr in best.items():
+            if (sig_a, sig_b) not in self.correlations:
+                self.correlations[(sig_a, sig_b)] = CorrelationPair(
+                    signal_a=sig_a,
+                    signal_b=sig_b,
+                    current_correlation=abs_corr,  # stored as positive for lookup
+                    historical_mean=abs_corr,
+                    historical_std=0.1,
+                    observation_count=1,  # minimal count — seeded, not computed
+                )
+                seeded += 1
+
+        if seeded:
+            logger.info(
+                "CorrelationTracker: seeded %d source pairs from %s",
+                seeded,
+                path.name,
+            )
+        return seeded
+
     def get_statistics(self) -> dict:
         """For HolonProxy.sense() delegation."""
         return {

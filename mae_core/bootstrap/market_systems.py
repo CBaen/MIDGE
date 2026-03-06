@@ -227,10 +227,25 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
     try:
         from mae_core.market.intelligence.correlation_tracker import CorrelationTracker
         ctx.correlation_tracker = CorrelationTracker()
+        # Seed from lag_correlations.json so known structural correlations
+        # (e.g. finra_short+fred_macro at |r|=0.73) are available immediately.
+        try:
+            from pathlib import Path as _Path
+            _lag_file = _Path(__file__).resolve().parents[2] / "data" / "market" / "lag_correlations.json"
+            _seeded = ctx.correlation_tracker.seed_from_lag_data(str(_lag_file))
+            if _seeded:
+                logger.info("Market: correlation_tracker seeded %d pairs from lag data", _seeded)
+        except Exception:
+            logger.debug("Market: correlation_tracker lag seeding failed", exc_info=True)
     except Exception:
         logger.debug("Market: correlation_tracker failed to construct", exc_info=True)
         ctx.correlation_tracker = None
         failures += 1
+
+    # Two-phase init: wire correlation_tracker into convergence_alerter now that
+    # it is constructed (mirrors the regime_classifier two-phase pattern).
+    if getattr(ctx, "convergence_alerter", None) is not None and ctx.correlation_tracker is not None:
+        ctx.convergence_alerter._correlation_tracker = ctx.correlation_tracker
 
     # --- Regime classifier (requires price_fetcher) ---
     try:
