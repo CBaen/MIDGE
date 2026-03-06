@@ -153,6 +153,28 @@ class ConvergenceAlerter:
         "finnhub_earnings_calendar": "finnhub_earnings_calendar",
     }
 
+    # Domain → list of source names used in lag_correlations.json.
+    # Enables domain-level correlation lookup from source-level correlation data.
+    _DOMAIN_SOURCES: Dict[str, List[str]] = {
+        "insider": ["sec_form4", "openinsider_purchase", "insider_cluster"],
+        "events": ["sec_form8k", "sec_efts", "finnhub_earnings", "finnhub_news",
+                   "finnhub_realtime", "finnhub_earnings_calendar", "massive_snapshot",
+                   "hiring_tracker"],
+        "macro": ["fred_macro", "economic_calendar"],
+        "technical": ["ta_rsi", "ta_macd", "ta_bollinger", "ta_structure", "ta_candle",
+                      "session_sweep", "session_sweep_ifvg", "fractal_resonance",
+                      "order_flow", "finviz_unusual_volume", "finviz_short_squeeze",
+                      "yfinance_price"],
+        "sentiment": ["social_sentiment", "google_trends", "stocktwits_sentiment"],
+        "government": ["congressional", "senate"],
+        "contracts": ["contract_award", "contract_prediction", "sam_gov"],
+        "fundamentals": ["finnhub_analyst"],
+        "positioning": ["cot_positioning"],
+        "volatility": ["vix_term_structure"],
+        "crypto": ["crypto_coingecko", "crypto_coincap"],
+        "institutional": ["activist_13d", "institutional_13f", "finra_short"],
+    }
+
     def __init__(
         self,
         min_domains: int = 3,
@@ -168,6 +190,7 @@ class ConvergenceAlerter:
         deception_detector=None,
         pattern_archetype_engine=None,
         economic_calendar=None,
+        correlation_tracker=None,
     ):
         """
         Initialize convergence alerter.
@@ -186,6 +209,7 @@ class ConvergenceAlerter:
             deception_detector: Optional DeceptionDetector for manipulation detection
             pattern_archetype_engine: Optional PatternArchetypeEngine for archetype context
             economic_calendar: Optional EconomicCalendar for suppression windows
+            correlation_tracker: Optional CorrelationTracker for domain independence scoring
         """
         self.min_domains = min_domains
         self.min_strength = min_strength
@@ -200,6 +224,7 @@ class ConvergenceAlerter:
         self._deception_detector = deception_detector
         self._pattern_archetype_engine = pattern_archetype_engine
         self._economic_calendar = economic_calendar
+        self._correlation_tracker = correlation_tracker
         self._cached_regime = ("default", 0.0)  # (regime_str, timestamp)
 
         # Per-domain convergence windows — slow-moving data sources need longer lookback.
@@ -660,6 +685,11 @@ class ConvergenceAlerter:
         With thin Thompson data, weights are ~1.0 so the result approximates
         arithmetic mean. As Thompson accumulates outcomes, unreliable sources
         are down-weighted and reliable sources are up-weighted automatically.
+
+        The diversity bonus now uses an effective domain count that discounts
+        correlated domains (e.g. macro+technical at r=0.73 count as ~1.5 domains,
+        not 2). When CorrelationTracker is not available, falls back to the raw
+        domain count for backward compatibility.
         """
         if not signals:
             return 0.5
@@ -680,12 +710,88 @@ class ConvergenceAlerter:
         # Weighted geometric mean of per-signal confidences
         geo_mean = math.exp(log_sum / weight_sum) if weight_sum > 0 else 0.5
 
+        # Compute the effective number of independent domains.
+        # Correlated domains (e.g. macro+technical r=0.73) receive partial credit.
+        # Falls back to raw cross_domain_count when no CorrelationTracker is wired.
+        domain_list = list({sig.domain for sig in signals})
+        if self._correlation_tracker:
+            effective_count = self._compute_effective_domain_count(domain_list)
+        else:
+            effective_count = cross_domain_count  # backward-compatible fallback
+
         # Cross-domain diversity bonus (multiplicative, log-saturating)
         # 1 domain=0%, 2=~8%, 3=~13%, 4=~17%, saturates near 25%
-        diversity_factor = 1.0 + 0.12 * math.log1p(max(0, cross_domain_count - 1))
+        diversity_factor = 1.0 + 0.12 * math.log1p(max(0, effective_count - 1))
         boosted = geo_mean * diversity_factor
 
         return min(0.95, max(0.05, boosted))
+
+    def _compute_effective_domain_count(self, domains: List[str]) -> float:
+        """Compute effective number of independent domains, accounting for correlations.
+
+        Strongly correlated domain pairs reduce the effective count — two domains
+        that move together carry less independent information than two that don't.
+
+        Algorithm:
+        - First domain always counts fully (1.0).
+        - Each additional domain adds credit based on its max |correlation| with
+          all previously counted domains:
+            |r| > 0.5  →  +0.5  (strongly correlated — half credit)
+            |r| > 0.3  →  +0.7  (moderately correlated — partial credit)
+            no data or |r| <= 0.3 →  +1.0  (independent — full credit)
+
+        Correlation is looked up at the source level via CorrelationTracker and
+        _DOMAIN_SOURCES, taking the maximum |correlation| across all source pairs
+        for the two domains.
+
+        Args:
+            domains: List of domain names present in the convergence (e.g. ["macro", "insider"])
+
+        Returns:
+            Effective domain count as a float (always >= 1.0 if domains is non-empty)
+        """
+        if not domains:
+            return 0.0
+        if len(domains) == 1:
+            return 1.0
+
+        counted_domains: List[str] = [domains[0]]
+        effective_count: float = 1.0
+
+        for domain in domains[1:]:
+            max_abs_corr = self._max_domain_correlation(domain, counted_domains)
+            if max_abs_corr > 0.5:
+                effective_count += 0.5  # strongly correlated — half credit
+            elif max_abs_corr > 0.3:
+                effective_count += 0.7  # moderately correlated — partial credit
+            else:
+                effective_count += 1.0  # independent or no data — full credit
+            counted_domains.append(domain)
+
+        return effective_count
+
+    def _max_domain_correlation(self, domain_a: str, other_domains: List[str]) -> float:
+        """Return the maximum absolute correlation between domain_a and any domain in other_domains.
+
+        Looks up correlations at source level using _DOMAIN_SOURCES and CorrelationTracker.
+        Returns 0.0 if no correlation data is available (treated as independent).
+        """
+        sources_a = self._DOMAIN_SOURCES.get(domain_a, [])
+        if not sources_a:
+            return 0.0
+
+        max_corr = 0.0
+        for other_domain in other_domains:
+            sources_b = self._DOMAIN_SOURCES.get(other_domain, [])
+            if not sources_b:
+                continue
+            for src_a in sources_a:
+                for src_b in sources_b:
+                    corr = self._correlation_tracker.get_correlation(src_a, src_b)
+                    if corr is not None:
+                        max_corr = max(max_corr, abs(corr))
+
+        return max_corr
 
     def _compute_coherence_score(self) -> dict:
         """Compute agreement ratio between directional signals across ALL domains.

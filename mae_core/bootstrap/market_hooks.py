@@ -585,8 +585,10 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                 except Exception:
                     logger.debug("Session sweep bypass step failed", exc_info=True)
 
-        # Every 100 steps: Bayesian forgetting (decay old evidence)
-        if step % 100 == 0:
+        # Every 200 steps: Bayesian forgetting (decay old evidence)
+        # Cadence matches outcome evaluation (sensing_hook._outcome_cadence=200)
+        # so forgetting never outpaces learning.
+        if step % 200 == 0:
             sampler = getattr(ctx, "thompson_sampler", None)
             if sampler is not None:
                 try:
@@ -706,7 +708,7 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
     ctx.model.add_step_hook(_market_sense_hook)
     logger.info(
         "Layer 33g - Market step hooks: 1 sense hook registered "
-        "(cadence: convergence/1, stats/10, velocity/50, forgetting/100, "
+        "(cadence: convergence/1, stats/10, velocity/50, forgetting/200, "
         "lag/500, calibration/1000, backtest/5000)"
     )
 
