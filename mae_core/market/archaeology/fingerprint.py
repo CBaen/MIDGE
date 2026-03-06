@@ -327,6 +327,9 @@ class PatternTemplate:
         window = int(mean_days * 1.2) + 1  # +20% buffer
         return max(3, min(30, window))
 
+    # Max instances to keep in memory/serialized (recent only — fingerprints are the archive)
+    _MAX_INSTANCES = 200
+
     def add_instance(self, fingerprint: MoveFingerprint) -> None:
         """Register a new fingerprint observation for this template."""
         inst = TemplateInstance(
@@ -337,18 +340,17 @@ class PatternTemplate:
             regime=fingerprint.regime,
         )
         self.instances.append(inst)
+        if len(self.instances) > self._MAX_INSTANCES:
+            self.instances = self.instances[-self._MAX_INSTANCES:]
         if fingerprint.symbol not in self.symbols_seen:
             self.symbols_seen.append(fingerprint.symbol)
         # Accumulate raw lag counts from this fingerprint
         for bucket, count in fingerprint.lag_profile.items():
             self.lag_profile_raw[bucket] = self.lag_profile_raw.get(bucket, 0) + count
-        self.n_instances = len(self.instances)
-        self._recompute_averages()
-
-    def _recompute_averages(self) -> None:
-        if not self.instances:
-            return
-        self.avg_move_pct = sum(abs(i.move_pct) for i in self.instances) / len(self.instances)
+        self.n_instances += 1
+        # Incremental avg — O(1) instead of O(N)
+        self._move_pct_sum += abs(fingerprint.move_pct)
+        self.avg_move_pct = self._move_pct_sum / self.n_instances
         # Recompute normalized lag from accumulated raw counts
         if self.lag_profile_raw:
             total = sum(self.lag_profile_raw.values()) or 1
@@ -370,6 +372,7 @@ class PatternTemplate:
             "symbols_seen": self.symbols_seen,
             "n_instances": self.n_instances,
             "avg_move_pct": self.avg_move_pct,
+            "_move_pct_sum": self._move_pct_sum,
             "wins": self.wins,
             "losses": self.losses,
             "created_at": self.created_at,
@@ -378,6 +381,12 @@ class PatternTemplate:
     @classmethod
     def from_dict(cls, d: dict) -> PatternTemplate:
         instances = [TemplateInstance.from_dict(i) for i in d.get("instances", [])]
+        n_instances = d.get("n_instances", 0)
+        avg_move_pct = d.get("avg_move_pct", 0.0)
+        # Backward compat: recompute _move_pct_sum if missing
+        move_pct_sum = d.get("_move_pct_sum", 0.0)
+        if move_pct_sum == 0.0 and n_instances > 0 and avg_move_pct > 0:
+            move_pct_sum = avg_move_pct * n_instances
         return cls(
             template_id=d.get("template_id", ""),
             direction=d["direction"],
@@ -388,8 +397,9 @@ class PatternTemplate:
             source_examples=d.get("source_examples", {}),
             instances=instances,
             symbols_seen=d.get("symbols_seen", []),
-            n_instances=d.get("n_instances", 0),
-            avg_move_pct=d.get("avg_move_pct", 0.0),
+            n_instances=n_instances,
+            avg_move_pct=avg_move_pct,
+            _move_pct_sum=move_pct_sum,
             wins=d.get("wins", 0),
             losses=d.get("losses", 0),
             created_at=d.get("created_at", ""),

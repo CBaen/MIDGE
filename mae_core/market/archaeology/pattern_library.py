@@ -70,6 +70,8 @@ class PatternLibrary:
         self._match_threshold = match_threshold
         self._fingerprints: dict[str, MoveFingerprint] = {}
         self._templates: dict[str, PatternTemplate] = {}
+        # Secondary index: "direction:domain_signature" -> template_id for O(1) lookup
+        self._template_key_index: dict[str, str] = {}
         self._load()
 
     def _load(self) -> None:
@@ -104,6 +106,7 @@ class PatternLibrary:
                             data = json.loads(line)
                             t = PatternTemplate.from_dict(data)
                             self._templates[t.template_id] = t
+                            self._template_key_index[f"{t.direction}:{t.domain_signature}"] = t.template_id
                             tmpl_count += 1
                         except (json.JSONDecodeError, KeyError) as e:
                             logger.debug("Skipping malformed template: %s", e)
@@ -179,16 +182,18 @@ class PatternLibrary:
 
         Does NOT persist — caller must call _persist_templates() when ready.
         This prevents 216K+ full rewrites during batch operations.
+        Uses O(1) key index instead of linear scan over all templates.
         """
-        # Find template by direction + domain_signature match
-        for t in self._templates.values():
-            if t.direction == fingerprint.direction and t.domain_signature == fingerprint.domain_signature:
-                t.add_instance(fingerprint)
-                return
+        key = f"{fingerprint.direction}:{fingerprint.domain_signature}"
+        tid = self._template_key_index.get(key)
+        if tid and tid in self._templates:
+            self._templates[tid].add_instance(fingerprint)
+            return
 
         # Create new template
         template = PatternTemplate.from_fingerprint(fingerprint)
         self._templates[template.template_id] = template
+        self._template_key_index[key] = template.template_id
 
     def get(self, fingerprint_id: str) -> Optional[MoveFingerprint]:
         return self._fingerprints.get(fingerprint_id)
@@ -341,17 +346,9 @@ class PatternLibrary:
             Number of templates rebuilt.
         """
         self._templates.clear()
+        self._template_key_index.clear()
         for fp in self._fingerprints.values():
-            key = fp.template_key  # "direction:domain_signature"
-            found = False
-            for t in self._templates.values():
-                if t.direction == fp.direction and t.domain_signature == fp.domain_signature:
-                    t.add_instance(fp)
-                    found = True
-                    break
-            if not found:
-                template = PatternTemplate.from_fingerprint(fp)
-                self._templates[template.template_id] = template
+            self._update_template(fp)
         self._persist_templates()
         logger.info("Rebuilt %d templates from %d fingerprints",
                      len(self._templates), len(self._fingerprints))
