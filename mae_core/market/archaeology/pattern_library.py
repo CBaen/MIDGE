@@ -117,7 +117,10 @@ class PatternLibrary:
             )
 
     def store(self, fingerprint: MoveFingerprint) -> bool:
-        """Store a fingerprint. Returns False if duplicate."""
+        """Store a single fingerprint. Returns False if duplicate.
+
+        For bulk operations, use store_batch() which batches template persistence.
+        """
         if fingerprint.fingerprint_id in self._fingerprints:
             return False
 
@@ -130,16 +133,28 @@ class PatternLibrary:
         except OSError as e:
             logger.warning("Could not persist fingerprint: %s", e)
 
-        # Update or create template
+        # Update or create template and persist immediately (single-store path)
         self._update_template(fingerprint)
+        self._persist_templates()
         return True
 
     def store_batch(self, fingerprints: list[MoveFingerprint]) -> int:
-        """Store multiple fingerprints. Returns count of new entries."""
+        """Store multiple fingerprints. Persists templates ONCE at the end."""
         stored = 0
         for fp in fingerprints:
-            if self.store(fp):
-                stored += 1
+            if fp.fingerprint_id in self._fingerprints:
+                continue
+            self._fingerprints[fp.fingerprint_id] = fp
+            try:
+                self._path.parent.mkdir(parents=True, exist_ok=True)
+                with open(self._path, "a") as f:
+                    f.write(fp.to_json() + "\n")
+            except OSError as e:
+                logger.warning("Could not persist fingerprint: %s", e)
+            self._update_template(fp)
+            stored += 1
+        if stored > 0:
+            self._persist_templates()
         return stored
 
     def store_template(self, template: PatternTemplate) -> bool:
@@ -160,19 +175,20 @@ class PatternLibrary:
         return new_count
 
     def _update_template(self, fingerprint: MoveFingerprint) -> None:
-        """Update or create the template for a fingerprint."""
-        key = fingerprint.template_key
+        """Update or create the template for a fingerprint.
+
+        Does NOT persist — caller must call _persist_templates() when ready.
+        This prevents 216K+ full rewrites during batch operations.
+        """
         # Find template by direction + domain_signature match
         for t in self._templates.values():
             if t.direction == fingerprint.direction and t.domain_signature == fingerprint.domain_signature:
                 t.add_instance(fingerprint)
-                self._persist_templates()
                 return
 
         # Create new template
         template = PatternTemplate.from_fingerprint(fingerprint)
         self._templates[template.template_id] = template
-        self._persist_templates()
 
     def get(self, fingerprint_id: str) -> Optional[MoveFingerprint]:
         return self._fingerprints.get(fingerprint_id)
@@ -288,11 +304,15 @@ class PatternLibrary:
             self._persist_fingerprints()
 
     def _persist_fingerprints(self) -> None:
-        """Rewrite fingerprints file."""
+        """Rewrite fingerprints file atomically (write .tmp then rename)."""
+        if not self._fingerprints:
+            return  # Never overwrite with empty
         try:
-            with open(self._path, "w") as f:
+            tmp = self._path.with_suffix(".tmp")
+            with open(tmp, "w") as f:
                 for fp in self._fingerprints.values():
                     f.write(fp.to_json() + "\n")
+            tmp.replace(self._path)
         except OSError as e:
             logger.warning("Could not persist fingerprints: %s", e)
 
