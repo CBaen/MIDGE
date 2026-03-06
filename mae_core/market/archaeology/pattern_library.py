@@ -164,6 +164,7 @@ class PatternLibrary:
         """Store or update a template. Returns True if new."""
         is_new = template.template_id not in self._templates
         self._templates[template.template_id] = template
+        self._template_key_index[f"{template.direction}:{template.domain_signature}"] = template.template_id
         self._persist_templates()
         return is_new
 
@@ -174,6 +175,7 @@ class PatternLibrary:
             if t.template_id not in self._templates:
                 new_count += 1
             self._templates[t.template_id] = t
+            self._template_key_index[f"{t.direction}:{t.domain_signature}"] = t.template_id
         self._persist_templates()
         return new_count
 
@@ -322,7 +324,11 @@ class PatternLibrary:
             logger.warning("Could not persist fingerprints: %s", e)
 
     def _persist_templates(self) -> None:
-        """Rewrite templates file atomically (write .tmp then rename)."""
+        """Rewrite templates file atomically (write .tmp then rename).
+
+        On Windows, rename can fail if another process holds the target file.
+        Falls back to direct overwrite (still safe — we have the empty guard).
+        """
         if not self._templates:
             return  # Never overwrite with empty — protects against crash-induced data loss
         try:
@@ -331,7 +337,17 @@ class PatternLibrary:
             with open(tmp, "w") as f:
                 for t in self._templates.values():
                     f.write(t.to_json() + "\n")
-            tmp.replace(self._templates_path)
+            try:
+                tmp.replace(self._templates_path)
+            except OSError:
+                # Windows: target file locked by another process — direct write fallback
+                with open(self._templates_path, "w") as f:
+                    with open(tmp, "r") as src:
+                        f.write(src.read())
+                try:
+                    tmp.unlink()
+                except OSError:
+                    pass
         except OSError as e:
             logger.warning("Could not persist templates: %s", e)
 
