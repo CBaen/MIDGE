@@ -242,6 +242,9 @@ class PatternTemplate:
     n_instances: int = 0
     avg_move_pct: float = 0.0
 
+    # Incremental stats
+    _move_pct_sum: float = 0.0  # Sum of abs(move_pct) for incremental avg
+
     # Stats (updated as outcomes are graded)
     wins: int = 0
     losses: int = 0
