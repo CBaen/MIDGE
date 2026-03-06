@@ -297,12 +297,16 @@ class PatternLibrary:
             logger.warning("Could not persist fingerprints: %s", e)
 
     def _persist_templates(self) -> None:
-        """Rewrite templates file."""
+        """Rewrite templates file atomically (write .tmp then rename)."""
+        if not self._templates:
+            return  # Never overwrite with empty — protects against crash-induced data loss
         try:
             self._templates_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(self._templates_path, "w") as f:
+            tmp = self._templates_path.with_suffix(".tmp")
+            with open(tmp, "w") as f:
                 for t in self._templates.values():
                     f.write(t.to_json() + "\n")
+            tmp.replace(self._templates_path)
         except OSError as e:
             logger.warning("Could not persist templates: %s", e)
 
