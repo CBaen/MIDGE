@@ -711,9 +711,10 @@ class ConvergenceAlerter:
         geo_mean = math.exp(log_sum / weight_sum) if weight_sum > 0 else 0.5
 
         # Compute the effective number of independent domains.
-        # Correlated domains (e.g. macro+technical r=0.73) receive partial credit.
+        # Correlated domains (e.g. institutional+macro r=0.57) receive partial credit.
         # Falls back to raw cross_domain_count when no CorrelationTracker is wired.
-        domain_list = list({sig.domain for sig in signals})
+        # Sorted for deterministic effective count (order-dependent algorithm).
+        domain_list = sorted({sig.domain for sig in signals})
         if self._correlation_tracker:
             effective_count = self._compute_effective_domain_count(domain_list)
         else:
