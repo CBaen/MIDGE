@@ -319,7 +319,16 @@ class PatternLibrary:
             with open(tmp, "w") as f:
                 for fp in self._fingerprints.values():
                     f.write(fp.to_json() + "\n")
-            tmp.replace(self._path)
+            try:
+                tmp.replace(self._path)
+            except OSError:
+                with open(self._path, "w") as f:
+                    with open(tmp, "r") as src:
+                        f.write(src.read())
+                try:
+                    tmp.unlink()
+                except OSError:
+                    pass
         except OSError as e:
             logger.warning("Could not persist fingerprints: %s", e)
 

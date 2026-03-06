@@ -2,100 +2,87 @@
 
 ## What Happened
 
-### Pattern Archaeologist — Full Excavation In Progress (2026-03-04)
+### Template Persistence Fix + Performance Optimization (2026-03-06)
 
-**ACTIVE BACKGROUND PROCESS:** Full excavation running via `populate_library.py --reset --batch-size 50`. Using Polygon.io paid API + optimized caching. Check status with:
-```bash
-grep "Batch [0-9]" excavation_optimized.txt | tail -5
-```
+**Critical bug found and fixed:** 222K fingerprints existed but 0 templates — PatternWatcher had nothing to match against. Three compounding bugs:
 
-If interrupted, resume with: `python populate_library.py --batch-size 50` (progress auto-saved).
+1. **Crash-unsafe write:** Templates used `open("w")` (truncate-on-open). Any crash or restart with empty `self._templates` zeroed the file. Fingerprints survived because they use `open("a")` (append).
+2. **Per-fingerprint persistence:** `_persist_templates()` was called 222K times per excavation run (once per fingerprint via `_update_template()`). Catastrophic I/O.
+3. **O(N²) rebuild:** `rebuild_templates()` did linear scan over all templates per fingerprint. `add_instance()` iterated ALL instances to compute avg.
 
-**Polygon.io Bulk Fetcher (2026-03-04):**
-- `mae_core/market/archaeology/polygon_bulk_fetcher.py` — NEW. Drop-in replacement for PriceFetcher. Uses per-ticker aggregate endpoint. 1 API call per symbol returns all daily bars (up to 50K). ~0.5s per symbol vs yfinance's ~3min.
-- `populate_library.py` — Updated: auto-detects MASSIVE_API_KEY, loads `.env` file, `--source polygon|yfinance|auto` flag.
-- Polygon Starter plan ($29/mo) activated by Guiding Light.
+**Fixes:**
+- Atomic write: `.tmp` then rename, with Windows fallback (other process may hold file lock)
+- Empty guard: Never overwrite non-empty file with empty data
+- Batch persistence: `store_batch()` persists templates ONCE at the end
+- O(1) key index: `_template_key_index` dict replaces linear scan in `_update_template()` and `rebuild_templates()`
+- Incremental avg: `_move_pct_sum` field — O(1) per add instead of O(N) instance scan
+- Instance cap: Templates keep last 200 instances (fingerprints are the archive)
+- 11 new tests in `test_template_persistence.py`
 
-**Computation Optimizations (2026-03-04):**
-- `historical_fetcher.py`: Added `preload_archive()` — loads all 900+ signal archive JSONL files into memory once at startup. Eliminates redundant disk I/O.
-- `historical_fetcher.py`: Added `_get_ta_cached()` — computes RSI/MACD/Bollinger/Volume once per symbol for full price history, caches result. Previously recomputed identically for EVERY dig site (~50x per symbol).
-- `historical_fetcher.py`: `clear_cache()` now only clears per-symbol TA cache, preserves pre-loaded archive.
-- Combined speedup: ~7x faster than yfinance baseline (85s per 100 symbols vs 6min).
+**Result:** 222,916 fingerprints → 39 templates (26 cross-validated) rebuilt in 6.8s. PatternWatcher now operational.
 
-**Performance benchmarks (100 symbols):**
-| Approach | Time | Projected 3,237 |
-|----------|------|-----------------|
-| yfinance (no cache) | ~6 min | ~10 hours |
-| Polygon (no cache) | ~3.3 min | ~1.8 hours |
-| Polygon + TA cache + preloaded archive | 85s | ~46 min |
+**Files changed:**
+- `mae_core/market/archaeology/pattern_library.py` — Atomic write, batch persist, key index
+- `mae_core/market/archaeology/fingerprint.py` — Incremental avg, instance cap, `_move_pct_sum` field
+- `tests/test_template_persistence.py` — NEW: 11 tests
 
-### Pattern Archaeologist v2 — Symbol-Agnostic Template Engine (2026-03-04)
+### Thompson + Independence Fix (2026-03-05)
 
-Reworked from narrow (specific-source matching) to universal (domain-level templates). This is the "convergence of convergences" — when multiple independent historical patterns stack on the same ticker, that's the 95%+ signal.
+**Thompson forgetting bug:** Forgetting (0.99x every 100 steps) outran learning (outcomes every 200 steps). 81/83 distributions decayed to uniform. Fix: cadence 100→200, floor 1.0→2.0.
 
-**Core concept shift:** Fingerprints are instances. **PatternTemplates** are the abstraction — grouped by `direction + domain_signature`. A template like "bullish: insider+macro+technical" accumulates instances across NVDA, AAPL, MSFT. Cross-symbol validation (3+ symbols) boosts confidence.
+**Independence correction:** CorrelationTracker was NOT connected to ConvergenceAlerter. Diversity bonus used raw domain count. Fix: inject CorrelationTracker, compute effective domain count (|r|>0.5 → half credit), seed from lag_correlations.json.
 
-**New/rewritten files:**
-- `mae_core/market/archaeology/fingerprint.py` — `PatternTemplate`, `TemplateInstance` dataclasses. Template auto-ID is deterministic hash of direction+domain_signature.
-- `mae_core/market/archaeology/excavator.py` — Takes `HistoricalDataFetcher`, excavates from all 29 sources via domain mapping. `_SOURCE_DOMAIN_MAP` converts sources → 11 domains.
-- `mae_core/market/archaeology/historical_fetcher.py` — 3-tier data retrieval + TA caching + archive pre-loading.
-- `mae_core/market/archaeology/pattern_library.py` — Template-based storage. `query_similar()` matches by domain overlap. Stores both fingerprints and templates in separate JSONL files.
-- `mae_core/market/archaeology/pattern_watcher.py` — Domain-level independence checks. Stacking tiers (low/medium/high). `PatternActivation` carries `template`, `matched_domains`, `missing_domains`.
-- `mae_core/market/archaeology/excavation_daemon.py` — Step hook (every 5000 steps). Persistent progress tracking.
-- `mae_core/market/archaeology/polygon_bulk_fetcher.py` — Polygon.io paid API bulk fetcher.
-- `mae_core/bootstrap/market_systems.py` — Wires PatternLibrary + PatternWatcher + ExcavationDaemon into Layer 33.
+**Files changed:**
+- `mae_core/market/intelligence/thompson_sampler.py` — Floor 2.0, forgetting summary log
+- `mae_core/bootstrap/market_hooks.py` — Cadence 200 steps
+- `mae_core/market/intelligence/convergence_alerter.py` — Effective domain count, correlation injection
+- `mae_core/market/intelligence/correlation_tracker.py` — `seed_from_lag_data()`
+- `mae_core/bootstrap/market_systems.py` — Correlation seeding + two-phase wiring
+- `tests/test_thompson_feedback.py` — NEW: 16 tests
+- `tests/test_independence_correction.py` — NEW: 23 tests
 
-**Feedback loop (2026-03-04):**
-- `outcome_collector.py`: `register_pattern_stack()` registers stacks as predictions. `_on_outcome_graded()` callback updates template win/loss stats via PatternLibrary.
-- `outcome_tracker.py`: `on_outcome` callback (fires after each graded prediction).
-- `market_hooks.py`: Wires pattern stack registration + pattern library feedback.
-- Dynamic outcome windows: `register_pattern_stack()` computes window from template timing data (median of `expected_move_window_days`), falls back to 14.
+### Prediction-to-Action (2026-03-05)
 
-**Synergy detection (2026-03-04):**
-- `market_hooks.py`: `ctx._cached_pattern_stacks`. When ConvergenceAlerter AND PatternWatcher both fire on same ticker+direction, emits `CH_DUAL_CONFIRMATION` with `combined_confidence = 1 - (1-conv_conf)(1-stack_conf)`.
-- `channels.py`: `CH_DUAL_CONFIRMATION = "market.intel.dual_confirmation"`.
+Three features per Guiding Light's directive:
+- **Dynamic Outcome Windows**: `lag_profile_raw` accumulator, `expected_move_window_days` property
+- **Plain-Language Alerts**: `plain_language.py` — zero-jargon 5-section formatter
+- **Active Tracking**: `active_tracker.py` — TrackedAsset registry with status transitions
 
-**Prediction-to-Action (2026-03-05):** Three features — dynamic outcome windows, plain-language alerts, active tracking.
-- `fingerprint.py`: `lag_profile_raw` accumulator, `expected_move_window_days` property (weighted mean + 20% buffer, clamped [3,30]).
-- `plain_language.py`: Zero-jargon 5-section formatter (WHAT/HISTORY/TIMING/ACTION/TRACKING). Output: `data/midge/alerts_human.jsonl`.
-- `active_tracker.py`: TrackedAsset registry, status transitions (tracking→confirming→confirmed|failed|expired), MFE/MAE, 5-min rate limiting, 20 asset cap, force-grading on terminal status.
-- Wired into `market_hooks.py` (pattern stack firing + 20-step cadence) and `market_systems.py` (construction).
+### Pattern Archaeologist v2 (2026-03-04)
 
-**Tests:** 142 tests (68 archaeology + 16 dynamic windows + 25 plain-language + 19 active tracker + 14 outcome collector). All pass.
+Symbol-agnostic template engine. Full excavation completed 3,237 symbols via Polygon.io.
 
----
+### Proven Signal → Profitable System (2026-03-03)
 
-### From Proven Signal to Profitable System — 4 Operational Fixes (2026-03-03)
-
-Replay analysis proved MIDGE has real statistical edge (z=4.74, p<0.0001) but can't capitalize due to operational gaps. Four work packages close the gap.
-
-**WP1 — Thompson Persistence Protection:** `tests/conftest.py` autouse fixture monkeypatches all data paths to tmp_path. No test can touch production data.
-
-**WP2 — ctx.outcome_collector Wiring:** `market_hooks.py` added `ctx.outcome_collector = outcome_collector`. Closes combo Thompson feedback loop.
-
-**WP3 — Confidence-Gated Paper Trading:** `learning_config.py` added `paper_trade_min_confidence: 0.45`. Combo filter blocks combos with historical WR < 25%.
-
-**WP4 — Magnitude-Aware Replay Grading:** `replay_history.py` MFE/MAE tracking, expectancy, Sharpe ratio, return percentiles.
+Four work packages closing the operational gap (Thompson isolation, combo feedback, confidence gating, MFE/MAE).
 
 ---
 
 ## Stats
 
-- **146 systems** (92 core + 54 market), **4,384 tests**, **157 holons**, **425 connections**
+- **146 systems** (92 core + 54 market), **4,395+ tests**, **157 holons**, **425 connections**
 - **100 market files** (29 API + 12 edge + 27 intelligence + 8 signal_adapters + 10 archaeology + 14 root)
 - **33-layer bootstrap**, **14 mixins** on MycelialAgent
+- **222,916 fingerprints**, **39 templates** (26 cross-validated across 3+ symbols)
+
+## Current State
+
+- **Daemon: STOPPED.** Old daemon (PID 184380, since March 3) and excavation (PID 262480, since March 4) were killed — running pre-fix code.
+- **Templates: REBUILT.** 39 templates live in `pattern_templates.jsonl`. PatternWatcher can now match live signals.
+- **Thompson: FIXED.** Forgetting/learning cadence aligned. Independence correction active.
+- **Needs restart:** `python main.py --daemon --agents 6 --steps 500 --pace 2.0`
 
 ## What's Next
 
-- **Check excavation completion:** `grep "Excavation finished" excavation_optimized.txt` or `python populate_library.py --dry-run`
-- **After excavation:** Library will have ~150K+ fingerprints and ~20+ domain-level templates across 3,237 symbols. Run MIDGE daemon (`python main.py --daemon --agents 6 --steps 500 --pace 2.0`) and PatternWatcher will match live signals against templates.
-- **Future optimization:** Concurrent symbol processing (ProcessPoolExecutor) for another ~3-4x speedup.
-- **Options flow via Unusual Whales** ($35/mo API — needs Guiding Light approval on spend).
+1. **Restart daemon on fixed code** — picks up Thompson fix, independence correction, template persistence fix, active tracking
+2. **Monitor template feedback loop** — watch for template win/loss updates in `pattern_templates.jsonl`
+3. **Expedition Phase 1+** — companion excavation process, new data domains (EIA energy, Congress.gov), Granger causality
+4. **Options flow via Unusual Whales** ($35/mo API — needs Guiding Light approval)
 
 ## Verification
 
 ```bash
-python -m pytest tests/ -q              # 746 pass (1 pre-existing flaky)
+python -m pytest tests/ -q              # 4395+ pass, 0 regressions
 python main.py --agents 3 --steps 30    # Smoke test
-python populate_library.py --dry-run     # Check excavation status
+python -c "from mae_core.market.archaeology.pattern_library import PatternLibrary; lib = PatternLibrary(); print(f'{lib.size} fingerprints, {lib.template_count} templates')"
 ```
