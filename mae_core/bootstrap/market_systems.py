@@ -58,14 +58,21 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         ctx.market_data_provider = None
 
     # --- API clients (Market Sensing) — provider injected for gateway routing ---
-
-    try:
-        from mae_core.market.apis.sec_edgar.client import SECEdgarClient
-        ctx.sec_edgar_client = SECEdgarClient(provider=provider)
-    except Exception:
-        logger.debug("Market: sec_edgar_client failed to construct", exc_info=True)
-        ctx.sec_edgar_client = None
-        failures += 1
+    for _attr, _mod, _cls, _kw in [
+        ("sec_edgar_client", "mae_core.market.apis.sec_edgar.client", "SECEdgarClient", {"provider": provider}),
+        ("house_stock_watcher", "mae_core.market.apis.house_stock_watcher", "HouseStockWatcherClient", {"provider": provider}),
+        ("job_tracker", "mae_core.market.apis.job_tracker", "JobTracker", {"provider": provider}),
+        ("usa_spending_client", "mae_core.market.apis.usa_spending", "USASpendingClient", {"provider": provider}),
+        ("sam_gov_client", "mae_core.market.apis.sam_gov", "SAMGovClient", {"provider": provider}),
+    ]:
+        try:
+            import importlib as _imp
+            _m = _imp.import_module(_mod)
+            setattr(ctx, _attr, getattr(_m, _cls)(**_kw))
+        except Exception:
+            logger.debug("Market: %s failed to construct", _attr, exc_info=True)
+            setattr(ctx, _attr, None)
+            failures += 1
 
     try:
         from mae_core.market.apis.price_fetcher import PriceFetcher
@@ -76,38 +83,6 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
     except Exception:
         logger.debug("Market: price_fetcher failed to construct", exc_info=True)
         ctx.price_fetcher = None
-        failures += 1
-
-    try:
-        from mae_core.market.apis.house_stock_watcher import HouseStockWatcherClient
-        ctx.house_stock_watcher = HouseStockWatcherClient(provider=provider)
-    except Exception:
-        logger.debug("Market: house_stock_watcher failed to construct", exc_info=True)
-        ctx.house_stock_watcher = None
-        failures += 1
-
-    try:
-        from mae_core.market.apis.job_tracker import JobTracker
-        ctx.job_tracker = JobTracker(provider=provider)
-    except Exception:
-        logger.debug("Market: job_tracker failed to construct", exc_info=True)
-        ctx.job_tracker = None
-        failures += 1
-
-    try:
-        from mae_core.market.apis.usa_spending import USASpendingClient
-        ctx.usa_spending_client = USASpendingClient(provider=provider)
-    except Exception:
-        logger.debug("Market: usa_spending_client failed to construct", exc_info=True)
-        ctx.usa_spending_client = None
-        failures += 1
-
-    try:
-        from mae_core.market.apis.sam_gov import SAMGovClient
-        ctx.sam_gov_client = SAMGovClient(provider=provider)
-    except Exception:
-        logger.debug("Market: sam_gov_client failed to construct", exc_info=True)
-        ctx.sam_gov_client = None
         failures += 1
 
     # --- Phase 2 + Layer 6 API clients (free sources) ---
