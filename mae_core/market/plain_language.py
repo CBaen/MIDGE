@@ -47,6 +47,7 @@ DOMAIN_PLAIN = {
     "institutional": "large institutional investors changed their holdings",
     "crypto": "cryptocurrency market activity showed correlated movement",
     "price": "price movement patterns matched historical precedents",
+    "energy": "U.S. energy inventory or production data shifted notably",
 }
 
 # ── Source Translation ─────────────────────────────────────────────
@@ -75,6 +76,7 @@ SOURCE_PLAIN = {
     "stocktwits": "social media discussion",
     "vix_client": "market fear indicator",
     "google_trends": "public search interest",
+    "eia_energy": "U.S. Energy Information Administration data",
 }
 
 # ── Tier Translation ───────────────────────────────────────────────

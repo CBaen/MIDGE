@@ -261,6 +261,8 @@ class ConvergenceAlerter:
             # New domains (Layer 6)
             "positioning": "institutional",
             "volatility": "market",
+            # Real-economy
+            "energy": "fundamental",
         }
 
         self._alert_counter = 0
