@@ -192,9 +192,9 @@ def fetch_finra_short(finra_client: Any, watchlist: dict, converter: Callable) -
         high_short = finra_client.get_high_short_ratio(min_ratio=0.5)
         # Filter to watchlist + top 10 highest ratios
         watchlist_tickers = set(watchlist.get("tickers", []))
-        for record in high_short:
+        for i, record in enumerate(high_short):
             try:
-                if record.symbol in watchlist_tickers or high_short.index(record) < 10:
+                if record.symbol in watchlist_tickers or i < 10:
                     signals.append(converter(record))
             except Exception:
                 pass
