@@ -142,45 +142,21 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
     _instantiate_wave2_3_clients(ctx)
 
     # --- Edge detectors ---
-    try:
-        from mae_core.market.edge.cluster_detector import ClusterDetector
-        ctx.cluster_detector = ClusterDetector(qdrant_url=qdrant_url)
-    except Exception:
-        logger.debug("Market: cluster_detector failed to construct", exc_info=True)
-        ctx.cluster_detector = None
-        failures += 1
-
-    try:
-        from mae_core.market.edge.politician_tracker import PoliticianTracker
-        ctx.politician_tracker = PoliticianTracker()
-    except Exception:
-        logger.debug("Market: politician_tracker failed to construct", exc_info=True)
-        ctx.politician_tracker = None
-        failures += 1
-
-    try:
-        from mae_core.market.edge.filing_time_analyzer import FilingTimeAnalyzer
-        ctx.filing_time_analyzer = FilingTimeAnalyzer(qdrant_url=qdrant_url)
-    except Exception:
-        logger.debug("Market: filing_time_analyzer failed to construct", exc_info=True)
-        ctx.filing_time_analyzer = None
-        failures += 1
-
-    try:
-        from mae_core.market.edge.contract_predictor import ContractPredictor
-        ctx.contract_predictor = ContractPredictor(qdrant_url=qdrant_url)
-    except Exception:
-        logger.debug("Market: contract_predictor failed to construct", exc_info=True)
-        ctx.contract_predictor = None
-        failures += 1
-
-    try:
-        from mae_core.market.edge.session_sweep_detector import SessionSweepDetector
-        ctx.session_sweep_detector = SessionSweepDetector()
-    except Exception:
-        logger.debug("Market: session_sweep_detector failed to construct", exc_info=True)
-        ctx.session_sweep_detector = None
-        failures += 1
+    for _attr, _mod, _cls, _kw in [
+        ("cluster_detector", "mae_core.market.edge.cluster_detector", "ClusterDetector", {"qdrant_url": qdrant_url}),
+        ("politician_tracker", "mae_core.market.edge.politician_tracker", "PoliticianTracker", {}),
+        ("filing_time_analyzer", "mae_core.market.edge.filing_time_analyzer", "FilingTimeAnalyzer", {"qdrant_url": qdrant_url}),
+        ("contract_predictor", "mae_core.market.edge.contract_predictor", "ContractPredictor", {"qdrant_url": qdrant_url}),
+        ("session_sweep_detector", "mae_core.market.edge.session_sweep_detector", "SessionSweepDetector", {}),
+    ]:
+        try:
+            import importlib as _imp
+            _m = _imp.import_module(_mod)
+            setattr(ctx, _attr, getattr(_m, _cls)(**_kw))
+        except Exception:
+            logger.debug("Market: %s failed to construct", _attr, exc_info=True)
+            setattr(ctx, _attr, None)
+            failures += 1
 
     # TA indicators (pure computation — no constructor args needed)
     try:
