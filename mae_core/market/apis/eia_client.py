@@ -99,7 +99,7 @@ _TYPICAL_CHANGES: Dict[str, float] = {
     "gasoline_inventory": 2000,   # ~2M barrel weekly swing
     "distillate_inventory": 2000, # ~2M barrel weekly swing
     "natgas_storage": 80,         # ~80 Bcf weekly swing
-    "crude_production": 100,      # ~100K bbl/d monthly change
+    "crude_production": 10000,    # ~10M barrel monthly production change
 }
 
 

@@ -151,6 +151,8 @@ class ConvergenceAlerter:
         "finnhub_economic": "finnhub_economic",
         "finnhub_analyst": "finnhub_analyst",
         "finnhub_earnings_calendar": "finnhub_earnings_calendar",
+        # Real-economy: Energy
+        "eia_energy": "eia_energy",
     }
 
     # Domain → list of source names used in lag_correlations.json.
