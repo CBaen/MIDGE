@@ -117,13 +117,13 @@ Four work packages closing the operational gap (Thompson isolation, combo feedba
 
 ## What's Next
 
-1. **Restart daemon on fixed code** — picks up all fixes: Thompson, independence, templates, active tracking, EIA energy
+1. **Restart daemon on fixed code** — picks up all fixes: Thompson, independence, templates, active tracking, EIA energy, Congress.gov
 2. **Monitor template feedback loop** — watch for template win/loss updates in `pattern_templates.jsonl`
-3. **New real-economy domains** — Congress.gov legislative (free), USDA agriculture (free, seasonal), BDI logistics (free proxy)
+3. **New real-economy domains** — USDA agriculture (free, seasonal), BDI logistics (free proxy)
 4. **Pattern discovery upgrades** — Granger causality (statsmodels), transfer entropy, RMT denoising, PCMCI+
 5. **Web scraping infrastructure** — autonomous pattern discovery via website crawling (research complete, stack: httpx + selectolax + trafilatura)
 6. **Options flow via Unusual Whales** ($35/mo API — needs Guiding Light approval)
-7. **Re-run excavation** — companion process with fixed template code + new EIA domain
+7. **Re-run excavation** — companion process with fixed template code + new EIA + Congress.gov domains
 
 ## Verification
 
