@@ -63,22 +63,34 @@ Symbol-agnostic template engine. Full excavation completed 3,237 symbols via Pol
 - Affected tickers mapped: XLE, XOP, USO, UNG, VLO, MPC, EQT, etc.
 - 6-hour cache (weekly data updates on specific days)
 - Strategic tier in convergence engine, 7-day domain window
+- Full intelligence layer: Thompson key, source_reliability (0.70), energy decay rate (0.05), domain correlation tracking
+
+**API bugs fixed (live-tested against EIA):**
+- Added `data[]=value` param (EIA v2 requires explicit column selection — without it, returns metadata only)
+- Gasoline/distillate facets: `SAX` → `SAE` (Ending Stocks, not Excluding SPR)
+- Natgas facets: `SAX` → `SWO` (Working Gas total)
+- Crude production: added `series: MCRFPUS1` facet (prevents multi-series collision)
+
+**Live data (2026-02-27 report):** All 5 series returning — crude stocks BUILD +3,475K bbl (bearish 0.69), gasoline BUILD +801K (bearish 0.40), distillate BUILD +429K (bearish 0.21), natgas BUILD +65 Bcf (bearish 0.81), crude production +9,655K bbl/mo (bearish 0.97).
 
 **Files changed:**
-- `mae_core/market/apis/eia_client.py` — NEW: EIAClient, EnergyIndicator, 5 series
+- `mae_core/market/apis/eia_client.py` — NEW: EIAClient, EnergyIndicator, 5 series + API bug fixes
 - `mae_core/market/signal_adapters/market_data.py` — `from_energy_indicator()` adapter
 - `mae_core/market/sensing_fetchers.py` — `fetch_eia()` function
-- `mae_core/market/sensing_hook.py` — SOURCE_ROTATION, TIER_ROUTING, _ROTATION_TO_THOMPSON, _ABSENCE_SOURCE_DOMAINS, __init__, _fetch_source
-- `mae_core/bootstrap/market_systems.py` — EIAClient instantiation + trust registration
+- `mae_core/market/sensing_hook.py` — SOURCE_ROTATION (29), TIER_ROUTING, _ROTATION_TO_THOMPSON, _ABSENCE_SOURCE_DOMAINS, __init__, _fetch_source
+- `mae_core/bootstrap/market_systems.py` — EIAClient instantiation + trust registration (0.95)
 - `mae_core/bootstrap/market_hooks.py` — Pass eia_client to MarketSensingHook
 - `mae_core/market/archaeology/pattern_library.py` — `"eia_energy": "energy"` in _SOURCE_DOMAIN_MAP
-- `mae_core/market/intelligence/convergence_alerter.py` — Energy domain window + category
+- `mae_core/market/intelligence/convergence_alerter.py` — Energy domain window + category + _SOURCE_TO_THOMPSON_KEY + _DOMAIN_SOURCES
+- `mae_core/market/intelligence/learning_config.py` — source_reliability + decay_rates
 - `mae_core/market/plain_language.py` — Energy domain + source translations
 - `mae_core/market/signal_adapters/__init__.py` — Re-export from_energy_indicator
 - `mae_core/market/signal.py` — Re-export from_energy_indicator
-- `tests/test_eia_client.py` — NEW: 34 tests
+- `tests/test_eia_client.py` — NEW: 38 tests (34 original + 4 intelligence layer)
+- `tests/test_new_source_wiring.py` — Updated rotation count 28→29
+- `tests/test_integration.py` — Added eia_client to market_keys
 
-**Requires:** `EIA_API_KEY` env var (free: https://www.eia.gov/opendata/register.php)
+**Requires:** `EIA_API_KEY` env var (free: https://www.eia.gov/opendata/register.php) — registered and set in `.env`
 
 ### Proven Signal → Profitable System (2026-03-03)
 
