@@ -136,6 +136,7 @@ from mae_core.market.signal_adapters import (  # noqa: E402
     from_finviz_short_squeeze,
     from_finnhub_realtime,
     from_suppression_event,
+    from_energy_indicator,
 )
 
 __all__ = [
@@ -186,4 +187,6 @@ __all__ = [
     "from_finviz_short_squeeze",
     "from_finnhub_realtime",
     "from_suppression_event",
+    # energy (1)
+    "from_energy_indicator",
 ]

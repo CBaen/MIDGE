@@ -648,6 +648,24 @@ def fetch_economic_calendar(calendar_client: Any, converter: Callable) -> list:
     return signals
 
 
+def fetch_eia(eia_client: Any, converter: Callable) -> list:
+    """Fetch EIA energy inventory/production indicators."""
+    if eia_client is None:
+        return []
+
+    signals = []
+    try:
+        snapshot = eia_client.get_energy_snapshot()
+        for indicator in snapshot:
+            try:
+                signals.append(converter(indicator))
+            except Exception:
+                pass
+    except Exception as e:
+        logger.debug("EIA energy fetch failed: %s", e)
+    return signals
+
+
 def fetch_massive_snapshot(
     massive_client: Any,
     watchlist: dict,

@@ -60,6 +60,7 @@ from mae_core.market.sensing_fetchers import (
     fetch_13f_holdings,
     fetch_finviz,
     fetch_economic_calendar,
+    fetch_eia,
     fetch_massive_snapshot,
 )
 from mae_core.market.sensing_lifecycle import (
@@ -126,6 +127,8 @@ TIER_ROUTING = {
     "economic_calendar": "thematic",
     # Massive/Polygon.io
     "massive_snapshot": "tactical",
+    # Real-economy: Energy
+    "eia_energy": "strategic",
 }
 
 # Source names for rotation — 28 sources, full cycle every 1400 steps
@@ -164,6 +167,8 @@ SOURCE_ROTATION = [
     "economic_calendar",
     # Massive/Polygon.io
     "massive_snapshot",
+    # Real-economy: Energy
+    "eia_energy",
 ]
 
 # Map rotation source names → Thompson distribution keys for guided selection.
@@ -197,6 +202,7 @@ _ROTATION_TO_THOMPSON = {
     "finviz": "finviz_unusual_volume",
     "economic_calendar": "finnhub_economic",  # reuse existing key
     "massive_snapshot": "massive_snapshot",
+    "eia_energy": "eia_energy",
 }
 
 # Map absence source names back to convergence domains
@@ -212,6 +218,7 @@ _ABSENCE_SOURCE_DOMAINS = {
     "activist_13d": "institutional",
     "finviz_unusual_volume": "technical", "finviz_short_squeeze": "institutional",
     "massive_snapshot": "technical",
+    "eia_energy": "energy",
 }
 
 
@@ -276,6 +283,7 @@ class MarketSensingHook:
         economic_calendar_client: Any = None,
         finnhub_websocket: Any = None,
         massive_client: Any = None,
+        eia_client: Any = None,
     ):
         # API clients (all optional — graceful degradation)
         self._sec_client = sec_client
@@ -312,6 +320,7 @@ class MarketSensingHook:
         self._economic_calendar_client = economic_calendar_client
         self._finnhub_websocket = finnhub_websocket
         self._massive_client = massive_client
+        self._eia_client = eia_client
 
         # EventBus (injected by bootstrap for signal bridge)
         self._bus = None
@@ -964,6 +973,10 @@ class MarketSensingHook:
         elif source_name == "massive_snapshot":
             from mae_core.market.signal_adapters.wave2_3 import from_massive_snapshot
             signals = fetch_massive_snapshot(self._massive_client, self._watchlist, from_massive_snapshot)
+
+        elif source_name == "eia_energy":
+            from mae_core.market.signal_adapters.market_data import from_energy_indicator
+            signals = fetch_eia(self._eia_client, from_energy_indicator)
 
         # Enrich in background thread (velocity, filing-time, Ollama sentiment)
         # Moved from _collect_results() so Ollama's 15s timeout doesn't block

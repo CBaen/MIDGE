@@ -34,6 +34,7 @@ from mae_core.market.signal_adapters.market_data import (
     from_macro_indicator,
     from_price_data,
     from_social_sentiment,
+    from_energy_indicator,
 )
 
 from mae_core.market.signal_adapters.technical import (
@@ -80,13 +81,14 @@ __all__ = [
     # political (2)
     "from_congressional_trade",
     "from_senate_trade",
-    # market_data (6)
+    # market_data (7)
     "from_short_interest",
     "from_news_sentiment",
     "from_earnings_event",
     "from_macro_indicator",
     "from_price_data",
     "from_social_sentiment",
+    "from_energy_indicator",
     # technical (4)
     "from_ta_signal",
     "from_session_sweep",
