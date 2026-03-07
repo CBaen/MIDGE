@@ -267,8 +267,10 @@ class EIAClient:
         route = series_def["route"]
 
         # Build facet parameters for v2 API
+        # data[]=value is REQUIRED — without it EIA returns metadata only
         params: Dict[str, Any] = {
             "frequency": series_def["frequency"],
+            "data[]": "value",
             "sort[0][column]": "period",
             "sort[0][direction]": "desc",
             "length": 5,  # Get 5 observations to handle missing values
