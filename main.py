@@ -250,6 +250,9 @@ def _build_systems_dict(ctx) -> dict:
         "economic_calendar_client": getattr(ctx, "economic_calendar_client", None),
         "finnhub_websocket":        getattr(ctx, "finnhub_websocket", None),
         "massive_client":           getattr(ctx, "massive_client", None),
+        # Real-economy: Energy + Legislative
+        "eia_client":               getattr(ctx, "eia_client", None),
+        "congress_gov_client":      getattr(ctx, "congress_gov_client", None),
     }
 
 
