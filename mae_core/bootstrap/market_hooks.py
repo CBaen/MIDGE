@@ -487,7 +487,7 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
             try:
                 return rc.classify()
             except Exception:
-                pass
+                logger.debug("Regime classifier failed, using default", exc_info=True)
         return "default"
 
     _timer = getattr(ctx, "step_timer", None)

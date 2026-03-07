@@ -562,7 +562,7 @@ class MarketSensingHook:
                 try:
                     tier_alerter.record_signal(**sig_kwargs)
                 except Exception:
-                    pass
+                    logger.debug("Tier alerter %s failed for signal", tier, exc_info=True)
 
         # Track stats
         self._total_signals_fed += len(signals)
