@@ -128,8 +128,8 @@ Four work packages closing the operational gap (Thompson isolation, combo feedba
 
 ## Stats
 
-- **146 systems** (92 core + 54 market), **4,484+ tests**, **157 holons**, **425 connections**
-- **102 market files** (31 API + 12 edge + 27 intelligence + 8 signal_adapters + 10 archaeology + 14 root)
+- **147 systems** (92 core + 55 market), **4,536 tests**, **157 holons**, **425 connections**
+- **103 market files** (31 API + 12 edge + 28 intelligence + 8 signal_adapters + 10 archaeology + 14 root)
 - **12 domains**, **30 sources** in sensing rotation
 - **33-layer bootstrap**, **14 mixins** on MycelialAgent
 - **222,916 fingerprints**, **39 templates** (26 cross-validated across 3+ symbols)
@@ -141,6 +141,8 @@ Four work packages closing the operational gap (Thompson isolation, combo feedba
 - **Thompson: FIXED.** Forgetting/learning cadence aligned. Independence correction active.
 - **EIA: LIVE.** All 5 energy series returning real data. Intelligence layer fully wired (Thompson, correlation, decay).
 - **Congress.gov: WIRED.** Legislative signal client integrated. 11 policy areas mapped to sector ETFs. Full intelligence layer wiring (Thompson, convergence, plain language, 51 tests). **Needs `CONGRESS_GOV_API_KEY` in `.env`** — free at https://api.data.gov/signup/
+- **Granger: WIRED.** Causal analysis runs every 500 steps (180-day lookback). Publishes findings to EventBus.
+- **Test isolation: FIXED.** `LEARNING_CONFIG` deep-copy/restore in conftest. All 7 previously-flaky tests now pass in full suite.
 - **Needs restart:** `python main.py --daemon --agents 6 --steps 500 --pace 2.0`
 
 ## What's Next
@@ -148,7 +150,7 @@ Four work packages closing the operational gap (Thompson isolation, combo feedba
 1. **Restart daemon on fixed code** — picks up all fixes: Thompson, independence, templates, active tracking, EIA energy, Congress.gov
 2. **Monitor template feedback loop** — watch for template win/loss updates in `pattern_templates.jsonl`
 3. **New real-economy domains** — USDA agriculture (free, seasonal), BDI logistics (free proxy)
-4. **Pattern discovery upgrades** — Granger causality (statsmodels), transfer entropy, RMT denoising, PCMCI+
+4. **Pattern discovery upgrades** — transfer entropy (infomeasure), RMT denoising (skfolio), PCMCI+ (Tigramite)
 5. **Web scraping infrastructure** — autonomous pattern discovery via website crawling (research complete, stack: httpx + selectolax + trafilatura)
 6. **Options flow via Unusual Whales** ($35/mo API — needs Guiding Light approval)
 7. **Re-run excavation** — companion process with fixed template code + new EIA + Congress.gov domains
@@ -156,7 +158,7 @@ Four work packages closing the operational gap (Thompson isolation, combo feedba
 ## Verification
 
 ```bash
-python -m pytest tests/ -q              # 4538 pass, 0 regressions
+python -m pytest tests/ -q              # 4536 pass, 0 failures, 2 xfail
 python main.py --agents 3 --steps 30    # Smoke test
 python -c "from mae_core.market.archaeology.pattern_library import PatternLibrary; lib = PatternLibrary(); print(f'{lib.size} fingerprints, {lib.template_count} templates')"
 ```
