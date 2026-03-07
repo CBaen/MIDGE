@@ -64,7 +64,7 @@ def create_mae(
 
     logger.info("=" * 60)
     logger.info("MIDGE is fully wired: %d shared systems, %d agents, %d per-agent systems, %d holons, %d connections",
-                52, ctx.num_agents, len(ctx.per_agent_systems) * 5, len(ctx.holon_registry.get_all_ids()),
+                55, ctx.num_agents, len(ctx.per_agent_systems) * 5, len(ctx.holon_registry.get_all_ids()),
                 ctx.connection_registry.get_statistics()["total_connections"])
     logger.info("=" * 60)
 
