@@ -5,16 +5,8 @@ Fetches recent bill activity from the Congress.gov API v3.
 Free key registration: https://api.data.gov/signup/
 Rate limit: 1,000 requests/hour with registered key.
 
-Legislative signals are a slow-moving but high-conviction input: a bill
-signed into law is a structural change nobody else cross-references with
-insider trades and energy data simultaneously. The edge is convergence —
-when a defense bill gets enacted at the same time defense insiders are buying,
-that is a much stronger signal than either alone.
-
-Key data:
-  - Recent bills sorted by update date (last 7 days)
-  - Bill detail with policyArea classification
-  - Action text indicating legislative progress stage
+Legislative signals are slow-moving but high-conviction. A defense bill
+enacted while defense insiders are buying is far stronger than either alone.
 
 API base: https://api.congress.gov/v3
 Auth: ?api_key={KEY}&format=json (query parameters)
@@ -33,52 +25,27 @@ import requests
 logger = logging.getLogger(__name__)
 
 CONGRESS_BASE_URL = "https://api.congress.gov/v3"
-
-# Rate limiting — 1,000/hour = ~0.28/second. Use 1.2s to stay well under.
-REQUEST_DELAY = 1.2  # seconds between requests
-
-# Cache duration — bills don't change minute-to-minute
+REQUEST_DELAY = 1.2       # 1,000/hour → stay well under with 1.2s gap
 CACHE_DURATION = 4 * 3600  # 4 hours
 
-# --- Action keyword filters ---
-# Keywords in latestAction.text that signal meaningful legislative progress
+# latestAction.text keywords indicating meaningful legislative progress
 ADVANCING_KEYWORDS = [
-    "passed",
-    "signed",
-    "enacted",
-    "became public law",
-    "reported",
-    "ordered to be reported",
-    "agreed to",
-    "cloture",
+    "passed", "signed", "enacted", "became public law",
+    "reported", "ordered to be reported", "agreed to", "cloture",
 ]
 
-# Keywords in title or action that flip direction to bearish
-BEARISH_KEYWORDS = [
-    "restrict",
-    "ban",
-    "prohibit",
-    "repeal",
-    "reduce",
-    "cut",
-]
+# Title/action keywords that flip direction to bearish
+BEARISH_KEYWORDS = ["restrict", "ban", "prohibit", "repeal", "reduce", "cut"]
 
-# --- Strength mapping by action type ---
-# More advanced action = stronger signal
+# Signal strength by action stage (highest match wins)
 _ACTION_STRENGTHS: Dict[str, float] = {
-    "enacted":             1.0,
-    "became public law":   1.0,
-    "signed":              1.0,
-    "passed house":        0.8,
-    "passed senate":       0.8,
-    "passed":              0.8,
-    "agreed to":           0.7,
-    "cloture":             0.6,
-    "reported":            0.5,
-    "ordered to be reported": 0.5,
+    "enacted": 1.0, "became public law": 1.0, "signed": 1.0,
+    "passed house": 0.8, "passed senate": 0.8, "passed": 0.8,
+    "agreed to": 0.7, "cloture": 0.6,
+    "reported": 0.5, "ordered to be reported": 0.5,
 }
 
-# --- Policy area → sector tickers ---
+# Policy area → sector tickers
 LEGISLATIVE_TICKER_MAP: Dict[str, List[str]] = {
     "Armed Forces and National Security": ["ITA", "LMT", "RTX", "NOC", "GD", "BA"],
     "Health": ["XLV", "UNH", "JNJ", "PFE", "ABBV", "IHF"],
@@ -95,11 +62,7 @@ LEGISLATIVE_TICKER_MAP: Dict[str, List[str]] = {
 
 
 def _determine_direction(title: str, action_text: str) -> str:
-    """Classify a legislative action as bullish/bearish/neutral for affected tickers.
-
-    Default: bill advancing = bullish (government spending/clarity = positive).
-    Exception: regulatory/restriction language in title or action = bearish.
-    """
+    """Bill advancing = bullish. Restriction/repeal language = bearish."""
     combined = (title + " " + action_text).lower()
     if any(kw in combined for kw in BEARISH_KEYWORDS):
         return "bearish"
@@ -107,12 +70,7 @@ def _determine_direction(title: str, action_text: str) -> str:
 
 
 def _compute_strength(action_text: str) -> float:
-    """Compute signal strength from the stage of legislative progress.
-
-    More advanced action stage = higher strength. Checks action_text (lowercased)
-    against the strength map in order from highest to lowest.
-    Returns 0.0-1.0.
-    """
+    """Signal strength from legislative stage. Higher stage = higher strength."""
     action_lower = action_text.lower()
     for keyword, strength in sorted(_ACTION_STRENGTHS.items(), key=lambda x: -x[1]):
         if keyword in action_lower:
@@ -120,23 +78,30 @@ def _compute_strength(action_text: str) -> float:
     return 0.3  # Default for other advancing keywords
 
 
+def _classify_signal_type(action_text: str) -> str:
+    """Derive signal_type label from action text."""
+    action_lower = action_text.lower()
+    if any(kw in action_lower for kw in ("enacted", "became public law", "signed")):
+        return "bill_enacted"
+    if "passed" in action_lower or "agreed to" in action_lower:
+        return "bill_passed"
+    return "bill_advancing"
+
+
 @dataclass
 class LegislativeIndicator:
     """A single legislative signal from Congress.gov.
 
-    Carries the same signal metadata fields as other MIDGE signals so the
-    convergence alerter can weight legislative data against other domains.
-
-    Legislative signals decay slowly — a bill signed into law has structural
-    market impact for weeks. Decay rate 0.03 ≈ 23-day half-life.
+    Carries the same signal metadata as other MIDGE signals so the convergence
+    alerter can weight legislative data against other domains.
+    Decay rate 0.03 ≈ 23-day half-life (bill law impact is structural).
     """
-
     bill_id: str              # e.g. "hr-7539-119"
-    bill_number: str          # e.g. "H.R. 7539"
+    bill_number: str          # e.g. "HR 7539"
     title: str
     congress: int
     policy_area: str          # e.g. "Armed Forces and National Security"
-    action_text: str          # The latestAction text
+    action_text: str          # latestAction text
     action_date: str          # YYYY-MM-DD
     signal_type: str          # "bill_enacted", "bill_passed", "bill_advancing"
     direction: str            # bullish/bearish/neutral
@@ -147,31 +112,18 @@ class LegislativeIndicator:
     confidence: float = 0.65
 
 
-def _classify_signal_type(action_text: str) -> str:
-    """Derive a clean signal_type label from the action text."""
-    action_lower = action_text.lower()
-    if any(kw in action_lower for kw in ("enacted", "became public law", "signed")):
-        return "bill_enacted"
-    if "passed" in action_lower or "agreed to" in action_lower:
-        return "bill_passed"
-    return "bill_advancing"
-
-
 class CongressGovClient:
     """Client for the Congress.gov API v3.
 
-    Fetches recent bills that have meaningfully advanced in the legislative
-    process. Translates each into a LegislativeIndicator with direction and
-    strength signals that the convergence engine can cross-reference with
-    other domains.
+    Fetches advancing bills and translates each into a LegislativeIndicator
+    that the convergence engine can cross-reference with other domains.
 
     Usage:
-        client = CongressGovClient()                     # key from env
-        snapshot = client.get_legislative_snapshot()      # all advancing bills
-        bills = client.get_recent_bills(days=7)           # raw filtered list
+        client = CongressGovClient()                    # key from env
+        snapshot = client.get_legislative_snapshot()    # all advancing bills
 
     Rate limits: 1,000/hour. Client enforces 1.2s delay.
-    Cache: 4 hours — bills don't change minute-to-minute.
+    Cache: 4 hours.
     """
 
     def __init__(self, api_key: Optional[str] = None, provider=None):
@@ -206,7 +158,6 @@ class CongressGovClient:
         full_params = dict(params)
         full_params["api_key"] = self.api_key
         full_params["format"] = "json"
-
         url = f"{CONGRESS_BASE_URL}{route}"
 
         if self._provider is not None:
@@ -242,11 +193,11 @@ class CongressGovClient:
             return None
 
     def get_recent_bills(self, days: int = 7, limit: int = 50) -> List[dict]:
-        """Fetch recent bills that have meaningfully advanced (last `days` days).
+        """Fetch bills updated in the past `days` days that show advancing action.
 
-        Calls the /v3/bill list endpoint sorted by updateDate descending, then
-        filters entries whose latestAction.text matches an advancing keyword.
-        Returns raw bill dicts (no detail fetch at this stage).
+        Calls /v3/bill sorted by updateDate descending, filters to entries
+        whose latestAction.text matches an advancing keyword.
+        Returns raw bill dicts (no detail fetch).
         """
         cache_key = f"bill_list_{days}_{limit}"
         if cache_key in self._cache:
@@ -255,7 +206,6 @@ class CongressGovClient:
                 return data
 
         from_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
-
         params: Dict[str, Any] = {
             "fromDateTime": from_date,
             "limit": limit,
@@ -271,19 +221,17 @@ class CongressGovClient:
             logger.debug("Congress.gov: no bills returned for past %d days", days)
             return []
 
-        # Filter to bills with advancing action keywords
-        advancing = []
-        for bill in bills:
-            action_text = (
-                bill.get("latestAction", {}).get("text", "") or ""
-            ).lower()
-            if any(kw in action_text for kw in ADVANCING_KEYWORDS):
-                advancing.append(bill)
+        advancing = [
+            bill for bill in bills
+            if any(
+                kw in (bill.get("latestAction", {}).get("text", "") or "").lower()
+                for kw in ADVANCING_KEYWORDS
+            )
+        ]
 
         logger.debug(
             "Congress.gov: %d bills returned, %d advancing", len(bills), len(advancing)
         )
-
         self._cache[cache_key] = (advancing, time.time())
         return advancing
 
@@ -292,8 +240,8 @@ class CongressGovClient:
     ) -> Optional[dict]:
         """Fetch detail for a single bill to retrieve policyArea.
 
-        Returns the raw bill detail dict or None on error.
         Bill type should be lowercase (e.g. "hr", "s", "hjres").
+        Returns raw bill detail dict or None on error.
         """
         cache_key = f"bill_detail_{congress}_{bill_type}_{number}"
         if cache_key in self._cache:
@@ -308,7 +256,7 @@ class CongressGovClient:
         detail = data.get("bill")
         if detail is None:
             logger.debug(
-                "Congress.gov: no 'bill' key in detail response for %s/%s/%s",
+                "Congress.gov: no 'bill' key in detail for %s/%s/%s",
                 congress, bill_type, number,
             )
             return None
@@ -317,49 +265,35 @@ class CongressGovClient:
         return detail
 
     def get_legislative_snapshot(self) -> List[LegislativeIndicator]:
-        """Fetch recent advancing bills and build LegislativeIndicator objects.
+        """Fetch advancing bills (last 7 days) and build LegislativeIndicators.
 
-        Main method: fetches the list of advancing bills (last 7 days), then
-        fetches detail for each to obtain policyArea. Builds one indicator per
-        bill that has a mapped policyArea. Resilient — if detail fetch fails
-        for a bill, it is skipped and processing continues.
-
-        Returns list of LegislativeIndicators, possibly empty.
+        Fetches bill detail for each to obtain policyArea. Skips bills where
+        detail fetch fails or policyArea is unmapped. Resilient per-bill.
         """
         raw_bills = self.get_recent_bills()
         if not raw_bills:
             return []
 
         indicators: List[LegislativeIndicator] = []
-
         for bill in raw_bills:
             try:
                 indicator = self._build_indicator(bill)
                 if indicator is not None:
                     indicators.append(indicator)
             except Exception as exc:
-                bill_id = self._bill_id_from_raw(bill)
                 logger.warning(
-                    "Congress.gov: skipping bill %s — error: %s", bill_id, exc
+                    "Congress.gov: skipping bill %s — error: %s",
+                    self._bill_id_from_raw(bill), exc,
                 )
-                continue
 
         logger.info(
-            "Congress.gov: legislative snapshot — %d indicators from %d advancing bills",
+            "Congress.gov: %d indicators from %d advancing bills",
             len(indicators), len(raw_bills),
         )
         return indicators
 
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
-
     def _build_indicator(self, bill: dict) -> Optional[LegislativeIndicator]:
-        """Build a LegislativeIndicator from a raw bill dict + its detail.
-
-        Fetches bill detail for policyArea. Returns None if policyArea is
-        unmapped or detail fetch fails.
-        """
+        """Build a LegislativeIndicator from a raw bill dict + its detail."""
         congress = bill.get("congress")
         bill_type = (bill.get("type") or "").lower()
         number = str(bill.get("number") or "")
@@ -367,42 +301,35 @@ class CongressGovClient:
         if not (congress and bill_type and number):
             return None
 
-        # Fetch detail to get policyArea
         detail = self.get_bill_detail(congress, bill_type, number)
         if detail is None:
             return None
 
-        policy_area = (
-            detail.get("policyArea", {}) or {}
-        ).get("name", "")
-        if not policy_area:
-            policy_area = "General"
-
+        policy_area = (detail.get("policyArea") or {}).get("name", "") or "General"
         affected_tickers = LEGISLATIVE_TICKER_MAP.get(policy_area, [])
         if not affected_tickers:
-            # Unmapped policy area — no tickers to signal
             logger.debug(
                 "Congress.gov: no ticker map for policyArea '%s', skipping", policy_area
             )
             return None
 
-        action_text = (
-            bill.get("latestAction", {}).get("text", "") or ""
-        )
-        action_date = (
-            bill.get("latestAction", {}).get("actionDate", "") or ""
-        )
+        action_text = (bill.get("latestAction", {}).get("text", "") or "")
+        action_date = (bill.get("latestAction", {}).get("actionDate", "") or "")
         title = bill.get("title", "") or ""
-        bill_number = f"{bill_type.upper()} {number}"
 
         direction = _determine_direction(title, action_text)
         strength = _compute_strength(action_text)
         signal_type = _classify_signal_type(action_text)
         bill_id = self._bill_id_from_raw(bill)
 
-        indicator = LegislativeIndicator(
+        logger.debug(
+            "Congress.gov: %s [%s] %s strength=%.2f tickers=%s",
+            bill_id, signal_type, direction, strength,
+            ", ".join(affected_tickers[:3]),
+        )
+        return LegislativeIndicator(
             bill_id=bill_id,
-            bill_number=bill_number,
+            bill_number=f"{bill_type.upper()} {number}",
             title=title,
             congress=int(congress),
             policy_area=policy_area,
@@ -414,20 +341,11 @@ class CongressGovClient:
             affected_tickers=affected_tickers,
         )
 
-        logger.debug(
-            "Congress.gov: %s [%s] %s strength=%.2f tickers=%s",
-            bill_id, signal_type, direction, strength,
-            ", ".join(affected_tickers[:3]),
-        )
-        return indicator
-
     @staticmethod
     def _bill_id_from_raw(bill: dict) -> str:
         """Build a stable bill ID string from a raw bill dict."""
         bill_type = (bill.get("type") or "unknown").lower()
-        number = bill.get("number", "0")
-        congress = bill.get("congress", "0")
-        return f"{bill_type}-{number}-{congress}"
+        return f"{bill_type}-{bill.get('number', '0')}-{bill.get('congress', '0')}"
 
 
 def get_legislative_snapshot() -> List[LegislativeIndicator]:
@@ -442,18 +360,13 @@ if __name__ == "__main__":
     print("Congress.gov Legislative Signal Test")
     print("=" * 60)
 
-    api_key = os.environ.get("CONGRESS_GOV_API_KEY")
-    if not api_key:
-        print("WARNING: CONGRESS_GOV_API_KEY not set. Requests will fail.")
-        print("Register free at: https://api.data.gov/signup/")
-        print()
+    if not os.environ.get("CONGRESS_GOV_API_KEY"):
+        print("WARNING: CONGRESS_GOV_API_KEY not set. Register free at https://api.data.gov/signup/")
 
     client = CongressGovClient()
-
-    # Optionally narrow the day window via CLI arg
     days = int(sys.argv[1]) if len(sys.argv) > 1 else 7
-    print(f"\nFetching advancing bills from the past {days} days...")
 
+    print(f"\nFetching advancing bills from the past {days} days...")
     raw = client.get_recent_bills(days=days)
     print(f"  {len(raw)} advancing bills found")
 
@@ -462,12 +375,8 @@ if __name__ == "__main__":
     if snapshot:
         for ind in snapshot:
             arrow = {"bullish": "+", "bearish": "-", "neutral": "~"}[ind.direction]
-            print(
-                f"  [{arrow}] {ind.bill_id:<25}  "
-                f"strength={ind.strength:.2f}  "
-                f"{ind.policy_area:<40}  "
-                f"tickers={','.join(ind.affected_tickers[:3])}"
-            )
+            print(f"  [{arrow}] {ind.bill_id:<28} strength={ind.strength:.2f}  "
+                  f"{ind.policy_area:<38}  {','.join(ind.affected_tickers[:3])}")
             print(f"       {ind.action_text[:80]}")
     else:
         print("  No indicators available (check API key or no advancing bills this week)")
