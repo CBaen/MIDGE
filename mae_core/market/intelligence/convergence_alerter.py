@@ -37,6 +37,12 @@ logger = logging.getLogger(__name__)
 _DATA_DIR = Path(__file__).resolve().parents[3] / "data" / "market"
 _DISCOVERY_LOG = _DATA_DIR / "discovery_log.jsonl"
 
+# Independence correction thresholds — controls how correlated domains
+# are discounted in the effective domain count calculation.
+# Phase 0 found macro+technical at r=0.73 — these thresholds gate that fix.
+STRONG_CORRELATION_THRESHOLD = 0.5   # |r| above this → half credit (+0.5)
+MODERATE_CORRELATION_THRESHOLD = 0.3  # |r| above this → partial credit (+0.7)
+
 
 @dataclass
 class Signal:
@@ -784,9 +790,9 @@ class ConvergenceAlerter:
 
         for domain in domains[1:]:
             max_abs_corr = self._max_domain_correlation(domain, counted_domains)
-            if max_abs_corr > 0.5:
+            if max_abs_corr > STRONG_CORRELATION_THRESHOLD:
                 effective_count += 0.5  # strongly correlated — half credit
-            elif max_abs_corr > 0.3:
+            elif max_abs_corr > MODERATE_CORRELATION_THRESHOLD:
                 effective_count += 0.7  # moderately correlated — partial credit
             else:
                 effective_count += 1.0  # independent or no data — full credit

@@ -584,7 +584,7 @@ class MarketSensingHook:
                         "timestamp": sig.timestamp.isoformat(),
                     })
                 except Exception:
-                    pass
+                    logger.debug("EventBus publish failed for signal %s", sig.signal_id, exc_info=True)
 
         # Store
         store_signals(signals, self._memory)
