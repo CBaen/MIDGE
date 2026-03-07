@@ -480,43 +480,7 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         failures += 1
         logger.debug("Market: Active Tracker failed", exc_info=True)
 
-    # --- Trust registration with BoundaryMembrane ---
-    market_sources = [
-        # Original sources
-        ("sec_edgar", 0.90), ("yfinance", 0.75), ("alpha_vantage", 0.80), ("rapidapi", 0.65),
-        ("usa_spending", 0.85), ("sam_gov", 0.80), ("senate_free", 0.80), ("apewisdom", 0.45),
-        ("finra_short", 0.85), ("sec_efts", 0.90), ("finnhub", 0.75), ("fred_macro", 0.95),
-        ("session_sweep", 0.60),
-        # Layer 6
-        ("cot_positioning", 0.85), ("stocktwits", 0.40), ("vix_structure", 0.80),
-        ("google_trends", 0.50), ("ta_indicators", 0.70),
-        # Ten Gifts
-        ("order_flow", 0.60), ("fractal_resonance", 0.65),
-        # Always-On Wave 2+3
-        ("crypto_coingecko", 0.70), ("crypto_coincap", 0.65), ("openinsider", 0.80),
-        ("institutional_13f", 0.85), ("finviz", 0.65), ("economic_calendar", 0.80),
-        # Massive/Polygon.io
-        ("massive_snapshot", 0.90),
-        # Real-economy: Energy
-        ("eia_energy", 0.95),
-        # Real-economy: Legislative
-        ("congress_legislation", 0.90),
-    ]
-    bm = getattr(ctx, "boundary_membrane", None)
-    if bm is not None and hasattr(bm, "register_source"):
-        for source_name, trust in market_sources:
-            try:
-                bm.register_source(source_name, trust=trust)
-            except Exception:
-                logger.debug("Could not register %s with BoundaryMembrane", source_name)
-
-    # --- Register MarketDataProvider with ApiGateway ---
-    gateway = getattr(ctx, "api_gateway", None)
-    if gateway is not None and ctx.market_data_provider is not None:
-        try:
-            gateway.register_provider("market_data", ctx.market_data_provider)
-        except Exception:
-            logger.debug("Could not register MarketDataProvider with ApiGateway", exc_info=True)
+    _register_trust_and_gateway(ctx)
 
     logger.info(
         "Layer 33a - Market systems: %d instantiated (%d failures)", 56 - failures, failures,
