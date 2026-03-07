@@ -52,6 +52,8 @@ ALWAYS_AVAILABLE: Set[str] = {
     "crypto_exchange",     # CoinCap API serves data 24/7
     "openinsider",         # Website serves cached SEC data anytime
     "economic_calendar",   # Hardcoded calendar, always available
+    "eia_energy",          # EIA API serves historical data anytime
+    "congress_legislation",  # Congress.gov API serves data anytime
 }
 
 # Requires CME Globex futures session (Sun 6PM – Fri 5PM ET, daily halt 5–6 PM Mon–Thu)

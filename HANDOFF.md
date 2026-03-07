@@ -112,7 +112,7 @@ Four work packages closing the operational gap (Thompson isolation, combo feedba
 - **Templates: REBUILT.** 39 templates live in `pattern_templates.jsonl`. PatternWatcher can now match live signals.
 - **Thompson: FIXED.** Forgetting/learning cadence aligned. Independence correction active.
 - **EIA: LIVE.** All 5 energy series returning real data. Intelligence layer fully wired (Thompson, correlation, decay).
-- **Congress.gov: WIRED.** Legislative signal client integrated. 11 policy areas mapped to sector ETFs. Full intelligence layer wiring (Thompson, convergence, plain language, 51 tests).
+- **Congress.gov: WIRED.** Legislative signal client integrated. 11 policy areas mapped to sector ETFs. Full intelligence layer wiring (Thompson, convergence, plain language, 51 tests). **Needs `CONGRESS_GOV_API_KEY` in `.env`** — free at https://api.data.gov/signup/
 - **Needs restart:** `python main.py --daemon --agents 6 --steps 500 --pace 2.0`
 
 ## What's Next
@@ -128,7 +128,7 @@ Four work packages closing the operational gap (Thompson isolation, combo feedba
 ## Verification
 
 ```bash
-python -m pytest tests/ -q              # 4433+ pass, 0 regressions
+python -m pytest tests/ -q              # 4484+ pass, 0 regressions
 python main.py --agents 3 --steps 30    # Smoke test
 python -c "from mae_core.market.archaeology.pattern_library import PatternLibrary; lib = PatternLibrary(); print(f'{lib.size} fingerprints, {lib.template_count} templates')"
 ```
