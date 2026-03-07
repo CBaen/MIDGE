@@ -336,3 +336,43 @@ def from_energy_indicator(indicator) -> MarketSignal:
             "affected_tickers": indicator.affected_tickers,
         },
     )
+
+
+def from_legislative_indicator(indicator) -> MarketSignal:
+    """Convert a Congress.gov LegislativeIndicator to a MarketSignal.
+
+    Legislative signals are slow-moving but high-conviction when stacked
+    with insider trades and sector data. Bills advancing through Congress
+    affect sector ETFs and individual companies in the policy area.
+    """
+    event_dt = _ensure_datetime(indicator.action_date)
+
+    symbol = indicator.affected_tickers[0] if indicator.affected_tickers else ""
+    signal_id = f"congress_legislation:{indicator.bill_id}:{indicator.action_date}"
+
+    return MarketSignal(
+        signal_id=signal_id,
+        source="congress_legislation",
+        symbol=symbol,
+        asset_class="equity",
+        domain="government",
+        direction=indicator.direction,
+        strength=indicator.strength,
+        confidence=indicator.confidence,
+        decay_rate=indicator.decay_rate,
+        timestamp=event_dt,
+        received_at=datetime.now(),
+        outcome_symbol=symbol,
+        raw_id=indicator.bill_id,
+        raw_type="LegislativeIndicator",
+        metadata={
+            "bill_id": indicator.bill_id,
+            "bill_number": indicator.bill_number,
+            "title": indicator.title,
+            "congress": indicator.congress,
+            "policy_area": indicator.policy_area,
+            "action_text": indicator.action_text,
+            "signal_type": indicator.signal_type,
+            "affected_tickers": indicator.affected_tickers,
+        },
+    )
