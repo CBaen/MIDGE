@@ -278,6 +278,17 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         failures += 1
 
     try:
+        from mae_core.market.intelligence.granger_analyzer import GrangerAnalyzer
+        ctx.granger_analyzer = (
+            GrangerAnalyzer(archive_reader=ctx.signal_archive_reader)
+            if ctx.signal_archive_reader is not None else None
+        )
+    except Exception:
+        logger.debug("Market: granger_analyzer failed to construct", exc_info=True)
+        ctx.granger_analyzer = None
+        failures += 1
+
+    try:
         from mae_core.market.intelligence.thompson_calibrator import ThompsonCalibrator
         ctx.thompson_calibrator = (
             ThompsonCalibrator(thompson_sampler=ctx.thompson_sampler)
