@@ -292,3 +292,47 @@ def from_social_sentiment(sentiment) -> MarketSignal:
             "source_subreddit": sentiment.source_subreddit,
         },
     )
+
+
+def from_energy_indicator(indicator) -> MarketSignal:
+    """Convert an EIA EnergyIndicator to a MarketSignal.
+
+    Energy inventory/production data is a real-economy signal. Inventory
+    builds (supply > demand) are bearish for energy stocks; draws are bullish.
+    The EIA client pre-computes direction and strength from weekly changes.
+
+    Unlike macro signals, energy signals carry specific affected tickers
+    (XLE, XOP, UNG, etc.) — the first is used as the primary symbol.
+    """
+    event_dt = _ensure_datetime(indicator.date)
+
+    symbol = indicator.affected_tickers[0] if indicator.affected_tickers else ""
+    signal_id = f"eia_energy:{indicator.signal_type}:{indicator.date}"
+
+    return MarketSignal(
+        signal_id=signal_id,
+        source="eia_energy",
+        symbol=symbol,
+        asset_class="commodity",
+        domain="energy",
+        direction=indicator.direction,
+        strength=indicator.strength,
+        confidence=indicator.confidence,
+        decay_rate=indicator.decay_rate,
+        timestamp=event_dt,
+        received_at=datetime.now(),
+        outcome_symbol=symbol,
+        raw_id=indicator.series_key,
+        raw_type="EnergyIndicator",
+        metadata={
+            "series_key": indicator.series_key,
+            "series_name": indicator.series_name,
+            "value": indicator.value,
+            "prior_value": indicator.prior_value,
+            "change": indicator.change,
+            "change_pct": indicator.change_pct,
+            "signal_type": indicator.signal_type,
+            "unit": indicator.unit,
+            "affected_tickers": indicator.affected_tickers,
+        },
+    )
