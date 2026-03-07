@@ -306,12 +306,13 @@ class CatalystCalendar:
             logger.warning("CatalystCalendar: Finnhub earnings fetch failed: %s", exc)
             return by_ticker
 
+        tickers_upper = {t.upper() for t in tickers}
         for event in events:
             symbol = getattr(event, "symbol", None)
             if symbol is None:
                 continue
             symbol = symbol.upper()
-            if symbol not in [t.upper() for t in tickers]:
+            if symbol not in tickers_upper:
                 continue
 
             # Parse date string to datetime
