@@ -210,6 +210,7 @@ def _build_systems_dict(ctx) -> dict:
         "session_sweep_detector":   getattr(ctx, "session_sweep_detector", None),
         "signal_archive_reader":    getattr(ctx, "signal_archive_reader", None),
         "lag_correlation_analyzer":  getattr(ctx, "lag_correlation_analyzer", None),
+        "granger_analyzer":         getattr(ctx, "granger_analyzer", None),
         "thompson_calibrator":      getattr(ctx, "thompson_calibrator", None),
         "kelly_position_sizer":     getattr(ctx, "kelly_position_sizer", None),
         # Hypothesis loop (RSI Layer 2)

@@ -621,6 +621,26 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                 except Exception:
                     logger.debug("Lag correlation step failed", exc_info=True)
 
+            granger = getattr(ctx, "granger_analyzer", None)
+            if granger is not None:
+                try:
+                    if _timer is not None:
+                        with _timer.track("granger_causality"):
+                            g_findings = granger.analyze(lookback_days=180)
+                    else:
+                        g_findings = granger.analyze(lookback_days=180)
+                    if g_findings and hasattr(ctx, "bus"):
+                        ctx.bus.publish("market.intel.granger_finding", {
+                            "count": len(g_findings),
+                            "top": [
+                                {"cause": f.cause_source, "effect": f.effect_source,
+                                 "lag": f.best_lag, "p": f.p_value}
+                                for f in g_findings[:3]
+                            ],
+                        })
+                except Exception:
+                    logger.debug("Granger causality step failed", exc_info=True)
+
         # Every 1000 steps: Thompson calibration diagnostic
         if step % 1000 == 0:
             calibrator = getattr(ctx, "thompson_calibrator", None)

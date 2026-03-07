@@ -42,6 +42,7 @@ def _register_market_somatic(ctx: SimpleNamespace) -> None:
         "regime_classifier": ("RegimeClassifier", ["price_fetcher"]),
         "signal_archive_reader": ("SignalArchiveReader", []),
         "lag_correlation_analyzer": ("LagCorrelationAnalyzer", ["signal_archive_reader"]),
+        "granger_analyzer": ("GrangerAnalyzer", ["signal_archive_reader"]),
         "thompson_calibrator": ("ThompsonCalibrator", ["thompson_sampler"]),
         "kelly_position_sizer": ("KellyPositionSizer", ["thompson_sampler"]),
         "hypothesis_registry": ("HypothesisRegistry", []),
