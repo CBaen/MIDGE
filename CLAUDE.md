@@ -69,6 +69,7 @@ mae_core/market/
     stocktwits_client.py        # StockTwits social sentiment + trending tickers
     vix_client.py               # VIX term structure + fear gauge signals
     trends_client.py            # Google Trends search interest signals
+    eia_client.py               # EIA energy inventory/production (real-economy signals)
   edge/                         # Edge detectors (Mae's pattern recognition)
     cluster_detector.py         # Insider buying clusters (3+ insiders = high signal)
     politician_tracker.py       # Congress member trade + committee + contract correlation
