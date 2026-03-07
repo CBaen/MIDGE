@@ -2,6 +2,34 @@
 
 ## What Happened
 
+### Granger Causality + Test Isolation + Bug Fixes (2026-03-07)
+
+**Granger causality analyzer** — highest-value analytical upgrade from expedition roadmap. Tests whether signal A's past *improves prediction* of B beyond B's own autocorrelation (controls for autocorrelation, unlike lag-correlation). Uses statsmodels `grangercausalitytests` with first-differencing for stationarity, Bonferroni correction, atomic persistence.
+
+**Thompson key collision fix** — `economic_calendar` was sharing `finnhub_economic` Thompson key. Two unrelated signal types (suppression windows vs Finnhub news) were corrupting one Beta distribution. Now separate keys.
+
+**Test isolation fix** — `create_mae()` mutates `LEARNING_CONFIG` in place (meta-learning pushes `min_correlation` from 0.6 to 0.85). This polluted 7 tests in `test_composite_hypotheses.py` and `test_hypothesis_generator.py` that ran afterward. Fix: conftest autouse fixture now deep-copies and restores `LEARNING_CONFIG` after each test.
+
+**3 silent failure fixes** — `except Exception: pass` blocks in sensing_hook.py (tier alerter, EventBus publish) and market_hooks.py (regime classifier) now log at DEBUG level.
+
+**Named constants** — Independence correction thresholds `STRONG_CORRELATION_THRESHOLD = 0.5` and `MODERATE_CORRELATION_THRESHOLD = 0.3` replace bare magic numbers in convergence_alerter.py.
+
+**Monolith fix** — `market_systems.py` was 523 lines (over 500 cap). Extracted `_register_trust_and_gateway()` + data-driven edge detector loop → 493 lines.
+
+**Files changed:**
+- `mae_core/market/intelligence/granger_analyzer.py` — NEW: GrangerAnalyzer, GrangerFinding, causal strength lookup
+- `mae_core/market/sensing_hook.py` — Thompson key collision fix, silent failure logging
+- `mae_core/bootstrap/market_hooks.py` — Granger step hook (every 500 steps), silent failure logging
+- `mae_core/bootstrap/market_systems.py` — GrangerAnalyzer instantiation, trust refactor (523→493 lines)
+- `mae_core/bootstrap/market_registration.py` — granger_analyzer holon entry
+- `mae_core/market/intelligence/convergence_alerter.py` — Named correlation constants
+- `main.py` — granger_analyzer in systems dict, system count 52→55
+- `tests/conftest.py` — LEARNING_CONFIG isolation (deep-copy + restore)
+- `tests/test_granger_analyzer.py` — NEW: 15 tests
+- `tests/test_wave2_3_integration.py` — Rotation count 28→30
+- `tests/test_decomposition_wiring.py` — Converter count 35→37
+- `tests/test_integration.py` — granger_analyzer in expected keys
+
 ### Template Persistence Fix + Performance Optimization (2026-03-06)
 
 **Critical bug found and fixed:** 222K fingerprints existed but 0 templates — PatternWatcher had nothing to match against. Three compounding bugs:
