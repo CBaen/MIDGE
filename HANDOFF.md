@@ -88,8 +88,8 @@ Four work packages closing the operational gap (Thompson isolation, combo feedba
 
 ## Stats
 
-- **146 systems** (92 core + 54 market), **4,395+ tests**, **157 holons**, **425 connections**
-- **100 market files** (29 API + 12 edge + 27 intelligence + 8 signal_adapters + 10 archaeology + 14 root)
+- **146 systems** (92 core + 54 market), **4,429+ tests**, **157 holons**, **425 connections**
+- **101 market files** (30 API + 12 edge + 27 intelligence + 8 signal_adapters + 10 archaeology + 14 root)
 - **33-layer bootstrap**, **14 mixins** on MycelialAgent
 - **222,916 fingerprints**, **39 templates** (26 cross-validated across 3+ symbols)
 
@@ -104,13 +104,13 @@ Four work packages closing the operational gap (Thompson isolation, combo feedba
 
 1. **Restart daemon on fixed code** — picks up Thompson fix, independence correction, template persistence fix, active tracking
 2. **Monitor template feedback loop** — watch for template win/loss updates in `pattern_templates.jsonl`
-3. **Expedition Phase 1+** — companion excavation process, new data domains (EIA energy, Congress.gov), Granger causality
+3. **Expedition Phase 1+** — companion excavation process, new data domains (Congress.gov legislative, USDA agriculture, BDI logistics), Granger causality
 4. **Options flow via Unusual Whales** ($35/mo API — needs Guiding Light approval)
 
 ## Verification
 
 ```bash
-python -m pytest tests/ -q              # 4395+ pass, 0 regressions
+python -m pytest tests/ -q              # 4429+ pass, 0 regressions
 python main.py --agents 3 --steps 30    # Smoke test
 python -c "from mae_core.market.archaeology.pattern_library import PatternLibrary; lib = PatternLibrary(); print(f'{lib.size} fingerprints, {lib.template_count} templates')"
 ```

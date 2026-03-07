@@ -88,7 +88,7 @@ ENERGY_TICKER_MAP: Dict[str, List[str]] = {
     "crude_inventory": ["XLE", "XOP", "OIH", "USO", "XOM", "CVX", "COP", "EOG", "PXD", "DVN"],
     "gasoline_inventory": ["VLO", "MPC", "PSX", "XLE", "HFC"],
     "distillate_inventory": ["VLO", "MPC", "PSX", "XLE"],
-    "natgas_storage": ["UNG", "EQT", "AR", "SWN", "RRC", "CTRA"],
+    "natgas_storage": ["UNG", "EQT", "AR", "CHK", "RRC", "CTRA"],
     "crude_production": ["XLE", "XOP", "XOM", "CVX", "COP"],
 }
 
