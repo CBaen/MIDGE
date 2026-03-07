@@ -100,9 +100,9 @@ Four work packages closing the operational gap (Thompson isolation, combo feedba
 
 ## Stats
 
-- **146 systems** (92 core + 54 market), **4,433+ tests**, **157 holons**, **425 connections**
-- **101 market files** (30 API + 12 edge + 27 intelligence + 8 signal_adapters + 10 archaeology + 14 root)
-- **12 domains**, **29 sources** in sensing rotation
+- **146 systems** (92 core + 54 market), **4,484+ tests**, **157 holons**, **425 connections**
+- **102 market files** (31 API + 12 edge + 27 intelligence + 8 signal_adapters + 10 archaeology + 14 root)
+- **12 domains**, **30 sources** in sensing rotation
 - **33-layer bootstrap**, **14 mixins** on MycelialAgent
 - **222,916 fingerprints**, **39 templates** (26 cross-validated across 3+ symbols)
 
