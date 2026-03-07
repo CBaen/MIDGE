@@ -666,6 +666,24 @@ def fetch_eia(eia_client: Any, converter: Callable) -> list:
     return signals
 
 
+def fetch_congress_legislation(congress_gov_client: Any, converter: Callable) -> list:
+    """Fetch advancing legislative indicators from Congress.gov."""
+    if congress_gov_client is None:
+        return []
+
+    signals = []
+    try:
+        snapshot = congress_gov_client.get_legislative_snapshot()
+        for indicator in snapshot:
+            try:
+                signals.append(converter(indicator))
+            except Exception:
+                pass
+    except Exception as e:
+        logger.debug("Congress.gov legislation fetch failed: %s", e)
+    return signals
+
+
 def fetch_massive_snapshot(
     massive_client: Any,
     watchlist: dict,
