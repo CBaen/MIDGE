@@ -75,11 +75,11 @@ EIA_SERIES: Dict[str, dict] = {
     },
     "crude_production": {
         "route": "/petroleum/crd/crpdn/data",
-        "facets": {"duoarea": "NUS"},
+        "facets": {"duoarea": "NUS", "series": "MCRFPUS1"},
         "name": "US Crude Oil Production (Monthly)",
         "signal_type": "crude_production",
         "frequency": "monthly",
-        "unit": "thousand_barrels_per_day",
+        "unit": "thousand_barrels",
     },
 }
 
