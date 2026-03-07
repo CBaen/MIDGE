@@ -433,7 +433,7 @@ class PatternLibrary:
 
     # ── Domain mapping ────────────────────────────────────────────────────
 
-    # Source → domain mapping (covers all 29 known sources)
+    # Source → domain mapping (covers all 30 known sources)
     _SOURCE_DOMAIN_MAP = {
         "sec_form4": "insider", "openinsider_purchase": "insider",
         "sec_form8k": "events", "sec_efts": "events",
@@ -448,7 +448,8 @@ class PatternLibrary:
         "finviz_unusual_volume": "technical", "finviz_short_squeeze": "technical",
         "social_sentiment": "sentiment", "google_trends": "sentiment",
         "stocktwits_sentiment": "sentiment",
-        "congressional": "government", "contract_award": "contracts",
+        "congressional": "government", "congress_legislation": "government",
+        "contract_award": "contracts",
         "sam_gov": "contracts",
         "finnhub_analyst": "fundamentals",
         "cot_positioning": "positioning",

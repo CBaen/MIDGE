@@ -153,6 +153,8 @@ class ConvergenceAlerter:
         "finnhub_earnings_calendar": "finnhub_earnings_calendar",
         # Real-economy: Energy
         "eia_energy": "eia_energy",
+        # Real-economy: Legislative
+        "congress_legislation": "congress_legislation",
         # Always-On Wave 2: Real-Time + Crypto
         "finnhub_realtime": "finnhub_realtime",
         "crypto_coingecko": "crypto_coingecko",
@@ -183,7 +185,7 @@ class ConvergenceAlerter:
                       "order_flow", "finviz_unusual_volume", "finviz_short_squeeze",
                       "yfinance_price"],
         "sentiment": ["social_sentiment", "google_trends", "stocktwits_sentiment"],
-        "government": ["congressional", "senate"],
+        "government": ["congressional", "senate", "congress_legislation"],
         "contracts": ["contract_award", "contract_prediction", "sam_gov"],
         "fundamentals": ["finnhub_analyst"],
         "positioning": ["cot_positioning"],

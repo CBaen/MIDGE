@@ -77,6 +77,7 @@ SOURCE_PLAIN = {
     "vix_client": "market fear indicator",
     "google_trends": "public search interest",
     "eia_energy": "U.S. Energy Information Administration data",
+    "congress_legislation": "Congressional legislative activity",
 }
 
 # ── Tier Translation ───────────────────────────────────────────────

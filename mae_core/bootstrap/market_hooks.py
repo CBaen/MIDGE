@@ -841,6 +841,7 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
             finnhub_websocket=getattr(ctx, "finnhub_websocket", None),
             massive_client=getattr(ctx, "massive_client", None),
             eia_client=getattr(ctx, "eia_client", None),
+            congress_gov_client=getattr(ctx, "congress_gov_client", None),
         )
     except Exception:
         logger.warning("MarketSensingHook construction failed — agents will not sense market data", exc_info=True)

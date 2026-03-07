@@ -58,7 +58,7 @@ NEW_ROTATION_SOURCES = [
     "finnhub_extras",
 ]
 
-# Full expected SOURCE_ROTATION (all 29)
+# Full expected SOURCE_ROTATION (all 30)
 EXPECTED_ROTATION = [
     "sec_form4",
     "sec_form8k",

@@ -154,6 +154,8 @@ LEARNING_CONFIG = {
         "massive_snapshot": 0.55,       # Institutional-grade EOD data, slightly optimistic
         # Real-economy: Energy
         "eia_energy": 0.70,            # Government data is reliable, but new — start neutral-optimistic
+        # Real-economy: Legislative
+        "congress_legislation": 0.65,  # Government data, slow-moving — let Thompson learn true value
     },
 
     # Confidence calibration

@@ -6,7 +6,7 @@ TradeSignal is the actionable output — what to trade and why.
 Adapter functions convert raw source types into MarketSignal.
 Each adapter is a standalone function named `from_{source_type}`.
 
-The 33 adapter functions live in the signal_adapters/ subpackage (split by domain)
+The 34 adapter functions live in the signal_adapters/ subpackage (split by domain)
 and are re-exported here for full backward compatibility. All existing imports of
 the form `from mae_core.market.signal import from_insider_trade` continue to work.
 """
@@ -137,6 +137,7 @@ from mae_core.market.signal_adapters import (  # noqa: E402
     from_finnhub_realtime,
     from_suppression_event,
     from_energy_indicator,
+    from_legislative_indicator,
 )
 
 __all__ = [
@@ -187,6 +188,7 @@ __all__ = [
     "from_finviz_short_squeeze",
     "from_finnhub_realtime",
     "from_suppression_event",
-    # energy (1)
+    # energy + legislation (2)
     "from_energy_indicator",
+    "from_legislative_indicator",
 ]
