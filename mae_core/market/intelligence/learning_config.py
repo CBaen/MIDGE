@@ -56,6 +56,8 @@ LEARNING_CONFIG = {
         "order_flow": 0.30,    # Half-life: ~2.3 days (intraday signal, fast decay)
         "archetype": 0.03,     # Half-life: ~23 days (archetypes unfold over weeks)
         "crypto": 0.50,        # Half-life: ~1.4 days (crypto moves fast)
+        # Real-economy
+        "energy": 0.05,        # Half-life: ~14 days (weekly reports, slow-moving)
     },
 
     # Source reliability defaults
@@ -144,6 +146,8 @@ LEARNING_CONFIG = {
         "economic_calendar": 0.55,      # Scheduled events are reliable signals
         # Massive/Polygon.io
         "massive_snapshot": 0.55,       # Institutional-grade EOD data, slightly optimistic
+        # Real-economy: Energy
+        "eia_energy": 0.70,            # Government data is reliable, but new — start neutral-optimistic
     },
 
     # Confidence calibration

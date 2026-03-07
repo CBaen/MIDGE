@@ -175,6 +175,7 @@ class ConvergenceAlerter:
         "volatility": ["vix_term_structure"],
         "crypto": ["crypto_coingecko", "crypto_coincap"],
         "institutional": ["activist_13d", "institutional_13f", "finra_short"],
+        "energy": ["eia_energy"],
     }
 
     def __init__(

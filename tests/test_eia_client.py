@@ -278,3 +278,22 @@ class TestSensingHookWiring:
         from mae_core.market.plain_language import DOMAIN_PLAIN, SOURCE_PLAIN
         assert "energy" in DOMAIN_PLAIN
         assert "eia_energy" in SOURCE_PLAIN
+
+    def test_eia_in_source_to_thompson_key(self):
+        from mae_core.market.intelligence.convergence_alerter import ConvergenceAlerter
+        assert ConvergenceAlerter._SOURCE_TO_THOMPSON_KEY.get("eia_energy") == "eia_energy"
+
+    def test_eia_in_domain_sources(self):
+        from mae_core.market.intelligence.convergence_alerter import ConvergenceAlerter
+        assert "energy" in ConvergenceAlerter._DOMAIN_SOURCES
+        assert "eia_energy" in ConvergenceAlerter._DOMAIN_SOURCES["energy"]
+
+    def test_eia_in_source_reliability(self):
+        from mae_core.market.intelligence.learning_config import LEARNING_CONFIG
+        assert "eia_energy" in LEARNING_CONFIG["source_reliability"]
+        val = LEARNING_CONFIG["source_reliability"]["eia_energy"]
+        assert 0.0 < val <= 1.0
+
+    def test_energy_decay_rate(self):
+        from mae_core.market.intelligence.learning_config import LEARNING_CONFIG
+        assert "energy" in LEARNING_CONFIG["decay_rates"]

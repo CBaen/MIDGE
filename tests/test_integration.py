@@ -130,6 +130,8 @@ class TestBootstrap:
             "finnhub_websocket",
             # Massive/Polygon.io
             "massive_client",
+            # Real-economy: Energy
+            "eia_client",
         ]
         for key in market_keys:
             assert key in systems, f"Missing market system: {key}"

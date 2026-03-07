@@ -58,7 +58,7 @@ NEW_ROTATION_SOURCES = [
     "finnhub_extras",
 ]
 
-# Full expected SOURCE_ROTATION (all 28)
+# Full expected SOURCE_ROTATION (all 29)
 EXPECTED_ROTATION = [
     "sec_form4",
     "sec_form8k",
@@ -93,6 +93,8 @@ EXPECTED_ROTATION = [
     "economic_calendar",
     # Massive/Polygon.io
     "massive_snapshot",
+    # Real-economy: Energy
+    "eia_energy",
 ]
 
 VALID_TIERS = {"tactical", "strategic", "thematic"}
@@ -278,9 +280,9 @@ def _make_analyst_rec(
 class TestSourceRotation:
     """Verify SOURCE_ROTATION contains exactly the expected 28 entries."""
 
-    def test_rotation_length_is_28(self):
-        assert len(SOURCE_ROTATION) == 28, (
-            f"Expected 28 sources in SOURCE_ROTATION, got {len(SOURCE_ROTATION)}"
+    def test_rotation_length_is_29(self):
+        assert len(SOURCE_ROTATION) == 29, (
+            f"Expected 29 sources in SOURCE_ROTATION, got {len(SOURCE_ROTATION)}"
         )
 
     def test_rotation_contains_all_expected_sources(self):
