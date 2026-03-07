@@ -233,6 +233,7 @@ class ConvergenceAlerter:
             "positioning": timedelta(hours=14 * 24),  # 14 days — COT is weekly data
             "government": timedelta(hours=7 * 24),    # 7 days — congressional trades
             "contracts": timedelta(hours=7 * 24),     # 7 days — contract awards
+            "energy": timedelta(hours=7 * 24),        # 7 days — weekly EIA reports
         }
 
         # Recent signals by domain

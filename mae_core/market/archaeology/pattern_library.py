@@ -460,6 +460,8 @@ class PatternLibrary:
         "absence_signal": "meta",
         "archetype_match": "meta",
         "convergence_alert": "convergence",
+        # Real-economy
+        "eia_energy": "energy",
     }
 
     @classmethod

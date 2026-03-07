@@ -97,6 +97,7 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         ("stocktwits_client", "mae_core.market.apis.stocktwits_client", "StockTwitsClient", {"provider": provider}),
         ("vix_client", "mae_core.market.apis.vix_client", "VIXClient", {"provider": provider}),
         ("trends_client", "mae_core.market.apis.trends_client", "TrendsClient", {}),
+        ("eia_client", "mae_core.market.apis.eia_client", "EIAClient", {"provider": provider}),
     ]:
         try:
             import importlib as _imp
@@ -472,7 +473,7 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         ("sec_edgar", 0.90), ("yfinance", 0.75), ("alpha_vantage", 0.80), ("rapidapi", 0.65),
         ("usa_spending", 0.85), ("sam_gov", 0.80), ("senate_free", 0.80), ("apewisdom", 0.45),
         ("finra_short", 0.85), ("sec_efts", 0.90), ("finnhub", 0.75), ("fred_macro", 0.95),
-        ("session_sweep", 0.60),
+        ("session_sweep", 0.60), ("eia_energy", 0.95),
     ]
     bm = getattr(ctx, "boundary_membrane", None)
     if bm is not None and hasattr(bm, "register_source"):
