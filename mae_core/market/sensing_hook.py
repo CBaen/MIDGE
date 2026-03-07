@@ -61,6 +61,7 @@ from mae_core.market.sensing_fetchers import (
     fetch_finviz,
     fetch_economic_calendar,
     fetch_eia,
+    fetch_congress_legislation,
     fetch_massive_snapshot,
 )
 from mae_core.market.sensing_lifecycle import (
@@ -129,9 +130,11 @@ TIER_ROUTING = {
     "massive_snapshot": "tactical",
     # Real-economy: Energy
     "eia_energy": "strategic",
+    # Real-economy: Legislative
+    "congress_legislation": "strategic",
 }
 
-# Source names for rotation — 29 sources, full cycle every 1450 steps
+# Source names for rotation — 30 sources, full cycle every 1500 steps
 SOURCE_ROTATION = [
     "sec_form4",
     "sec_form8k",
@@ -169,6 +172,8 @@ SOURCE_ROTATION = [
     "massive_snapshot",
     # Real-economy: Energy
     "eia_energy",
+    # Real-economy: Legislative
+    "congress_legislation",
 ]
 
 # Map rotation source names → Thompson distribution keys for guided selection.
@@ -203,6 +208,7 @@ _ROTATION_TO_THOMPSON = {
     "economic_calendar": "finnhub_economic",  # reuse existing key
     "massive_snapshot": "massive_snapshot",
     "eia_energy": "eia_energy",
+    "congress_legislation": "congress_legislation",
 }
 
 # Map absence source names back to convergence domains
@@ -219,6 +225,7 @@ _ABSENCE_SOURCE_DOMAINS = {
     "finviz_unusual_volume": "technical", "finviz_short_squeeze": "institutional",
     "massive_snapshot": "technical",
     "eia_energy": "energy",
+    "congress_legislation": "government",
 }
 
 
@@ -284,6 +291,7 @@ class MarketSensingHook:
         finnhub_websocket: Any = None,
         massive_client: Any = None,
         eia_client: Any = None,
+        congress_gov_client: Any = None,
     ):
         # API clients (all optional — graceful degradation)
         self._sec_client = sec_client
@@ -321,6 +329,7 @@ class MarketSensingHook:
         self._finnhub_websocket = finnhub_websocket
         self._massive_client = massive_client
         self._eia_client = eia_client
+        self._congress_gov_client = congress_gov_client
 
         # EventBus (injected by bootstrap for signal bridge)
         self._bus = None
@@ -977,6 +986,10 @@ class MarketSensingHook:
         elif source_name == "eia_energy":
             from mae_core.market.signal_adapters.market_data import from_energy_indicator
             signals = fetch_eia(self._eia_client, from_energy_indicator)
+
+        elif source_name == "congress_legislation":
+            from mae_core.market.signal_adapters.market_data import from_legislative_indicator
+            signals = fetch_congress_legislation(self._congress_gov_client, from_legislative_indicator)
 
         # Enrich in background thread (velocity, filing-time, Ollama sentiment)
         # Moved from _collect_results() so Ollama's 15s timeout doesn't block
