@@ -51,7 +51,7 @@ EIA_SERIES: Dict[str, dict] = {
     },
     "gasoline_stocks": {
         "route": "/petroleum/stoc/wstk/data",
-        "facets": {"duoarea": "NUS", "product": "EPM0F", "process": "SAX"},
+        "facets": {"duoarea": "NUS", "product": "EPM0F", "process": "SAE"},
         "name": "US Motor Gasoline Stocks (Weekly)",
         "signal_type": "gasoline_inventory",
         "frequency": "weekly",
@@ -59,7 +59,7 @@ EIA_SERIES: Dict[str, dict] = {
     },
     "distillate_stocks": {
         "route": "/petroleum/stoc/wstk/data",
-        "facets": {"duoarea": "NUS", "product": "EPD0", "process": "SAX"},
+        "facets": {"duoarea": "NUS", "product": "EPD0", "process": "SAE"},
         "name": "US Distillate Fuel Oil Stocks (Weekly)",
         "signal_type": "distillate_inventory",
         "frequency": "weekly",
@@ -67,7 +67,7 @@ EIA_SERIES: Dict[str, dict] = {
     },
     "natgas_storage": {
         "route": "/natural-gas/stor/wkly/data",
-        "facets": {"process": "SAX"},
+        "facets": {"process": "SWO"},
         "name": "US Natural Gas Working Storage (Weekly)",
         "signal_type": "natgas_storage",
         "frequency": "weekly",
