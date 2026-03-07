@@ -52,6 +52,34 @@ Three features per Guiding Light's directive:
 
 Symbol-agnostic template engine. Full excavation completed 3,237 symbols via Polygon.io.
 
+### EIA Energy Data Integration (2026-03-06)
+
+**First real-economy domain.** All 11 prior MIDGE domains were financial-market data. EIA adds physical-world supply/demand signals that cross-reference with insider trades, congressional activity, and technical patterns.
+
+**What it does:**
+- Fetches weekly petroleum inventory (crude, gasoline, distillate), natural gas storage, and monthly crude production from EIA API v2
+- Inventory BUILD = bearish (supply > demand), DRAW = bullish — inverse logic
+- Strength calibrated against typical weekly change ranges
+- Affected tickers mapped: XLE, XOP, USO, UNG, VLO, MPC, EQT, etc.
+- 6-hour cache (weekly data updates on specific days)
+- Strategic tier in convergence engine, 7-day domain window
+
+**Files changed:**
+- `mae_core/market/apis/eia_client.py` — NEW: EIAClient, EnergyIndicator, 5 series
+- `mae_core/market/signal_adapters/market_data.py` — `from_energy_indicator()` adapter
+- `mae_core/market/sensing_fetchers.py` — `fetch_eia()` function
+- `mae_core/market/sensing_hook.py` — SOURCE_ROTATION, TIER_ROUTING, _ROTATION_TO_THOMPSON, _ABSENCE_SOURCE_DOMAINS, __init__, _fetch_source
+- `mae_core/bootstrap/market_systems.py` — EIAClient instantiation + trust registration
+- `mae_core/bootstrap/market_hooks.py` — Pass eia_client to MarketSensingHook
+- `mae_core/market/archaeology/pattern_library.py` — `"eia_energy": "energy"` in _SOURCE_DOMAIN_MAP
+- `mae_core/market/intelligence/convergence_alerter.py` — Energy domain window + category
+- `mae_core/market/plain_language.py` — Energy domain + source translations
+- `mae_core/market/signal_adapters/__init__.py` — Re-export from_energy_indicator
+- `mae_core/market/signal.py` — Re-export from_energy_indicator
+- `tests/test_eia_client.py` — NEW: 34 tests
+
+**Requires:** `EIA_API_KEY` env var (free: https://www.eia.gov/opendata/register.php)
+
 ### Proven Signal → Profitable System (2026-03-03)
 
 Four work packages closing the operational gap (Thompson isolation, combo feedback, confidence gating, MFE/MAE).

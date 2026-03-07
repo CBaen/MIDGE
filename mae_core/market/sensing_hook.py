@@ -16,7 +16,7 @@ convergence_alerter because collection happens in the main thread.
 
 Decomposed into three files:
   sensing_hook.py      — this file: MarketSensingHook class + constants
-  sensing_fetchers.py  — 27 standalone fetch functions
+  sensing_fetchers.py  — 28 standalone fetch functions
   sensing_lifecycle.py — enrich_signal, store_signals, load_watchlist
 """
 
