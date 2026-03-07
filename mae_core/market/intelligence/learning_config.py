@@ -58,6 +58,12 @@ LEARNING_CONFIG = {
         "crypto": 0.50,        # Half-life: ~1.4 days (crypto moves fast)
         # Real-economy
         "energy": 0.05,        # Half-life: ~14 days (weekly reports, slow-moving)
+        # Domain-level decay (aliases for domains not already covered)
+        "events": 0.20,        # Half-life: ~3.5 days (SEC filings, earnings)
+        "macro": 0.10,         # Half-life: ~7 days (economic data shifts slowly)
+        "government": 0.04,    # Half-life: ~17 days (congressional activity)
+        "contracts": 0.02,     # Half-life: ~35 days (contract awards play out slowly)
+        "fundamentals": 0.05,  # Half-life: ~14 days (analyst ratings, financial data)
     },
 
     # Source reliability defaults

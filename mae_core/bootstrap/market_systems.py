@@ -470,10 +470,23 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
 
     # --- Trust registration with BoundaryMembrane ---
     market_sources = [
+        # Original sources
         ("sec_edgar", 0.90), ("yfinance", 0.75), ("alpha_vantage", 0.80), ("rapidapi", 0.65),
         ("usa_spending", 0.85), ("sam_gov", 0.80), ("senate_free", 0.80), ("apewisdom", 0.45),
         ("finra_short", 0.85), ("sec_efts", 0.90), ("finnhub", 0.75), ("fred_macro", 0.95),
-        ("session_sweep", 0.60), ("eia_energy", 0.95),
+        ("session_sweep", 0.60),
+        # Layer 6
+        ("cot_positioning", 0.85), ("stocktwits", 0.40), ("vix_structure", 0.80),
+        ("google_trends", 0.50), ("ta_indicators", 0.70),
+        # Ten Gifts
+        ("order_flow", 0.60), ("fractal_resonance", 0.65),
+        # Always-On Wave 2+3
+        ("crypto_coingecko", 0.70), ("crypto_coincap", 0.65), ("openinsider", 0.80),
+        ("institutional_13f", 0.85), ("finviz", 0.65), ("economic_calendar", 0.80),
+        # Massive/Polygon.io
+        ("massive_snapshot", 0.90),
+        # Real-economy: Energy
+        ("eia_energy", 0.95),
     ]
     bm = getattr(ctx, "boundary_membrane", None)
     if bm is not None and hasattr(bm, "register_source"):
