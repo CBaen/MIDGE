@@ -132,6 +132,8 @@ class TestBootstrap:
             "massive_client",
             # Real-economy: Energy
             "eia_client",
+            # Real-economy: Legislative
+            "congress_gov_client",
         ]
         for key in market_keys:
             assert key in systems, f"Missing market system: {key}"
