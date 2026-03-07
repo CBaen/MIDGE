@@ -153,6 +153,21 @@ class ConvergenceAlerter:
         "finnhub_earnings_calendar": "finnhub_earnings_calendar",
         # Real-economy: Energy
         "eia_energy": "eia_energy",
+        # Always-On Wave 2: Real-Time + Crypto
+        "finnhub_realtime": "finnhub_realtime",
+        "crypto_coingecko": "crypto_coingecko",
+        "crypto_coincap": "crypto_coincap",
+        # Always-On Wave 3: Data Enrichment
+        "openinsider_purchase": "openinsider_purchase",
+        "institutional_13f": "institutional_13f",
+        "activist_13d": "activist_13d",
+        "finviz_unusual_volume": "finviz_unusual_volume",
+        "finviz_short_squeeze": "finviz_short_squeeze",
+        "economic_calendar": "economic_calendar",
+        # Massive/Polygon.io
+        "massive_snapshot": "massive_snapshot",
+        # Price data
+        "yfinance_price": "yfinance_price",
     }
 
     # Domain → list of source names used in lag_correlations.json.
