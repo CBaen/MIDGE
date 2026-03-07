@@ -131,7 +131,7 @@ TIER_ROUTING = {
     "eia_energy": "strategic",
 }
 
-# Source names for rotation — 28 sources, full cycle every 1400 steps
+# Source names for rotation — 29 sources, full cycle every 1450 steps
 SOURCE_ROTATION = [
     "sec_form4",
     "sec_form8k",

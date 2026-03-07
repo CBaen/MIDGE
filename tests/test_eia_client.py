@@ -265,8 +265,8 @@ class TestSensingHookWiring:
         assert _ABSENCE_SOURCE_DOMAINS["eia_energy"] == "energy"
 
     def test_eia_in_source_domain_map(self):
-        from mae_core.market.archaeology.pattern_library import PatternWatcher
-        assert PatternWatcher._SOURCE_DOMAIN_MAP.get("eia_energy") == "energy"
+        from mae_core.market.archaeology.pattern_library import PatternLibrary
+        assert PatternLibrary._SOURCE_DOMAIN_MAP.get("eia_energy") == "energy"
 
     def test_energy_domain_in_convergence_alerter(self):
         from mae_core.market.intelligence.convergence_alerter import ConvergenceAlerter
