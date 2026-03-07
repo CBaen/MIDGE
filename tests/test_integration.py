@@ -93,6 +93,7 @@ class TestBootstrap:
             "session_sweep_detector",
             "signal_archive_reader",
             "lag_correlation_analyzer",
+            "granger_analyzer",
             "thompson_calibrator",
             "kelly_position_sizer",
             "hypothesis_registry",

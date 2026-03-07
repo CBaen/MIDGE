@@ -205,7 +205,7 @@ _ROTATION_TO_THOMPSON = {
     "openinsider": "openinsider_purchase",
     "institutional_13f": "institutional_13f",
     "finviz": "finviz_unusual_volume",
-    "economic_calendar": "finnhub_economic",  # reuse existing key
+    "economic_calendar": "economic_calendar",
     "massive_snapshot": "massive_snapshot",
     "eia_energy": "eia_energy",
     "congress_legislation": "congress_legislation",
