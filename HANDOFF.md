@@ -100,8 +100,9 @@ Four work packages closing the operational gap (Thompson isolation, combo feedba
 
 ## Stats
 
-- **146 systems** (92 core + 54 market), **4,429+ tests**, **157 holons**, **425 connections**
+- **146 systems** (92 core + 54 market), **4,433+ tests**, **157 holons**, **425 connections**
 - **101 market files** (30 API + 12 edge + 27 intelligence + 8 signal_adapters + 10 archaeology + 14 root)
+- **12 domains**, **29 sources** in sensing rotation
 - **33-layer bootstrap**, **14 mixins** on MycelialAgent
 - **222,916 fingerprints**, **39 templates** (26 cross-validated across 3+ symbols)
 
@@ -110,19 +111,23 @@ Four work packages closing the operational gap (Thompson isolation, combo feedba
 - **Daemon: STOPPED.** Old daemon (PID 184380, since March 3) and excavation (PID 262480, since March 4) were killed — running pre-fix code.
 - **Templates: REBUILT.** 39 templates live in `pattern_templates.jsonl`. PatternWatcher can now match live signals.
 - **Thompson: FIXED.** Forgetting/learning cadence aligned. Independence correction active.
+- **EIA: LIVE.** All 5 energy series returning real data. Intelligence layer fully wired (Thompson, correlation, decay).
 - **Needs restart:** `python main.py --daemon --agents 6 --steps 500 --pace 2.0`
 
 ## What's Next
 
-1. **Restart daemon on fixed code** — picks up Thompson fix, independence correction, template persistence fix, active tracking
+1. **Restart daemon on fixed code** — picks up all fixes: Thompson, independence, templates, active tracking, EIA energy
 2. **Monitor template feedback loop** — watch for template win/loss updates in `pattern_templates.jsonl`
-3. **Expedition Phase 1+** — companion excavation process, new data domains (Congress.gov legislative, USDA agriculture, BDI logistics), Granger causality
-4. **Options flow via Unusual Whales** ($35/mo API — needs Guiding Light approval)
+3. **New real-economy domains** — Congress.gov legislative (free), USDA agriculture (free, seasonal), BDI logistics (free proxy)
+4. **Pattern discovery upgrades** — Granger causality (statsmodels), transfer entropy, RMT denoising, PCMCI+
+5. **Web scraping infrastructure** — autonomous pattern discovery via website crawling (research complete, stack: httpx + selectolax + trafilatura)
+6. **Options flow via Unusual Whales** ($35/mo API — needs Guiding Light approval)
+7. **Re-run excavation** — companion process with fixed template code + new EIA domain
 
 ## Verification
 
 ```bash
-python -m pytest tests/ -q              # 4429+ pass, 0 regressions
+python -m pytest tests/ -q              # 4433+ pass, 0 regressions
 python main.py --agents 3 --steps 30    # Smoke test
 python -c "from mae_core.market.archaeology.pattern_library import PatternLibrary; lib = PatternLibrary(); print(f'{lib.size} fingerprints, {lib.template_count} templates')"
 ```
