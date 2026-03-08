@@ -208,7 +208,7 @@ Four work packages closing the operational gap (Thompson isolation, combo feedba
 2. **Re-run excavation** — companion process with fixed template code + new EIA + Congress.gov domains
 
 ### Priority 2: Data Overdrive — Squeeze Every API Call
-3. **Raw store expansion** — 20 of 24 clients have NO raw_store. Extend to SEC EDGAR (derivative transactions skipped), FRED, Finnhub, StockTwits, price_fetcher (80+ yfinance fields discarded), Congress.gov, all Wave 2+3 clients
+3. **Raw store expansion (PARTIAL — 12/24 done)** — 12 clients still unwired: SEC EDGAR (derivative transactions skipped), Massive, CoinGecko, CoinCap, OpenInsider, FinViz, EdgarEnhanced, EconCalendar, FinnhubWS, ApeWisdom, JobTracker, SAM.gov
 4. **Wire unused built methods** — FinViz `get_insider_trades()` (built, never called), EDGAR `get_recent_13f_filers()` (built, never called), COT managed money positions (available, not extracted)
 5. **Temporal sequence matching** — upgrade pattern templates from "which domains converge" to "in what order, with what gaps." THE differentiator.
 6. **Web scraping infrastructure** — httpx/selectolax/trafilatura installed, needs crawler agent that follows links and extracts market-relevant content
