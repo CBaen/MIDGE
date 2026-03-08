@@ -310,6 +310,68 @@ def from_analyst_recommendation(rec) -> MarketSignal:
     )
 
 
+def from_yahoo_rss_signal(sig) -> MarketSignal:
+    """Convert a YahooHeadlineSignal to a MarketSignal.
+
+    Headline velocity (news acceleration) is the primary signal.
+    A sudden burst of headlines means something is happening — market
+    participants are reacting to news. Directional sentiment from
+    keyword polarity provides the bullish/bearish tilt.
+
+    Velocity >= 3x prior window = strong signal.
+    Sentiment keywords sharpen direction.
+    Domain: "events" (breaking news is a catalyst domain).
+    """
+    ticker = getattr(sig, "ticker", "") or ""
+    headline_count = getattr(sig, "headline_count", 0)
+    velocity_change = getattr(sig, "velocity_change", 1.0)
+    keyword_polarity = getattr(sig, "keyword_polarity", 0)
+    detected_at = getattr(sig, "detected_at", "")
+
+    # Direction from keyword polarity
+    if keyword_polarity > 0:
+        direction = "bullish"
+    elif keyword_polarity < 0:
+        direction = "bearish"
+    else:
+        direction = "neutral"
+
+    # Strength: velocity change (capped at 1.0) combined with headline volume
+    # 2x = 0.40, 3x = 0.60, 5x+ = 0.80+
+    velocity_strength = min(0.90, (velocity_change - 1.0) / 6.0 + 0.30)
+    # Boost slightly if many absolute headlines (sustained coverage)
+    volume_boost = min(0.10, headline_count * 0.005)
+    strength = min(1.0, velocity_strength + volume_boost)
+
+    event_dt = _ensure_datetime(detected_at) if detected_at else datetime.now()
+    signal_id = f"yahoo_rss:{ticker}:{event_dt.strftime('%Y%m%dT%H%M')}"
+
+    return MarketSignal(
+        signal_id=signal_id,
+        source="yahoo_rss",
+        symbol=ticker,
+        asset_class="stock",
+        domain="events",
+        direction=direction,
+        strength=strength,
+        confidence=getattr(sig, "confidence", 0.45),
+        decay_rate=getattr(sig, "decay_rate", 0.70),
+        timestamp=event_dt,
+        received_at=datetime.now(),
+        outcome_symbol=ticker,
+        outcome_window_days=3,   # News impact resolves quickly
+        raw_id="",
+        raw_type="YahooHeadlineSignal",
+        metadata={
+            "headline_count": headline_count,
+            "velocity_change": velocity_change,
+            "keyword_polarity": keyword_polarity,
+            "sentiment_keywords": getattr(sig, "sentiment_keywords", [])[:10],
+            "latest_headline": (getattr(sig, "latest_headline", "") or "")[:200],
+        },
+    )
+
+
 def from_social_text_signal(sig) -> MarketSignal:
     """Convert a SocialTextSignal to a MarketSignal.
 

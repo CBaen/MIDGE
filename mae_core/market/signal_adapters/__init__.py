@@ -1,4 +1,4 @@
-"""Signal adapter subpackage — all 37 from_* converter functions.
+"""Signal adapter subpackage — all 38 from_* converter functions.
 
 This package splits the original signal.py adapter functions into focused
 modules by domain. Backward compatibility is maintained: importing any
@@ -10,7 +10,7 @@ Module layout:
     market_data  — Short interest, news, earnings, macro, social, price, energy, legislation (8 functions)
     technical    — TA indicators, session sweeps, order flow, fractal resonance (4 functions)
     contracts    — Government contracts, SAM.gov, predictions, hiring (4 functions)
-    layer6       — COT, StockTwits, VIX, Google Trends, Finnhub extras (6 functions)
+    layer6       — COT, StockTwits, VIX, Google Trends, Finnhub extras, Yahoo RSS (7 functions)
     wave2_3      — Crypto, OpenInsider, 13F, FinViz, Finnhub real-time, suppression (8 functions)
 """
 

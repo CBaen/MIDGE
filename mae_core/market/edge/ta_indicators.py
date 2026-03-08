@@ -269,7 +269,7 @@ def compute_bollinger(
     period: int = 20,
     num_std: float = 2.0,
 ) -> Optional[BollingerSignal]:
-    """Compute Bollinger Bands and detect band touches or squeezes.
+    """Compute Bollinger Bands and detect band touches or squeezes (vectorized).
 
     20-period SMA +/- 2 standard deviations. Signals when price touches
     or exceeds bands, or when bandwidth contracts (squeeze = breakout imminent).
@@ -286,17 +286,17 @@ def compute_bollinger(
     if len(price_history) < period:
         return None
 
-    closes = [p.price for p in price_history]
-    recent = closes[-period:]
+    closes_arr = np.array([p.price for p in price_history], dtype=float)
+    closes_s = pd.Series(closes_arr)
 
-    # SMA (middle band)
-    middle = sum(recent) / period
+    # Vectorized rolling SMA and population std (ddof=0 matches original)
+    rolling_mean = closes_s.rolling(period).mean()
+    rolling_std = closes_s.rolling(period).std(ddof=0)
 
-    # Standard deviation
-    variance = sum((c - middle) ** 2 for c in recent) / period
-    std_dev = math.sqrt(variance)
+    middle = float(rolling_mean.iloc[-1])
+    std_dev = float(rolling_std.iloc[-1])
 
-    if middle == 0:
+    if middle == 0 or np.isnan(middle) or np.isnan(std_dev):
         return None
 
     upper = middle + num_std * std_dev
@@ -309,24 +309,20 @@ def compute_bollinger(
     band_range = upper - lower
     if band_range == 0:
         return None
-    current_price = closes[-1]
+    current_price = float(closes_arr[-1])
     band_position = (current_price - lower) / band_range
     band_position = max(0.0, min(1.0, band_position))
 
-    # Squeeze detection: compare current bandwidth to 120-day average
+    # Squeeze detection: compare current bandwidth to 120-day average (vectorized)
     squeeze = False
-    if len(closes) >= 120:
-        # Compute bandwidth at each point over last 120 days
-        bandwidths = []
-        for i in range(period, min(len(closes) + 1, 121)):
-            window = closes[-(i):][:period] if i <= len(closes) else closes[:period]
-            w_mean = sum(window) / len(window)
-            if w_mean > 0:
-                w_var = sum((c - w_mean) ** 2 for c in window) / len(window)
-                w_bw = 2 * num_std * math.sqrt(w_var) / w_mean
-                bandwidths.append(w_bw)
-        if bandwidths:
-            avg_bw = sum(bandwidths) / len(bandwidths)
+    if len(closes_arr) >= 120:
+        # Rolling bandwidth over last 120 bars — fully vectorized
+        hist_mean = rolling_mean.iloc[-(101):-(1)]   # 100 prior bars' SMA
+        hist_std = rolling_std.iloc[-(101):-(1)]
+        valid = hist_mean > 0
+        if valid.any():
+            hist_bw = (2 * num_std * hist_std[valid]) / hist_mean[valid]
+            avg_bw = float(hist_bw.mean())
             squeeze = bandwidth < avg_bw * 0.75
 
     # Signal conditions
@@ -343,8 +339,8 @@ def compute_bollinger(
     elif squeeze:
         # Squeeze = breakout imminent, direction unknown
         # Use recent momentum to guess direction
-        if len(closes) >= 5:
-            recent_momentum = closes[-1] - closes[-5]
+        if len(closes_arr) >= 5:
+            recent_momentum = float(closes_arr[-1]) - float(closes_arr[-5])
             direction = "bullish" if recent_momentum > 0 else "bearish"
         else:
             direction = "bullish"
@@ -671,3 +667,41 @@ def compute_all(symbol: str, price_history) -> List[TASignalBase]:
         logger.debug("Candlestick pattern detection failed for %s", symbol, exc_info=True)
 
     return signals
+
+
+# ---------------------------------------------------------------------------
+# Performance benchmark (run directly: python -m mae_core.market.edge.ta_indicators)
+# ---------------------------------------------------------------------------
+
+if __name__ == "__main__":
+    import time
+
+    class _FakePrice:
+        """Minimal stand-in for PriceData for benchmark purposes."""
+        __slots__ = ("price", "open", "high", "low", "volume", "timestamp")
+
+        def __init__(self, price: float, i: int):
+            self.price = price
+            self.open = price * 0.999
+            self.high = price * 1.005
+            self.low = price * 0.995
+            self.volume = 1_000_000
+            self.timestamp = f"2025-{(i // 30) % 12 + 1:02d}-{i % 28 + 1:02d}"
+
+    rng = np.random.default_rng(42)
+    raw_prices = rng.uniform(100, 200, 1000).tolist()
+    fake_history = [_FakePrice(p, i) for i, p in enumerate(raw_prices)]
+
+    # Warm-up
+    compute_rsi("BENCH", fake_history)
+    compute_bollinger("BENCH", fake_history)
+    compute_macd("BENCH", fake_history)
+
+    iterations = 100
+    start = time.perf_counter()
+    for _ in range(iterations):
+        compute_rsi("BENCH", fake_history, 14)
+        compute_bollinger("BENCH", fake_history, 20, 2.0)
+        compute_macd("BENCH", fake_history, 12, 26, 9)
+    elapsed = time.perf_counter() - start
+    print(f"Vectorized TA — {iterations} iterations: {elapsed:.3f}s  ({elapsed / iterations * 1000:.1f}ms each)")

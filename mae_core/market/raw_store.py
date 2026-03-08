@@ -1684,3 +1684,67 @@ class RawStore:
 
         logger.debug("RawStore: stored %d SAM.gov opportunities", len(data))
         return len(data)
+
+    # --- Yahoo Finance RSS ---
+
+    def store_yahoo_headlines(self, ticker: str, entries: list) -> int:
+        """Store Yahoo Finance RSS headline entries for a ticker.
+
+        Deduplicates by (ticker, title, published_at) so re-fetching the
+        same feed window is safe. Stores the full title + summary for
+        future NLP/sentiment analysis beyond keyword matching.
+
+        Args:
+            ticker: Stock symbol (uppercase).
+            entries: List of feedparser entry objects or dicts.
+
+        Returns:
+            Number of rows upserted.
+        """
+        if not entries:
+            return 0
+
+        conn = self._get_conn("yahoo_rss")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS yahoo_headlines (
+                ticker TEXT,
+                title TEXT,
+                published_at TEXT,
+                link TEXT,
+                summary TEXT,
+                ingested_at TEXT,
+                PRIMARY KEY (ticker, title, published_at)
+            )
+        """)
+
+        now = datetime.now(timezone.utc).isoformat()
+        data = []
+        for entry in entries:
+            # Support both feedparser Entry objects and plain dicts
+            if hasattr(entry, "get"):
+                title = (entry.get("title") or "")[:500]
+                published = (entry.get("published") or "")[:100]
+                link = (entry.get("link") or "")[:500]
+                summary = (entry.get("summary") or "")[:1000]
+            else:
+                title = (getattr(entry, "title", "") or "")[:500]
+                published = (getattr(entry, "published", "") or "")[:100]
+                link = (getattr(entry, "link", "") or "")[:500]
+                summary = (getattr(entry, "summary", "") or "")[:1000]
+
+            if not title:
+                continue
+
+            data.append((ticker.upper(), title, published, link, summary, now))
+
+        if data:
+            conn.executemany(
+                "INSERT OR REPLACE INTO yahoo_headlines "
+                "(ticker, title, published_at, link, summary, ingested_at) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                data,
+            )
+            conn.commit()
+
+        logger.debug("RawStore: stored %d Yahoo RSS headlines for %s", len(data), ticker)
+        return len(data)
