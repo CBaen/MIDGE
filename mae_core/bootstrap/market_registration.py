@@ -222,6 +222,8 @@ def _register_market_fractal(ctx: SimpleNamespace) -> None:
         "finnhub_websocket", "massive_client",
         # Pattern Archaeology
         "pattern_library", "pattern_watcher",
+        # Ecosystem Bridge
+        "octopus_colony",
     ]
     for sys_id in extras:
         if ctx.holon_registry.get_entry(sys_id) is not None:

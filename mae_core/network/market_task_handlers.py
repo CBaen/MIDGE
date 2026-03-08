@@ -61,8 +61,11 @@ def inject_market_handlers(
         Number of arms patched.
     """
     # Attach colony-level shared state for situation tracking.
-    colony._developing_situations: dict[str, dict[str, Any]] = {}
-    colony._situations_lock = threading.Lock()
+    # Reuse if already initialized (e.g. by bootstrap before EventBus wiring).
+    if not hasattr(colony, "_developing_situations"):
+        colony._developing_situations: dict[str, dict[str, Any]] = {}
+    if not hasattr(colony, "_situations_lock"):
+        colony._situations_lock = threading.Lock()
 
     arms_patched = 0
 
@@ -84,12 +87,41 @@ def inject_market_handlers(
             )
             arms_patched += 1
 
+    # Store references so newly spawned arms can be patched via
+    # patch_new_arm().  This closes the post-bootstrap spawn gap.
+    colony._handler_refs = {
+        "convergence_alerter": convergence_alerter,
+        "pattern_watcher": pattern_watcher,
+        "event_bus": event_bus,
+    }
+
     logger.info(
         "market_task_handlers: patched %d arms across %d octopuses",
         arms_patched,
         len(colony.octopuses),
     )
     return arms_patched
+
+
+def patch_new_arm(colony: "OctopusColony", arm: Any) -> bool:
+    """Patch a single newly-spawned arm with market handlers.
+
+    Call this from the auto-scaling spawn path so arms added after
+    inject_market_handlers() still get the dispatch executor.
+
+    Returns True if the arm was patched, False if handler refs are missing.
+    """
+    refs = getattr(colony, "_handler_refs", None)
+    if refs is None:
+        return False
+    _patch_arm(
+        arm,
+        colony,
+        refs["convergence_alerter"],
+        refs["pattern_watcher"],
+        refs["event_bus"],
+    )
+    return True
 
 
 # ---------------------------------------------------------------------------

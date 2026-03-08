@@ -389,7 +389,7 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
     # Subscribe to partial convergences — register as developing situations
     def _on_partial_convergence(channel, data):
         colony = getattr(ctx, "octopus_colony", None)
-        if colony is None or not hasattr(colony, "_developing_situations"):
+        if colony is None:
             return
         msg = data if isinstance(data, dict) else {}
         direction = msg.get("direction", "neutral")
@@ -1428,17 +1428,42 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
     colony = getattr(ctx, "octopus_colony", None)
     if colony is not None:
         try:
-            from mae_core.network.market_task_handlers import inject_market_handlers
+            from mae_core.network.market_task_handlers import inject_market_handlers, patch_new_arm
             inject_market_handlers(
                 colony=colony,
                 convergence_alerter=getattr(ctx, "convergence_alerter", None),
                 pattern_watcher=getattr(ctx, "pattern_watcher", None),
                 event_bus=getattr(ctx, "bus", None),
             )
-            colony.start_monitoring()
-            logger.info("OctopusColony: market handlers injected, monitoring started")
+            logger.info("OctopusColony: market handlers injected")
         except Exception:
             logger.debug("OctopusColony handler injection failed", exc_info=True)
+
+        # Start monitoring in a separate try so injection failure doesn't
+        # silently prevent the colony from running at all.
+        try:
+            colony.start_monitoring()
+            logger.info("OctopusColony: monitoring started")
+        except Exception:
+            logger.debug("OctopusColony monitoring start failed", exc_info=True)
+
+        # Subscribe to spawn events so newly auto-scaled arms get handlers.
+        def _on_octopus_spawn(channel, data):
+            msg = data if isinstance(data, dict) else {}
+            oct_id = msg.get("octopus_id", "")
+            oct_obj = colony.octopuses.get(oct_id)
+            if oct_obj is None:
+                return
+            cognition = getattr(oct_obj, "cognition", oct_obj)
+            for arm in getattr(cognition, "arms", {}).values():
+                try:
+                    patch_new_arm(colony, arm)
+                except Exception:
+                    logger.debug("Failed to patch arm on spawned %s", oct_id, exc_info=True)
+
+        bus = getattr(ctx, "bus", None)
+        if bus is not None:
+            bus.register_callback("octopus.spawn", _on_octopus_spawn)
 
     # Store hook reference on ctx for monitoring
     ctx._market_sensing_hook = hook

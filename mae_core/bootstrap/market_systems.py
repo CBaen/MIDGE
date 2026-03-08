@@ -456,6 +456,12 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
             world_model=getattr(ctx, "world_model", None),
             signal_bus=getattr(ctx, "signal_bus", None),
         )
+        # Pre-initialize situation tracking so EventBus callbacks
+        # registered in step 7 can safely write before inject_market_handlers
+        # runs in step 9.  inject_market_handlers will reuse these if present.
+        import threading as _th
+        ctx.octopus_colony._developing_situations = {}
+        ctx.octopus_colony._situations_lock = _th.Lock()
     except Exception:
         logger.debug("Market: octopus_colony failed to construct", exc_info=True)
         ctx.octopus_colony = None
