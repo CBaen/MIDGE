@@ -66,7 +66,8 @@ class ShortSqueezeCandidate:
 
 
 class FinVizClient:
-    def __init__(self):
+    def __init__(self, raw_store=None):
+        self._raw_store = raw_store
         self._last_request_time = 0.0
 
     def _rate_limit(self):
@@ -100,6 +101,11 @@ class FinVizClient:
                     ))
                 except (ValueError, TypeError):
                     continue
+            if self._raw_store is not None and results:
+                try:
+                    self._raw_store.store_finviz_insider_trades(results)
+                except Exception:
+                    pass
             return results
         except Exception:
             logger.debug("FinViz insider trades fetch failed", exc_info=True)
@@ -134,6 +140,11 @@ class FinVizClient:
                     ))
                 except (ValueError, TypeError):
                     continue
+            if self._raw_store is not None and results:
+                try:
+                    self._raw_store.store_finviz_unusual_volume(results)
+                except Exception:
+                    pass
             return results
         except Exception:
             logger.debug("FinViz unusual volume fetch failed", exc_info=True)

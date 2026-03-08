@@ -50,7 +50,8 @@ class ClusterBuy:
 
 
 class OpenInsiderClient:
-    def __init__(self):
+    def __init__(self, raw_store=None):
+        self._raw_store = raw_store
         self._session = requests.Session()
         self._session.headers["User-Agent"] = (
             "MIDGE/1.0 (Market Intelligence; +https://github.com/CBaen/MIDGE)"
@@ -77,6 +78,7 @@ class OpenInsiderClient:
         """Get recent insider PURCHASES (buy-only, pre-filtered by OpenInsider).
 
         URL params: fd=N means last N days, lt=1 means purchase only, cnt=100 max results.
+        Stores to raw_store if available — captures the SEC filing URL in cell[0].
         """
         url = (
             f"{_BASE_URL}/screener"
@@ -86,7 +88,13 @@ class OpenInsiderClient:
         soup = self._fetch_page(url)
         if soup is None:
             return []
-        return self._parse_table(soup)
+        results = self._parse_table(soup)
+        if self._raw_store is not None and results:
+            try:
+                self._raw_store.store_openinsider_purchases(results)
+            except Exception:
+                pass
+        return results
 
     def get_cluster_buys(self, min_insiders: int = 3) -> List[ClusterBuy]:
         """Get cluster buys — multiple insiders buying the same stock within days.

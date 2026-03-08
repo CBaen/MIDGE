@@ -49,7 +49,8 @@ class CryptoCandle:
 
 
 class CoinCapClient:
-    def __init__(self):
+    def __init__(self, raw_store=None):
+        self._raw_store = raw_store
         self._session = requests.Session()
         self._session.headers["Accept-Encoding"] = "gzip"
         self._call_times: deque = deque(maxlen=_RATE_LIMIT)
@@ -97,6 +98,11 @@ class CoinCapClient:
                 ))
             except (TypeError, ValueError, KeyError):
                 continue
+        if self._raw_store is not None and results:
+            try:
+                self._raw_store.store_coincap_assets(results)
+            except Exception:
+                pass
         return results
 
     def get_asset_history(self, asset_id: str, interval: str = "h1") -> List[CryptoCandle]:

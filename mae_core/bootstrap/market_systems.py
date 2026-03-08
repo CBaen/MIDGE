@@ -62,6 +62,7 @@ _MARKET_SOURCE_TRUST = [
     ("crypto_coincap", 0.65), ("openinsider", 0.80), ("institutional_13f", 0.85),
     ("finviz", 0.65), ("economic_calendar", 0.80), ("massive_snapshot", 0.90),
     ("eia_energy", 0.95), ("congress_legislation", 0.90),
+    ("social_text", 0.40), ("finviz_insider", 0.55),
 ]
 
 
@@ -206,6 +207,15 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
                 logger.info("Market: seeded %d combo Thompson distributions from replay", _n)
         except Exception:
             logger.debug("Market: combo Thompson seeding failed", exc_info=True)
+    # --- Social text analyzer (reads from RawStore SQLite — no API calls) ---
+    try:
+        from mae_core.market.intelligence.social_text_analyzer import SocialTextAnalyzer
+        ctx.social_text_analyzer = SocialTextAnalyzer(raw_store=raw_store)
+    except Exception:
+        logger.debug("Market: social_text_analyzer failed to construct", exc_info=True)
+        ctx.social_text_analyzer = None
+        failures += 1
+
     try:
         from mae_core.market.intelligence.convergence_alerter import ConvergenceAlerter
         ctx.convergence_alerter = ConvergenceAlerter(
