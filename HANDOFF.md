@@ -2,6 +2,16 @@
 
 ## What Happened
 
+### Raw Store Expansion: 4→12 Domains (2026-03-08)
+
+**raw_store.py expanded** from 296→849 lines with 8 new domain methods: `store_price_snapshot` (yfinance 80+ fields as JSON), `store_fred_observations` (with vintage metadata), `store_stocktwits_messages` (full message text/sentiment/user), `store_finnhub_sentiment/earnings/economic` (ALL countries, quarter/year preserved), `store_congressional_trades` (house+senate), `store_congress_bills` (sponsors, committees), `store_finra_short_volume`.
+
+**8 clients wired** — price_fetcher, FRED, StockTwits, Finnhub, FINRA, House, Senate, Congress.gov all now persist raw data before processing. Total: 12 of 24 clients wired. Bootstrap passes `raw_store` to all 12.
+
+**35 tests** — up from 14. All pass. Zero regressions on full suite.
+
+**12 clients still unwired**: SEC EDGAR, Massive, CoinGecko, CoinCap, OpenInsider, FinViz, EdgarEnhanced, EconCalendar, FinnhubWS, ApeWisdom, JobTracker, SAM.gov.
+
 ### Execution Bridges + Sensing Overdrive + Data Audit (2026-03-07b)
 
 **Alpaca bridge** — `alpaca_client.py` built. Paper trading with bracket orders (TP+SL), position tracking, account info. `alpaca-py 0.43.2`, `kalshi-python 2.1.4`, `httpx+selectolax+trafilatura` all installed. Awaiting `ALPACA_API_KEY` + `ALPACA_SECRET_KEY` in `.env`.
