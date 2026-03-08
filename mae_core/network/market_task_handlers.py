@@ -113,38 +113,35 @@ def _patch_arm(arm: Any, colony: Any, convergence_alerter: Any,
     }
     arm._task_handlers = handlers
 
-    # Capture originals for safe fallback.
-    original_execute = arm.__class__._execute_current_task
+    # Close over the arm instance directly — no types.MethodType needed.
+    # This function is set as arm._execute_current_task and called as arm._execute_current_task().
+    _arm_ref = arm
 
-    def _dispatch_execute(self: Any) -> None:
+    def _dispatch_execute() -> None:
         """Dispatch to a registered handler or fall back to mark-completed."""
-        if self.current_task is None:
+        if _arm_ref.current_task is None:
             return
 
-        task_type = self.current_task.task_type
-        handler = getattr(self, "_task_handlers", {}).get(task_type)
+        task_type = _arm_ref.current_task.task_type
+        handler = getattr(_arm_ref, "_task_handlers", {}).get(task_type)
 
         if handler:
             try:
-                handler(self.current_task)
+                handler(_arm_ref.current_task)
             except Exception:
                 logger.exception(
-                    "Arm %s: handler for '%s' raised", self.arm_id, task_type
+                    "Arm %s: handler for '%s' raised", _arm_ref.arm_id, task_type
                 )
-        else:
-            # Unknown task type — original behaviour (mark completed silently).
-            pass
+        # Unknown task type — original behaviour (mark completed silently).
 
         # Always mark completed and clear current_task regardless of handler outcome.
-        with self._lock:
-            self.current_task.status = "completed"
-            self.task_history.append(self.current_task)
-            self.state.workload = max(0.0, self.state.workload - 0.1)
-            self.current_task = None
+        with _arm_ref._lock:
+            _arm_ref.current_task.status = "completed"
+            _arm_ref.task_history.append(_arm_ref.current_task)
+            _arm_ref.state.workload = max(0.0, _arm_ref.state.workload - 0.1)
+            _arm_ref.current_task = None
 
-    # Bind as an instance method on the arm object (not the class).
-    import types
-    arm._execute_current_task = types.MethodType(_dispatch_execute, arm)
+    arm._execute_current_task = _dispatch_execute
 
 
 # ---------------------------------------------------------------------------
