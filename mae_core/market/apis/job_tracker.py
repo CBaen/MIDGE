@@ -93,8 +93,9 @@ class JobTracker:
     to win a major contract.
     """
 
-    def __init__(self, rapidapi_key: Optional[str] = None, provider=None):
+    def __init__(self, rapidapi_key: Optional[str] = None, provider=None, raw_store=None):
         self._provider = provider
+        self._raw_store = raw_store
         self.session = requests.Session()
         self.rapidapi_key = rapidapi_key or RAPIDAPI_KEY
         self._last_request_time = 0
@@ -348,6 +349,11 @@ class JobTracker:
 
         # Sort by spike ratio (highest first)
         blitzes.sort(key=lambda s: s.spike_ratio, reverse=True)
+        if self._raw_store is not None and blitzes:
+            try:
+                self._raw_store.store_job_postings(blitzes)
+            except Exception:
+                pass
         return blitzes
 
 

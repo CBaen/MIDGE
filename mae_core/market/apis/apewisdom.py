@@ -81,15 +81,17 @@ class ApeWisdomClient:
     No API key required. Rate-limited to 1 req/5s. 30-minute cache.
     """
 
-    def __init__(self, provider=None):
+    def __init__(self, provider=None, raw_store=None):
         """
         Initialize the ApeWisdom client.
 
         Args:
             provider: Optional MarketDataProvider for gateway routing.
                       If None, makes direct requests via requests.Session.
+            raw_store: Optional RawStore for SQLite persistence.
         """
         self._provider = provider
+        self._raw_store = raw_store
         self.session = requests.Session()
         self.session.headers.update({
             "User-Agent": "MIDGE Trading Research"
@@ -213,6 +215,11 @@ class ApeWisdomClient:
             if len(results) >= limit:
                 break
 
+        if self._raw_store is not None and results:
+            try:
+                self._raw_store.store_apewisdom_sentiment(results)
+            except Exception:
+                pass
         return results
 
     def get_accelerating_tickers(

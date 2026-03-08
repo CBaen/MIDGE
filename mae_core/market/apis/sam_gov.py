@@ -133,8 +133,9 @@ class SAMGovClient:
     Tracks federal contract solicitations and awards.
     """
 
-    def __init__(self, api_key: Optional[str] = None, provider=None):
+    def __init__(self, api_key: Optional[str] = None, provider=None, raw_store=None):
         self._provider = provider
+        self._raw_store = raw_store
         self.session = requests.Session()
         self.api_key = api_key or SAM_GOV_API_KEY
         self._last_request_time = 0
@@ -200,7 +201,9 @@ class SAMGovClient:
             if resp.status == ApiResponseStatus.SUCCESS:
                 data = resp.payload or {}
                 opportunities = data.get("opportunitiesData", [])
-                return [self._parse_opportunity(opp) for opp in opportunities]
+                results = [self._parse_opportunity(opp) for opp in opportunities]
+                self._store_opportunities(results)
+                return results
             logger.warning("SAM.gov search failed via provider: %s", resp.error_message)
             return []
 
@@ -210,7 +213,9 @@ class SAMGovClient:
             if response.status_code == 200:
                 data = response.json()
                 opportunities = data.get("opportunitiesData", [])
-                return [self._parse_opportunity(opp) for opp in opportunities]
+                results = [self._parse_opportunity(opp) for opp in opportunities]
+                self._store_opportunities(results)
+                return results
             else:
                 logger.warning(f"SAM.gov search failed ({response.status_code}): {response.text[:100]}")
                 return []
@@ -218,6 +223,14 @@ class SAMGovClient:
         except Exception as e:
             logger.warning(f"SAM.gov error: {str(e)[:50]}")
             return []
+
+    def _store_opportunities(self, opportunities: list) -> None:
+        """Persist opportunities to raw_store if available."""
+        if self._raw_store is not None and opportunities:
+            try:
+                self._raw_store.store_sam_opportunities(opportunities)
+            except Exception:
+                pass
 
     def _parse_opportunity(self, data: dict) -> ContractOpportunity:
         """Parse SAM.gov opportunity data into dataclass."""

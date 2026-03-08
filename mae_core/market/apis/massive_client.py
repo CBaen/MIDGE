@@ -67,8 +67,9 @@ class MassiveClient:
     volume and price anomaly detection.
     """
 
-    def __init__(self, api_key: str = None):
+    def __init__(self, api_key: str = None, raw_store=None):
         self._api_key = api_key or os.environ.get("MASSIVE_API_KEY", "")
+        self._raw_store = raw_store
         self._session = requests.Session()
         self._session.headers["Accept"] = "application/json"
         self._call_times: deque = deque(maxlen=_RATE_LIMIT)
