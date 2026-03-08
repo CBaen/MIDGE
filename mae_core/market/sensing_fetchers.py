@@ -559,7 +559,7 @@ def fetch_crypto_exchange(coincap_client: Any, converter: Callable) -> list:
 
 
 def fetch_openinsider(openinsider_client: Any, converter: Callable) -> list:
-    """Fetch pre-filtered insider purchases from OpenInsider."""
+    """Fetch pre-filtered insider purchases AND cluster buys from OpenInsider."""
     if openinsider_client is None:
         return []
     signals = []
@@ -572,6 +572,41 @@ def fetch_openinsider(openinsider_client: Any, converter: Callable) -> list:
                 pass
     except Exception as e:
         logger.debug("OpenInsider fetch failed: %s", e)
+    # Cluster buys — 3+ insiders buying same stock = high-confidence signal
+    try:
+        clusters = openinsider_client.get_cluster_buys(min_insiders=3)
+        for cluster in clusters:
+            try:
+                from mae_core.market.signal_adapters.market_data import MarketSignal
+                from datetime import datetime
+                strength = min(1.0, 0.5 + (cluster.insider_count - 3) * 0.1
+                               + min(cluster.total_value / 5_000_000, 0.3))
+                signals.append(MarketSignal(
+                    signal_id=f"openinsider_cluster:{cluster.ticker}:{cluster.date_range}",
+                    source="openinsider_cluster",
+                    symbol=cluster.ticker,
+                    asset_class="stock",
+                    domain="insider",
+                    direction="bullish",
+                    strength=strength,
+                    confidence=strength,
+                    decay_rate=0.03,
+                    timestamp=datetime.now(),
+                    received_at=datetime.now(),
+                    outcome_symbol=cluster.ticker,
+                    raw_id="",
+                    raw_type="ClusterBuy",
+                    metadata={
+                        "insider_count": cluster.insider_count,
+                        "total_value": cluster.total_value,
+                        "company_name": cluster.company_name,
+                        "date_range": cluster.date_range,
+                    },
+                ))
+            except Exception:
+                pass
+    except Exception as e:
+        logger.debug("OpenInsider cluster fetch failed: %s", e)
     return signals
 
 
