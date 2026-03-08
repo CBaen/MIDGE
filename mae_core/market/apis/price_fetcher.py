@@ -51,16 +51,18 @@ class PriceFetcher:
         print(f"AAPL: ${price.price}")
     """
 
-    def __init__(self, alpha_vantage_key: str = None, provider=None):
+    def __init__(self, alpha_vantage_key: str = None, provider=None, raw_store=None):
         """
         Initialize price fetcher.
 
         Args:
             alpha_vantage_key: Optional Alpha Vantage API key for fallback
             provider: Optional MarketDataProvider for gateway routing
+            raw_store: Optional RawStore for persisting full ticker.info data
         """
         self.alpha_vantage_key = alpha_vantage_key
         self._provider = provider
+        self._raw_store = raw_store
         self._cache: Dict[str, Tuple[PriceData, datetime]] = {}
         self._cache_ttl = 60  # Cache prices for 60 seconds
 
