@@ -22,6 +22,7 @@ import json
 import logging
 import threading
 import time
+from collections import deque
 from types import SimpleNamespace
 from typing import Any
 
@@ -288,7 +289,7 @@ def _wire_renal_filter(ctx: SimpleNamespace, bus: Any) -> int:
         ticker = msg.get("ticker", "unknown")
         try:
             result = renal.filter_item(
-                item_id=f"conv_{ticker}_{int(time.time())}",
+                item_id=f"conv_{ticker}_{time.monotonic_ns()}",
                 source="convergence_alerter",
                 data=msg,
             )
@@ -358,9 +359,10 @@ def _wire_morphogenesis(ctx: SimpleNamespace, bus: Any) -> int:
         CH_HYPOTHESIS_DISCOVERED,
         CH_PARTIAL_CONVERGENCE,
     )
+    from mae_core.morphogenesis.organ_builder import ProblemSignature
 
-    # Track recent partials with thread-safe lock
-    _partial_window: list[float] = []
+    # Track recent partials with thread-safe deque
+    _partial_window: deque[float] = deque(maxlen=100)
     _partial_lock = threading.Lock()
 
     def _on_partial(channel, data):
@@ -371,12 +373,22 @@ def _wire_morphogenesis(ctx: SimpleNamespace, bus: Any) -> int:
             # Trim to last 10 minutes
             cutoff = now - 600.0
             while _partial_window and _partial_window[0] < cutoff:
-                _partial_window.pop(0)
+                _partial_window.popleft()
             recent_count = len(_partial_window)
 
         if recent_count >= 5:
             domains = msg.get("domains_seen", [])
-            sig = f"partial_overflow_{'_'.join(sorted(domains))}"
+            sig_id = f"partial_overflow_{'_'.join(sorted(domains))}"
+            sig = ProblemSignature(
+                signature_id=sig_id,
+                coordination_level=0.7,
+                exploration_level=0.8,
+                complexity=len(domains) / 12.0,
+                risk_level=0.2,
+                temporal_pattern="episodic",
+                domain="market_investigation",
+                metadata={"domains": sorted(domains)},
+            )
             try:
                 morph.handle_novel_problem(sig, f"partial_investigation_{len(domains)}")
             except Exception:
@@ -666,6 +678,9 @@ def _wire_predictive_field(ctx: SimpleNamespace, bus: Any) -> int:
         h = hash(ticker) & 0xFFFFFFFF
         return ((h >> 16) / 65535.0, (h & 0xFFFF) / 65535.0)
 
+    # Stable integer ID for the convergence alerter "virtual agent"
+    _ALERTER_AGENT_ID = hash("convergence_alerter") & 0x7FFFFFFF
+
     def _on_convergence(channel, data):
         msg = _parse(data)
         ticker = msg.get("ticker", "")
@@ -676,7 +691,7 @@ def _wire_predictive_field(ctx: SimpleNamespace, bus: Any) -> int:
         try:
             pos = _ticker_position(ticker)
             field.update_agent_state(
-                agent_id="convergence_alerter",
+                agent_id=_ALERTER_AGENT_ID,
                 position=pos,
                 velocity=(0.0, 0.0),
                 intention=direction,

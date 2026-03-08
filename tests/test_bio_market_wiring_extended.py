@@ -200,6 +200,9 @@ class TestRenalFilterWiring:
             "source": "finviz", "severity": 0.7,
         })
         renal.add_toxin_pattern.assert_called_once()
+        pattern = renal.add_toxin_pattern.call_args[0][0]
+        assert isinstance(pattern, str)
+        assert "finviz" in pattern
         renal.filter_item.assert_called_once()
 
     def test_convergence_filtered(self):
@@ -496,7 +499,7 @@ class TestPredictiveFieldWiring:
         })
         field.update_agent_state.assert_called_once()
         kwargs = field.update_agent_state.call_args[1]
-        assert kwargs["agent_id"] == "convergence_alerter"
+        assert isinstance(kwargs["agent_id"], int)
         assert kwargs["intention"] == "bullish"
         assert kwargs["confidence"] == 0.85
 
