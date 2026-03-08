@@ -897,11 +897,23 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                                 vol = float(getattr(price_data, "volume", 0) or 0)
                                 vec = [change_pct, min(vol / 1e6, 10.0), 0.0, 0.0]
                                 score = sad.update(vec)
-                                if score >= sad.threshold and hasattr(ctx, "bus"):
-                                    ctx.bus.publish("market.intel.streaming_anomaly", {
-                                        "symbol": sym,
-                                        "score": round(score, 4),
-                                    })
+                                if score >= sad.threshold:
+                                    if hasattr(ctx, "bus"):
+                                        ctx.bus.publish("market.intel.streaming_anomaly", {
+                                            "symbol": sym,
+                                            "score": round(score, 4),
+                                        })
+                                    # Wire into convergence alerter — anomaly is contrarian
+                                    if hasattr(ctx, "convergence_alerter"):
+                                        direction = "bearish" if change_pct > 0 else "bullish"
+                                        ctx.convergence_alerter.record_signal(
+                                            signal_id=f"streaming_anomaly_{sym}",
+                                            strength=min(score / 2.0, 1.0),
+                                            domain="technical",
+                                            direction=direction,
+                                            source="streaming_anomaly",
+                                            metadata={"symbol": sym},
+                                        )
                         except Exception:
                             logger.debug("Pattern discovery failed for %s", sym, exc_info=True)
                 except Exception:
