@@ -269,7 +269,7 @@ class MarketSensingHook:
         thompson_sampler: Any = None,
         tiered_alerters: Optional[dict] = None,
         watchlist: Optional[dict] = None,
-        fetch_cadence: int = 50,
+        fetch_cadence: int = 25,
         outcome_cadence: int = 200,
         order_flow_detector: Any = None,
         portfolio_tracker: Any = None,
@@ -352,7 +352,7 @@ class MarketSensingHook:
         # Watchlist
         self._watchlist = watchlist or load_watchlist()
 
-        # Async fetch state — 3 concurrent workers for parallel senses
+        # Async fetch state — 8 concurrent workers for parallel senses
         self._executor = ThreadPoolExecutor(max_workers=12, thread_name_prefix="mkt-sense")
         self._pending_futures: Dict[str, Future] = {}  # source_name -> future
         self._fetch_queue = deque(SOURCE_ROTATION)
@@ -593,7 +593,7 @@ class MarketSensingHook:
     # ------------------------------------------------------------------
 
     def _launch_next_fetch(self):
-        """Fill up to 3 concurrent fetch slots using Thompson-guided selection.
+        """Fill up to 8 concurrent fetch slots using Thompson-guided selection.
 
         When a Thompson sampler is available, sources are selected
         probabilistically: each source draws from its Beta distribution,
@@ -605,8 +605,8 @@ class MarketSensingHook:
         # Collect any completed futures first
         self._collect_results()
 
-        # Fill available slots (3 max concurrent)
-        slots = 3 - len(self._pending_futures)
+        # Fill available slots (8 max concurrent)
+        slots = 8 - len(self._pending_futures)
         if slots <= 0:
             return
 

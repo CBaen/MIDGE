@@ -158,7 +158,7 @@ class MycelialModel(mesa.Model):
         random.shuffle(agent_list)
 
         if self._agent_executor is None:
-            workers = min(len(agent_list), 8)
+            workers = min(len(agent_list), 20)
             self._agent_executor = ThreadPoolExecutor(
                 max_workers=workers, thread_name_prefix="mae-agent",
             )

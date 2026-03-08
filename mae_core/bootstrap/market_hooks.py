@@ -664,20 +664,40 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                     logger.debug("Backtest scheduler check failed", exc_info=True)
 
             # Excavation daemon: continuous background pattern discovery
+            # Submitted to sensing hook's thread pool so it never blocks the main step loop.
             daemon = getattr(ctx, "excavation_daemon", None)
             if daemon is not None:
-                try:
-                    summary = daemon.step()
-                    if summary.get("fingerprints_found", 0) > 0:
-                        logger.info(
-                            "Excavation: %d fingerprints, %d new templates (%d/%d symbols done)",
-                            summary.get("fingerprints_found", 0),
-                            summary.get("new_templates", 0),
-                            summary.get("symbols_done", 0),
-                            summary.get("symbols_done", 0) + summary.get("symbols_remaining", 0),
-                        )
-                except Exception:
-                    logger.debug("Excavation daemon step failed", exc_info=True)
+                sensing_hook = getattr(ctx, "_market_sensing_hook", None)
+                executor = getattr(sensing_hook, "_executor", None) if sensing_hook is not None else None
+                if executor is not None:
+                    def _run_excavation(d=daemon):
+                        try:
+                            summary = d.step()
+                            if summary.get("fingerprints_found", 0) > 0:
+                                logger.info(
+                                    "Excavation: %d fingerprints, %d new templates (%d/%d symbols done)",
+                                    summary.get("fingerprints_found", 0),
+                                    summary.get("new_templates", 0),
+                                    summary.get("symbols_done", 0),
+                                    summary.get("symbols_done", 0) + summary.get("symbols_remaining", 0),
+                                )
+                        except Exception:
+                            logger.debug("Excavation daemon step failed", exc_info=True)
+                    executor.submit(_run_excavation)
+                else:
+                    # Fallback: run synchronously if sensing hook executor unavailable
+                    try:
+                        summary = daemon.step()
+                        if summary.get("fingerprints_found", 0) > 0:
+                            logger.info(
+                                "Excavation: %d fingerprints, %d new templates (%d/%d symbols done)",
+                                summary.get("fingerprints_found", 0),
+                                summary.get("new_templates", 0),
+                                summary.get("symbols_done", 0),
+                                summary.get("symbols_done", 0) + summary.get("symbols_remaining", 0),
+                            )
+                    except Exception:
+                        logger.debug("Excavation daemon step failed", exc_info=True)
 
         # Every step: hypothesis engine (manages its own cadence internally)
         hyp_engine = getattr(ctx, "hypothesis_engine", None)
@@ -1158,6 +1178,34 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
 
     # Inject EventBus for signal bridge (Phase 1 of hypothesis loop)
     hook._bus = ctx.bus
+
+    # Start FinnhubWebSocket background thread now that sensing hook is wired
+    _ws = getattr(ctx, "finnhub_websocket", None)
+    if _ws is not None:
+        try:
+            _ws.start()
+            logger.info("Layer 33h - FinnhubWebSocket background thread started")
+        except Exception:
+            logger.debug("FinnhubWebSocket start() failed", exc_info=True)
+
+    # Register FinnhubWebSocket stop() as a shutdown hook so the background
+    # thread is cleaned up when the model terminates
+    if _ws is not None:
+        try:
+            original_shutdown = getattr(hook, "shutdown", None)
+
+            def _shutdown_with_ws():
+                try:
+                    _ws.stop()
+                    logger.info("FinnhubWebSocket stopped")
+                except Exception:
+                    pass
+                if original_shutdown is not None:
+                    original_shutdown()
+
+            hook.shutdown = _shutdown_with_ws
+        except Exception:
+            logger.debug("FinnhubWebSocket shutdown hook registration failed", exc_info=True)
 
     # Store hook reference on ctx for monitoring
     ctx._market_sensing_hook = hook
