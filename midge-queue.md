@@ -5,44 +5,30 @@
 
 ---
 
-## Active — Current Session
+## Completed This Session
 
-### Fix Broken Systems (4 agents working)
-- [ ] FinnhubWebSocket.start() never called — real-time streaming is dead wire
-- [ ] ActiveTracker._force_grade() calls nonexistent methods — fast grading broken
-- [ ] SAM.gov estimated_value never populated — get_large_contracts() broken
-- [ ] MassiveClient volume_ratio always 0 — callers don't supply bars_by_ticker
+### Fix Broken Systems
+- [x] FinnhubWebSocket.start() never called — FIXED
+- [x] ActiveTracker._force_grade() calls nonexistent methods — FIXED
+- [x] SAM.gov estimated_value never populated — FIXED
+- [x] MassiveClient volume_ratio always 0 — FIXED
 
-### Raw Store Expansion (12→24 clients)
-- [ ] SEC EDGAR (Form 4 derivatives, full 8-K text)
-- [ ] Massive (grouped daily bars)
-- [ ] CoinGecko (ATH/ATL, supply, sparklines)
-- [ ] CoinCap (asset data)
-- [ ] OpenInsider (+ SEC filing URL from cell[0])
-- [ ] FinViz (insider trades, unusual volume, short float)
-- [ ] EdgarEnhanced (13D/13F metadata)
-- [ ] FinnhubWS (trade tick persistence)
-- [ ] ApeWisdom (social sentiment)
-- [ ] JobTracker (full job records: skills, experience, location)
-- [ ] SAM.gov (full opportunity data + description text)
-
-### Parallelism Upgrade
-- [ ] Concurrent fetches 3→8
-- [ ] Fetch cadence 50→25 steps
-- [ ] Agent thread cap 8→20
-- [ ] ExcavationDaemon off main thread
-
-### Post-Mortem & Temporal
-- [ ] Domain sequence tracking on ConvergenceAlert
-- [ ] Post-mortem prediction reviewer (WHY did it fail?)
-- [ ] Wire lag findings into convergence alerter
-- [ ] Sequence scoring (reward correct domain ordering)
-
-### Cultural Discovery
-- [ ] Google Trends keyword auto-expansion (related_queries feedback loop)
-- [ ] StockTwits message text analyzer (keyword themes, intensity)
-- [ ] Wire FinViz get_insider_trades() into sensing pipeline
+### Raw Store Expansion (12→24 clients) — ALL COMPLETE
+### Parallelism Upgrade — ALL COMPLETE (12 concurrent, 25-step cadence, daemon off main thread)
+### Post-Mortem & Temporal — ALL COMPLETE (domain_sequence, sequence_score, post-mortem reviewer, lag wiring)
+### Cultural Discovery — 3/4 COMPLETE (Trends expansion, social analyzer, FinViz insider trades wired)
 - [ ] Watchlist keywords → Google Trends integration
+
+### Pattern Discovery (partial)
+- [x] STUMPY motif discovery — per-symbol stumpi streaming mode
+- [x] River ADWIN reactive regime drift → DriftDetector
+- [x] NetworkX causal chain graph (114 nodes, 102 edges, 38 tickers)
+- [x] numpy-vectorize Bollinger/RSI computation (10-50x faster TA)
+- [x] Yahoo Finance RSS — per-ticker headline velocity
+
+### File Splits — COMPLETE
+- [x] post_mortem.py split (569→314 + 245 + 57)
+- [x] market_systems.py trimmed (535→453)
 
 ---
 
@@ -71,14 +57,11 @@
 ## Priority 2: Intelligence Upgrades (from expedition-midge-gifts)
 
 ### Pattern Discovery
-- [ ] STUMPY motif discovery — per-symbol stumpi streaming mode
 - [ ] PySAD RRCF streaming anomaly detection → VelocityDetector
-- [ ] River ADWIN reactive regime drift → RegimeClassifier
 - [ ] CausationEntropy weekly batch (experimental, monitored)
 - [ ] smart-money-concepts as new edge detector domain
 
 ### Causal Reasoning
-- [x] NetworkX causal chain graph (114 nodes, 102 edges, 38 tickers) — DONE 2026-03-09
 - [ ] Sequential chain detection (A→B→C stage-gating)
 - [ ] Per-domain temporal ordering in pattern templates
 - [ ] Wire world_model ripple effects into convergence alert enrichment
@@ -91,14 +74,15 @@
 - [ ] Three-stage bull/bear/synthesis prompt
 
 ### Processing Performance
-- [ ] numpy-vectorize Bollinger/RSI computation (10-50x faster TA)
 - [ ] aiohttp async for PolygonBulkFetcher (85s→3-10s)
+
+### Cultural Discovery (remaining)
+- [ ] Watchlist keywords → Google Trends integration
 
 ---
 
 ## Priority 3: New Data Sources
 
-- [ ] Yahoo Finance RSS — per-ticker headline velocity (free, feedparser)
 - [ ] edgartools as SEC upgrade (proper 13F/13D parsing, 1800 stars)
 - [ ] USDA WASDE agriculture (free, monthly, orthogonal domain)
 - [ ] BDI logistics via FRED proxy (free, 5-30 day lead times)

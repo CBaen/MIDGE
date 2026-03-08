@@ -125,8 +125,8 @@ See git log for full history. Key milestones: Granger causality (2026-03-07), te
 ## Stats
 
 - **147 systems** (92 core + 55 market), **4,536+ tests**, **157 holons**, **425 connections**
-- **107 market files** (32 API + 12 edge + 30 intelligence + 8 signal_adapters + 10 archaeology + 15 root)
-- **12 domains**, **31 sources** in sensing rotation (FinViz insider trades added)
+- **114 market files** (33 API + 12 edge + 36 intelligence + 8 signal_adapters + 10 archaeology + 15 root)
+- **12 domains**, **32 sources** in sensing rotation (Yahoo RSS + FinViz insider trades added)
 - **33-layer bootstrap**, **14 mixins** on MycelialAgent
 - **222,916 fingerprints**, **39 templates** (26 cross-validated across 3+ symbols)
 - **24/24 API clients** now persist raw data to SQLite
@@ -136,10 +136,15 @@ See git log for full history. Key milestones: Granger causality (2026-03-07), te
 - **Daemon: STOPPED.** Needs restart with: `python main.py --daemon --agents 12 --steps 500 --pace 2.0`
 - **Raw Data Store: COMPLETE.** All 24 clients store raw data before processing. SQLite per domain in `data/market/raw/`.
 - **FinnhubWebSocket: FIXED.** start() now called at bootstrap. Real-time streaming operational.
+- **WorldModel: WIRED.** 114 nodes, 102 edges, 38 tickers. Causal chain graph injected into convergence_alerter.
 - **Post-Mortem: WIRED.** Runs every 500 steps alongside Granger. Writes insights to `data/market/post_mortem_insights.json`.
 - **Temporal Ordering: ACTIVE.** domain_sequence + sequence_score on every convergence alert.
 - **Social Text: WIRED.** SocialTextAnalyzer reads StockTwits messages from raw_store, emits theme signals.
 - **Trends Discovery: ACTIVE.** Related queries feed keyword expansion. Up to 30 discovered keywords.
+- **TA Vectorization: COMPLETE.** RSI/MACD/Bollinger numpy-vectorized (10-50x faster).
+- **Motif Detector: WIRED.** STUMPY streaming matrix profile, 50 symbols, LRU eviction.
+- **Drift Detector: WIRED.** ADWIN concept drift on price_returns/volume/VIX/sentiment streams.
+- **Yahoo RSS: WIRED.** Per-ticker headline velocity + sentiment. 32 sources in rotation.
 - **Parallelism: 12 concurrent + 25-step cadence.** Full source rotation in ~94 steps.
 - **Templates: REBUILT.** 39 templates live. PatternWatcher matching.
 - **Thompson: FIXED.** Forgetting/learning aligned. Independence correction active.
@@ -152,8 +157,8 @@ See `midge-queue.md` for comprehensive task list (70+ items, 4 priority tiers).
 
 ### Immediate (next session)
 1. **Restart daemon** — picks up ALL fixes from this session and prior
-2. **Run full test suite** — verify zero regressions (was running when machine restarted)
-3. **Split market_systems.py** (535→<500) and post_mortem.py (569→<500)
+2. **Run full test suite** — verify zero regressions
+3. **Push to remote** — 19 commits ahead of origin
 
 ### Priority 1: Execution Bridges
 - Kalshi SDK verification + MarketSelector prototype
@@ -161,15 +166,13 @@ See `midge-queue.md` for comprehensive task list (70+ items, 4 priority tiers).
 - Stop-loss threshold / circuit breaker
 - Public confirmation timestamp logging
 
-### Priority 2: Intelligence Upgrades
-- STUMPY motif discovery, PySAD anomaly detection, River ADWIN drift
-- NetworkX causal chain graph (50-100 relationships)
+### Priority 2: Intelligence Upgrades (partially complete)
+- Sequential chain detection (A→B→C stage-gating) on WorldModel
 - Qwen3-14B via Ollama for causal narratives (check GPU VRAM first)
-- numpy-vectorize TA computation, aiohttp async for Polygon
+- aiohttp async for PolygonBulkFetcher (85s→3-10s)
 
 ### Priority 3: New Data Sources
-- Yahoo Finance RSS (free, headline velocity)
-- edgartools upgrade (proper 13F/13D)
+- edgartools upgrade (proper 13F/13D parsing)
 - USDA WASDE, BDI logistics, AIS maritime
 
 ## Verification
@@ -182,6 +185,5 @@ python main.py --agents 3 --steps 30    # Smoke test
 
 ## Flags
 
-- `market_systems.py` at 535 lines (needs split, 500 cap)
-- `post_mortem.py` at 569 lines (needs split, 500 cap)
 - `raw_store.py` at 1,686 lines (large but single-responsibility — each method is independent)
+- `market_hooks.py` may be approaching size cap — verify and split if needed
