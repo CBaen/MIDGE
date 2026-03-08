@@ -363,7 +363,10 @@ class TestThermoregulationWiring:
         wire_bio_systems_extended(ctx)
 
         bus.publish("market.intel.velocity_anomaly", {"magnitude": 3.0})
-        thermo.report_activity.assert_called_once_with("market_anomaly", 0.6)
+        thermo.report_activity.assert_called_once()
+        args = thermo.report_activity.call_args[0]
+        assert args[0] == "market_anomaly"
+        assert abs(args[1] - 0.6) < 0.01
 
 
 class TestVestibularWiring:

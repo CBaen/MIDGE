@@ -4,7 +4,7 @@
 
 ### Bio-Market Activation — Every System Gets a Market Job (2026-03-09)
 
-**14 biological systems wired to market intelligence channels:**
+**29 biological systems wired to market intelligence channels (14 Tier 2+3 + 15 Tier 4+5):**
 
 Tier 2 (one hop away from EndocrineSystem — now directly market-connected):
 - **EmotionalSystem** → bullish convergence boosts curiosity, bearish boosts fear, deception spikes fear
@@ -24,15 +24,38 @@ Tier 3 (clear market jobs, now EventBus-wired):
 - **CollectiveDreamPlanner** → event_bus fix, convergence nudges expertise weights
 - **Stigmergy** → convergence deposits pheromone per ticker, prediction outcomes deposit success/danger markers
 
+Tier 4 (market jobs, less direct — now wired):
+- **DigestiveSystem** → convergence = high-nutrition data, partials = lower value. Energy budget gates throughput.
+- **CirculatorySystem** → convergence requests attention resources, anomalies request compute. Heart rate rises under load.
+- **LymphaticSystem** → failed predictions = expired_memory waste, deception = orphan_subscription cleanup.
+- **Microbiome** → convergence decomposed by "complex" strain, anomalies by "detector" strain, weak stacks amplified.
+- **RenalFilter** → deception teaches toxin patterns, convergence signals filtered for integrity.
+- **SenescenceManager** → market systems registered for wear tracking, activity reported on convergence/prediction events.
+- **MorphogenesisCoordinator** → 5+ partial convergences in 10 min → spawn investigation organ. Hypotheses boost growth rate.
+- **ReproductiveSystem** → convergence activity sets `ctx._market_activity_pressure` for agent population scaling.
+- **PearlDefense** → deception triggers quarantine validation (multi-layer nacre process).
+
+Tier 5 (purpose emerges through connection — now wired):
+- **RespiratorySystem** → convergence/anomaly = oxygen consumption. Low O2 = organism should throttle sensing.
+- **ThermoregulationSystem** → convergence = heat, anomaly = spike. Overheating = shed tasks, cold = scan more.
+- **VestibularSystem** → tracks convergence rate + prediction accuracy. Rapid changes = vertigo/instability alert.
+- **ProprioceptionSystem** → updates body map with convergence alerter activity/health and outcome tracker health.
+- **EnergyReserve** → convergence spends energy, circadian REST stores, ACTIVE releases. Leptin gates scanning.
+- **PredictiveField** → convergence updates spatial field with ticker positions for agent coordination.
+
+**Note:** GenerativeReplayMemory is the sole unbootstrapped system (needs state_dim/action_dim design decision). Deferred.
+
 **ResourceGovernor (NEW)** — internal API budget governance. Per-source hourly limits, global hourly cap, warning at 80%, throttle events on EventBus. Replaces external governance (Paperclip rejected — Law 6 autopoietic closure).
 
 **Files created/modified:**
-- `mae_core/bootstrap/bio_market_wiring.py` — NEW: 14 system wiring functions
+- `mae_core/bootstrap/bio_market_wiring.py` — 14 Tier 2+3 wiring functions + orchestrator
+- `mae_core/bootstrap/bio_market_wiring_extended.py` — NEW: 15 Tier 4+5 wiring functions
 - `mae_core/market/resource_governor.py` — NEW: budget governance system
 - `mae_core/learning/curiosity.py` — added `set_exploration_bonus()` method
 - `mae_core/bootstrap/market.py` — calls `wire_bio_systems_to_market(ctx)` as Layer 33k
-- `tests/test_bio_market_wiring.py` — NEW: 23 tests
-- `tests/test_resource_governor.py` — NEW: 11 tests
+- `tests/test_bio_market_wiring.py` — 23 Tier 2+3 tests
+- `tests/test_bio_market_wiring_extended.py` — NEW: 38 Tier 4+5 tests
+- `tests/test_resource_governor.py` — 11 tests
 
 ### Ecosystem Activation — Wire the Octopus (2026-03-09)
 
