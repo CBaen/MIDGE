@@ -206,3 +206,13 @@ The following 3 connections were added with the Session Sweep Detector (total ma
 | absence_monitor → event_bus (CH_ABSENCE_DETECTED) | eventbus_pubsub | convergence_alerter, auditor | Publishes silence signals when sources go unexpectedly quiet |
 | absence_monitor ↔ sensing_hook | direct_reference | convergence_alerter, auditor | Sensing hook records arrivals for cadence tracking |
 | absence_monitor → convergence_alerter | direct_reference | sensing_hook, auditor | Absence signals feed into convergence pipeline as bearish domain signals |
+
+## Market Connections (Group 34 — Layer 33) — OctopusColony Pipeline Bridge
+
+3 connections bridging OctopusColony to market intelligence (total market connections: 106):
+
+| Connection | Type | Witness | Notes |
+|-----------|------|---------|-------|
+| octopus_colony → convergence_alerter | direct_reference | pattern_watcher, auditor | Colony investigates partial convergences from alerter |
+| octopus_colony → pattern_watcher | direct_reference | convergence_alerter, auditor | Colony queries archaeology for partial templates |
+| octopus_colony → event_bus | eventbus_pubsub | convergence_alerter, pattern_watcher | Colony emits investigation results via EventBus |
