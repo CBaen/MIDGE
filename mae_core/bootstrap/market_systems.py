@@ -125,7 +125,7 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
 
     # --- Phase 2 + Layer 6 API clients (free sources) ---
     for _attr, _mod, _cls, _kw in [
-        ("senate_stock_watcher", "mae_core.market.apis.senate_stock_watcher", "SenateStockWatcherClient", {"provider": provider}),
+        ("senate_stock_watcher", "mae_core.market.apis.senate_stock_watcher", "SenateStockWatcherClient", {"provider": provider, "raw_store": raw_store}),
         ("apewisdom_client", "mae_core.market.apis.apewisdom", "ApeWisdomClient", {"provider": provider}),
         ("finra_client", "mae_core.market.apis.finra_short_interest", "FINRAShortInterestClient", {"provider": provider, "raw_store": raw_store}),
         ("sec_efts_client", "mae_core.market.apis.sec_edgar.efts", "SECFullTextSearchClient", {"provider": provider}),

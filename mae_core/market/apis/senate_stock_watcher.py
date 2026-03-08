@@ -117,6 +117,12 @@ class SenateStockWatcherClient:
         for url, name in endpoints:
             data = self._request(url, source_name="senate_free")
             if data is not None:
+                if self._raw_store:
+                    try:
+                        self._raw_store.store_congressional_trades(
+                            [{**t, "chamber": "senate"} for t in (data if isinstance(data, list) else [])])
+                    except Exception:
+                        pass
                 self._cache = data
                 self._cache_time = time.time()
                 logger.debug(f"Loaded {len(data)} trades from {name}")
