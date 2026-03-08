@@ -2,6 +2,20 @@
 
 ## What Happened
 
+### Execution Bridges + Sensing Overdrive + Data Audit (2026-03-07b)
+
+**Alpaca bridge** — `alpaca_client.py` built. Paper trading with bracket orders (TP+SL), position tracking, account info. `alpaca-py 0.43.2`, `kalshi-python 2.1.4`, `httpx+selectolax+trafilatura` all installed. Awaiting `ALPACA_API_KEY` + `ALPACA_SECRET_KEY` in `.env`.
+
+**Sensing workers 3→12** — `sensing_hook.py` ThreadPoolExecutor `max_workers` raised. 4x throughput for 30 sources.
+
+**OpenInsider cluster buys WIRED** — `get_cluster_buys()` was fully implemented but never called. Now fires high-confidence signals when 3+ insiders buy same stock within 30 days.
+
+**FINRA speculative short ratio** — `ShortExemptVolume` was parsed then discarded. Now `speculative_short_ratio` separates market-maker structural shorts from speculative shorts.
+
+**Full API data waste audit** — 20 of 24 API clients have no raw_store. Multiple built methods never called (FinViz insider trades, 13F filer list, OpenInsider clusters). See gap list below.
+
+**Daemon data preserved** — 7 learned-state files committed (correlations, outcomes, predictions, dedup registry, Thompson, hypotheses, discovery log). 6 runtime buffers discarded.
+
 ### Raw Data Pipeline + Expedition Synthesis + Vision Alignment (2026-03-07)
 
 **Raw Data Pipeline** — MIDGE was throwing away ~95% of API data. VIX downloads 8,000+ daily rows, uses 1. COT downloads 400+ contracts, uses 10. Now ALL data is persisted to SQLite (one DB per domain) in `data/market/raw/` before processing. WAL mode for daemon concurrency. Constructor injection (`raw_store=None`) on VIX/COT/EIA/Trends clients. 14 tests.
