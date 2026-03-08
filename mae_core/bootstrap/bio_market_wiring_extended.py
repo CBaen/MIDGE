@@ -656,7 +656,8 @@ def _wire_energy_reserve(ctx: SimpleNamespace, bus: Any) -> int:
             pass
 
     bus.register_callback(CH_CONVERGENCE, _on_convergence)
-    bus.register_callback("circadian.phase_change", _on_phase_change)
+    from mae_core.coordination.circadian_rhythm import CH_PHASE_CHANGE
+    bus.register_callback(CH_PHASE_CHANGE, _on_phase_change)
     return 1
 
 
