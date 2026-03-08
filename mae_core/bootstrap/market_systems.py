@@ -147,6 +147,7 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
 
     # --- Wave 2+3: Real-Time + Crypto + Data Enrichment (Always-On MIDGE) ---
     _instantiate_wave2_3_clients(ctx)
+    _instantiate_execution_bridges(ctx)
 
     # --- Edge detectors ---
     for _attr, _mod, _cls, _kw in [

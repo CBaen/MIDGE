@@ -71,8 +71,10 @@ class ShortInterestData:
     symbol: str
     date: str                       # YYYY-MM-DD
     short_volume: int               # Shares sold short that day
-    total_volume: int               # Total shares traded that day
-    short_ratio: float              # short_volume / max(1, total_volume)
+    short_exempt_volume: int = 0    # Market-maker/ETF exempt shorts (structural, not speculative)
+    total_volume: int = 0           # Total shares traded that day
+    short_ratio: float = 0.0       # short_volume / max(1, total_volume)
+    speculative_short_ratio: float = 0.0  # (short - exempt) / max(1, total) — cleaner signal
 
     # MIDGE signal metadata — consumed by ConvergenceAlerter / ThompsonSampler
     signal_source: str = "finra_short"
@@ -203,7 +205,7 @@ class FINRAShortInterestClient:
             if len(parts) < 5:
                 continue
 
-            date_raw, symbol, short_vol_raw, _exempt, total_vol_raw = parts[:5]
+            date_raw, symbol, short_vol_raw, exempt_raw, total_vol_raw = parts[:5]
 
             # Only keep plain exchange tickers
             if not _is_valid_ticker(symbol):
@@ -211,19 +213,23 @@ class FINRAShortInterestClient:
 
             try:
                 short_volume = int(short_vol_raw)
+                short_exempt = int(exempt_raw)
                 total_volume = int(total_vol_raw)
             except ValueError:
                 continue
 
             short_ratio = short_volume / max(1, total_volume)
+            speculative = (short_volume - short_exempt) / max(1, total_volume)
             iso_date = FINRAShortInterestClient._finra_date_to_iso(date_raw)
 
             records.append(ShortInterestData(
                 symbol=symbol,
                 date=iso_date,
                 short_volume=short_volume,
+                short_exempt_volume=short_exempt,
                 total_volume=total_volume,
                 short_ratio=short_ratio,
+                speculative_short_ratio=speculative,
             ))
 
         return records
