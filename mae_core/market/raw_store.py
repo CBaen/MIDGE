@@ -10,6 +10,7 @@ pipeline extracts 1-2 processed values per API call; this layer
 preserves the other 95% for future pattern discovery.
 """
 
+import json
 import sqlite3
 import logging
 from pathlib import Path
