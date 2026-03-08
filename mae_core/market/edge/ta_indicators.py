@@ -25,6 +25,9 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List, Optional, Tuple
 
+import numpy as np
+import pandas as pd
+
 logger = logging.getLogger(__name__)
 
 
@@ -119,7 +122,7 @@ def _extract_ohlcv(price_history) -> Tuple[
 
 
 def compute_rsi(symbol: str, price_history, period: int = 14) -> Optional[RSISignal]:
-    """Compute RSI using Wilder's smoothed moving average.
+    """Compute RSI using Wilder's smoothed moving average (vectorized).
 
     Standard 14-period RSI. Only returns a signal when RSI is in
     oversold (<30) or overbought (>70) territory.
@@ -135,24 +138,21 @@ def compute_rsi(symbol: str, price_history, period: int = 14) -> Optional[RSISig
     if len(price_history) < period + 1:
         return None
 
-    closes = [p.price for p in price_history]
+    closes = np.array([p.price for p in price_history], dtype=float)
+    deltas = np.diff(closes)
 
-    # Calculate price changes
-    changes = [closes[i] - closes[i - 1] for i in range(1, len(closes))]
-
-    if len(changes) < period:
+    if len(deltas) < period:
         return None
 
-    # Initial average gain/loss (simple average of first `period` changes)
-    gains = [max(0, c) for c in changes[:period]]
-    losses = [max(0, -c) for c in changes[:period]]
-    avg_gain = sum(gains) / period
-    avg_loss = sum(losses) / period
+    gains = np.where(deltas > 0, deltas, 0.0)
+    losses = np.where(deltas < 0, -deltas, 0.0)
 
-    # Wilder's smoothed moving average for remaining changes
-    for c in changes[period:]:
-        avg_gain = (avg_gain * (period - 1) + max(0, c)) / period
-        avg_loss = (avg_loss * (period - 1) + max(0, -c)) / period
+    # Wilder smoothing = EMA with alpha = 1/period (com = period - 1)
+    avg_gain_series = pd.Series(gains).ewm(com=period - 1, min_periods=period).mean()
+    avg_loss_series = pd.Series(losses).ewm(com=period - 1, min_periods=period).mean()
+
+    avg_gain = float(avg_gain_series.iloc[-1])
+    avg_loss = float(avg_loss_series.iloc[-1])
 
     if avg_loss == 0:
         rsi = 100.0
@@ -189,17 +189,6 @@ def compute_rsi(symbol: str, price_history, period: int = 14) -> Optional[RSISig
     )
 
 
-def _ema(values: List[float], period: int) -> List[float]:
-    """Compute Exponential Moving Average."""
-    if not values or period <= 0:
-        return []
-    multiplier = 2.0 / (period + 1)
-    result = [values[0]]
-    for v in values[1:]:
-        result.append(v * multiplier + result[-1] * (1 - multiplier))
-    return result
-
-
 def compute_macd(
     symbol: str,
     price_history,
@@ -207,7 +196,7 @@ def compute_macd(
     slow: int = 26,
     signal_period: int = 9,
 ) -> Optional[MACDSignal]:
-    """Compute MACD and detect crossover events.
+    """Compute MACD and detect crossover events (vectorized).
 
     Standard 12/26/9 EMA configuration. Only returns a signal when a
     crossover occurred in the most recent bar.
@@ -225,25 +214,21 @@ def compute_macd(
     if len(price_history) < slow + signal_period:
         return None
 
-    closes = [p.price for p in price_history]
+    closes_series = pd.Series([p.price for p in price_history], dtype=float)
 
-    # Compute MACD line = fast EMA - slow EMA
-    fast_ema = _ema(closes, fast)
-    slow_ema = _ema(closes, slow)
-    macd_line = [f - s for f, s in zip(fast_ema, slow_ema)]
-
-    # Signal line = EMA of MACD line
-    signal_line = _ema(macd_line, signal_period)
-
-    # Histogram
-    histogram = [m - s for m, s in zip(macd_line, signal_line)]
+    # Vectorized EMA via pandas ewm (span = period, adjust=False matches iterative EMA)
+    fast_ema = closes_series.ewm(span=fast, adjust=False).mean()
+    slow_ema = closes_series.ewm(span=slow, adjust=False).mean()
+    macd_line = fast_ema - slow_ema
+    signal_line = macd_line.ewm(span=signal_period, adjust=False).mean()
+    histogram = macd_line - signal_line
 
     if len(histogram) < 2:
         return None
 
     # Detect crossover: sign change in last two bars
-    prev_hist = histogram[-2]
-    curr_hist = histogram[-1]
+    prev_hist = float(histogram.iloc[-2])
+    curr_hist = float(histogram.iloc[-1])
 
     if prev_hist <= 0 and curr_hist > 0:
         crossover_type = "bullish_crossover"
@@ -255,7 +240,7 @@ def compute_macd(
         return None  # No crossover
 
     # Strength from histogram magnitude relative to price
-    price = closes[-1]
+    price = float(closes_series.iloc[-1])
     strength = min(1.0, abs(curr_hist) / (price * 0.02)) if price > 0 else 0.5
 
     # Histogram slope (momentum confirmation)
@@ -270,8 +255,8 @@ def compute_macd(
         confidence=0.53,
         detected_at=now,
         crossover_type=crossover_type,
-        macd_value=round(macd_line[-1], 4),
-        signal_value=round(signal_line[-1], 4),
+        macd_value=round(float(macd_line.iloc[-1]), 4),
+        signal_value=round(float(signal_line.iloc[-1]), 4),
         histogram=round(curr_hist, 4),
         histogram_slope=round(hist_slope, 4),
         metadata={"fast": fast, "slow": slow, "signal_period": signal_period},
