@@ -424,6 +424,28 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
     except Exception:
         ctx.step_timer = None
 
+    # --- Pattern Discovery: MotifDetector, StreamingAnomalyDetector, DriftDetector ---
+    try:
+        from mae_core.market.intelligence.motif_detector import MotifDetector
+        ctx.motif_detector = MotifDetector(raw_store=raw_store)
+    except Exception:
+        logger.debug("Market: motif_detector failed to construct", exc_info=True)
+        ctx.motif_detector = None
+
+    try:
+        from mae_core.market.intelligence.streaming_anomaly import StreamingAnomalyDetector
+        ctx.streaming_anomaly = StreamingAnomalyDetector(n_features=4, threshold=0.8)
+    except Exception:
+        logger.debug("Market: streaming_anomaly failed to construct", exc_info=True)
+        ctx.streaming_anomaly = None
+
+    try:
+        from mae_core.market.intelligence.drift_detector import DriftDetector
+        ctx.drift_detector = DriftDetector(delta=0.002)
+    except Exception:
+        logger.debug("Market: drift_detector failed to construct", exc_info=True)
+        ctx.drift_detector = None
+
     _register_trust_and_gateway(ctx)
 
     logger.info(

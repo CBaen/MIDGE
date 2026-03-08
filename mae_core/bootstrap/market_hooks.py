@@ -468,6 +468,62 @@ def _write_convergence_heartbeat(ctx: SimpleNamespace, step: int) -> None:
         logger.debug("Convergence heartbeat write failed", exc_info=True)
 
 
+def _run_drift_detector(dd, ctx: SimpleNamespace) -> None:
+    """Feed current market signal values into DriftDetector.
+
+    Pulls regime-relevant scalars from live system state:
+      - price_returns: SPY daily return (from regime classifier prices if available)
+      - vix: VIX level (from vix_client state if available)
+      - sentiment: mean sentiment from cached convergence signals
+      - volume: placeholder (uses convergence signal count as proxy)
+
+    When drift is detected in any stream, publishes market.intel.drift_detected
+    on the bus so downstream systems can react (e.g. RegimeClassifier re-run).
+    """
+    try:
+        # Price returns: read from regime classifier's reference symbol history
+        rc = getattr(ctx, "regime_classifier", None)
+        if rc is not None:
+            try:
+                prices = rc._get_recent_prices()
+                if prices and len(prices) >= 2:
+                    ret = (prices[-1] - prices[-2]) / max(prices[-2], 1e-9)
+                    drift, old_m, new_m = dd.update("price_returns", ret)
+                    if drift and hasattr(ctx, "bus"):
+                        ctx.bus.publish("market.intel.drift_detected", {
+                            "stream": "price_returns",
+                            "old_mean": round(old_m, 6),
+                            "new_mean": round(new_m, 6),
+                        })
+            except Exception:
+                pass
+
+        # VIX: read from vix_client if available
+        vix_c = getattr(ctx, "vix_client", None)
+        if vix_c is not None:
+            vix_val = getattr(vix_c, "_last_vix", None) or getattr(vix_c, "last_vix_level", None)
+            if vix_val is not None:
+                drift, old_m, new_m = dd.update("vix", float(vix_val))
+                if drift and hasattr(ctx, "bus"):
+                    ctx.bus.publish("market.intel.drift_detected", {
+                        "stream": "vix",
+                        "old_mean": round(old_m, 4),
+                        "new_mean": round(new_m, 4),
+                    })
+
+        # Convergence signal count as volume proxy
+        cached = getattr(ctx, "_cached_alerts", [None])
+        alerts = cached[0] if cached else None
+        if alerts is not None:
+            n_signals = sum(
+                len(getattr(a, "signals", [])) for a in alerts
+            ) if isinstance(alerts, list) else 0
+            dd.update("signal_volume", float(n_signals))
+
+    except Exception:
+        logger.debug("_run_drift_detector failed", exc_info=True)
+
+
 def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
     """Register step hooks with cadence and deduplication."""
     from mae_core.market.channels import (
@@ -584,6 +640,15 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                     _check_sweep_bypass(alerter, ctx)
                 except Exception:
                     logger.debug("Session sweep bypass step failed", exc_info=True)
+
+            # Drift detector: track regime signal distributions every 50 steps
+            # Feeds price returns, volume proxy, VIX, and sentiment from cached alerts
+            dd = getattr(ctx, "drift_detector", None)
+            if dd is not None:
+                try:
+                    _run_drift_detector(dd, ctx)
+                except Exception:
+                    logger.debug("Drift detector step failed", exc_info=True)
 
         # Every 200 steps: Bayesian forgetting (decay old evidence)
         # Cadence matches outcome evaluation (sensing_hook._outcome_cadence=200)
@@ -775,11 +840,64 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                 except Exception:
                     logger.debug("Kelly sizing step failed", exc_info=True)
 
+        # Every 100 steps: motif detection + streaming anomaly across tracked tickers
+        if step % 100 == 0:
+            md = getattr(ctx, "motif_detector", None)
+            sad = getattr(ctx, "streaming_anomaly", None)
+            pf = getattr(ctx, "price_fetcher", None)
+            if (md is not None or sad is not None) and pf is not None:
+                try:
+                    # Collect tickers from recent ticker alerts (already cached)
+                    ticker_alerts = getattr(ctx, "_ticker_alerts", [])
+                    tickers = set()
+                    for a in ticker_alerts:
+                        for sig in getattr(a, "signals", []):
+                            sym = getattr(sig, "metadata", {}).get("symbol", "")
+                            if sym:
+                                tickers.add(sym)
+
+                    now = datetime.now()
+                    for sym in list(tickers)[:10]:   # cap at 10 per cycle
+                        try:
+                            price_data = pf.get_current_price(sym)
+                            if price_data is None:
+                                continue
+                            price = float(price_data.price)
+                            change_pct = float(getattr(price_data, "change_pct", 0.0) or 0.0)
+
+                            # Motif detection
+                            if md is not None:
+                                motif_sigs = md.update(sym, price, now)
+                                for ms in motif_sigs:
+                                    if hasattr(ctx, "bus"):
+                                        ctx.bus.publish("market.intel.motif_detected", {
+                                            "symbol": sym,
+                                            "type": ms.signal_type,
+                                            "strength": round(ms.strength, 4),
+                                            "mp_value": round(ms.mp_value, 4),
+                                        })
+
+                            # Streaming anomaly: [price_change, volume_ratio, 0, 0]
+                            # volume_ratio and sentiment default to 0 (unknown at this point)
+                            if sad is not None:
+                                vol = float(getattr(price_data, "volume", 0) or 0)
+                                vec = [change_pct, min(vol / 1e6, 10.0), 0.0, 0.0]
+                                score = sad.update(vec)
+                                if score >= sad.threshold and hasattr(ctx, "bus"):
+                                    ctx.bus.publish("market.intel.streaming_anomaly", {
+                                        "symbol": sym,
+                                        "score": round(score, 4),
+                                    })
+                        except Exception:
+                            logger.debug("Pattern discovery failed for %s", sym, exc_info=True)
+                except Exception:
+                    logger.debug("Pattern discovery step failed", exc_info=True)
+
     ctx.model.add_step_hook(_market_sense_hook)
     logger.info(
         "Layer 33g - Market step hooks: 1 sense hook registered "
         "(cadence: convergence/1, stats/10, velocity/50, forgetting/200, "
-        "lag/500, calibration/1000, backtest/5000)"
+        "motif+anomaly/100, drift/50, lag/500, calibration/1000, backtest/5000)"
     )
 
 
