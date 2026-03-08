@@ -16,7 +16,7 @@ convergence_alerter because collection happens in the main thread.
 
 Decomposed into three files:
   sensing_hook.py      — this file: MarketSensingHook class + constants
-  sensing_fetchers.py  — 29 standalone fetch functions
+  sensing_fetchers.py  — 30 standalone fetch functions
   sensing_lifecycle.py — enrich_signal, store_signals, load_watchlist
 """
 
@@ -29,7 +29,7 @@ from collections import deque
 from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from mae_core.market.sensing_fetchers import (
     fetch_sec_form4,
@@ -133,7 +133,7 @@ TIER_ROUTING = {
     "congress_legislation": "strategic",
 }
 
-# Source names for rotation — 30 sources, full cycle every 1500 steps
+# Source names for rotation — 30 sources, 3 concurrent per cadence tick
 SOURCE_ROTATION = [
     "sec_form4",
     "sec_form8k",
