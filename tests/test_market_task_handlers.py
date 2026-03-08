@@ -48,7 +48,7 @@ def _make_octopus(arms: dict) -> MagicMock:
 
 
 def _make_colony(num_octopuses: int = 1, arms_per_octopus: int = 2) -> MagicMock:
-    colony = MagicMock()
+    colony = MagicMock(spec=[])  # spec=[] prevents auto-attribute creation
     octopuses = {}
     for oi in range(num_octopuses):
         arms = {f"arm-{oi}-{ai}": _make_arm(f"arm-{oi}-{ai}")

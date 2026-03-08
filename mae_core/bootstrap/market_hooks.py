@@ -393,8 +393,8 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
             return
         msg = data if isinstance(data, dict) else {}
         direction = msg.get("direction", "neutral")
-        # Prefer top-level ticker (added by convergence_alerter),
-        # fall back to scanning signal symbol fields.
+        # Extract ticker from signal symbol fields (global convergence
+        # partials don't carry a top-level ticker).
         ticker = msg.get("ticker")
         if not ticker:
             for sig in msg.get("signals", []):
@@ -408,7 +408,9 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
         lock = getattr(colony, "_situations_lock", None)
         if lock:
             with lock:
-                if key not in colony._developing_situations:
+                # Cap at 200 developing situations to prevent unbounded growth
+                # if situation_check handler isn't running (e.g. zero octopuses).
+                if key not in colony._developing_situations and len(colony._developing_situations) < 200:
                     colony._developing_situations[key] = {
                         "ticker": ticker, "direction": direction,
                         "domains_seen": msg.get("domains_seen", []),

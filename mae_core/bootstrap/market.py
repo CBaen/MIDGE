@@ -19,7 +19,7 @@ This mirrors how Mae handles all optional systems — advisory, never blocking.
 Sub-module responsibilities:
   market_systems.py       — Layer 33a: construct all market objects on ctx
   market_registration.py — Layer 33b-e: somatic, holons, fractal, stem roles
-  market_connections.py  — Layer 33d: 103 triadic connections (Groups 14-32)
+  market_connections.py  — Layer 33d: 106 triadic connections (Groups 14-34)
   market_hooks.py        — Layer 33f-h: EventBus callbacks, step hooks, sensing hook
   market_agents.py       — Layer 33i: agent differentiation + market reflexes
 """
@@ -48,7 +48,7 @@ logger = logging.getLogger("midge.bootstrap")
 
 
 def bootstrap_market(ctx: SimpleNamespace) -> None:
-    """Wire Layer 33: Market Intelligence organ (51 systems, 103 connections).
+    """Wire Layer 33: Market Intelligence organ (56 systems, 106 connections).
 
     Call order is load-bearing — sub-modules have dependencies:
       1. _instantiate_market_systems: build all objects first
@@ -113,7 +113,7 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
     ])
 
     logger.info(
-        "Layer 33  - Market Intelligence organ complete: %d systems, %d holons, 103 connections",
+        "Layer 33  - Market Intelligence organ complete: %d systems, %d holons, 106 connections",
         active, holon_count,
     )
     logger.info(
