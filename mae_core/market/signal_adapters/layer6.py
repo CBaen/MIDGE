@@ -308,3 +308,49 @@ def from_analyst_recommendation(rec) -> MarketSignal:
             "total": rec.total,
         },
     )
+
+
+def from_social_text_signal(sig) -> MarketSignal:
+    """Convert a SocialTextSignal to a MarketSignal.
+
+    StockTwits message text carries cultural momentum that the simple
+    bull/bear ratio misses.  A surge in options_flow chatter predates
+    volume; earnings_play dominance signals a catalyst is being positioned
+    for.  Text theme signals have faster decay (0.60) than sentiment ratios.
+    """
+    ticker = getattr(sig, "ticker", "") or ""
+    direction = getattr(sig, "direction", "neutral")
+    strength = getattr(sig, "strength", 0.0) or 0.0
+    dominant_theme = getattr(sig, "dominant_theme", "unknown")
+    message_count = getattr(sig, "message_count", 0)
+    theme_score = getattr(sig, "theme_score", 0.0)
+    detected_at = getattr(sig, "detected_at", "")
+
+    event_dt = _ensure_datetime(detected_at) if detected_at else datetime.now()
+
+    signal_id = f"social_text:{ticker}:{dominant_theme}:{event_dt.strftime('%Y%m%dT%H%M')}"
+
+    return MarketSignal(
+        signal_id=signal_id,
+        source="social_text",
+        symbol=ticker,
+        asset_class="stock",
+        domain="sentiment",
+        direction=direction,
+        strength=strength,
+        confidence=getattr(sig, "confidence", 0.40),
+        decay_rate=getattr(sig, "decay_rate", 0.60),
+        timestamp=event_dt,
+        received_at=datetime.now(),
+        outcome_symbol=ticker,
+        outcome_window_days=3,
+        raw_id="",
+        raw_type="SocialTextSignal",
+        metadata={
+            "dominant_theme": dominant_theme,
+            "theme_score": theme_score,
+            "intensity": getattr(sig, "intensity", 0.0),
+            "message_count": message_count,
+            "themes": getattr(sig, "themes", {}),
+        },
+    )

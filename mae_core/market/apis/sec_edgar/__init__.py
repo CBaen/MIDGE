@@ -67,18 +67,19 @@ def get_recent_form8ks(ticker: str, days: int = 30) -> List[Form8KEvent]:
     return all_events
 
 
-def get_recent_form4s(ticker: str, days: int = 30) -> List[InsiderTrade]:
+def get_recent_form4s(ticker: str, days: int = 30, raw_store=None) -> List[InsiderTrade]:
     """
     Get recent Form 4 filings for a ticker.
 
     Args:
         ticker: Stock ticker symbol (e.g., "AAPL")
         days: Number of days to look back
+        raw_store: Optional RawStore instance for persistence.
 
     Returns:
         List of InsiderTrade objects
     """
-    client = SECEdgarClient()
+    client = SECEdgarClient(raw_store=raw_store)
 
     cik = client.get_company_cik(ticker)
     if not cik:
@@ -104,6 +105,13 @@ def get_recent_form4s(ticker: str, days: int = 30) -> List[InsiderTrade]:
         for trade in trades:
             trade.filing_date = filing.get("filing_date", "")
         all_trades.extend(trades)
+
+    # Persist to raw store (preserves derivative tables and all trade fields)
+    if raw_store is not None and all_trades:
+        try:
+            raw_store.store_sec_form4(all_trades)
+        except Exception:
+            pass  # Never break signal pipeline
 
     return all_trades
 

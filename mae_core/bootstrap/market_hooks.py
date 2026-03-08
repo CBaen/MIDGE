@@ -651,6 +651,26 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                 except Exception:
                     logger.debug("Granger causality step failed", exc_info=True)
 
+            # Post-mortem review: periodic retrospective analysis of graded outcomes.
+            # Runs at 500-step cadence alongside Granger/Lag to keep learning in sync.
+            post_mortem = getattr(ctx, "post_mortem_reviewer", None)
+            if post_mortem is not None:
+                try:
+                    if _timer is not None:
+                        with _timer.track("post_mortem"):
+                            pm_summary = post_mortem.review()
+                    else:
+                        pm_summary = post_mortem.review()
+                    if pm_summary.get("outcomes_reviewed", 0) > 0:
+                        logger.info(
+                            "PostMortem: reviewed %d outcomes (%d combos, %d sequences)",
+                            pm_summary.get("outcomes_reviewed", 0),
+                            pm_summary.get("combos_analyzed", 0),
+                            pm_summary.get("sequences_analyzed", 0),
+                        )
+                except Exception:
+                    logger.debug("Post-mortem review step failed", exc_info=True)
+
         # Every 1000 steps: Thompson calibration diagnostic
         if step % 1000 == 0:
             calibrator = getattr(ctx, "thompson_calibrator", None)

@@ -99,7 +99,7 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
     # --- API clients (Market Sensing) — provider + raw_store injected ---
     import importlib as _imp
     for _attr, _mod, _cls, _kw in [
-        ("sec_edgar_client", "mae_core.market.apis.sec_edgar.client", "SECEdgarClient", {"provider": provider}),
+        ("sec_edgar_client", "mae_core.market.apis.sec_edgar.client", "SECEdgarClient", {"provider": provider, "raw_store": raw_store}),
         ("house_stock_watcher", "mae_core.market.apis.house_stock_watcher", "HouseStockWatcherClient", {"provider": provider, "raw_store": raw_store}),
         ("job_tracker", "mae_core.market.apis.job_tracker", "JobTracker", {"provider": provider}),
         ("usa_spending_client", "mae_core.market.apis.usa_spending", "USASpendingClient", {"provider": provider}),
@@ -299,6 +299,17 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
     except Exception:
         logger.debug("Market: granger_analyzer failed to construct", exc_info=True)
         ctx.granger_analyzer = None
+        failures += 1
+
+    try:
+        from mae_core.market.intelligence.post_mortem import PostMortemReviewer
+        ctx.post_mortem_reviewer = PostMortemReviewer(
+            thompson_sampler=ctx.thompson_sampler,
+            regime_classifier=getattr(ctx, "regime_classifier", None),
+        )
+    except Exception:
+        logger.debug("Market: post_mortem_reviewer failed to construct", exc_info=True)
+        ctx.post_mortem_reviewer = None
         failures += 1
 
     try:

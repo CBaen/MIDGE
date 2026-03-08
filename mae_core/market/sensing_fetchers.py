@@ -23,10 +23,11 @@ def fetch_sec_form4(sec_client: Any, watchlist: dict, converter: Callable) -> li
 
     from mae_core.market.apis.sec_edgar import get_recent_form4s
 
+    raw_store = getattr(sec_client, "_raw_store", None)
     signals = []
     for ticker in watchlist.get("tickers", []):
         try:
-            trades = get_recent_form4s(ticker, days=30)
+            trades = get_recent_form4s(ticker, days=30, raw_store=raw_store)
             for trade in trades:
                 try:
                     signals.append(converter(trade))
@@ -785,4 +786,32 @@ def fetch_massive_snapshot(
                 pass
     except Exception as e:
         logger.debug("Massive snapshot fetch failed: %s", e)
+    return signals
+
+
+def fetch_social_text(
+    social_text_analyzer: Any,
+    watchlist: dict,
+    converter: Callable,
+) -> list:
+    """Run text theme analysis on stored StockTwits messages.
+
+    Reads from the StockTwits SQLite DB (populated by StockTwitsClient).
+    No API calls — pure local computation.  Runs on every sensing cycle,
+    returns signals only when theme thresholds are crossed.
+    """
+    if social_text_analyzer is None:
+        return []
+
+    signals = []
+    tickers = watchlist.get("tickers", [])
+    try:
+        results = social_text_analyzer.analyze_all(tickers if tickers else None)
+        for result in results:
+            try:
+                signals.append(converter(result))
+            except Exception:
+                pass
+    except Exception as e:
+        logger.debug("Social text analysis failed: %s", e)
     return signals

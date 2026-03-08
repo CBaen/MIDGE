@@ -62,6 +62,7 @@ from mae_core.market.sensing_fetchers import (
     fetch_eia,
     fetch_congress_legislation,
     fetch_massive_snapshot,
+    fetch_social_text,
 )
 from mae_core.market.sensing_lifecycle import (
     enrich_signal,
@@ -132,6 +133,8 @@ TIER_ROUTING = {
     "eia_energy": "strategic",
     # Real-economy: Legislative
     "congress_legislation": "strategic",
+    # Social text analysis
+    "social_text": "thematic",
 }
 
 # Source names for rotation — 30 sources, 8 concurrent per cadence tick
@@ -174,6 +177,8 @@ SOURCE_ROTATION = [
     "eia_energy",
     # Real-economy: Legislative
     "congress_legislation",
+    # Social text analysis (local — no API, just reads SQLite)
+    "social_text",
 ]
 
 # Map rotation source names → Thompson distribution keys for guided selection.
@@ -209,6 +214,7 @@ _ROTATION_TO_THOMPSON = {
     "massive_snapshot": "massive_snapshot",
     "eia_energy": "eia_energy",
     "congress_legislation": "congress_legislation",
+    "social_text": "social_text",
 }
 
 # Map absence source names back to convergence domains
@@ -225,6 +231,7 @@ _ABSENCE_SOURCE_DOMAINS = {
     "finviz_unusual_volume": "technical", "finviz_short_squeeze": "institutional",
     "finviz_insider": "insider",
     "massive_snapshot": "technical",
+    "social_text": "sentiment",
     "eia_energy": "energy",
     "congress_legislation": "government",
 }
