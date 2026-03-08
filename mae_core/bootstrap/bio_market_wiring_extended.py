@@ -322,10 +322,7 @@ def _wire_senescence(ctx: SimpleNamespace, bus: Any) -> int:
         "pattern_watcher", "outcome_tracker",
     ]
     for name in market_systems:
-        try:
-            senescence.register_system(name, creation_step=0)
-        except Exception:
-            pass  # may already be registered
+        senescence.register_system(name, creation_step=0)
 
     def _on_convergence(channel, data):
         try:
@@ -408,9 +405,9 @@ def _wire_morphogenesis(ctx: SimpleNamespace, bus: Any) -> int:
 def _wire_reproductive(ctx: SimpleNamespace, bus: Any) -> int:
     """ReproductiveSystem: market load drives agent population scaling.
 
-    Convergence activity increases market pressure. The step hook
-    reads ctx._market_activity_pressure to feed update_metrics().
-    High pressure = organism needs more agents. Low = shed.
+    Convergence activity increases market pressure (decays each call).
+    Pressure is consumed by `consume_market_pressure()` which the
+    market_hooks step hook calls to feed update_metrics().
     """
     repro = getattr(ctx, "reproductive_system", None)
     if repro is None:
@@ -436,6 +433,15 @@ def _wire_reproductive(ctx: SimpleNamespace, bus: Any) -> int:
             ctx._market_activity_pressure = min(
                 1.0, ctx._market_activity_pressure + 0.05,
             )
+
+    def consume_market_pressure() -> float:
+        """Read and decay pressure. Called from step hook."""
+        with _pressure_lock:
+            val = ctx._market_activity_pressure
+            ctx._market_activity_pressure = max(0.0, val * 0.9 - 0.01)
+            return val
+
+    ctx._consume_market_pressure = consume_market_pressure
 
     bus.register_callback(CH_CONVERGENCE, _on_convergence)
     bus.register_callback(CH_PARTIAL_CONVERGENCE, _on_partial)

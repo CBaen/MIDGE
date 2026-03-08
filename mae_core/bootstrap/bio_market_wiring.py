@@ -449,7 +449,8 @@ def _wire_circadian(ctx: SimpleNamespace, bus: Any) -> int:
             new_phase, multiplier,
         )
 
-    bus.register_callback("circadian.phase_change", _on_phase_change)
+    from mae_core.coordination.circadian_rhythm import CH_PHASE_CHANGE
+    bus.register_callback(CH_PHASE_CHANGE, _on_phase_change)
     ctx._circadian_activity = 1.0
     ctx._circadian_phase = "ACTIVE"
     return 1
@@ -550,7 +551,8 @@ def _wire_memory_consolidator(ctx: SimpleNamespace, bus: Any) -> int:
             except Exception:
                 logger.debug("Excavation rest-cycle failed", exc_info=True)
 
-    bus.register_callback("circadian.phase_change", _on_phase_change)
+    from mae_core.coordination.circadian_rhythm import CH_PHASE_CHANGE
+    bus.register_callback(CH_PHASE_CHANGE, _on_phase_change)
     return 1
 
 
