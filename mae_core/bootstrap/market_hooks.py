@@ -393,13 +393,15 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
             return
         msg = data if isinstance(data, dict) else {}
         direction = msg.get("direction", "neutral")
-        signals = msg.get("signals", [])
-        ticker = None
-        for sig in signals:
-            t = sig.get("metadata", {}).get("symbol", "")
-            if t:
-                ticker = t
-                break
+        # Prefer top-level ticker (added by convergence_alerter),
+        # fall back to scanning signal symbol fields.
+        ticker = msg.get("ticker")
+        if not ticker:
+            for sig in msg.get("signals", []):
+                t = sig.get("symbol", "") or sig.get("metadata", {}).get("symbol", "")
+                if t:
+                    ticker = t
+                    break
         if ticker is None:
             return
         key = f"{direction}:{ticker}"
@@ -700,7 +702,7 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
             colony = getattr(ctx, "octopus_colony", None)
             if colony is not None:
                 try:
-                    for oct_id, oct in colony.octopuses.items():
+                    for oct_id, oct in list(colony.octopuses.items()):
                         oct.cognition.run_coordination_cycle()
                 except Exception:
                     logger.debug("OctopusColony coordination failed", exc_info=True)

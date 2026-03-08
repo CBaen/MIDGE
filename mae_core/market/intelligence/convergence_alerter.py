@@ -1215,6 +1215,7 @@ class ConvergenceAlerter:
                         "domains_seen": list(domains_seen),
                         "missing_domains": self._compute_missing_domains(domains_seen),
                         "signals": [{"source": s.source, "strength": s.strength,
+                                     "symbol": getattr(s, "symbol", ""),
                                      "metadata": s.metadata} for s in directional_signals[:5]],
                         "min_domains_required": self.min_domains,
                     })
