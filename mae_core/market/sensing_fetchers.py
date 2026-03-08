@@ -409,15 +409,22 @@ def fetch_vix(vix_client: Any, converter: Callable) -> list:
 
 
 def fetch_trends(trends_client: Any, watchlist: dict, converter: Callable) -> list:
-    """Fetch Google Trends interest for watchlist tickers + macro terms."""
+    """Fetch Google Trends interest for watchlist tickers + keywords + macro terms.
+
+    Watchlist keywords (cybersecurity, AI, defense, space) are included so
+    MIDGE tracks cultural/political attention on her focus sectors, not just
+    individual tickers.  The TrendsClient also injects any discovered rising
+    queries from previous cycles, creating a self-expanding keyword antenna.
+    """
     if trends_client is None:
         return []
 
     signals = []
-    # Mix watchlist tickers with macro fear terms
+    # Mix watchlist tickers + watchlist cultural keywords + macro fear terms
     tickers = watchlist.get("tickers", [])[:5]
+    cultural_keywords = watchlist.get("keywords", [])  # e.g. "cybersecurity", "AI"
     macro_terms = ["recession", "market crash", "fed rate"]
-    keywords = tickers + macro_terms
+    keywords = tickers + cultural_keywords + macro_terms
 
     try:
         trends = trends_client.get_interest(keywords)
@@ -636,8 +643,15 @@ def fetch_finviz(
     finviz_client: Any,
     volume_converter: Callable,
     squeeze_converter: Callable,
+    insider_converter: Callable,
 ) -> list:
-    """Fetch FinViz unusual volume + short squeeze candidates."""
+    """Fetch FinViz unusual volume + short squeeze candidates + insider trades.
+
+    FinViz insider trades are a third independent insider data source alongside
+    SEC EDGAR Form 4 and OpenInsider.  All three probe the same underlying
+    regulatory filings from different angles, which makes their convergence
+    a strong cross-validation signal.
+    """
     if finviz_client is None:
         return []
     signals = []
@@ -661,6 +675,18 @@ def fetch_finviz(
                 pass
     except Exception as e:
         logger.debug("FinViz short squeeze fetch failed: %s", e)
+    # Insider trades (Buy transactions only — filter on the fly)
+    try:
+        trades = finviz_client.get_insider_trades()
+        for trade in trades[:30]:
+            try:
+                # Only Buy transactions carry directional signal
+                if str(getattr(trade, "transaction_type", "")).lower() in ("buy", "purchase"):
+                    signals.append(insider_converter(trade))
+            except Exception:
+                pass
+    except Exception as e:
+        logger.debug("FinViz insider trades fetch failed: %s", e)
     return signals
 
 

@@ -890,6 +890,7 @@ class MarketSensingHook:
             from_finviz_short_squeeze,
             from_suppression_event,
         )
+        from mae_core.market.signal_adapters.wave2_3 import from_finviz_insider
 
         signals = []
 

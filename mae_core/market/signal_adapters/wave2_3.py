@@ -431,6 +431,57 @@ def from_suppression_event(event) -> MarketSignal:
     )
 
 
+def from_finviz_insider(trade) -> MarketSignal:
+    """Convert a FinVizInsiderTrade (Buy) to a MarketSignal.
+
+    FinViz scrapes the same SEC Form 4 filings as EDGAR and OpenInsider but
+    presents them through a different lens (screener context, owner titles).
+    Using all three sources gives cross-validation: if all three flag the same
+    ticker on the same day, the signal confidence is substantially higher.
+
+    Only Buy transactions should be passed here (filtered in fetch_finviz).
+    Strength scales to $1M trade value.
+    """
+    ticker = getattr(trade, "ticker", "") or ""
+    value = getattr(trade, "value", 0.0) or 0.0
+    date_str = getattr(trade, "date", "") or ""
+
+    strength = min(1.0, value / 1_000_000.0)
+
+    event_dt = _ensure_datetime(date_str) if date_str else datetime.now()
+
+    signal_id = (
+        f"finviz_insider:{ticker}:{date_str}:{getattr(trade, 'owner_name', '')}"
+    )
+
+    return MarketSignal(
+        signal_id=signal_id,
+        source="finviz_insider",
+        symbol=ticker,
+        asset_class="stock",
+        domain="insider",
+        direction="bullish",
+        strength=strength,
+        confidence=0.50,
+        decay_rate=0.05,
+        timestamp=event_dt,
+        received_at=datetime.now(),
+        outcome_symbol=ticker,
+        outcome_window_days=30,
+        raw_id="",
+        raw_type="FinVizInsiderTrade",
+        metadata={
+            "owner_name": getattr(trade, "owner_name", ""),
+            "relationship": getattr(trade, "relationship", ""),
+            "transaction_type": getattr(trade, "transaction_type", ""),
+            "date": date_str,
+            "shares_traded": getattr(trade, "shares_traded", 0),
+            "value": value,
+            "shares_owned": getattr(trade, "shares_owned", 0),
+        },
+    )
+
+
 def from_massive_snapshot(snapshot) -> MarketSignal:
     """Convert a TickerSnapshot (Massive/Polygon) to a MarketSignal.
 
