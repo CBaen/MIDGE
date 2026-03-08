@@ -14,6 +14,15 @@ logger = logging.getLogger("midge.bootstrap")
 def _instantiate_wave2_3_clients(ctx: SimpleNamespace) -> None:
     """Construct Wave 2+3 API clients (Always-On MIDGE)."""
     import importlib
+    raw_store = getattr(ctx, "_raw_store_ref", None)
+
+    # Clients that accept raw_store as a constructor argument (newly wired)
+    _with_raw_store = {
+        "coingecko_client", "coincap_client", "openinsider_client",
+        "edgar_enhanced_client", "finviz_client", "finnhub_websocket",
+        "massive_client",
+    }
+
     for attr, mod_path, cls in [
         ("coingecko_client", "mae_core.market.apis.coingecko_client", "CoinGeckoClient"),
         ("coincap_client", "mae_core.market.apis.coincap_client", "CoinCapClient"),
@@ -25,7 +34,9 @@ def _instantiate_wave2_3_clients(ctx: SimpleNamespace) -> None:
         ("massive_client", "mae_core.market.apis.massive_client", "MassiveClient"),
     ]:
         try:
-            setattr(ctx, attr, getattr(importlib.import_module(mod_path), cls)())
+            klass = getattr(importlib.import_module(mod_path), cls)
+            kwargs = {"raw_store": raw_store} if (attr in _with_raw_store and raw_store is not None) else {}
+            setattr(ctx, attr, klass(**kwargs))
         except Exception:
             logger.debug("Market: %s failed to construct", attr, exc_info=True)
             setattr(ctx, attr, None)
@@ -101,9 +112,9 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
     for _attr, _mod, _cls, _kw in [
         ("sec_edgar_client", "mae_core.market.apis.sec_edgar.client", "SECEdgarClient", {"provider": provider, "raw_store": raw_store}),
         ("house_stock_watcher", "mae_core.market.apis.house_stock_watcher", "HouseStockWatcherClient", {"provider": provider, "raw_store": raw_store}),
-        ("job_tracker", "mae_core.market.apis.job_tracker", "JobTracker", {"provider": provider}),
+        ("job_tracker", "mae_core.market.apis.job_tracker", "JobTracker", {"provider": provider, "raw_store": raw_store}),
         ("usa_spending_client", "mae_core.market.apis.usa_spending", "USASpendingClient", {"provider": provider}),
-        ("sam_gov_client", "mae_core.market.apis.sam_gov", "SAMGovClient", {"provider": provider}),
+        ("sam_gov_client", "mae_core.market.apis.sam_gov", "SAMGovClient", {"provider": provider, "raw_store": raw_store}),
     ]:
         try:
             setattr(ctx, _attr, getattr(_imp.import_module(_mod), _cls)(**_kw))
@@ -126,7 +137,7 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
     # --- Phase 2 + Layer 6 API clients (free sources) ---
     for _attr, _mod, _cls, _kw in [
         ("senate_stock_watcher", "mae_core.market.apis.senate_stock_watcher", "SenateStockWatcherClient", {"provider": provider, "raw_store": raw_store}),
-        ("apewisdom_client", "mae_core.market.apis.apewisdom", "ApeWisdomClient", {"provider": provider}),
+        ("apewisdom_client", "mae_core.market.apis.apewisdom", "ApeWisdomClient", {"provider": provider, "raw_store": raw_store}),
         ("finra_client", "mae_core.market.apis.finra_short_interest", "FINRAShortInterestClient", {"provider": provider, "raw_store": raw_store}),
         ("sec_efts_client", "mae_core.market.apis.sec_edgar.efts", "SECFullTextSearchClient", {"provider": provider}),
         ("finnhub_client", "mae_core.market.apis.finnhub_client", "FinnhubClient", {"provider": provider, "raw_store": raw_store}),
@@ -143,6 +154,9 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         except Exception:
             logger.debug("Market: %s failed", _attr, exc_info=True)
             setattr(ctx, _attr, None)
+
+    # Store raw_store ref on ctx so wave2/3 init can access it
+    ctx._raw_store_ref = raw_store
 
     # --- Wave 2+3: Real-Time + Crypto + Data Enrichment (Always-On MIDGE) ---
     _instantiate_wave2_3_clients(ctx)

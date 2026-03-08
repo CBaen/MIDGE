@@ -55,8 +55,9 @@ class TrendingCoin:
 
 
 class CoinGeckoClient:
-    def __init__(self, api_key: str = None):
+    def __init__(self, api_key: str = None, raw_store=None):
         self._api_key = api_key or os.environ.get("COINGECKO_API_KEY", "")
+        self._raw_store = raw_store
         self._session = requests.Session()
         if self._api_key:
             self._session.headers["x-cg-demo-api-key"] = self._api_key
@@ -120,6 +121,11 @@ class CoinGeckoClient:
                 ))
             except (TypeError, ValueError):
                 continue
+        if self._raw_store is not None and results:
+            try:
+                self._raw_store.store_coingecko_prices(results)
+            except Exception:
+                pass
         return results
 
     def get_market_data(self) -> Optional[GlobalCryptoData]:

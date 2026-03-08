@@ -300,6 +300,7 @@ class MarketSensingHook:
         massive_client: Any = None,
         eia_client: Any = None,
         congress_gov_client: Any = None,
+        social_text_analyzer: Any = None,
     ):
         # API clients (all optional — graceful degradation)
         self._sec_client = sec_client
@@ -338,6 +339,7 @@ class MarketSensingHook:
         self._massive_client = massive_client
         self._eia_client = eia_client
         self._congress_gov_client = congress_gov_client
+        self._social_text_analyzer = social_text_analyzer
 
         # EventBus (injected by bootstrap for signal bridge)
         self._bus = None
@@ -900,6 +902,7 @@ class MarketSensingHook:
             from_suppression_event,
         )
         from mae_core.market.signal_adapters.wave2_3 import from_finviz_insider
+        from mae_core.market.signal_adapters.layer6 import from_social_text_signal
 
         signals = []
 
@@ -1004,6 +1007,11 @@ class MarketSensingHook:
         elif source_name == "congress_legislation":
             from mae_core.market.signal_adapters.market_data import from_legislative_indicator
             signals = fetch_congress_legislation(self._congress_gov_client, from_legislative_indicator)
+
+        elif source_name == "social_text":
+            signals = fetch_social_text(
+                self._social_text_analyzer, self._watchlist, from_social_text_signal
+            )
 
         # Enrich in background thread (velocity, filing-time, Ollama sentiment)
         # Moved from _collect_results() so Ollama's 15s timeout doesn't block
