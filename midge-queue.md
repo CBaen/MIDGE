@@ -57,7 +57,7 @@
 ## Priority 2: Intelligence Upgrades (from expedition-midge-gifts)
 
 ### Pattern Discovery
-- [ ] PySAD RRCF streaming anomaly detection → VelocityDetector
+- [x] PySAD RRCF streaming anomaly detection → StreamingAnomalyDetector (DONE)
 - [ ] CausationEntropy weekly batch (experimental, monitored)
 - [ ] smart-money-concepts as new edge detector domain
 
