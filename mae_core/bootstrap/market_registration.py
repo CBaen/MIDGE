@@ -84,6 +84,8 @@ def _register_market_somatic(ctx: SimpleNamespace) -> None:
         # Pattern Archaeology
         "pattern_library": ("PatternLibrary", []),
         "pattern_watcher": ("PatternWatcher", ["pattern_library", "convergence_alerter"]),
+        # Ecosystem Bridge
+        "octopus_colony": ("OctopusColony", ["convergence_alerter", "pattern_watcher"]),
     }
 
     for sys_id, (desc, deps) in market_systems.items():
@@ -132,6 +134,8 @@ def _register_market_holons(ctx: SimpleNamespace) -> None:
         "finnhub_websocket", "massive_client",
         # Pattern Archaeology
         "pattern_library", "pattern_watcher",
+        # Ecosystem Bridge
+        "octopus_colony",
     ]
 
     registered = 0

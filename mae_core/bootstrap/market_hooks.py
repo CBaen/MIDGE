@@ -386,6 +386,37 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
 
     ctx.bus.register_callback("market.intel.kelly_sizing", _on_kelly_sizing)
 
+    # Subscribe to partial convergences — register as developing situations
+    def _on_partial_convergence(channel, data):
+        colony = getattr(ctx, "octopus_colony", None)
+        if colony is None or not hasattr(colony, "_developing_situations"):
+            return
+        msg = data if isinstance(data, dict) else {}
+        direction = msg.get("direction", "neutral")
+        signals = msg.get("signals", [])
+        ticker = None
+        for sig in signals:
+            t = sig.get("metadata", {}).get("symbol", "")
+            if t:
+                ticker = t
+                break
+        if ticker is None:
+            return
+        key = f"{direction}:{ticker}"
+        lock = getattr(colony, "_situations_lock", None)
+        if lock:
+            with lock:
+                if key not in colony._developing_situations:
+                    colony._developing_situations[key] = {
+                        "ticker": ticker, "direction": direction,
+                        "domains_seen": msg.get("domains_seen", []),
+                        "missing_domains": msg.get("missing_domains", []),
+                        "first_seen": __import__("time").time(),
+                        "check_count": 0,
+                    }
+
+    ctx.bus.register_callback("market.intel.partial_convergence", _on_partial_convergence)
+
     logger.info("Layer 33f - Market EventBus: convergence + hypothesis -> endocrine coupling wired")
 
 
@@ -663,6 +694,16 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
 
             # Convergence heartbeat: overwrite data/midge/convergence_state.json
             _write_convergence_heartbeat(ctx, step)
+
+        # Every 20 steps: OctopusColony coordination cycle
+        if step % 20 == 0:
+            colony = getattr(ctx, "octopus_colony", None)
+            if colony is not None:
+                try:
+                    for oct_id, oct in colony.octopuses.items():
+                        oct.cognition.run_coordination_cycle()
+                except Exception:
+                    logger.debug("OctopusColony coordination failed", exc_info=True)
 
         # Every 500 steps: lag-correlation analysis
         if step % 500 == 0:
@@ -1382,6 +1423,22 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
             hook.shutdown = _shutdown_with_ws
         except Exception:
             logger.debug("FinnhubWebSocket shutdown hook registration failed", exc_info=True)
+
+    # --- Wire market task handlers into OctopusColony ---
+    colony = getattr(ctx, "octopus_colony", None)
+    if colony is not None:
+        try:
+            from mae_core.network.market_task_handlers import inject_market_handlers
+            inject_market_handlers(
+                colony=colony,
+                convergence_alerter=getattr(ctx, "convergence_alerter", None),
+                pattern_watcher=getattr(ctx, "pattern_watcher", None),
+                event_bus=getattr(ctx, "bus", None),
+            )
+            colony.start_monitoring()
+            logger.info("OctopusColony: market handlers injected, monitoring started")
+        except Exception:
+            logger.debug("OctopusColony handler injection failed", exc_info=True)
 
     # Store hook reference on ctx for monitoring
     ctx._market_sensing_hook = hook

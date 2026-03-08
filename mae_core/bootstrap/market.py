@@ -103,6 +103,8 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
         "market_clock",
         # Pattern Archaeology
         "pattern_library", "pattern_watcher", "excavation_daemon",
+        # Ecosystem Bridge
+        "octopus_colony",
     ]
     active = sum(1 for a in market_attrs if getattr(ctx, a, None) is not None)
     holon_count = len([

@@ -182,6 +182,14 @@ def bootstrap_patterns(ctx: SimpleNamespace) -> None:
             OpportunityTranslator(),
             TriadicPatternTranslator(),
         ]
+        try:
+            from mae_core.market.translators.market_signal_translator import (
+                MarketConvergenceTranslator, MarketPartialTranslator,
+            )
+            _translators.append(MarketConvergenceTranslator())
+            _translators.append(MarketPartialTranslator())
+        except ImportError:
+            pass  # MIDGE not present — mae-core standalone
         for t in _translators:
             ctx.pattern_bus.register_translator(t)
 

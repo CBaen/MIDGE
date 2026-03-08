@@ -254,6 +254,8 @@ def _build_systems_dict(ctx) -> dict:
         # Real-economy: Energy + Legislative
         "eia_client":               getattr(ctx, "eia_client", None),
         "congress_gov_client":      getattr(ctx, "congress_gov_client", None),
+        # Ecosystem Bridge
+        "octopus_colony":           getattr(ctx, "octopus_colony", None),
     }
 
 

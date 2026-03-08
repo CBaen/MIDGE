@@ -438,4 +438,16 @@ def _register_market_connections(ctx: SimpleNamespace) -> None:
             witnesses=["pattern_watcher", "auditor"],
             description="Excavated patterns feed hypothesis generation pipeline")
 
-    logger.info("Layer 33d - Market connections: triadic connections registered (Group 14-33)")
+    # --- Group 34: OctopusColony pipeline bridge ---
+    if getattr(ctx, "octopus_colony", None) is not None:
+        reg("octopus_colony", "convergence_alerter", dr,
+            witnesses=["pattern_watcher", "auditor"],
+            description="Colony investigates partial convergences from alerter")
+        reg("octopus_colony", "pattern_watcher", dr,
+            witnesses=["convergence_alerter", "auditor"],
+            description="Colony queries archaeology for partial templates")
+        reg("octopus_colony", "event_bus", eb,
+            witnesses=["convergence_alerter", "pattern_watcher"],
+            description="Colony emits investigation results via EventBus")
+
+    logger.info("Layer 33d - Market connections: triadic connections registered (Group 14-34)")
