@@ -130,7 +130,13 @@ class MassiveClient:
         results = data.get("results", [])
         if results:
             self._grouped_cache[date_str] = results
-        return self._parse_bars(results, date_str)
+        bars = self._parse_bars(results, date_str)
+        if self._raw_store is not None and bars:
+            try:
+                self._raw_store.store_massive_bars(bars)
+            except Exception:
+                pass
+        return bars
 
     def get_previous_close(self, ticker: str) -> Optional[TickerBar]:
         """Get previous day's OHLCV for a single ticker. ONE API call."""

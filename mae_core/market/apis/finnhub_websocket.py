@@ -94,9 +94,11 @@ class FinnhubWebSocket:
         self,
         api_key: Optional[str] = None,
         tickers: Optional[List[str]] = None,
+        raw_store=None,
     ) -> None:
         self._api_key: str = api_key if api_key is not None else os.environ.get("MAE_FINNHUB_API_KEY", "")
         self._tickers: List[str] = list(tickers or DEFAULT_TICKERS)
+        self._raw_store = raw_store
 
         self._ws = None
         self._thread: Optional[threading.Thread] = None
@@ -300,6 +302,19 @@ class FinnhubWebSocket:
 
         if not symbol or price <= 0:
             return
+
+        # Persist raw tick to SQLite (best-effort; never block the WebSocket thread)
+        if self._raw_store is not None:
+            try:
+                self._raw_store.store_finnhub_ticks([{
+                    "symbol": symbol,
+                    "price": price,
+                    "volume": volume,
+                    "timestamp_ms": trade.get("t", 0),
+                    "conditions": trade.get("c", []),
+                }])
+            except Exception:
+                pass
 
         # Lazy-create buffer per ticker
         buf = self._buffers.get(symbol)

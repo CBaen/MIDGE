@@ -422,3 +422,250 @@ class TestFINRAShortVolumeStorage:
 
     def test_finra_empty(self, store):
         assert store.store_finra_short_volume([]) == 0
+
+
+# ---------------------------------------------------------------------------
+# TASK 7: Tests for 12 newly wired client store methods
+# ---------------------------------------------------------------------------
+
+
+class TestSECForm4Storage:
+    def test_store_form4_dicts(self, store):
+        from mae_core.market.apis.sec_edgar.models import InsiderTrade
+        trade = InsiderTrade(
+            filing_id="0001234567-26-000001",
+            ticker="AAPL",
+            company_cik="0000320193",
+            insider_name="Tim Cook",
+            insider_title="CEO",
+            transaction_date="2026-03-01",
+            transaction_type="P",
+            shares=5000,
+            price_per_share=175.0,
+            total_value=875000.0,
+            shares_after=1000000,
+            is_derivative=False,
+            filing_date="2026-03-03",
+            form_type="4",
+        )
+        count = store.store_sec_form4([trade])
+        assert count == 1
+        conn = store._get_conn("sec_edgar")
+        cursor = conn.execute("SELECT COUNT(*) FROM form4_trades")
+        assert cursor.fetchone()[0] == 1
+
+    def test_store_form4_empty(self, store):
+        assert store.store_sec_form4([]) == 0
+
+
+class TestMassiveBarsStorage:
+    def test_store_massive_bars_objects(self, store):
+        from mae_core.market.apis.massive_client import TickerBar
+        bars = [
+            TickerBar(ticker="SPY", open=495.0, high=498.0, low=494.0,
+                      close=497.0, volume=80_000_000.0, vwap=496.5,
+                      transactions=1_200_000, date="2026-03-07"),
+            TickerBar(ticker="QQQ", open=430.0, high=433.0, low=429.0,
+                      close=432.0, volume=50_000_000.0, vwap=431.0,
+                      transactions=800_000, date="2026-03-07"),
+        ]
+        count = store.store_massive_bars(bars)
+        assert count == 2
+        conn = store._get_conn("massive")
+        cursor = conn.execute("SELECT COUNT(*) FROM daily_bars")
+        assert cursor.fetchone()[0] == 2
+
+    def test_store_massive_bars_empty(self, store):
+        assert store.store_massive_bars([]) == 0
+
+
+class TestCoinGeckoStorage:
+    def test_store_coingecko_prices(self, store):
+        coins = [
+            {"id": "bitcoin", "symbol": "BTC", "name": "Bitcoin",
+             "current_price": 75000.0, "market_cap": 1_500_000_000_000.0,
+             "total_volume": 30_000_000_000.0, "price_change_percentage_24h": 2.5,
+             "market_cap_rank": 1},
+        ]
+        count = store.store_coingecko_prices(coins)
+        assert count == 1
+        conn = store._get_conn("crypto")
+        cursor = conn.execute("SELECT COUNT(*) FROM coingecko_prices")
+        assert cursor.fetchone()[0] == 1
+
+    def test_store_coingecko_empty(self, store):
+        assert store.store_coingecko_prices([]) == 0
+
+
+class TestCoinCapStorage:
+    def test_store_coincap_assets_objects(self, store):
+        from mae_core.market.apis.coincap_client import CryptoAsset
+        asset = CryptoAsset(
+            asset_id="bitcoin", symbol="BTC", name="Bitcoin",
+            rank=1, price_usd=75000.0, volume_24h_usd=30_000_000_000.0,
+            change_24h_pct=2.5, market_cap_usd=1_500_000_000_000.0,
+            supply=19_700_000.0, max_supply=21_000_000.0, vwap_24h=74800.0,
+        )
+        count = store.store_coincap_assets([asset])
+        assert count == 1
+        conn = store._get_conn("crypto")
+        cursor = conn.execute("SELECT COUNT(*) FROM coincap_assets")
+        assert cursor.fetchone()[0] == 1
+
+    def test_store_coincap_empty(self, store):
+        assert store.store_coincap_assets([]) == 0
+
+
+class TestOpenInsiderStorage:
+    def test_store_openinsider_purchases_objects(self, store):
+        from mae_core.market.apis.openinsider_client import InsiderPurchase
+        purchase = InsiderPurchase(
+            filing_date="2026-03-03", trade_date="2026-03-01",
+            ticker="NVDA", company_name="NVIDIA Corporation",
+            insider_name="Jensen Huang", title="CEO",
+            trade_type="P - Purchase", price=875.0,
+            quantity=10000, owned=3_000_000,
+            delta_owned_pct=0.33, value=8_750_000.0,
+        )
+        count = store.store_openinsider_purchases([purchase])
+        assert count == 1
+        conn = store._get_conn("openinsider")
+        cursor = conn.execute("SELECT COUNT(*) FROM insider_purchases")
+        assert cursor.fetchone()[0] == 1
+
+    def test_store_openinsider_empty(self, store):
+        assert store.store_openinsider_purchases([]) == 0
+
+
+class TestFinVizStorage:
+    def test_store_finviz_insider_trades_objects(self, store):
+        from mae_core.market.apis.finviz_client import FinVizInsiderTrade
+        trade = FinVizInsiderTrade(
+            ticker="AAPL", owner_name="Tim Cook", relationship="CEO",
+            transaction_type="Buy", date="2026-03-01",
+            shares_traded=5000, value=875000.0, shares_owned=1_000_000,
+        )
+        count = store.store_finviz_insider_trades([trade])
+        assert count == 1
+        conn = store._get_conn("finviz")
+        cursor = conn.execute("SELECT COUNT(*) FROM finviz_insider_trades")
+        assert cursor.fetchone()[0] == 1
+
+    def test_store_finviz_unusual_volume_objects(self, store):
+        from mae_core.market.apis.finviz_client import UnusualVolume
+        item = UnusualVolume(
+            ticker="GME", company="GameStop Corp", sector="Consumer Cyclical",
+            price=25.0, change_pct=15.0, volume=50_000_000,
+            avg_volume=10_000_000, volume_ratio=5.0,
+        )
+        count = store.store_finviz_unusual_volume([item])
+        assert count == 1
+        conn = store._get_conn("finviz")
+        cursor = conn.execute("SELECT COUNT(*) FROM finviz_unusual_volume")
+        assert cursor.fetchone()[0] == 1
+
+    def test_store_finviz_empty(self, store):
+        assert store.store_finviz_insider_trades([]) == 0
+        assert store.store_finviz_unusual_volume([]) == 0
+
+
+class TestEdgarFilingsStorage:
+    def test_store_edgar_filings_objects(self, store):
+        from mae_core.market.apis.edgar_enhanced_client import ActivistFiling
+        filing = ActivistFiling(
+            filer_name="ValueAct Capital", filer_cik="0001234567",
+            subject_company="Salesforce Inc", subject_ticker="CRM",
+            filing_date="2026-03-01", form_type="SC 13D",
+            percent_owned=5.2, purpose="Activist position (>5% ownership)",
+        )
+        count = store.store_edgar_filings([filing])
+        assert count == 1
+        conn = store._get_conn("sec_edgar")
+        cursor = conn.execute("SELECT COUNT(*) FROM institutional_filings")
+        assert cursor.fetchone()[0] == 1
+
+    def test_store_edgar_filings_empty(self, store):
+        assert store.store_edgar_filings([]) == 0
+
+
+class TestFinnhubTicksStorage:
+    def test_store_finnhub_ticks_dicts(self, store):
+        ticks = [
+            {"symbol": "AAPL", "price": 175.5, "volume": 100.0,
+             "timestamp_ms": 1741200000000, "conditions": []},
+            {"symbol": "MSFT", "price": 420.0, "volume": 50.0,
+             "timestamp_ms": 1741200001000, "conditions": ["R"]},
+        ]
+        count = store.store_finnhub_ticks(ticks)
+        assert count == 2
+        conn = store._get_conn("finnhub")
+        cursor = conn.execute("SELECT COUNT(*) FROM finnhub_ticks")
+        assert cursor.fetchone()[0] == 2
+
+    def test_store_finnhub_ticks_empty(self, store):
+        assert store.store_finnhub_ticks([]) == 0
+
+
+class TestApeWisdomStorage:
+    def test_store_apewisdom_sentiment_objects(self, store):
+        from mae_core.market.apis.apewisdom import SocialSentiment
+        record = SocialSentiment(
+            ticker="GME", mentions_24h=5000, mentions_prior_24h=1000,
+            upvotes=2500, rank=1, mention_change=5.0,
+        )
+        count = store.store_apewisdom_sentiment([record])
+        assert count == 1
+        conn = store._get_conn("social")
+        cursor = conn.execute("SELECT COUNT(*) FROM apewisdom_sentiment")
+        assert cursor.fetchone()[0] == 1
+
+    def test_store_apewisdom_empty(self, store):
+        assert store.store_apewisdom_sentiment([]) == 0
+
+
+class TestJobPostingsStorage:
+    def test_store_job_postings_objects(self, store):
+        from mae_core.market.apis.job_tracker import HiringSignal
+        signal = HiringSignal(
+            company_name="Lockheed Martin", ticker="LMT",
+            jobs_24h=45, jobs_7d=200, jobs_30d=600,
+            is_spike=True, spike_ratio=3.15,
+            engineering_jobs=30, cleared_jobs=15,
+            contract_related_jobs=40, confidence=0.80,
+        )
+        count = store.store_job_postings([signal])
+        assert count == 1
+        conn = store._get_conn("jobs")
+        cursor = conn.execute("SELECT COUNT(*) FROM job_postings")
+        assert cursor.fetchone()[0] == 1
+
+    def test_store_job_postings_empty(self, store):
+        assert store.store_job_postings([]) == 0
+
+
+class TestSAMOpportunitiesStorage:
+    def test_store_sam_opportunities_objects(self, store):
+        from mae_core.market.apis.sam_gov import ContractOpportunity
+        opp = ContractOpportunity(
+            notice_id="W912CN-26-R-0042",
+            title="Missile Defense System Integration",
+            solicitation_number="W912CN-26-R-0042",
+            department="Department of Defense",
+            agency="Army", office="Army Contracting Command",
+            naics_code="541330", set_aside="",
+            type_of_contract="Firm Fixed Price",
+            place_of_performance="AL",
+            estimated_value=250_000_000.0,
+            award_date="", posted_date="2026-03-01",
+            response_deadline="2026-04-01",
+            active=True, contract_type="Solicitation",
+            url="https://sam.gov/opp/W912CN-26-R-0042",
+        )
+        count = store.store_sam_opportunities([opp])
+        assert count == 1
+        conn = store._get_conn("contracts")
+        cursor = conn.execute("SELECT COUNT(*) FROM sam_opportunities")
+        assert cursor.fetchone()[0] == 1
+
+    def test_store_sam_opportunities_empty(self, store):
+        assert store.store_sam_opportunities([]) == 0
