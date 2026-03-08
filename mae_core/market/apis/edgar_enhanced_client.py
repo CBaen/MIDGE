@@ -69,7 +69,8 @@ def _extract_hits(data: dict) -> list:
 
 
 class EdgarEnhancedClient:
-    def __init__(self):
+    def __init__(self, raw_store=None):
+        self._raw_store = raw_store
         self._session = requests.Session()
         self._session.headers["User-Agent"] = "MIDGE/1.0 market-research@example.com"
         self._session.headers["Accept"] = "application/json"
@@ -137,6 +138,11 @@ class EdgarEnhancedClient:
                 ))
             except (TypeError, ValueError, IndexError, AttributeError):
                 continue
+        if self._raw_store is not None and filings:
+            try:
+                self._raw_store.store_edgar_filings(filings)
+            except Exception:
+                pass
         return filings
 
     def get_recent_13f_filers(self, days: int = 30) -> List[Dict]:
