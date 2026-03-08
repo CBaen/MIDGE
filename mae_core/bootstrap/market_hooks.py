@@ -1212,7 +1212,7 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
 
     logger.info(
         "Layer 33h - Market sensing hook wired: "
-        "async fetch (cadence=50), outcome tracking (cadence=200), "
+        "async fetch (cadence=25, slots=8), outcome tracking (cadence=200), "
         "tiered alerters (%d), advisory bridge active",
         len(tiered_alerters),
     )

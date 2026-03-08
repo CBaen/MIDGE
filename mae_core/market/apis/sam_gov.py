@@ -221,6 +221,33 @@ class SAMGovClient:
 
     def _parse_opportunity(self, data: dict) -> ContractOpportunity:
         """Parse SAM.gov opportunity data into dataclass."""
+        # SAM.gov stores estimated value under several field names depending on
+        # contract type and API version. Try them in descending specificity order.
+        estimated_value = 0.0
+        for value_field in (
+            "estimatedValue",           # primary field (SAM.gov v2)
+            "totalBaseAndAllOptionsValue",  # DoD-style total with options
+            "totalBaseAndExercisedOptionsValue",
+            "amount",                   # simplified endpoints
+        ):
+            raw = data.get(value_field)
+            if raw is not None:
+                try:
+                    estimated_value = float(str(raw).replace("$", "").replace(",", ""))
+                    if estimated_value > 0:
+                        break
+                except (ValueError, TypeError):
+                    pass
+
+        # Pull description text (often encodes scope and dollar hints)
+        description = ""
+        desc_raw = data.get("description", "")
+        if isinstance(desc_raw, str):
+            description = desc_raw[:500]
+        elif isinstance(desc_raw, dict):
+            # Some API versions nest as {"content": "..."}
+            description = str(desc_raw.get("content", ""))[:500]
+
         return ContractOpportunity(
             notice_id=data.get("noticeId", ""),
             title=data.get("title", ""),
@@ -231,12 +258,14 @@ class SAMGovClient:
             naics_code=data.get("naicsCode", ""),
             set_aside=data.get("typeOfSetAside", ""),
             type_of_contract=data.get("typeOfContract", ""),
-            place_of_performance=data.get("placeOfPerformance", {}).get("state", ""),
+            place_of_performance=data.get("placeOfPerformance", {}).get("state", "") if isinstance(data.get("placeOfPerformance"), dict) else str(data.get("placeOfPerformance", "")),
+            estimated_value=estimated_value,
+            award_date=data.get("awardDate", ""),
             posted_date=data.get("postedDate", ""),
             response_deadline=data.get("responseDeadLine", ""),
             active=data.get("active", "Yes") == "Yes",
             contract_type=data.get("type", ""),
-            url=data.get("uiLink", "")
+            url=data.get("uiLink", ""),
         )
 
     def get_defense_opportunities(

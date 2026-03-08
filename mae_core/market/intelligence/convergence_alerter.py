@@ -76,6 +76,12 @@ class ConvergenceAlert:
     coherence: float = 1.0            # 1.0 = all signals agree, 0.5 = evenly split
     contradiction_details: list = field(default_factory=list)  # [(domain, direction), ...]
     combo_key: str = ""  # Thompson key for this domain combination (e.g. "combo:events+macro+price")
+    # Temporal ordering fields — domains sorted by when they fired (earliest first).
+    # sequence_score > 1.0 = ordering matches known lag relationships (boost).
+    # sequence_score < 1.0 = ordering reversed vs. known lags (discount).
+    # Default 1.0 = neutral (no lag data or single domain).
+    domain_sequence: List[str] = field(default_factory=list)
+    sequence_score: float = 1.0
 
     def to_dict(self) -> dict:
         return {
@@ -92,6 +98,8 @@ class ConvergenceAlert:
             "coherence": round(self.coherence, 3),
             "contradiction_details": self.contradiction_details,
             "combo_key": self.combo_key,
+            "domain_sequence": self.domain_sequence,
+            "sequence_score": round(self.sequence_score, 3),
         }
 
 

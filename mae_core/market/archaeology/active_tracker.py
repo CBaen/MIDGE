@@ -291,24 +291,73 @@ class ActiveTracker:
         return asset.status  # no change
 
     def _force_grade(self, asset: TrackedAsset, pct: float) -> None:
-        """Force-grade the prediction via OutcomeCollector."""
+        """Force-grade the prediction via OutcomeCollector.
+
+        Records an immediate outcome by writing a prediction with window_days=0
+        (already matured) so the next evaluate() call grades it. Uses the public
+        OutcomeTracker.record_prediction() + Thompson update path directly.
+        """
         if not self._outcome_collector:
             return
         try:
             success = pct >= 5.0 or (asset.status == "confirmed")
             oc = self._outcome_collector
-            if hasattr(oc, "tracker"):
-                # Find and grade matching predictions
-                for pred in list(oc.tracker._pending):
-                    if (pred.get("symbol") == asset.symbol
-                            and pred.get("source", "").startswith("pattern_stack:")):
-                        oc.tracker._grade_prediction(pred, success, pct)
-                        oc.tracker._pending.remove(pred)
-                        logger.info(
-                            "Force-graded %s: %s (%.1f%%)",
-                            asset.symbol, "WIN" if success else "LOSS", pct,
-                        )
-                        break
+            # Use OutcomeTracker directly — it's always at oc.tracker
+            tracker = getattr(oc, "tracker", None)
+            if tracker is None:
+                return
+
+            # Determine source key for Thompson routing
+            source = "pattern_stack:" + "+".join(sorted(asset.template_ids[:3])) if asset.template_ids else "active_tracker"
+            direction = "up" if asset.direction == "bullish" else "down"
+
+            # Update Thompson Sampler directly (most reliable path)
+            ts = getattr(tracker, "thompson_sampler", None)
+            if ts is not None:
+                try:
+                    regime = "default"
+                    rc = getattr(tracker, "regime_classifier", None)
+                    if rc is not None:
+                        try:
+                            regime = rc.classify()
+                        except Exception:
+                            pass
+                    ts.update(source, success=success, regime=regime)
+                except Exception:
+                    logger.debug("Force-grade Thompson update failed for %s", asset.symbol, exc_info=True)
+
+            # Append to outcomes.jsonl so the result is recorded
+            outcome = {
+                "signal_id": f"force_grade:{asset.symbol}:{asset.created_at}",
+                "source": source,
+                "symbol": asset.symbol,
+                "direction": direction,
+                "predicted_at": asset.created_at,
+                "evaluated_at": datetime.now().isoformat(),
+                "window_days": asset.expected_window_days,
+                "price_change_pct": round(pct, 4),
+                "success": success,
+                "min_move_threshold": 5.0,
+                "force_graded": True,
+            }
+            tracker._append_outcome(outcome)
+
+            # Fire on_outcome callback (closes pattern_library feedback loop)
+            if tracker.on_outcome is not None:
+                try:
+                    fake_pred = {
+                        "source": source,
+                        "symbol": asset.symbol,
+                        "metadata": {"template_ids": asset.template_ids},
+                    }
+                    tracker.on_outcome(fake_pred, success, pct)
+                except Exception:
+                    logger.debug("on_outcome callback failed in force_grade", exc_info=True)
+
+            logger.info(
+                "Force-graded %s: %s (%.1f%%)",
+                asset.symbol, "WIN" if success else "LOSS", pct,
+            )
         except Exception:
             logger.debug("Force grade failed for %s", asset.symbol, exc_info=True)
 

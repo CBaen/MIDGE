@@ -726,9 +726,10 @@ def fetch_massive_snapshot(
 ) -> list:
     """Fetch Massive/Polygon grouped daily data and generate signals.
 
-    Uses ONE API call (grouped daily) to get ALL tickers' OHLCV, then
-    filters to watchlist and generates volume/price/gap signals.
-    Free tier: 5 calls/min — grouped daily is the most efficient endpoint.
+    Uses ONE grouped daily call for ALL tickers OHLCV, then fetches 20-day
+    historical bars per ticker for accurate volume_ratio calculation.
+    Free tier: 5 calls/min — one grouped daily + up to 4 per-ticker bars
+    within the rate window. Caps at 4 tickers per cycle to stay under limit.
     """
     if massive_client is None:
         return []
@@ -738,8 +739,19 @@ def fetch_massive_snapshot(
     if not tickers:
         return []
 
+    # Fetch 20-day historical bars for up to 4 tickers to populate volume_ratio.
+    # Capped at 4 because: 1 grouped-daily call + 4 per-ticker = 5 total (free tier limit).
+    bars_by_ticker = {}
+    for ticker in tickers[:4]:
+        try:
+            hist = massive_client.get_ticker_bars(ticker, days=20)
+            if hist:
+                bars_by_ticker[ticker.upper()] = hist
+        except Exception as e:
+            logger.debug("Massive historical bars failed for %s: %s", ticker, e)
+
     try:
-        snapshots = massive_client.build_snapshots(tickers)
+        snapshots = massive_client.build_snapshots(tickers, bars_by_ticker=bars_by_ticker)
         for snap in snapshots:
             try:
                 signals.append(converter(snap))
