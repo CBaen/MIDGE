@@ -73,6 +73,12 @@
 - Tracks price_returns, volume, VIX, sentiment streams
 - Wired into bootstrap (market_systems.py + market_hooks.py)
 
+**PySAD streaming anomaly detector (NEW):**
+- `mae_core/market/intelligence/streaming_anomaly.py` — RRCF anomaly scoring on composite feature vectors
+- 4-element vector: [price_change, volume_ratio, sentiment_score, vix_level]
+- Complements VelocityDetector (single-signal) with multi-dimensional anomaly detection
+- Wired into bootstrap alongside motif_detector
+
 **File splits (monolith prevention):**
 - `post_mortem.py` 569→314 lines (computation split to `post_mortem_analysis.py` 245 lines + `post_mortem_utils.py` 57 lines)
 - `market_systems.py` 535→453 lines
@@ -144,6 +150,7 @@ See git log for full history. Key milestones: Granger causality (2026-03-07), te
 - **TA Vectorization: COMPLETE.** RSI/MACD/Bollinger numpy-vectorized (10-50x faster).
 - **Motif Detector: WIRED.** STUMPY streaming matrix profile, 50 symbols, LRU eviction.
 - **Drift Detector: WIRED.** ADWIN concept drift on price_returns/volume/VIX/sentiment streams.
+- **Streaming Anomaly: WIRED.** PySAD RRCF on composite feature vectors (price/volume/sentiment/VIX).
 - **Yahoo RSS: WIRED.** Per-ticker headline velocity + sentiment. 32 sources in rotation.
 - **Parallelism: 12 concurrent + 25-step cadence.** Full source rotation in ~94 steps.
 - **Templates: REBUILT.** 39 templates live. PatternWatcher matching.

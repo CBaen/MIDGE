@@ -33,8 +33,12 @@ DATA_DIR = Path(__file__).resolve().parents[3] / "data" / "market"
 DISTRIBUTIONS_FILE = DATA_DIR / "thompson_distributions.json"
 HISTORY_FILE = DATA_DIR / "thompson_history.jsonl"
 
-# Default prior scale (higher = more confident in prior)
-DEFAULT_PRIOR_SCALE = 2
+# Default prior scale (higher = more confident in prior).
+# Must be well above the forgetting floor (2.0) or seeded distributions
+# collapse to uniform after a single forgetting event.
+# At scale=20, a source with reliability=0.36 seeds to alpha=7.2, beta=12.8,
+# which survives forgetting (max(2.0, 7.2*0.99) = 7.13).
+DEFAULT_PRIOR_SCALE = 20
 
 
 @dataclass
