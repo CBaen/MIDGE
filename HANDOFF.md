@@ -2,6 +2,29 @@
 
 ## What Happened
 
+### Raw Data Pipeline + Expedition Synthesis + Vision Alignment (2026-03-07)
+
+**Raw Data Pipeline** — MIDGE was throwing away ~95% of API data. VIX downloads 8,000+ daily rows, uses 1. COT downloads 400+ contracts, uses 10. Now ALL data is persisted to SQLite (one DB per domain) in `data/market/raw/` before processing. WAL mode for daemon concurrency. Constructor injection (`raw_store=None`) on VIX/COT/EIA/Trends clients. 14 tests.
+
+**Expedition complete: Autonomous Self-Funding Trading** — 5 research teams + 3 validators. Full synthesis at `research/expedition-autonomous-trading/synthesis.md`. Key findings:
+- Kalshi (prediction markets) recommended as first live venue — CFTC-regulated, Python SDK, macro domain overlap
+- Alpaca as equities fallback (where proven edge lives)
+- MIDGE's cross-domain convergence is a genuine structural moat — no competitor does 12+ domain stacking
+- Signal profile is structurally invisible to SEC/FINRA/ARTEMIS surveillance
+- Critical unknown: whether equity-measured edge transfers to binary event contracts
+
+**Vision alignment (Guiding Light directive):** MIDGE is an "inevitability surfacer" — global pattern observer across ALL domains. Not "one domain at a time" — observe everywhere, execute across Kalshi + Alpaca + crypto simultaneously. Self-funding loop: earnings → more data → deeper patterns → more earnings. $1,000 gate: deploy only when pattern stacks show 80%+ historical accuracy. Temporal ordering matters (which domain fires first, gestation periods).
+
+**Files changed:**
+- `mae_core/market/raw_store.py` — NEW: RawStore class, 4 domain upsert methods, SQLite WAL mode
+- `mae_core/market/apis/vix_client.py` — raw_store constructor + full OHLC storage
+- `mae_core/market/apis/cot_client.py` — raw_store constructor + all-contract storage
+- `mae_core/market/apis/eia_client.py` — raw_store constructor + all-observation storage
+- `mae_core/market/apis/trends_client.py` — raw_store constructor + all-hourly storage
+- `mae_core/bootstrap/market_systems.py` — Shared RawStore creation + injection into 4 clients
+- `tests/test_raw_store.py` — NEW: 14 tests
+- `research/expedition-autonomous-trading/synthesis.md` — Expedition Phase 3+4 complete
+
 ### Granger Causality + Test Isolation + Bug Fixes (2026-03-07)
 
 **Granger causality analyzer** — highest-value analytical upgrade from expedition roadmap. Tests whether signal A's past *improves prediction* of B beyond B's own autocorrelation (controls for autocorrelation, unlike lag-correlation). Uses statsmodels `grangercausalitytests` with first-differencing for stationarity, Bonferroni correction, atomic persistence.
@@ -129,7 +152,7 @@ Four work packages closing the operational gap (Thompson isolation, combo feedba
 ## Stats
 
 - **147 systems** (92 core + 55 market), **4,536 tests**, **157 holons**, **425 connections**
-- **103 market files** (31 API + 12 edge + 28 intelligence + 8 signal_adapters + 10 archaeology + 14 root)
+- **104 market files** (31 API + 12 edge + 28 intelligence + 8 signal_adapters + 10 archaeology + 15 root)
 - **12 domains**, **30 sources** in sensing rotation
 - **33-layer bootstrap**, **14 mixins** on MycelialAgent
 - **222,916 fingerprints**, **39 templates** (26 cross-validated across 3+ symbols)
