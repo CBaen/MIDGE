@@ -158,29 +158,41 @@ See git log for full history. Key milestones: Granger causality (2026-03-07), te
 - **Kalshi: SDK INSTALLED.** Needs verification against demo env.
 - **Alpaca: CLIENT BUILT.** Awaiting API keys.
 
+## Guiding Light's Ecosystem Vision (2026-03-08)
+
+> "MIDGE needs to be an entire functioning ecosystem. She's more of a planet than a singular biological organism. Everything inside her should be active, not passive. They all have their own lives to live."
+
+This fundamentally reframes the architecture. Components are LIVING ENTITIES with intrinsic drives, not passive systems called by step hooks. The 41 "dead" biological systems (pheromones, quorum sensing, immune, nociception, curiosity, circadian, etc.) should be ACTIVATED with real market intelligence jobs, not shed. Attention should EMERGE from collective activity. Confidence should be emergent consensus (quorum), not formula.
+
+**Evolution blueprint**: `research/evolution-blueprint/MIDGE-EVOLUTION-BLUEPRINT.md` — 10-team synthesis.
+
+**Critical finding**: Two completely disconnected pipelines. Core organism attention (AttentionalGate→GlobalWorkspace) processes ZERO market data. Market intelligence (SensingHook→ConvergenceAlerter) has NO connection to attention mechanisms. The Octopus (5 files, ~1500 lines) is fully built but NEVER bootstrapped.
+
 ## What's Next
 
 See `midge-queue.md` for comprehensive task list (70+ items, 4 priority tiers).
 
-### Immediate (next session)
-1. **Restart daemon** — picks up ALL fixes from this session and prior
-2. **Run full test suite** — verify zero regressions
-3. **Push to remote** — 19 commits ahead of origin
+### Immediate
+1. **Wire the Octopus** — Bootstrap OctopusColony in Layer 33. First step toward multi-attention ecosystem.
+2. **Bridge the two pipelines** — Market signals → PatternBus → AttentionalGate → GlobalWorkspace.
+3. **Activate biological systems** — Pheromones=trail-leaving, Quorum=collective confidence, Immune=deception patrol, Curiosity=intrinsic exploration, Circadian=market cycle awareness.
 
-### Priority 1: Execution Bridges
+### Priority 1: Ecosystem Activation (from Evolution Blueprint Phase 2)
+- Emit CH_PARTIAL_CONVERGENCE from ConvergenceAlerter (2 domains → investigate)
+- OctopusColony subscribes to partial convergences (arms become investigators)
+- DevelopingSituation tracker in octopus arms (timeline tracking, template matching)
+- Agent-level situation claiming (SEC_WATCHER claims insider situations)
+
+### Priority 2: Shed Weight + Speed Up (Evolution Blueprint Phase 1)
+- Wall-clock cadences (replace step-based)
+- Signal-triggered convergence (fire on signal arrival, not step tick)
+- ADTS (regime-aware Thompson forgetting, 50 lines)
+- Unload 223K fingerprints from RAM
+
+### Priority 3: Execution + Risk (Evolution Blueprint Phases 4-5)
 - Kalshi SDK verification + MarketSelector prototype
-- Backtest signals against historical Kalshi contracts
-- Stop-loss threshold / circuit breaker
-- Public confirmation timestamp logging
-
-### Priority 2: Intelligence Upgrades (partially complete)
-- Sequential chain detection (A→B→C stage-gating) on WorldModel
-- Qwen3-14B via Ollama for causal narratives (check GPU VRAM first)
-- aiohttp async for PolygonBulkFetcher (85s→3-10s)
-
-### Priority 3: New Data Sources
-- edgartools upgrade (proper 13F/13D parsing)
-- USDA WASDE, BDI logistics, AIS maritime
+- DrawdownMonitor, SystemHealthMonitor, SelfMonitor
+- Broker-side bracket orders (survive MIDGE process failure)
 
 ## Verification
 
