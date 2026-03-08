@@ -224,12 +224,12 @@ def test_cache_expires():
     old_time = time.time() - 400  # 400s ago > 300s cache
     client._cache["TSLA"] = ([], old_time)
 
-    with patch("mae_core.market.apis.yahoo_rss_client.feedparser") as mock_fp:
-        mock_feed = MagicMock()
-        mock_feed.entries = []
-        mock_fp.parse.return_value = mock_feed
+    mock_feed = MagicMock()
+    mock_feed.entries = []
+
+    with patch("feedparser.parse", return_value=mock_feed) as mock_parse:
         client._fetch_feed("TSLA")
-        mock_fp.parse.assert_called_once()
+        mock_parse.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
