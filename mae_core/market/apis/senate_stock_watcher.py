@@ -49,8 +49,9 @@ class SenateStockWatcherClient:
     District is set to "Senate" for all records.
     """
 
-    def __init__(self, provider=None):
+    def __init__(self, provider=None, raw_store=None):
         self._provider = provider
+        self._raw_store = raw_store
         self.session = requests.Session()
         self.session.headers.update({
             "User-Agent": "MIDGE Trading Research"
