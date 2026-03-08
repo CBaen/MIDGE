@@ -180,6 +180,15 @@ class CuriosityDrive:
             for k in self._novelty_scores:
                 self._novelty_scores[k] *= self._novelty_decay
 
+    def set_exploration_bonus(self, level: float) -> None:
+        """Set exploration bonus level.
+
+        Called by EndocrineSystem dopamine wire and bio-market activation.
+        Clamped to [0.01, 0.5].
+        """
+        with self._lock:
+            self._exploration_bonus = max(0.01, min(0.5, level))
+
     def get_exploration_targets(self, num_targets: int = 5) -> list[str]:
         """Get states with highest novelty for targeted exploration."""
         with self._lock:

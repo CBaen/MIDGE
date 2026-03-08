@@ -72,6 +72,7 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
     _register_market_step_hooks(ctx)
     _wire_sensing_hook(ctx)
     _differentiate_market_agents(ctx)
+    _wire_bio_systems(ctx)
 
     # Count active systems for final log
     market_attrs = [
@@ -123,3 +124,12 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
         "            NOTE: MarketDataProvider registered with ApiGateway. "
         "All 6 API clients route through provider when available."
     )
+
+
+def _wire_bio_systems(ctx: SimpleNamespace) -> None:
+    """Layer 33k: Wire biological systems to market channels."""
+    try:
+        from mae_core.bootstrap.bio_market_wiring import wire_bio_systems_to_market
+        wire_bio_systems_to_market(ctx)
+    except Exception:
+        logger.debug("Bio-market wiring failed", exc_info=True)
