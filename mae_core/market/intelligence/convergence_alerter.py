@@ -1207,6 +1207,19 @@ class ConvergenceAlerter:
 
         # Need minimum domains (directional + neutral combined)
         if len(domains_seen) < self.min_domains:
+            # Emit partial convergence for ecosystem investigation
+            if directional_signals and self._bus is not None:
+                try:
+                    self._bus.publish("market.intel.partial_convergence", {
+                        "direction": direction,
+                        "domains_seen": list(domains_seen),
+                        "missing_domains": self._compute_missing_domains(domains_seen),
+                        "signals": [{"source": s.source, "strength": s.strength,
+                                     "metadata": s.metadata} for s in directional_signals[:5]],
+                        "min_domains_required": self.min_domains,
+                    })
+                except Exception:
+                    pass  # Never block convergence check
             return None
 
         # Confidence is computed over ALL contributing signals so that
@@ -1423,6 +1436,21 @@ class ConvergenceAlerter:
             }
 
         return status
+
+    def _compute_missing_domains(self, domains_seen: set) -> list:
+        """Return domains with current signals that haven't fired for this direction."""
+        all_domains = set(self.signals.keys())
+        return sorted(all_domains - domains_seen)
+
+    def check_ticker_convergence_for(self, ticker: str) -> list:
+        """Check convergence for a single ticker symbol."""
+        return [
+            a for a in self.check_ticker_convergence(min_domains=self.min_domains)
+            if any(
+                s.metadata.get("symbol") == ticker
+                for s in getattr(a, "signals", [])
+            )
+        ]
 
     def check_ticker_convergence(self, min_domains: int = 2) -> List[ConvergenceAlert]:
         """Per-ticker convergence — more actionable than global domain convergence.
