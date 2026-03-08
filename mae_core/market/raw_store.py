@@ -13,7 +13,7 @@ preserves the other 95% for future pattern discovery.
 import sqlite3
 import logging
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 
 logger = logging.getLogger(__name__)
@@ -75,7 +75,7 @@ class RawStore:
             )
         """)
 
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         data = [
             (
                 r.get("date", ""),
@@ -156,7 +156,7 @@ class RawStore:
                         continue
             return default
 
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         data = []
         for _, row in df.iterrows():
             try:
@@ -229,7 +229,7 @@ class RawStore:
             )
         """)
 
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         data = []
         for obs in observations:
             try:
@@ -277,7 +277,7 @@ class RawStore:
             )
         """)
 
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         data = [
             (keyword, str(r.get("timestamp", "")), int(r.get("interest", 0)), now)
             for r in rows

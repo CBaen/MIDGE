@@ -119,9 +119,7 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
     try:
         from mae_core.market.raw_store import RawStore
         raw_store = RawStore()
-        logger.info("Market: RawStore initialized at %s", raw_store._base_dir)
     except Exception:
-        logger.debug("Market: RawStore failed to construct", exc_info=True)
         raw_store = None
 
     # --- Phase 2 + Layer 6 API clients (free sources) ---
