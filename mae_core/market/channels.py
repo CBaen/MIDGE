@@ -53,3 +53,7 @@ CH_DECEPTION_DETECTED = "market.edge.deception_detected"
 CH_CONSOLIDATION_COMPLETE = "market.intel.consolidation_complete"
 CH_SOMATIC_ANTICIPATION = "market.intel.somatic_anticipation"
 CH_PATTERN_COMPLETED = "market.intel.pattern_completed"
+
+# Ecosystem Activation channels
+CH_PARTIAL_CONVERGENCE = "market.intel.partial_convergence"
+CH_OCTOPUS_INVESTIGATION = "market.intel.octopus_investigation"
