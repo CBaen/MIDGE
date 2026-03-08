@@ -89,11 +89,18 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
     except Exception:
         ctx.market_data_provider = None
 
-    # --- API clients (Market Sensing) — provider injected for gateway routing ---
+    # --- Raw data storage (persist ALL API data before processing) ---
+    try:
+        from mae_core.market.raw_store import RawStore
+        raw_store = RawStore()
+    except Exception:
+        raw_store = None
+
+    # --- API clients (Market Sensing) — provider + raw_store injected ---
     import importlib as _imp
     for _attr, _mod, _cls, _kw in [
         ("sec_edgar_client", "mae_core.market.apis.sec_edgar.client", "SECEdgarClient", {"provider": provider}),
-        ("house_stock_watcher", "mae_core.market.apis.house_stock_watcher", "HouseStockWatcherClient", {"provider": provider}),
+        ("house_stock_watcher", "mae_core.market.apis.house_stock_watcher", "HouseStockWatcherClient", {"provider": provider, "raw_store": raw_store}),
         ("job_tracker", "mae_core.market.apis.job_tracker", "JobTracker", {"provider": provider}),
         ("usa_spending_client", "mae_core.market.apis.usa_spending", "USASpendingClient", {"provider": provider}),
         ("sam_gov_client", "mae_core.market.apis.sam_gov", "SAMGovClient", {"provider": provider}),
@@ -109,34 +116,27 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         from mae_core.market.apis.price_fetcher import PriceFetcher
         ctx.price_fetcher = PriceFetcher(
             alpha_vantage_key=os.environ.get("MAE_ALPHAVANTAGE_API_KEY", ""),
-            provider=provider,
+            provider=provider, raw_store=raw_store,
         )
     except Exception:
         logger.debug("Market: price_fetcher failed to construct", exc_info=True)
         ctx.price_fetcher = None
         failures += 1
 
-    # --- Raw data storage (persist ALL API data before processing) ---
-    try:
-        from mae_core.market.raw_store import RawStore
-        raw_store = RawStore()
-    except Exception:
-        raw_store = None
-
     # --- Phase 2 + Layer 6 API clients (free sources) ---
     for _attr, _mod, _cls, _kw in [
         ("senate_stock_watcher", "mae_core.market.apis.senate_stock_watcher", "SenateStockWatcherClient", {"provider": provider}),
         ("apewisdom_client", "mae_core.market.apis.apewisdom", "ApeWisdomClient", {"provider": provider}),
-        ("finra_client", "mae_core.market.apis.finra_short_interest", "FINRAShortInterestClient", {"provider": provider}),
+        ("finra_client", "mae_core.market.apis.finra_short_interest", "FINRAShortInterestClient", {"provider": provider, "raw_store": raw_store}),
         ("sec_efts_client", "mae_core.market.apis.sec_edgar.efts", "SECFullTextSearchClient", {"provider": provider}),
-        ("finnhub_client", "mae_core.market.apis.finnhub_client", "FinnhubClient", {"provider": provider}),
-        ("fred_client", "mae_core.market.apis.fred_client", "FREDClient", {"provider": provider}),
+        ("finnhub_client", "mae_core.market.apis.finnhub_client", "FinnhubClient", {"provider": provider, "raw_store": raw_store}),
+        ("fred_client", "mae_core.market.apis.fred_client", "FREDClient", {"provider": provider, "raw_store": raw_store}),
         ("cot_client", "mae_core.market.apis.cot_client", "COTClient", {"provider": provider, "raw_store": raw_store}),
-        ("stocktwits_client", "mae_core.market.apis.stocktwits_client", "StockTwitsClient", {"provider": provider}),
+        ("stocktwits_client", "mae_core.market.apis.stocktwits_client", "StockTwitsClient", {"provider": provider, "raw_store": raw_store}),
         ("vix_client", "mae_core.market.apis.vix_client", "VIXClient", {"provider": provider, "raw_store": raw_store}),
         ("trends_client", "mae_core.market.apis.trends_client", "TrendsClient", {"raw_store": raw_store}),
         ("eia_client", "mae_core.market.apis.eia_client", "EIAClient", {"provider": provider, "raw_store": raw_store}),
-        ("congress_gov_client", "mae_core.market.apis.congress_gov_client", "CongressGovClient", {"provider": provider}),
+        ("congress_gov_client", "mae_core.market.apis.congress_gov_client", "CongressGovClient", {"provider": provider, "raw_store": raw_store}),
     ]:
         try:
             setattr(ctx, _attr, getattr(_imp.import_module(_mod), _cls)(**_kw))

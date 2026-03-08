@@ -126,8 +126,9 @@ class CongressGovClient:
     Cache: 4 hours.
     """
 
-    def __init__(self, api_key: Optional[str] = None, provider=None):
+    def __init__(self, api_key: Optional[str] = None, provider=None, raw_store=None):
         self._provider = provider
+        self._raw_store = raw_store
         self.api_key = api_key or os.environ.get("CONGRESS_GOV_API_KEY")
 
         if self.api_key:
@@ -220,6 +221,13 @@ class CongressGovClient:
         if not bills:
             logger.debug("Congress.gov: no bills returned for past %d days", days)
             return []
+
+        # Store ALL bills before filtering to advancing-only
+        if self._raw_store:
+            try:
+                self._raw_store.store_congress_bills(bills)
+            except Exception:
+                pass
 
         advancing = [
             bill for bill in bills
