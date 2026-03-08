@@ -1596,6 +1596,12 @@ class ConvergenceAlerter:
                     except Exception:
                         pass  # Graceful degradation
 
+                # Quorum boost — collective agent agreement amplifies confidence.
+                # ticker is explicit in this per-ticker path.
+                final_confidence = self._apply_quorum_boost(
+                    final_confidence, ticker, direction
+                )
+
                 avg_velocity = sum(abs(s.velocity) for s in converging) / len(converging)
                 if avg_velocity > 0.1:
                     urgency = "immediate"

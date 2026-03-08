@@ -20,6 +20,7 @@ substrate topology.
 
 from __future__ import annotations
 
+import json
 import logging
 import time
 import uuid
@@ -28,6 +29,9 @@ from enum import Enum
 from typing import Any, Callable, Optional
 
 logger = logging.getLogger(__name__)
+
+# Channel published by OrganBuilder
+CH_REBUILD_REQUESTED = "morphogenesis.rebuild_requested"
 
 
 class OrganStatus(Enum):
@@ -238,6 +242,7 @@ class OrganBuilder:
     def __init__(
         self,
         agent_factory: Optional[Callable[..., Any]] = None,
+        event_bus: Optional[Any] = None,
     ) -> None:
         """Initialize the organ builder.
 
@@ -246,10 +251,21 @@ class OrganBuilder:
                 (model, agent_type, organ_id, **kwargs) and return an
                 agent with a unique_id attribute. If None, organs are
                 created as metadata-only (no actual Mesa agents).
+            event_bus: EventBus instance for pub/sub integration. If
+                provided, OrganBuilder subscribes to CH_SENESCENT so that
+                it can prune organs and request rebuilds when systems
+                reach end-of-life. If None, operates without EventBus
+                (backward-compatible).
         """
         self._agent_factory = agent_factory
         self._active_organs: dict[str, Organ] = {}
         self._creation_history: list[dict[str, Any]] = []
+
+        self._event_bus = event_bus
+        if self._event_bus is not None:
+            self._event_bus.register_callback(
+                "emergent.system_senescent", self._on_system_senescent
+            )
 
     # =========================================================================
     # Blueprint Design
@@ -478,6 +494,53 @@ class OrganBuilder:
             ),
             "organs": [o.get_statistics() for o in self._active_organs.values()],
         }
+
+    # =========================================================================
+    # Senescence Integration
+    # =========================================================================
+
+    def _on_system_senescent(self, channel: str, message: Any) -> None:
+        """Handle a senescent system event from SenescenceManager.
+
+        Triggered when a system's wear reaches 1.0 (end-of-life). Prunes
+        any organs that should dissolve, then publishes a rebuild request
+        so downstream systems know replacement is needed.
+
+        Args:
+            channel: The EventBus channel (always "emergent.system_senescent").
+            message: JSON-serialized payload containing at minimum
+                ``system_name``, ``wear_level``, ``total_steps_active``,
+                and ``step``.
+        """
+        # Parse the message payload (EventBus delivers JSON strings)
+        if isinstance(message, str):
+            try:
+                payload = json.loads(message)
+            except (json.JSONDecodeError, ValueError):
+                logger.warning("OrganBuilder: could not parse senescent message: %s", message)
+                return
+        elif isinstance(message, dict):
+            payload = message
+        else:
+            logger.warning("OrganBuilder: unexpected message type %s", type(message))
+            return
+
+        system_name = payload.get("system_name", "unknown")
+
+        # Prune organs that have reached end-of-life
+        self.prune_organs()
+
+        # Publish rebuild notification so downstream systems can act
+        if self._event_bus is not None:
+            self._event_bus.publish(
+                CH_REBUILD_REQUESTED,
+                {"system_name": system_name, "reason": "senescence"},
+            )
+
+        logger.info(
+            "OrganBuilder: senescent event for %s — pruned and rebuild requested",
+            system_name,
+        )
 
     # =========================================================================
     # Internal
