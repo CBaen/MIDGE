@@ -653,6 +653,22 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                 except Exception:
                     logger.debug("Thompson sampler stats step failed", exc_info=True)
 
+        # Every 50 steps: stigmergy evaporation (triggers global pheromone decay)
+        # StigmergicEnvironment._apply_decay() is lazy — it only fires when
+        # sense_markers() is called. Without this, old convergence:ticker markers
+        # accumulate indefinitely and task routing stays biased to stale positions.
+        if step % 50 == 0:
+            if hasattr(ctx, "stigmergy") and ctx.stigmergy is not None:
+                try:
+                    ctx.stigmergy.sense_markers(
+                        position=(0.0, 0.0, 0.0),
+                        radius=float("inf"),
+                        marker_types=None,
+                    )
+                    logger.debug("Stigmergy evaporation triggered (step %d)", step)
+                except Exception:
+                    logger.debug("Stigmergy evaporation step failed", exc_info=True)
+
         # Every 50 steps: velocity anomaly scan
         if step % 50 == 0:
             vd = getattr(ctx, "velocity_detector", None)

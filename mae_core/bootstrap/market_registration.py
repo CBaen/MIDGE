@@ -86,6 +86,8 @@ def _register_market_somatic(ctx: SimpleNamespace) -> None:
         "pattern_watcher": ("PatternWatcher", ["pattern_library", "convergence_alerter"]),
         # Ecosystem Bridge
         "octopus_colony": ("OctopusColony", ["convergence_alerter", "pattern_watcher"]),
+        # Resource Governance (Law 6 autopoiesis — self-monitoring API budget)
+        "resource_governor": ("ResourceGovernor", []),
     }
 
     for sys_id, (desc, deps) in market_systems.items():
@@ -136,6 +138,8 @@ def _register_market_holons(ctx: SimpleNamespace) -> None:
         "pattern_library", "pattern_watcher",
         # Ecosystem Bridge
         "octopus_colony",
+        # Resource Governance (Law 6 autopoiesis)
+        "resource_governor",
     ]
 
     registered = 0
@@ -224,6 +228,8 @@ def _register_market_fractal(ctx: SimpleNamespace) -> None:
         "pattern_library", "pattern_watcher",
         # Ecosystem Bridge
         "octopus_colony",
+        # Resource Governance (Law 6 autopoiesis)
+        "resource_governor",
     ]
     for sys_id in extras:
         if ctx.holon_registry.get_entry(sys_id) is not None:

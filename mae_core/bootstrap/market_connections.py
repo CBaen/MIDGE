@@ -1,7 +1,7 @@
 """Bootstrap Layer 33d: Market triadic connections.
 
-One job: register all 103 triadic connections for the market intelligence organ
-(Groups 14-32). No bare dyads — every A<->B has witness C.
+One job: register all 106 triadic connections for the market intelligence organ
+(Groups 14-35). No bare dyads — every A<->B has witness C.
 
 Groups:
   14 - Market K3 subsystems + EventBus pub/sub + TA indicators
@@ -23,6 +23,9 @@ Groups:
   30 - Pattern Archetypes (Gift 8: canonical pattern templates)
   31 - Somatic Anticipation (Gift 9: pre-conscious pattern response)
   32 - Pattern Completion Engine (Gift 10: active pattern seeking)
+  33 - Pattern Archaeology (reverse-engineered historical patterns)
+  34 - OctopusColony (ecosystem bridge)
+  35 - ResourceGovernor (Law 6 autopoietic self-governance)
 """
 
 from __future__ import annotations
@@ -450,4 +453,18 @@ def _register_market_connections(ctx: SimpleNamespace) -> None:
             witnesses=["convergence_alerter", "pattern_watcher"],
             description="Colony emits investigation results via EventBus")
 
-    logger.info("Layer 33d - Market connections: triadic connections registered (Group 14-34)")
+    # --- Group 35: ResourceGovernor (Law 6 autopoietic self-governance) ---
+    if getattr(ctx, "resource_governor", None) is not None:
+        reg("resource_governor", "convergence_alerter", eb,
+            channel="market.resource.throttle",
+            witnesses=["event_bus", "auditor"],
+            description="ResourceGovernor publishes throttle events; convergence holds back on throttled sources")
+        reg("resource_governor", "thompson_sampler", dr,
+            witnesses=["event_bus", "auditor"],
+            description="ResourceGovernor budget state visible to Thompson for source-level exploration gating")
+        reg("resource_governor", "event_bus", eb,
+            channel="market.resource.budget_warning",
+            witnesses=["convergence_alerter", "auditor"],
+            description="ResourceGovernor publishes budget warnings via EventBus for organism awareness")
+
+    logger.info("Layer 33d - Market connections: triadic connections registered (Group 14-35)")

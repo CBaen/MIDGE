@@ -48,7 +48,7 @@ logger = logging.getLogger("midge.bootstrap")
 
 
 def bootstrap_market(ctx: SimpleNamespace) -> None:
-    """Wire Layer 33: Market Intelligence organ (56 systems, 106 connections).
+    """Wire Layer 33: Market Intelligence organ (57 systems, 109 connections).
 
     Call order is load-bearing — sub-modules have dependencies:
       1. _instantiate_market_systems: build all objects first
@@ -106,6 +106,8 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
         "pattern_library", "pattern_watcher", "excavation_daemon",
         # Ecosystem Bridge
         "octopus_colony",
+        # Resource Governance (Law 6 autopoiesis)
+        "resource_governor",
     ]
     active = sum(1 for a in market_attrs if getattr(ctx, a, None) is not None)
     holon_count = len([
@@ -114,7 +116,7 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
     ])
 
     logger.info(
-        "Layer 33  - Market Intelligence organ complete: %d systems, %d holons, 106 connections",
+        "Layer 33  - Market Intelligence organ complete: %d systems, %d holons, 109 connections",
         active, holon_count,
     )
     logger.info(
