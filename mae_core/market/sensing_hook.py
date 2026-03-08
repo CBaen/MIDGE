@@ -133,7 +133,7 @@ TIER_ROUTING = {
     "congress_legislation": "strategic",
 }
 
-# Source names for rotation — 30 sources, 3 concurrent per cadence tick
+# Source names for rotation — 30 sources, 8 concurrent per cadence tick
 SOURCE_ROTATION = [
     "sec_form4",
     "sec_form8k",
