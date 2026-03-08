@@ -95,7 +95,7 @@ class TradeSignal:
 
 
 # ---------------------------------------------------------------------------
-# Adapter re-exports — all 33 from_* functions (backward compatibility)
+# Adapter re-exports — all 34 from_* functions (backward compatibility)
 # ---------------------------------------------------------------------------
 # The actual implementations live in signal_adapters/ subpackage.
 # These imports keep all existing `from mae_core.market.signal import X` working.
@@ -128,6 +128,7 @@ from mae_core.market.signal_adapters import (  # noqa: E402
     from_trends_signal,
     from_economic_event,
     from_analyst_recommendation,
+    from_yahoo_rss_signal,
     from_crypto_signal,
     from_openinsider,
     from_13f_holding,
@@ -179,6 +180,7 @@ __all__ = [
     "from_trends_signal",
     "from_economic_event",
     "from_analyst_recommendation",
+    "from_yahoo_rss_signal",
     # Adapter re-exports (wave2_3)
     "from_crypto_signal",
     "from_openinsider",

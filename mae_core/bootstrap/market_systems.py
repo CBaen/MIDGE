@@ -337,6 +337,14 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         failures += 1
 
     try:
+        from mae_core.market.intelligence.world_model import WorldModel
+        ctx.world_model = WorldModel()
+    except Exception:
+        logger.debug("Market: world_model failed to construct", exc_info=True)
+        ctx.world_model = None
+        failures += 1
+
+    try:
         from mae_core.market.intelligence.thompson_calibrator import ThompsonCalibrator
         ctx.thompson_calibrator = (
             ThompsonCalibrator(thompson_sampler=ctx.thompson_sampler)

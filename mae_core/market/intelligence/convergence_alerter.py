@@ -225,6 +225,7 @@ class ConvergenceAlerter:
         pattern_archetype_engine=None,
         economic_calendar=None,
         correlation_tracker=None,
+        world_model=None,
     ):
         """
         Initialize convergence alerter.
@@ -252,6 +253,7 @@ class ConvergenceAlerter:
         self._thompson = thompson_sampler
         self._regime_classifier = regime_classifier
         self._causal_engine = causal_engine
+        self._world_model = world_model
         self._bus = event_bus
         self._catalyst_calendar = catalyst_calendar
         self._cross_asset_confirmer = cross_asset_confirmer

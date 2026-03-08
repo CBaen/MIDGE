@@ -815,3 +815,46 @@ def fetch_social_text(
     except Exception as e:
         logger.debug("Social text analysis failed: %s", e)
     return signals
+
+
+def fetch_yahoo_rss(
+    yahoo_rss_client: Any,
+    watchlist: dict,
+    converter: Callable,
+    min_velocity: float = 1.5,
+) -> list:
+    """Fetch Yahoo Finance RSS headline velocity signals for watchlist tickers.
+
+    Only returns tickers with at least min_velocity headline rate change vs the
+    prior window.  This filters out the daily background noise and surfaces
+    names where something is genuinely happening right now.
+
+    Yahoo RSS is per-ticker (one feed per symbol), so we cap at 15 tickers per
+    cycle to stay polite with Yahoo's servers and stay within the 5-minute cache.
+
+    Args:
+        yahoo_rss_client: YahooRSSClient instance.
+        watchlist: Watchlist dict with "tickers" list.
+        converter: from_yahoo_rss_signal adapter function.
+        min_velocity: Minimum headline velocity ratio to emit a signal (default 1.5).
+
+    Returns:
+        List of MarketSignal objects for tickers with accelerating headline flow.
+    """
+    if yahoo_rss_client is None:
+        return []
+
+    signals = []
+    tickers = watchlist.get("tickers", [])[:15]  # Cap per cycle — one RSS call per ticker
+    try:
+        headline_signals = yahoo_rss_client.get_accelerating(
+            tickers, min_velocity=min_velocity
+        )
+        for hs in headline_signals:
+            try:
+                signals.append(converter(hs))
+            except Exception:
+                pass
+    except Exception as e:
+        logger.debug("Yahoo RSS fetch failed: %s", e)
+    return signals

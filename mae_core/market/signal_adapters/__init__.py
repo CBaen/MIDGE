@@ -59,6 +59,7 @@ from mae_core.market.signal_adapters.layer6 import (
     from_trends_signal,
     from_economic_event,
     from_analyst_recommendation,
+    from_yahoo_rss_signal,
 )
 
 from mae_core.market.signal_adapters.wave2_3 import (
@@ -101,13 +102,14 @@ __all__ = [
     "from_contract_opportunity",
     "from_contract_prediction",
     "from_hiring_signal",
-    # layer6 (6)
+    # layer6 (7)
     "from_cot_positioning",
     "from_stocktwits_sentiment",
     "from_vix_structure",
     "from_trends_signal",
     "from_economic_event",
     "from_analyst_recommendation",
+    "from_yahoo_rss_signal",
     # wave2_3 (8)
     "from_crypto_signal",
     "from_openinsider",

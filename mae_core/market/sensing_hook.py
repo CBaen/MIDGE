@@ -63,6 +63,7 @@ from mae_core.market.sensing_fetchers import (
     fetch_congress_legislation,
     fetch_massive_snapshot,
     fetch_social_text,
+    fetch_yahoo_rss,
 )
 from mae_core.market.sensing_lifecycle import (
     enrich_signal,
