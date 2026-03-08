@@ -135,7 +135,7 @@ After any structural change, grep for stale references:
 # Key numbers to check (update these values as they change):
 # Systems: 147 (92 core + 55 market) | Tests: 4536 | Bootstrap layers: 33 | Mixins: 14
 # Connections: 425 | Holons: 157 | Fractal depth: 4
-# Market modules: 103 files (31 API + 12 edge + 28 intelligence + 14 root + 8 signal_adapters + 10 archaeology)
+# Market modules: 104 files (31 API + 12 edge + 28 intelligence + 15 root + 8 signal_adapters + 10 archaeology)
 
 grep -rn "PREVIOUS_COUNT" --include="*.md" --include="*.py"
 ```
