@@ -166,7 +166,7 @@ Four work packages closing the operational gap (Thompson isolation, combo feedba
 ## Stats
 
 - **147 systems** (92 core + 55 market), **4,536 tests**, **157 holons**, **425 connections**
-- **104 market files** (31 API + 12 edge + 28 intelligence + 8 signal_adapters + 10 archaeology + 15 root)
+- **105 market files** (32 API + 12 edge + 28 intelligence + 8 signal_adapters + 10 archaeology + 15 root)
 - **12 domains**, **30 sources** in sensing rotation
 - **33-layer bootstrap**, **14 mixins** on MycelialAgent
 - **222,916 fingerprints**, **39 templates** (26 cross-validated across 3+ symbols)
@@ -179,11 +179,15 @@ Four work packages closing the operational gap (Thompson isolation, combo feedba
 - **EIA: LIVE.** All 5 energy series returning real data. Intelligence layer fully wired (Thompson, correlation, decay).
 - **Raw Data Store: LIVE.** SQLite per domain in `data/market/raw/`. VIX/COT/EIA/Trends all storing full API data before processing.
 - **Congress.gov: WIRED.** Legislative signal client integrated. 11 policy areas mapped to sector ETFs. `CONGRESS_GOV_API_KEY` configured in `.env`.
-- **Kalshi: ACCOUNT OPEN.** `KALSHI_API_KEY` in `.env`. SDK not yet verified.
-- **Expedition: COMPLETE.** Full synthesis at `research/expedition-autonomous-trading/synthesis.md`. Vision aligned with Guiding Light.
-- **Granger: WIRED.** Causal analysis runs every 500 steps (180-day lookback). Publishes findings to EventBus.
-- **Test isolation: FIXED.** `LEARNING_CONFIG` deep-copy/restore in conftest. All 7 previously-flaky tests now pass in full suite.
-- **Needs restart:** `python main.py --daemon --agents 6 --steps 500 --pace 2.0`
+- **Kalshi: SDK INSTALLED.** `kalshi-python 2.1.4`. `KALSHI_API_KEY` in `.env`. Needs verification against demo env.
+- **Alpaca: CLIENT BUILT.** `alpaca-py 0.43.2`. Paper trading bridge ready. Awaiting `ALPACA_API_KEY` + `ALPACA_SECRET_KEY` in `.env`.
+- **Sensing: 12 WORKERS.** Up from 3. 4x concurrent signal collection.
+- **Web scraping: INSTALLED.** `httpx + selectolax + trafilatura` ready for autonomous data discovery.
+- **OpenInsider clusters: WIRED.** 3+ insiders buying = high-confidence signal (was built but never called).
+- **FINRA: ENHANCED.** Speculative short ratio now computed (was parsed then discarded).
+- **Expedition: COMPLETE.** Full synthesis at `research/expedition-autonomous-trading/synthesis.md`.
+- **Granger: WIRED.** Causal analysis runs every 500 steps.
+- **Needs restart:** `python main.py --daemon --agents 12 --steps 500 --pace 2.0`
 
 ## What's Next
 
@@ -193,21 +197,22 @@ Four work packages closing the operational gap (Thompson isolation, combo feedba
 1. **Restart daemon on fixed code** — picks up ALL fixes: Thompson, independence, templates, active tracking, EIA, Congress.gov, raw data store
 2. **Re-run excavation** — companion process with fixed template code + new EIA + Congress.gov domains
 
-### Priority 2: Supportive Architecture (from expedition + vision alignment)
-3. **Raw data store Phase 2** — extend to SEC EDGAR (store derivative transactions currently skipped), FRED, Finnhub
-4. **Temporal sequence matching** — upgrade pattern templates from "which domains converge" to "in what order, with what gaps." Guiding Light directive: the ORDER patterns fire matters as much as which ones fire
-5. **Expand sensing workers** — 3→12-20 concurrent fetches. MIDGE should be bottlenecked by hardware, not by self-imposed limits
-6. **New real-economy domains** — USDA agriculture (free, seasonal), BDI logistics (free proxy), AIS maritime (free tier)
+### Priority 2: Data Overdrive — Squeeze Every API Call
+3. **Raw store expansion** — 20 of 24 clients have NO raw_store. Extend to SEC EDGAR (derivative transactions skipped), FRED, Finnhub, StockTwits, price_fetcher (80+ yfinance fields discarded), Congress.gov, all Wave 2+3 clients
+4. **Wire unused built methods** — FinViz `get_insider_trades()` (built, never called), EDGAR `get_recent_13f_filers()` (built, never called), COT managed money positions (available, not extracted)
+5. **Temporal sequence matching** — upgrade pattern templates from "which domains converge" to "in what order, with what gaps." THE differentiator.
+6. **Web scraping infrastructure** — httpx/selectolax/trafilatura installed, needs crawler agent that follows links and extracts market-relevant content
 
-### Priority 3: Execution Bridges (from expedition roadmap)
-7. **Kalshi SDK verification** — install `kalshi-python`, authenticate against demo env, confirm RSA key-pair auth works
-8. **MarketSelector prototype** — map top 20 historical convergence alerts to Kalshi contracts. If <30% match, rethink
-9. **Alpaca bridge** — ~50 lines of Python once account is sorted. Cash account avoids PDT rule
+### Priority 3: Execution Bridges
+7. **Alpaca paper trading** — client built, needs API keys from Guiding Light then wire to convergence alerts
+8. **Kalshi SDK verification** — installed, needs auth test against demo env
+9. **MarketSelector** — map top 20 historical convergence alerts to Kalshi contracts
 
-### Priority 4: Pattern Discovery Upgrades
-10. **Granger causality → transfer entropy** (infomeasure library) — captures nonlinear causal relationships
-11. **RMT denoising** (skfolio) — clean correlation matrices before independence correction
-12. **Web scraping infrastructure** — httpx + selectolax + trafilatura for autonomous data discovery
+### Priority 4: More Domains + Analytics
+10. **New real-economy domains** — USDA agriculture, BDI logistics (via FRED), AIS maritime
+11. **Transfer entropy** (infomeasure) — nonlinear causal detection beyond Granger
+12. **RMT denoising** (skfolio) — clean correlation matrices
+13. **FP-Growth** (mlxtend) — sequential pattern mining on signal archive
 
 ### Backlog
 - Options flow via Unusual Whales ($35/mo — after self-funding validates)
