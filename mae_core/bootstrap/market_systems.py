@@ -453,7 +453,7 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
             event_bus=getattr(ctx, "bus", None),
             min_octopuses=3,
             max_octopuses=7,
-            world_model=getattr(ctx, "shared_world_model", None),
+            world_model=getattr(ctx, "world_model", None),
             signal_bus=getattr(ctx, "signal_bus", None),
         )
     except Exception:
