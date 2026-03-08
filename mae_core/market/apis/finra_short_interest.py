@@ -96,15 +96,17 @@ class FINRAShortInterestClient:
             print(f"{row.symbol}: {row.short_ratio:.1%} short ({row.short_volume:,} / {row.total_volume:,})")
     """
 
-    def __init__(self, provider=None):
+    def __init__(self, provider=None, raw_store=None):
         """
         Initialize client.
 
         Args:
             provider: Optional MarketDataProvider for gateway routing.
                       If None, uses a direct requests.Session.
+            raw_store: Optional RawStore for persisting all short volume data.
         """
         self._provider = provider
+        self._raw_store = raw_store
         self.session = requests.Session()
         self.session.headers.update({
             "User-Agent": "MIDGE Trading Research"
@@ -261,6 +263,14 @@ class FINRAShortInterestClient:
 
         records = self._parse_file(text)
         self._cache[cache_key] = (records, time.time())
+
+        # Store ALL records before any filtering
+        if self._raw_store and records:
+            try:
+                self._raw_store.store_finra_short_volume(records)
+            except Exception:
+                pass
+
         logger.info("Loaded %d FINRA short volume records for %s", len(records), date_str)
         return records
 

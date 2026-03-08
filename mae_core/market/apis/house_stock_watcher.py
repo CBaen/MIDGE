@@ -120,8 +120,9 @@ class HouseStockWatcherClient:
     Data is based on STOCK Act disclosures.
     """
 
-    def __init__(self, rapidapi_key: Optional[str] = None, provider=None):
+    def __init__(self, rapidapi_key: Optional[str] = None, provider=None, raw_store=None):
         self._provider = provider
+        self._raw_store = raw_store
         self.session = requests.Session()
         self.session.headers.update({
             "User-Agent": "MIDGE Trading Research"
@@ -208,6 +209,13 @@ class HouseStockWatcherClient:
         if self.rapidapi_key:
             trades = self._get_trades_from_rapidapi(limit=100)  # API caps at 100
             if trades:
+                # Store ALL raw trades before caching/filtering
+                if self._raw_store:
+                    try:
+                        self._raw_store.store_congressional_trades(
+                            [{**t, "chamber": "house"} for t in trades])
+                    except Exception:
+                        pass
                 self._cache = trades
                 self._cache_time = time.time()
                 return trades
@@ -224,6 +232,13 @@ class HouseStockWatcherClient:
         for url, name in endpoints:
             data = self._request(url, source_name="congressional_free")
             if data is not None:
+                # Store ALL raw trades
+                if self._raw_store:
+                    try:
+                        self._raw_store.store_congressional_trades(
+                            [{**t, "chamber": "house"} for t in (data if isinstance(data, list) else [])])
+                    except Exception:
+                        pass
                 self._cache = data
                 self._cache_time = time.time()
                 logger.debug(f"Loaded {len(data)} trades from {name}")

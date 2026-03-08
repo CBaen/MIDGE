@@ -272,6 +272,13 @@ class FinnhubClient:
         if data is None:
             return None
 
+        # Store full sentiment blob before extracting
+        if self._raw_store:
+            try:
+                self._raw_store.store_finnhub_sentiment(key, data)
+            except Exception:
+                pass
+
         result = self._parse_sentiment(key, data)
         if result is not None:
             self._sentiment_cache[key] = (result, time.time())
@@ -301,6 +308,13 @@ class FinnhubClient:
         data = self._get("/calendar/earnings", params={"from": from_date, "to": to_date})
         if data is None:
             return []
+
+        # Store ALL earnings data (including quarter/year that get discarded)
+        if self._raw_store:
+            try:
+                self._raw_store.store_finnhub_earnings(data.get("earningsCalendar") or [])
+            except Exception:
+                pass
 
         events = self._parse_earnings_calendar(data)
         # Upcoming: exclude entries that already have actual results
@@ -334,6 +348,12 @@ class FinnhubClient:
         data = self._get("/calendar/earnings", params={"from": from_date, "to": to_date})
         if data is None:
             return []
+
+        if self._raw_store:
+            try:
+                self._raw_store.store_finnhub_earnings(data.get("earningsCalendar") or [])
+            except Exception:
+                pass
 
         events = self._parse_earnings_calendar(data)
         # Reported only
@@ -383,6 +403,13 @@ class FinnhubClient:
         if data is None:
             return []
 
+        # Store ALL countries before filtering to US-only
+        if self._raw_store:
+            try:
+                self._raw_store.store_finnhub_economic(data.get("economicCalendar") or [])
+            except Exception:
+                pass
+
         return self._parse_economic_calendar(data)
 
     def get_analyst_recommendations(self, symbol: str) -> List[AnalystRec]:
@@ -418,6 +445,12 @@ class FinnhubClient:
         data = self._get("/calendar/earnings", params={"from": from_date, "to": to_date})
         if data is None:
             return []
+
+        if self._raw_store:
+            try:
+                self._raw_store.store_finnhub_earnings(data.get("earningsCalendar") or [])
+            except Exception:
+                pass
 
         events = self._parse_earnings_calendar(data)
         events.sort(key=lambda e: e.date)
