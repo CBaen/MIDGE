@@ -65,6 +65,15 @@ def wire_bio_systems_to_market(ctx: SimpleNamespace) -> None:
     count += _wire_collective_dream(ctx, bus)
     count += _wire_stigmergy(ctx, bus)
 
+    # Tier 4+5: extended wiring (separate file to prevent monolith)
+    try:
+        from mae_core.bootstrap.bio_market_wiring_extended import (
+            wire_bio_systems_extended,
+        )
+        count += wire_bio_systems_extended(ctx)
+    except Exception:
+        logger.debug("Tier 4+5 bio wiring failed", exc_info=True)
+
     logger.info(
         "Layer 33k - Bio-market activation: %d systems wired to market channels",
         count,
