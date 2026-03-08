@@ -431,23 +431,22 @@ class TestFINRAShortVolumeStorage:
 
 class TestSECForm4Storage:
     def test_store_form4_dicts(self, store):
-        from mae_core.market.apis.sec_edgar.models import InsiderTrade
-        trade = InsiderTrade(
-            filing_id="0001234567-26-000001",
-            ticker="AAPL",
-            company_cik="0000320193",
-            insider_name="Tim Cook",
-            insider_title="CEO",
-            transaction_date="2026-03-01",
-            transaction_type="P",
-            shares=5000,
-            price_per_share=175.0,
-            total_value=875000.0,
-            shares_after=1000000,
-            is_derivative=False,
-            filing_date="2026-03-03",
-            form_type="4",
-        )
+        trade = {
+            "filing_id": "0001234567-26-000001",
+            "ticker": "AAPL",
+            "company_cik": "0000320193",
+            "insider_name": "Tim Cook",
+            "insider_title": "CEO",
+            "transaction_date": "2026-03-01",
+            "transaction_type": "P",
+            "shares": 5000,
+            "price_per_share": 175.0,
+            "total_value": 875000.0,
+            "shares_after": 1000000,
+            "is_derivative": False,
+            "filing_date": "2026-03-03",
+            "form_type": "4",
+        }
         count = store.store_sec_form4([trade])
         assert count == 1
         conn = store._get_conn("sec_edgar")
@@ -482,10 +481,10 @@ class TestMassiveBarsStorage:
 class TestCoinGeckoStorage:
     def test_store_coingecko_prices(self, store):
         coins = [
-            {"id": "bitcoin", "symbol": "BTC", "name": "Bitcoin",
-             "current_price": 75000.0, "market_cap": 1_500_000_000_000.0,
-             "total_volume": 30_000_000_000.0, "price_change_percentage_24h": 2.5,
-             "market_cap_rank": 1},
+            {"coin_id": "bitcoin", "symbol": "BTC",
+             "price_usd": 75000.0, "market_cap": 1_500_000_000_000.0,
+             "volume_24h": 30_000_000_000.0, "change_24h_pct": 2.5,
+             "change_7d_pct": 5.0, "last_updated": "2026-03-07T00:00:00Z"},
         ]
         count = store.store_coingecko_prices(coins)
         assert count == 1
