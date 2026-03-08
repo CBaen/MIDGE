@@ -913,6 +913,7 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
             eia_client=getattr(ctx, "eia_client", None),
             congress_gov_client=getattr(ctx, "congress_gov_client", None),
             social_text_analyzer=getattr(ctx, "social_text_analyzer", None),
+            yahoo_rss_client=getattr(ctx, "yahoo_rss_client", None),
         )
     except Exception:
         logger.warning("MarketSensingHook construction failed — agents will not sense market data", exc_info=True)

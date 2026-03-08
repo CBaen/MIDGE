@@ -149,6 +149,7 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         ("trends_client", "mae_core.market.apis.trends_client", "TrendsClient", {"raw_store": raw_store}),
         ("eia_client", "mae_core.market.apis.eia_client", "EIAClient", {"provider": provider, "raw_store": raw_store}),
         ("congress_gov_client", "mae_core.market.apis.congress_gov_client", "CongressGovClient", {"provider": provider, "raw_store": raw_store}),
+        ("yahoo_rss_client", "mae_core.market.apis.yahoo_rss_client", "YahooRSSClient", {"raw_store": raw_store}),
     ]:
         try:
             setattr(ctx, _attr, getattr(_imp.import_module(_mod), _cls)(**_kw))
@@ -339,6 +340,8 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
     try:
         from mae_core.market.intelligence.world_model import WorldModel
         ctx.world_model = WorldModel()
+        if ctx.convergence_alerter is not None:
+            ctx.convergence_alerter._world_model = ctx.world_model
     except Exception:
         logger.debug("Market: world_model failed to construct", exc_info=True)
         ctx.world_model = None

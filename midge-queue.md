@@ -78,9 +78,10 @@
 - [ ] smart-money-concepts as new edge detector domain
 
 ### Causal Reasoning
-- [ ] NetworkX causal chain graph (50-100 curated relationships)
+- [x] NetworkX causal chain graph (114 nodes, 102 edges, 38 tickers) — DONE 2026-03-09
 - [ ] Sequential chain detection (A→B→C stage-gating)
 - [ ] Per-domain temporal ordering in pattern templates
+- [ ] Wire world_model ripple effects into convergence alert enrichment
 
 ### LLM Integration
 - [ ] Run nvidia-smi to determine GPU VRAM

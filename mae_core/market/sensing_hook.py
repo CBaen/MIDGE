@@ -136,6 +136,8 @@ TIER_ROUTING = {
     "congress_legislation": "strategic",
     # Social text analysis
     "social_text": "thematic",
+    # Yahoo Finance RSS — per-ticker headline velocity
+    "yahoo_rss": "tactical",
 }
 
 # Source names for rotation — 30 sources, 8 concurrent per cadence tick
@@ -180,6 +182,8 @@ SOURCE_ROTATION = [
     "congress_legislation",
     # Social text analysis (local — no API, just reads SQLite)
     "social_text",
+    # Yahoo Finance RSS — per-ticker headline velocity (free, no key)
+    "yahoo_rss",
 ]
 
 # Map rotation source names → Thompson distribution keys for guided selection.
@@ -216,6 +220,7 @@ _ROTATION_TO_THOMPSON = {
     "eia_energy": "eia_energy",
     "congress_legislation": "congress_legislation",
     "social_text": "social_text",
+    "yahoo_rss": "yahoo_rss",
 }
 
 # Map absence source names back to convergence domains
@@ -235,6 +240,7 @@ _ABSENCE_SOURCE_DOMAINS = {
     "social_text": "sentiment",
     "eia_energy": "energy",
     "congress_legislation": "government",
+    "yahoo_rss": "events",
 }
 
 
@@ -302,6 +308,7 @@ class MarketSensingHook:
         eia_client: Any = None,
         congress_gov_client: Any = None,
         social_text_analyzer: Any = None,
+        yahoo_rss_client: Any = None,
     ):
         # API clients (all optional — graceful degradation)
         self._sec_client = sec_client
@@ -341,6 +348,7 @@ class MarketSensingHook:
         self._eia_client = eia_client
         self._congress_gov_client = congress_gov_client
         self._social_text_analyzer = social_text_analyzer
+        self._yahoo_rss_client = yahoo_rss_client
 
         # EventBus (injected by bootstrap for signal bridge)
         self._bus = None
@@ -1013,6 +1021,10 @@ class MarketSensingHook:
             signals = fetch_social_text(
                 self._social_text_analyzer, self._watchlist, from_social_text_signal
             )
+
+        elif source_name == "yahoo_rss":
+            from mae_core.market.signal_adapters.layer6 import from_yahoo_rss_signal
+            signals = fetch_yahoo_rss(self._yahoo_rss_client, self._watchlist, from_yahoo_rss_signal)
 
         # Enrich in background thread (velocity, filing-time, Ollama sentiment)
         # Moved from _collect_results() so Ollama's 15s timeout doesn't block
