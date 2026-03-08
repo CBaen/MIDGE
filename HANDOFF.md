@@ -163,21 +163,42 @@ Four work packages closing the operational gap (Thompson isolation, combo feedba
 - **Templates: REBUILT.** 39 templates live in `pattern_templates.jsonl`. PatternWatcher can now match live signals.
 - **Thompson: FIXED.** Forgetting/learning cadence aligned. Independence correction active.
 - **EIA: LIVE.** All 5 energy series returning real data. Intelligence layer fully wired (Thompson, correlation, decay).
-- **Congress.gov: WIRED.** Legislative signal client integrated. 11 policy areas mapped to sector ETFs. Full intelligence layer wiring (Thompson, convergence, plain language, 51 tests). **Needs `CONGRESS_GOV_API_KEY` in `.env`** — free at https://api.data.gov/signup/
+- **Raw Data Store: LIVE.** SQLite per domain in `data/market/raw/`. VIX/COT/EIA/Trends all storing full API data before processing.
+- **Congress.gov: WIRED.** Legislative signal client integrated. 11 policy areas mapped to sector ETFs. `CONGRESS_GOV_API_KEY` configured in `.env`.
+- **Kalshi: ACCOUNT OPEN.** `KALSHI_API_KEY` in `.env`. SDK not yet verified.
+- **Expedition: COMPLETE.** Full synthesis at `research/expedition-autonomous-trading/synthesis.md`. Vision aligned with Guiding Light.
 - **Granger: WIRED.** Causal analysis runs every 500 steps (180-day lookback). Publishes findings to EventBus.
 - **Test isolation: FIXED.** `LEARNING_CONFIG` deep-copy/restore in conftest. All 7 previously-flaky tests now pass in full suite.
 - **Needs restart:** `python main.py --daemon --agents 6 --steps 500 --pace 2.0`
 
 ## What's Next
 
-0. **EXPEDITION IN PROGRESS: Autonomous Self-Funding Trading** — Research Brief approved by Guiding Light at `research/expedition-autonomous-trading/research-brief.md`. **Phase 0 complete, Phase 1 not started.** Next instance: invoke `/expedition`, read the brief, skip pre-flight (already done), dispatch 5 research teams per the brief's angles. This is MIDGE's most important strategic research — Guiding Light wants MIDGE to become a fully autonomous, self-funding trader.
-1. **Restart daemon on fixed code** — picks up all fixes: Thompson, independence, templates, active tracking, EIA energy, Congress.gov
-2. **Monitor template feedback loop** — watch for template win/loss updates in `pattern_templates.jsonl`
-3. **New real-economy domains** — USDA agriculture (free, seasonal), BDI logistics (free proxy)
-4. **Pattern discovery upgrades** — transfer entropy (infomeasure), RMT denoising (skfolio), PCMCI+ (Tigramite)
-5. **Web scraping infrastructure** — autonomous pattern discovery via website crawling (research complete, stack: httpx + selectolax + trafilatura)
-6. **Options flow via Unusual Whales** ($35/mo API — needs Guiding Light approval)
-7. **Re-run excavation** — companion process with fixed template code + new EIA + Congress.gov domains
+**USE `/triadic-construction` for the next build session — multiple independent features below.**
+
+### Priority 1: Get MIDGE Running Again
+1. **Restart daemon on fixed code** — picks up ALL fixes: Thompson, independence, templates, active tracking, EIA, Congress.gov, raw data store
+2. **Re-run excavation** — companion process with fixed template code + new EIA + Congress.gov domains
+
+### Priority 2: Supportive Architecture (from expedition + vision alignment)
+3. **Raw data store Phase 2** — extend to SEC EDGAR (store derivative transactions currently skipped), FRED, Finnhub
+4. **Temporal sequence matching** — upgrade pattern templates from "which domains converge" to "in what order, with what gaps." Guiding Light directive: the ORDER patterns fire matters as much as which ones fire
+5. **Expand sensing workers** — 3→12-20 concurrent fetches. MIDGE should be bottlenecked by hardware, not by self-imposed limits
+6. **New real-economy domains** — USDA agriculture (free, seasonal), BDI logistics (free proxy), AIS maritime (free tier)
+
+### Priority 3: Execution Bridges (from expedition roadmap)
+7. **Kalshi SDK verification** — install `kalshi-python`, authenticate against demo env, confirm RSA key-pair auth works
+8. **MarketSelector prototype** — map top 20 historical convergence alerts to Kalshi contracts. If <30% match, rethink
+9. **Alpaca bridge** — ~50 lines of Python once account is sorted. Cash account avoids PDT rule
+
+### Priority 4: Pattern Discovery Upgrades
+10. **Granger causality → transfer entropy** (infomeasure library) — captures nonlinear causal relationships
+11. **RMT denoising** (skfolio) — clean correlation matrices before independence correction
+12. **Web scraping infrastructure** — httpx + selectolax + trafilatura for autonomous data discovery
+
+### Backlog
+- Options flow via Unusual Whales ($35/mo — after self-funding validates)
+- Coinbase AgentKit for crypto self-funding loop (Stage 2, after Kalshi validates)
+- PCMCI+ (Tigramite) for multivariate causal discovery
 
 ## Verification
 
