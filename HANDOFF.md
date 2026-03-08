@@ -42,32 +42,57 @@
 - Agent thread cap raised in model.py
 - ExcavationDaemon moved off main thread
 
+**WorldModel causal chain graph (NEW):**
+- `mae_core/market/intelligence/world_model.py` — 114 nodes, 102 edges, 38 tradeable tickers
+- Curated real-world causal chains across energy, macro, tech, defense, supply chain, geopolitical domains
+- `find_ripple_effects(trigger)` traces downstream effects with strength accumulation and lag propagation
+- `map_signal_to_trigger(source, metadata)` bridges MIDGE signals to world model events
+- `record_outcome(trigger, ticker, was_correct)` for feedback learning
+- Wired into convergence_alerter via bootstrap injection
+
+**TA vectorization (COMPLETE):**
+- RSI, MACD, Bollinger rewritten from iterative to numpy/pandas vectorized (10-50x faster)
+- `ta_indicators.py` — `np.diff`, `pd.Series.ewm`, `pd.Series.rolling`
+- 51/51 tests pass including 19 new vectorization tests
+
+**Yahoo Finance RSS (NEW):**
+- `mae_core/market/apis/yahoo_rss_client.py` — per-ticker RSS, 5-min cache, velocity detection
+- Bullish/bearish keyword sentiment, `get_headlines()` + `get_accelerating()`
+- Full sensing pipeline wiring (SOURCE_ROTATION, TIER_ROUTING, signal adapter)
+- 36 tests
+
+**STUMPY motif detector (NEW):**
+- `mae_core/market/intelligence/motif_detector.py` — per-symbol streaming matrix profile
+- Detects motifs (repeated patterns) and discords (anomalous subsequences)
+- 50 symbol cap, 20-bar window (~1 month), LRU eviction
+- Wired into bootstrap (market_systems.py + market_hooks.py)
+
+**ADWIN drift detector (NEW):**
+- `mae_core/market/intelligence/drift_detector.py` — multi-stream concept drift via ADWIN
+- River ADWIN when available, pure-Python Hoeffding-bound fallback
+- Tracks price_returns, volume, VIX, sentiment streams
+- Wired into bootstrap (market_systems.py + market_hooks.py)
+
+**File splits (monolith prevention):**
+- `post_mortem.py` 569→314 lines (computation split to `post_mortem_analysis.py` 245 lines + `post_mortem_utils.py` 57 lines)
+- `market_systems.py` 535→453 lines
+
 **Queue updated:** `midge-queue.md` now tracks 70+ items from 3 expedition syntheses that were researched but never queued.
 
-**Files changed (21 files):**
-- `mae_core/market/raw_store.py` — 25 store methods (was 15)
-- `mae_core/market/intelligence/post_mortem.py` — NEW: PostMortemReviewer
-- `mae_core/market/intelligence/social_text_analyzer.py` — NEW: SocialTextAnalyzer
-- `mae_core/market/intelligence/convergence_alerter.py` — domain_sequence, sequence_score, lag findings
-- `mae_core/market/archaeology/active_tracker.py` — _force_grade fixed
-- `mae_core/market/sensing_hook.py` — 12 concurrent, 25-step cadence, social analyzer
-- `mae_core/market/sensing_fetchers.py` — FinViz insider trades wired
-- `mae_core/market/apis/finnhub_websocket.py` — raw_store wiring
-- `mae_core/market/apis/massive_client.py` — volume_ratio fix + raw_store
-- `mae_core/market/apis/sam_gov.py` — estimated_value fix + raw_store
-- `mae_core/market/apis/coingecko_client.py` — raw_store wiring
-- `mae_core/market/apis/coincap_client.py` — raw_store wiring
-- `mae_core/market/apis/openinsider_client.py` — raw_store wiring (+ SEC URL)
-- `mae_core/market/apis/finviz_client.py` — raw_store wiring
-- `mae_core/market/apis/edgar_enhanced_client.py` — raw_store wiring
-- `mae_core/market/apis/apewisdom.py` — raw_store wiring
-- `mae_core/market/apis/job_tracker.py` — raw_store wiring
-- `mae_core/market/apis/sec_edgar/client.py` — raw_store wiring
-- `mae_core/bootstrap/market_systems.py` — PostMortemReviewer + raw_store to all clients (535 lines, needs split)
-- `mae_core/bootstrap/market_hooks.py` — FinnhubWS start(), lag→alerter wiring, post-mortem hook, social analyzer
-- `mae_core/model.py` — thread cap raised
-- `tests/test_raw_store.py` — 58 tests (was 35)
-- `midge-queue.md` — comprehensive 70+ item queue from expedition research
+**Files changed (30+ files):**
+- All files from raw store expansion (24 clients wired)
+- `mae_core/market/intelligence/world_model.py` — NEW: causal chain graph
+- `mae_core/market/intelligence/motif_detector.py` — NEW: STUMPY streaming
+- `mae_core/market/intelligence/drift_detector.py` — NEW: ADWIN drift
+- `mae_core/market/intelligence/post_mortem.py` — split to 3 files
+- `mae_core/market/intelligence/post_mortem_analysis.py` — NEW: extracted computation
+- `mae_core/market/intelligence/post_mortem_utils.py` — NEW: shared helpers
+- `mae_core/market/intelligence/social_text_analyzer.py` — NEW: theme detection
+- `mae_core/market/intelligence/convergence_alerter.py` — domain_sequence, sequence_score, world_model
+- `mae_core/market/apis/yahoo_rss_client.py` — NEW: headline velocity
+- `mae_core/market/edge/ta_indicators.py` — numpy/pandas vectorized
+- `mae_core/bootstrap/market_systems.py` — all new systems wired (453 lines)
+- `mae_core/bootstrap/market_hooks.py` — FinnhubWS start(), drift/motif hooks, post-mortem, social analyzer
 
 ### Raw Store Expansion: 4→12 Domains (2026-03-08)
 
