@@ -79,8 +79,9 @@ class COTClient:
     No API key required. Data is cached for 24 hours (weekly updates only).
     """
 
-    def __init__(self, provider=None):
+    def __init__(self, provider=None, raw_store=None):
         self._provider = provider
+        self._raw_store = raw_store
         self.session = requests.Session()
         self.session.headers.update({"User-Agent": "MIDGE Trading Research"})
         self._last_request_time: float = 0.0
@@ -127,6 +128,12 @@ class COTClient:
             if df is None or df.empty:
                 logger.warning("COT: no data returned for %d", datetime.now().year)
                 return []
+
+            if self._raw_store:
+                try:
+                    self._raw_store.store_cot_report(df)
+                except Exception as exc:
+                    logger.debug("RawStore COT write failed: %s", exc)
 
             signals = self._parse_dataframe(df, symbols)
             self._cache = signals

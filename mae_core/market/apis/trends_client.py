@@ -62,8 +62,9 @@ class TrendsClient:
     Rate limited to 1 req/10s. 6-hour cache.
     """
 
-    def __init__(self, provider=None):
+    def __init__(self, provider=None, raw_store=None):
         self._provider = provider  # Not used for pytrends (library, not HTTP)
+        self._raw_store = raw_store
         self._last_request_time: float = 0.0
         self._cache: Optional[List[TrendsSignal]] = None
         self._cache_time: float = 0.0
@@ -126,6 +127,18 @@ class TrendsClient:
 
             if df is None or df.empty:
                 return []
+
+            if self._raw_store:
+                try:
+                    for kw in keywords:
+                        if kw in df.columns:
+                            trend_rows = [
+                                {"timestamp": str(idx), "interest": int(df.loc[idx, kw])}
+                                for idx in df.index
+                            ]
+                            self._raw_store.store_trends(kw, trend_rows)
+                except Exception as exc:
+                    logger.debug("RawStore Trends write failed: %s", exc)
 
             signals = []
             for kw in keywords:

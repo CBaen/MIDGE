@@ -65,8 +65,9 @@ class VIXClient:
     Rate limited to 1 req/2s. 4-hour cache.
     """
 
-    def __init__(self, provider=None):
+    def __init__(self, provider=None, raw_store=None):
         self._provider = provider
+        self._raw_store = raw_store
         self.session = requests.Session()
         self.session.headers.update({"User-Agent": "MIDGE Trading Research"})
         self._last_request_time: float = 0.0
@@ -149,14 +150,28 @@ class VIXClient:
         try:
             reader = csv.DictReader(io.StringIO(text))
             rows = []
+            raw_rows = []
             for row in reader:
                 try:
                     close = float(row.get("CLOSE", row.get("Close", 0)))
                     date_str = row.get("DATE", row.get("Date", ""))
                     if close > 0 and date_str:
                         rows.append({"date": date_str.strip()[:10], "close": close})
+                        raw_rows.append({
+                            "date": date_str.strip()[:10],
+                            "open": float(row.get("OPEN", row.get("Open", 0))) or None,
+                            "high": float(row.get("HIGH", row.get("High", 0))) or None,
+                            "low": float(row.get("LOW", row.get("Low", 0))) or None,
+                            "close": close,
+                        })
                 except (ValueError, TypeError):
                     continue
+
+            if self._raw_store and raw_rows:
+                try:
+                    self._raw_store.store_vix_daily(raw_rows)
+                except Exception as exc:
+                    logger.debug("RawStore VIX history write failed: %s", exc)
 
             if not rows:
                 return []
@@ -206,14 +221,28 @@ class VIXClient:
         """Parse CBOE VIX history CSV and extract most recent data."""
         reader = csv.DictReader(io.StringIO(text))
         rows = []
+        raw_rows = []
         for row in reader:
             try:
                 close = float(row.get("CLOSE", row.get("Close", 0)))
                 date_str = row.get("DATE", row.get("Date", ""))
                 if close > 0 and date_str:
                     rows.append({"date": date_str.strip(), "close": close})
+                    raw_rows.append({
+                        "date": date_str.strip()[:10],
+                        "open": float(row.get("OPEN", row.get("Open", 0))) or None,
+                        "high": float(row.get("HIGH", row.get("High", 0))) or None,
+                        "low": float(row.get("LOW", row.get("Low", 0))) or None,
+                        "close": close,
+                    })
             except (ValueError, TypeError):
                 continue
+
+        if self._raw_store and raw_rows:
+            try:
+                self._raw_store.store_vix_daily(raw_rows)
+            except Exception as exc:
+                logger.debug("RawStore VIX write failed: %s", exc)
 
         if not rows:
             return None

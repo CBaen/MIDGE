@@ -183,8 +183,9 @@ class EIAClient:
     Cache: 6 hours — weekly data updates on specific days.
     """
 
-    def __init__(self, api_key: Optional[str] = None, provider=None):
+    def __init__(self, api_key: Optional[str] = None, provider=None, raw_store=None):
         self._provider = provider
+        self._raw_store = raw_store
         self.api_key = api_key or os.environ.get("EIA_API_KEY")
 
         if self.api_key:
@@ -283,6 +284,13 @@ class EIAClient:
             return None
 
         response_data = data.get("response", {}).get("data", [])
+
+        if self._raw_store and response_data:
+            try:
+                self._raw_store.store_eia_series(series_key, response_data)
+            except Exception as exc:
+                logger.debug("RawStore EIA write failed: %s", exc)
+
         if len(response_data) < 2:
             logger.warning("EIA returned fewer than 2 observations for %s", series_key)
             return None

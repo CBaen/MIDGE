@@ -115,6 +115,15 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         ctx.price_fetcher = None
         failures += 1
 
+    # --- Raw data storage (persist ALL API data before processing) ---
+    try:
+        from mae_core.market.raw_store import RawStore
+        raw_store = RawStore()
+        logger.info("Market: RawStore initialized at %s", raw_store._base_dir)
+    except Exception:
+        logger.debug("Market: RawStore failed to construct", exc_info=True)
+        raw_store = None
+
     # --- Phase 2 + Layer 6 API clients (free sources) ---
     for _attr, _mod, _cls, _kw in [
         ("senate_stock_watcher", "mae_core.market.apis.senate_stock_watcher", "SenateStockWatcherClient", {"provider": provider}),
@@ -123,11 +132,11 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         ("sec_efts_client", "mae_core.market.apis.sec_edgar.efts", "SECFullTextSearchClient", {"provider": provider}),
         ("finnhub_client", "mae_core.market.apis.finnhub_client", "FinnhubClient", {"provider": provider}),
         ("fred_client", "mae_core.market.apis.fred_client", "FREDClient", {"provider": provider}),
-        ("cot_client", "mae_core.market.apis.cot_client", "COTClient", {"provider": provider}),
+        ("cot_client", "mae_core.market.apis.cot_client", "COTClient", {"provider": provider, "raw_store": raw_store}),
         ("stocktwits_client", "mae_core.market.apis.stocktwits_client", "StockTwitsClient", {"provider": provider}),
-        ("vix_client", "mae_core.market.apis.vix_client", "VIXClient", {"provider": provider}),
-        ("trends_client", "mae_core.market.apis.trends_client", "TrendsClient", {}),
-        ("eia_client", "mae_core.market.apis.eia_client", "EIAClient", {"provider": provider}),
+        ("vix_client", "mae_core.market.apis.vix_client", "VIXClient", {"provider": provider, "raw_store": raw_store}),
+        ("trends_client", "mae_core.market.apis.trends_client", "TrendsClient", {"raw_store": raw_store}),
+        ("eia_client", "mae_core.market.apis.eia_client", "EIAClient", {"provider": provider, "raw_store": raw_store}),
         ("congress_gov_client", "mae_core.market.apis.congress_gov_client", "CongressGovClient", {"provider": provider}),
     ]:
         try:
