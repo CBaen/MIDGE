@@ -446,6 +446,20 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         logger.debug("Market: drift_detector failed to construct", exc_info=True)
         ctx.drift_detector = None
 
+    # --- OctopusColony (ecosystem bridge) ---
+    try:
+        from mae_core.network.octopus_colony import OctopusColony
+        ctx.octopus_colony = OctopusColony(
+            event_bus=getattr(ctx, "bus", None),
+            min_octopuses=3,
+            max_octopuses=7,
+            world_model=getattr(ctx, "shared_world_model", None),
+            signal_bus=getattr(ctx, "signal_bus", None),
+        )
+    except Exception:
+        logger.debug("Market: octopus_colony failed to construct", exc_info=True)
+        ctx.octopus_colony = None
+
     _register_trust_and_gateway(ctx)
 
     logger.info(
