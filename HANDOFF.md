@@ -2,6 +2,38 @@
 
 ## What Happened
 
+### Bio-Market Activation — Every System Gets a Market Job (2026-03-09)
+
+**14 biological systems wired to market intelligence channels:**
+
+Tier 2 (one hop away from EndocrineSystem — now directly market-connected):
+- **EmotionalSystem** → bullish convergence boosts curiosity, bearish boosts fear, deception spikes fear
+- **HomeostasisRegulator** → bearish convergence raises threat_level setpoint, velocity anomaly raises processing_load
+- **ArousalRegulator** → prediction win/loss feeds reward signal (Yerkes-Dodson for trading)
+- **CuriosityDrive** → partial convergence + novel hypotheses boost exploration (dead endocrine wire fixed via `set_exploration_bonus()`)
+- **NociceptionSystem** → deception = acute pain, prediction failure = referred pain, velocity anomaly = chronic pain
+
+Tier 3 (clear market jobs, now EventBus-wired):
+- **MetacognitionMonitor** → prediction confidence vs actual outcomes feeds calibration engine
+- **ThreatDetector** → deception quill registered, sacrificeable market components for lizard autotomy
+- **QuorumSpace** → convergence/pattern stacks deposit signals per ticker (organism-level vote)
+- **CircadianRhythm** → phase changes set `ctx._circadian_activity` multiplier for sensing cadence
+- **HAVEN** → deception events flag sources, successful predictions reduce suspicion
+- **InhibitionSystem** → deception raises `ctx._market_caution`, high-confidence convergence lowers it
+- **MemoryConsolidator** → circadian CONSOLIDATION triggers hypothesis engine, REST triggers excavation
+- **CollectiveDreamPlanner** → event_bus fix, convergence nudges expertise weights
+- **Stigmergy** → convergence deposits pheromone per ticker, prediction outcomes deposit success/danger markers
+
+**ResourceGovernor (NEW)** — internal API budget governance. Per-source hourly limits, global hourly cap, warning at 80%, throttle events on EventBus. Replaces external governance (Paperclip rejected — Law 6 autopoietic closure).
+
+**Files created/modified:**
+- `mae_core/bootstrap/bio_market_wiring.py` — NEW: 14 system wiring functions
+- `mae_core/market/resource_governor.py` — NEW: budget governance system
+- `mae_core/learning/curiosity.py` — added `set_exploration_bonus()` method
+- `mae_core/bootstrap/market.py` — calls `wire_bio_systems_to_market(ctx)` as Layer 33k
+- `tests/test_bio_market_wiring.py` — NEW: 23 tests
+- `tests/test_resource_governor.py` — NEW: 11 tests
+
 ### Ecosystem Activation — Wire the Octopus (2026-03-09)
 
 **Pipeline bridge built (two disconnected pipelines now connected):**
