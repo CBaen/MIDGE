@@ -865,7 +865,7 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                             price = float(price_data.price)
                             change_pct = float(getattr(price_data, "change_pct", 0.0) or 0.0)
 
-                            # Motif detection
+                            # Motif detection — feed into convergence alerter
                             if md is not None:
                                 motif_sigs = md.update(sym, price, now)
                                 for ms in motif_sigs:
@@ -876,6 +876,20 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                                             "strength": round(ms.strength, 4),
                                             "mp_value": round(ms.mp_value, 4),
                                         })
+                                    # Wire into convergence alerter as technical signal.
+                                    # Direction: discords are contrarian (anomaly → reversal),
+                                    # motifs follow recent trend.
+                                    if hasattr(ctx, "convergence_alerter"):
+                                        source = "motif_match" if ms.signal_type == "motif" else "price_discord"
+                                        direction = ("bearish" if change_pct > 0 else "bullish") if ms.signal_type == "discord" else ("bullish" if change_pct > 0 else "bearish")
+                                        ctx.convergence_alerter.record_signal(
+                                            signal_id=f"{source}_{sym}",
+                                            strength=ms.strength,
+                                            domain="technical",
+                                            direction=direction,
+                                            source=source,
+                                            metadata={"symbol": sym},
+                                        )
 
                             # Streaming anomaly: [price_change, volume_ratio, 0, 0]
                             # volume_ratio and sentiment default to 0 (unknown at this point)

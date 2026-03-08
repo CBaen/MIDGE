@@ -184,6 +184,10 @@ class ConvergenceAlerter:
         "massive_snapshot": "massive_snapshot",
         # Price data
         "yfinance_price": "yfinance_price",
+        # Pattern discovery (motif + anomaly detectors)
+        "motif_match": "motif_match",
+        "price_discord": "price_discord",
+        "streaming_anomaly": "streaming_anomaly",
     }
 
     # Domain → list of source names used in lag_correlations.json.
@@ -197,7 +201,8 @@ class ConvergenceAlerter:
         "technical": ["ta_rsi", "ta_macd", "ta_bollinger", "ta_structure", "ta_candle",
                       "session_sweep", "session_sweep_ifvg", "fractal_resonance",
                       "order_flow", "finviz_unusual_volume", "finviz_short_squeeze",
-                      "yfinance_price"],
+                      "yfinance_price", "motif_match", "price_discord",
+                      "streaming_anomaly"],
         "sentiment": ["social_sentiment", "google_trends", "stocktwits_sentiment"],
         "government": ["congressional", "senate", "congress_legislation"],
         "contracts": ["contract_award", "contract_prediction", "sam_gov"],
@@ -1469,6 +1474,40 @@ class ConvergenceAlerter:
                 cross_domain_count = len(categories_seen)
                 final_confidence = self._compute_confidence(converging, cross_domain_count)
 
+                # Combo Thompson — same logic as global convergence path.
+                combo_key = "combo:" + "+".join(sorted(domains_seen))
+                if self._thompson is not None:
+                    try:
+                        regime = self._get_regime()
+                        combo_dist = self._thompson.get_distribution(combo_key, regime)
+                        if combo_dist.samples >= 5:
+                            combo_multiplier = 0.5 + combo_dist.mean
+                            final_confidence = max(0.05, min(0.95, final_confidence * combo_multiplier))
+                    except Exception:
+                        pass  # Graceful degradation
+
+                # Temporal ordering — same logic as global convergence path.
+                domain_sequence = []
+                sequence_score = 1.0
+                try:
+                    domain_sequence = self._build_domain_sequence(converging)
+                    sequence_score = self._compute_sequence_score(domain_sequence)
+                    if sequence_score != 1.0:
+                        final_confidence = max(0.05, min(0.95, final_confidence * sequence_score))
+                except Exception:
+                    pass  # Graceful degradation
+
+                # Deception detection — same logic as global convergence path.
+                if self._deception_detector is not None:
+                    try:
+                        deception_penalty = self._deception_detector.check(
+                            ticker, direction, [s.source for s in converging]
+                        )
+                        if deception_penalty < 1.0:
+                            final_confidence = max(0.05, final_confidence * deception_penalty)
+                    except Exception:
+                        pass  # Graceful degradation
+
                 avg_velocity = sum(abs(s.velocity) for s in converging) / len(converging)
                 if avg_velocity > 0.1:
                     urgency = "immediate"
@@ -1478,10 +1517,11 @@ class ConvergenceAlerter:
                     urgency = "days"
 
                 domain_list = ", ".join(sorted(domains_seen))
+                seq_note = f", seq={sequence_score:.2f}" if sequence_score != 1.0 else ""
                 summary = (
                     f"TICKER {ticker} {direction.upper()}: {len(domains_seen)} domains "
                     f"({domain_list}) | strength={avg_strength:.2f}, "
-                    f"confidence={final_confidence:.2f}, urgency={urgency}"
+                    f"confidence={final_confidence:.2f}, urgency={urgency}{seq_note}"
                 )
 
                 self._alert_counter += 1
@@ -1495,7 +1535,10 @@ class ConvergenceAlerter:
                     signals=converging,
                     cross_domain_count=cross_domain_count,
                     summary=summary,
-                    urgency=urgency
+                    urgency=urgency,
+                    combo_key=combo_key,
+                    domain_sequence=domain_sequence,
+                    sequence_score=sequence_score,
                 )
                 alerts.append(alert)
 

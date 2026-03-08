@@ -214,20 +214,44 @@ class PostMortemReviewer:
     # ── Thompson Feedback ──────────────────────────────────────────────
 
     def _feed_thompson_updates(self, insights: dict) -> None:
-        """Update Thompson distributions with sequence-aware findings.
+        """Update Thompson distributions with combo and sequence findings.
 
-        For each combo+sequence with enough data:
-          - Register success/failure counts as Thompson updates.
-          - Key format: "seq:{domain_a}>>{domain_b}>>..." for ordered combos.
+        Processes both:
+          - combo_stats: unordered domain combos → "signals:{key}" Thompson keys
+          - sequence_stats: ordered domain combos → "seq:{key}" Thompson keys
 
-        This is additive — we don't reset distributions, just push new evidence.
+        Idempotency: checks existing sample count to avoid double-feeding
+        the same data on repeated reviews.
         """
         if self._thompson is None:
             return
 
-        sequence_stats = insights.get("sequence_stats", {})
+        regime = self._get_regime()
         updates_made = 0
 
+        # Feed combo stats (previously missing — only sequences were fed)
+        combo_stats = insights.get("combo_stats", {})
+        for combo_key, stats in combo_stats.items():
+            n = stats.get("n", 0)
+            wins = stats.get("wins", 0)
+            if n < MIN_OUTCOMES_FOR_STATS:
+                continue
+
+            thompson_key = combo_key  # Already prefixed "signals:..." or "combo:..."
+            try:
+                existing = self._thompson.get_distribution(thompson_key, regime)
+                if existing.samples >= n:
+                    continue  # Already seeded with at least this much data
+                for _ in range(wins):
+                    self._thompson.update(thompson_key, success=True, regime=regime)
+                for _ in range(n - wins):
+                    self._thompson.update(thompson_key, success=False, regime=regime)
+                updates_made += 1
+            except Exception:
+                logger.debug("Thompson update failed for combo key %s", thompson_key, exc_info=True)
+
+        # Feed sequence stats
+        sequence_stats = insights.get("sequence_stats", {})
         for seq_key, stats in sequence_stats.items():
             n = stats.get("n", 0)
             wins = stats.get("wins", 0)
@@ -236,10 +260,9 @@ class PostMortemReviewer:
 
             thompson_key = f"seq:{seq_key}"
             try:
-                # Push one update per outcome (successes first, then failures).
-                # Batch approximation — full replay would be ideal but we only
-                # have aggregated stats here.
-                regime = self._get_regime()
+                existing = self._thompson.get_distribution(thompson_key, regime)
+                if existing.samples >= n:
+                    continue  # Already seeded
                 for _ in range(wins):
                     self._thompson.update(thompson_key, success=True, regime=regime)
                 for _ in range(n - wins):
@@ -249,7 +272,7 @@ class PostMortemReviewer:
                 logger.debug("Thompson update failed for seq key %s", thompson_key, exc_info=True)
 
         if updates_made > 0:
-            logger.info("PostMortem: pushed %d sequence-aware Thompson updates", updates_made)
+            logger.info("PostMortem: pushed %d Thompson updates (combo + sequence)", updates_made)
 
     def _get_regime(self) -> str:
         """Get current market regime string."""
