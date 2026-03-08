@@ -2,9 +2,7 @@
 
 Construct all market system objects on ctx. Every instantiation is wrapped in
 try/except — failures set ctx.attr = None (graceful degradation).
-Also handles BoundaryMembrane trust and ApiGateway registration.
 """
-
 from __future__ import annotations
 
 import logging
@@ -12,7 +10,6 @@ import os
 from types import SimpleNamespace
 
 logger = logging.getLogger("midge.bootstrap")
-
 
 def _instantiate_wave2_3_clients(ctx: SimpleNamespace) -> None:
     """Construct Wave 2+3 API clients (Always-On MIDGE)."""
