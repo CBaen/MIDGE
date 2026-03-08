@@ -339,6 +339,12 @@ class PriceFetcher:
                         ticker = tickers.tickers.get(symbol)
                         if ticker:
                             info = ticker.info
+                            # Store full info before extracting
+                            if self._raw_store and info:
+                                try:
+                                    self._raw_store.store_price_snapshot(symbol, info)
+                                except Exception:
+                                    pass
                             results[symbol] = PriceData(
                                 symbol=symbol,
                                 price=info.get("currentPrice") or info.get("regularMarketPrice", 0),
@@ -368,6 +374,13 @@ class PriceFetcher:
         try:
             ticker = yf.Ticker(symbol)
             info = ticker.info
+
+            # Store ALL 80+ fields before extracting the 6 we use
+            if self._raw_store and info:
+                try:
+                    self._raw_store.store_price_snapshot(symbol, info)
+                except Exception:
+                    pass
 
             price = info.get("currentPrice") or info.get("regularMarketPrice")
             if not price:

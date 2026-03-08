@@ -147,15 +147,17 @@ class FREDClient:
     Cache: 4 hours — macro data updates at most daily.
     """
 
-    def __init__(self, api_key: Optional[str] = None, provider=None):
+    def __init__(self, api_key: Optional[str] = None, provider=None, raw_store=None):
         """
         Initialize FRED client.
 
         Args:
             api_key: FRED API key. Falls back to FRED_API_KEY env var.
             provider: Optional MarketDataProvider for ApiGateway routing.
+            raw_store: Optional RawStore for persisting all observations.
         """
         self._provider = provider
+        self._raw_store = raw_store
         self.api_key = api_key or os.environ.get("FRED_API_KEY")
 
         if self.api_key:
@@ -276,6 +278,13 @@ class FREDClient:
             logger.warning("FRED returned no observations for %s", series_id)
             return None
 
+        # Store ALL observations before extracting latest
+        if self._raw_store:
+            try:
+                self._raw_store.store_fred_observations(series_id, observations)
+            except Exception:
+                pass
+
         # Most recent observation is first (sort_order=desc)
         obs = observations[0]
         raw_value = obs.get("value", "")
@@ -360,6 +369,13 @@ class FREDClient:
         if not observations:
             logger.warning("FRED returned no observations for %s (days=%d)", series_id, days)
             return []
+
+        # Store ALL observations
+        if self._raw_store:
+            try:
+                self._raw_store.store_fred_observations(series_id, observations)
+            except Exception:
+                pass
 
         series_name, signal_type = FRED_SERIES.get(series_id, (series_id, "macro"))
         results: List[MacroIndicator] = []

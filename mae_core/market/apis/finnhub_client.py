@@ -212,16 +212,18 @@ class FinnhubClient:
         upcoming = client.get_upcoming_earnings(days=14)
     """
 
-    def __init__(self, api_key: Optional[str] = None, provider=None):
+    def __init__(self, api_key: Optional[str] = None, provider=None, raw_store=None):
         """
         Initialize the Finnhub client.
 
         Args:
             api_key:  Finnhub API key. Falls back to MAE_FINNHUB_API_KEY env var.
             provider: Optional MarketDataProvider for gateway routing.
+            raw_store: Optional RawStore for persisting all API data.
         """
         self._api_key = api_key or os.environ.get("MAE_FINNHUB_API_KEY")
         self._provider = provider
+        self._raw_store = raw_store
 
         if not self._api_key:
             logger.warning(

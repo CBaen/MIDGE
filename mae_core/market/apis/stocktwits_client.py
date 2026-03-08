@@ -63,8 +63,9 @@ class StockTwitsClient:
     Rate limited to 1 req/s. 30-minute cache per ticker.
     """
 
-    def __init__(self, provider=None):
+    def __init__(self, provider=None, raw_store=None):
         self._provider = provider
+        self._raw_store = raw_store
         self.session = requests.Session()
         self.session.headers.update({"User-Agent": "MIDGE Trading Research"})
         self._last_request_time: float = 0.0
@@ -134,6 +135,13 @@ class StockTwitsClient:
             messages = data.get("messages", [])
             if not messages:
                 return None
+
+            # Store ALL messages before extracting bull/bear counts
+            if self._raw_store:
+                try:
+                    self._raw_store.store_stocktwits_messages(ticker, messages)
+                except Exception:
+                    pass
 
             # Count bull/bear from labeled messages
             bull = 0
