@@ -34,6 +34,16 @@ def _instantiate_wave2_3_clients(ctx: SimpleNamespace) -> None:
             setattr(ctx, attr, None)
 
 
+def _instantiate_execution_bridges(ctx: SimpleNamespace) -> None:
+    """Construct execution bridges (Alpaca, Kalshi)."""
+    try:
+        from mae_core.market.apis.alpaca_client import AlpacaClient
+        ctx.alpaca_client = AlpacaClient(
+            api_key=os.environ.get("ALPACA_API_KEY"),
+            secret_key=os.environ.get("ALPACA_SECRET_KEY"), paper=True)
+    except Exception:
+        ctx.alpaca_client = None
+
 _MARKET_SOURCE_TRUST = [
     ("sec_edgar", 0.90), ("yfinance", 0.75), ("alpha_vantage", 0.80), ("rapidapi", 0.65),
     ("usa_spending", 0.85), ("sam_gov", 0.80), ("senate_free", 0.80), ("apewisdom", 0.45),
@@ -65,29 +75,25 @@ def _register_trust_and_gateway(ctx: SimpleNamespace) -> None:
 
 
 def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
-    """Create all 56 market system objects on ctx."""
-    # Warm-start: restore meta-learned config from prior sessions
+    """Create all market system objects on ctx."""
     try:
         from mae_core.market.intelligence.learning_config import load_snapshot
         if load_snapshot():
-            logger.info("Market config snapshot loaded — meta-learned values active from step 1")
+            logger.info("Market config snapshot loaded")
     except Exception:
-        logger.debug("Config snapshot warm-start skipped", exc_info=True)
-
+        pass
     qdrant_url = getattr(ctx, "qdrant_url", "http://localhost:6333")
     failures = 0
-
-    # --- Create MarketDataProvider first (injected into all API clients) ---
     provider = None
     try:
         from mae_core.market.apis.market_data_provider import MarketDataProvider
         provider = MarketDataProvider()
         ctx.market_data_provider = provider
     except Exception:
-        logger.debug("Market: market_data_provider failed to construct", exc_info=True)
         ctx.market_data_provider = None
 
     # --- API clients (Market Sensing) — provider injected for gateway routing ---
+    import importlib as _imp
     for _attr, _mod, _cls, _kw in [
         ("sec_edgar_client", "mae_core.market.apis.sec_edgar.client", "SECEdgarClient", {"provider": provider}),
         ("house_stock_watcher", "mae_core.market.apis.house_stock_watcher", "HouseStockWatcherClient", {"provider": provider}),
@@ -96,11 +102,9 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         ("sam_gov_client", "mae_core.market.apis.sam_gov", "SAMGovClient", {"provider": provider}),
     ]:
         try:
-            import importlib as _imp
-            _m = _imp.import_module(_mod)
-            setattr(ctx, _attr, getattr(_m, _cls)(**_kw))
+            setattr(ctx, _attr, getattr(_imp.import_module(_mod), _cls)(**_kw))
         except Exception:
-            logger.debug("Market: %s failed to construct", _attr, exc_info=True)
+            logger.debug("Market: %s failed", _attr, exc_info=True)
             setattr(ctx, _attr, None)
             failures += 1
 
@@ -138,11 +142,9 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         ("congress_gov_client", "mae_core.market.apis.congress_gov_client", "CongressGovClient", {"provider": provider}),
     ]:
         try:
-            import importlib as _imp
-            _m = _imp.import_module(_mod)
-            setattr(ctx, _attr, getattr(_m, _cls)(**_kw))
+            setattr(ctx, _attr, getattr(_imp.import_module(_mod), _cls)(**_kw))
         except Exception:
-            logger.debug("Market: %s failed to construct", _attr, exc_info=True)
+            logger.debug("Market: %s failed", _attr, exc_info=True)
             setattr(ctx, _attr, None)
 
     # --- Wave 2+3: Real-Time + Crypto + Data Enrichment (Always-On MIDGE) ---
