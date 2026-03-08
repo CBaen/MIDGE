@@ -112,6 +112,7 @@ class OctopusColony:
         decision_router: Any | None = None,
         world_model: Any | None = None,
         signal_bus: Any | None = None,
+        stigmergy: Any | None = None,
     ) -> None:
         validate_rule_of_3(agent_count=min_octopuses)
 
@@ -127,6 +128,11 @@ class OctopusColony:
         self._decision_router = decision_router
         self._world_model = world_model
         self._signal_bus = signal_bus
+
+        # Optional stigmergy environment for gradient-based task routing.
+        # When present, tasks with a ticker in their metadata are routed toward
+        # the octopus nearest the strongest convergence pheromone for that ticker.
+        self._stigmergy = stigmergy
 
         # Colony registry (all peers, no hierarchy)
         self.octopuses: dict[str, OctopusAgent] = {}
@@ -259,7 +265,16 @@ class OctopusColony:
         task_type: str,
         priority: int = 5,
     ) -> str | None:
-        """Submit task via emergent routing (least-loaded peer). No central router."""
+        """Submit task via emergent routing. No central router.
+
+        Routing strategy:
+        - If stigmergy is available AND the task metadata contains a ticker,
+          prefer the octopus nearest to the strongest convergence pheromone
+          for that ticker. Score: workload * 0.7 + distance_penalty * 0.3.
+          Octopuses are placed at integer positions (0, 0), (1, 0), (2, 0), ...
+          based on their order in self.octopuses.
+        - Otherwise fall back to pure workload routing (original behavior).
+        """
         if not self.octopuses:
             logger.error("No octopuses in colony")
             return None
@@ -267,12 +282,54 @@ class OctopusColony:
         for octopus in self.octopuses.values():
             octopus.update_metrics()
 
-        least_loaded = min(self.octopuses.values(), key=lambda o: o.workload)
-        task_id = least_loaded.submit_task(task_data, task_type, priority)
+        # --- Gradient-based routing when stigmergy is available ---
+        ticker = task_data.get("ticker") if isinstance(task_data, dict) else None
+        chosen = None
+
+        if self._stigmergy is not None and ticker:
+            try:
+                marker = self._stigmergy.get_strongest_marker(
+                    position=(0.0, 0.0),
+                    marker_type=f"convergence:{ticker}",
+                    radius=float("inf"),
+                )
+                if marker is not None:
+                    # Assign each octopus a canonical position along the x-axis.
+                    # This is a stable, reproducible placement that allows distance
+                    # scoring without requiring octopuses to carry spatial state.
+                    octopus_list = list(self.octopuses.values())
+                    best_score = float("inf")
+                    for idx, octopus in enumerate(octopus_list):
+                        oct_pos = (float(idx), 0.0)
+                        dist = (
+                            (oct_pos[0] - marker.position[0]) ** 2
+                            + (oct_pos[1] - (marker.position[1] if len(marker.position) > 1 else 0.0)) ** 2
+                        ) ** 0.5
+                        # Normalize distance to [0, 1] relative to colony size
+                        max_dist = max(len(octopus_list) - 1, 1)
+                        dist_penalty = dist / max_dist
+                        score = octopus.workload * 0.7 + dist_penalty * 0.3
+                        if score < best_score:
+                            best_score = score
+                            chosen = octopus
+                    logger.debug(
+                        "Gradient routing: ticker=%s marker_pos=%s -> %s (score=%.3f)",
+                        ticker, marker.position,
+                        chosen.octopus_id if chosen else "none", best_score,
+                    )
+            except Exception:
+                logger.debug("Stigmergy gradient routing failed, falling back", exc_info=True)
+                chosen = None
+
+        # --- Fallback: pure workload routing ---
+        if chosen is None:
+            chosen = min(self.octopuses.values(), key=lambda o: o.workload)
+
+        task_id = chosen.submit_task(task_data, task_type, priority)
 
         logger.debug(
             "Task %s -> %s (workload=%.2f)",
-            task_id, least_loaded.octopus_id, least_loaded.workload,
+            task_id, chosen.octopus_id, chosen.workload,
         )
         return task_id
 

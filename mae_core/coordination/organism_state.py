@@ -123,6 +123,11 @@ class OrganismState:
 
     CH_ORGANISM_ACTION_OUTCOME = CH_ORGANISM_ACTION_OUTCOME
 
+    # Tunable threshold for homeostasis-driven rest reflex (Priority 6).
+    # When _homeostasis_deviation exceeds this value, the organism rests to
+    # allow internal systems to restabilize before continuing normal activity.
+    _HOMEOSTASIS_URGENCY_THRESHOLD: float = 0.7
+
     def __init__(self, event_bus: Optional[EventBus] = None) -> None:
         self.event_bus = event_bus
         self._step_count: int = 0
@@ -555,6 +560,13 @@ class OrganismState:
 
         # Priority 5: Kidney stress
         if self._toxin_load > 4.0:
+            return "rest"
+
+        # Priority 6: Homeostasis deviation — internal systems significantly
+        # out of balance. The organism needs to pause and stabilize before
+        # taking further action. This is less urgent than acute emergencies
+        # (pain, hypoxia, starvation) but more important than normal routing.
+        if self._homeostasis_deviation >= self._HOMEOSTASIS_URGENCY_THRESHOLD:
             return "rest"
 
         # No emergency — proceed with normal decision cascade

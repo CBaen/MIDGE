@@ -256,6 +256,8 @@ def _build_systems_dict(ctx) -> dict:
         "congress_gov_client":      getattr(ctx, "congress_gov_client", None),
         # Ecosystem Bridge
         "octopus_colony":           getattr(ctx, "octopus_colony", None),
+        # Resource Governance (Law 6 autopoiesis)
+        "resource_governor":        getattr(ctx, "resource_governor", None),
     }
 
 

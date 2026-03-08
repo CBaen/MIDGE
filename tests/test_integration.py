@@ -135,6 +135,8 @@ class TestBootstrap:
             "eia_client",
             # Real-economy: Legislative
             "congress_gov_client",
+            # Resource Governance (Law 6 autopoiesis)
+            "resource_governor",
         ]
         for key in market_keys:
             assert key in systems, f"Missing market system: {key}"

@@ -231,6 +231,7 @@ class ConvergenceAlerter:
         economic_calendar=None,
         correlation_tracker=None,
         world_model=None,
+        quorum_space=None,
     ):
         """
         Initialize convergence alerter.
@@ -250,6 +251,7 @@ class ConvergenceAlerter:
             pattern_archetype_engine: Optional PatternArchetypeEngine for archetype context
             economic_calendar: Optional EconomicCalendar for suppression windows
             correlation_tracker: Optional CorrelationTracker for domain independence scoring
+            quorum_space: Optional QuorumSpace for multi-agent collective confidence boost
         """
         self.min_domains = min_domains
         self.min_strength = min_strength
@@ -266,6 +268,7 @@ class ConvergenceAlerter:
         self._pattern_archetype_engine = pattern_archetype_engine
         self._economic_calendar = economic_calendar
         self._correlation_tracker = correlation_tracker
+        self._quorum_space = quorum_space
         self._cached_regime = ("default", 0.0)  # (regime_str, timestamp)
 
         # Per-domain convergence windows — slow-moving data sources need longer lookback.
@@ -854,6 +857,55 @@ class ConvergenceAlerter:
         freshness = 1.0 - (age_hours / window_hours) ** 0.5
         return max(0.3, freshness)
 
+    def _apply_quorum_boost(
+        self,
+        confidence: float,
+        ticker: str,
+        direction: str,
+    ) -> float:
+        """Apply quorum contributor count as a confidence multiplier.
+
+        When 3+ independent agents all deposit signals for the same
+        ticker+direction in the QuorumSpace, that collective agreement
+        boosts our confidence in the convergence.
+
+        Multiplier schedule:
+            count < 3:  1.0x (no boost)
+            count == 3: 1.1x
+            count == 4: 1.2x
+            count >= 5: 1.3x (capped)
+
+        Final confidence is capped at 1.0.
+
+        Args:
+            confidence: Current confidence value before quorum adjustment.
+            ticker: Instrument symbol (e.g. "AAPL", "CL=F").
+            direction: "bullish" or "bearish".
+
+        Returns:
+            Adjusted confidence value in [0.0, 1.0].
+        """
+        if self._quorum_space is None or not ticker:
+            return confidence
+        try:
+            signal_key = f"{direction}:{ticker}"
+            count = self._quorum_space.get_contributor_count(signal_key)
+            if count < 3:
+                return confidence
+            multiplier = 1.0 + min(0.3, (count - 2) * 0.1)
+            boosted = min(1.0, confidence * multiplier)
+            logger.debug(
+                "Quorum boost: %d contributors on %s:%s → %.2f multiplier",
+                count,
+                direction,
+                ticker,
+                multiplier,
+            )
+            return boosted
+        except Exception:
+            logger.debug("Quorum boost failed gracefully", exc_info=True)
+            return confidence
+
     def _compute_confidence(
         self,
         signals: list,
@@ -1363,6 +1415,13 @@ class ConvergenceAlerter:
             domain_sequence = []
             sequence_score = 1.0
             logger.debug("Temporal ordering failed gracefully", exc_info=True)
+
+        # Quorum boost — collective agent agreement amplifies confidence.
+        # Uses primary_ticker extracted earlier in this method.
+        if primary_ticker:
+            final_confidence = self._apply_quorum_boost(
+                final_confidence, primary_ticker, direction
+            )
 
         # Generate summary — note neutral signal count and coherence for transparency
         domain_list = ", ".join(sorted(domains_seen))

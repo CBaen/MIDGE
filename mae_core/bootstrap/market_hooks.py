@@ -983,7 +983,7 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
     ctx.model.add_step_hook(_market_sense_hook)
     logger.info(
         "Layer 33g - Market step hooks: 1 sense hook registered "
-        "(cadence: convergence/1, stats/10, velocity/50, forgetting/200, "
+        "(cadence: convergence/1, stats/10, velocity/50, stigmergy-evap/50, forgetting/200, "
         "motif+anomaly/100, drift/50, lag/500, calibration/1000, backtest/5000)"
     )
 
