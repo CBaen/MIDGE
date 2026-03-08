@@ -147,6 +147,7 @@ Four work packages closing the operational gap (Thompson isolation, combo feedba
 
 ## What's Next
 
+0. **EXPEDITION IN PROGRESS: Autonomous Self-Funding Trading** — Research Brief approved by Guiding Light at `research/expedition-autonomous-trading/research-brief.md`. **Phase 0 complete, Phase 1 not started.** Next instance: invoke `/expedition`, read the brief, skip pre-flight (already done), dispatch 5 research teams per the brief's angles. This is MIDGE's most important strategic research — Guiding Light wants MIDGE to become a fully autonomous, self-funding trader.
 1. **Restart daemon on fixed code** — picks up all fixes: Thompson, independence, templates, active tracking, EIA energy, Congress.gov
 2. **Monitor template feedback loop** — watch for template win/loss updates in `pattern_templates.jsonl`
 3. **New real-economy domains** — USDA agriculture (free, seasonal), BDI logistics (free proxy)
