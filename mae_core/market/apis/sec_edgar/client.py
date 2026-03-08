@@ -59,8 +59,9 @@ class SECEdgarClient:
     Respects rate limits and uses required User-Agent header.
     """
 
-    def __init__(self, user_agent: str = SEC_USER_AGENT, provider=None):
+    def __init__(self, user_agent: str = SEC_USER_AGENT, provider=None, raw_store=None):
         self._provider = provider
+        self._raw_store = raw_store
         self.user_agent = user_agent
         self.session = requests.Session()
         self.session.headers.update({

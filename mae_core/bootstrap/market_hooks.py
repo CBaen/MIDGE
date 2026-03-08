@@ -618,6 +618,16 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                                 for f in findings[:3]
                             ],
                         })
+                    # Task 3: Feed lag findings into convergence alerter for sequence scoring.
+                    # Future alerts will be scored by whether their domain firing order
+                    # matches known lead-lag relationships from the archive analysis.
+                    if findings:
+                        _ca = getattr(ctx, "convergence_alerter", None)
+                        if _ca is not None and hasattr(_ca, "set_lag_findings"):
+                            try:
+                                _ca.set_lag_findings(findings)
+                            except Exception:
+                                logger.debug("set_lag_findings failed", exc_info=True)
                 except Exception:
                     logger.debug("Lag correlation step failed", exc_info=True)
 

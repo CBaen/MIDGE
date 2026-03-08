@@ -124,6 +124,7 @@ TIER_ROUTING = {
     "activist_13d": "strategic",
     "finviz_unusual_volume": "tactical",
     "finviz_short_squeeze": "strategic",
+    "finviz_insider": "tactical",
     "economic_calendar": "thematic",
     # Massive/Polygon.io
     "massive_snapshot": "tactical",
@@ -222,6 +223,7 @@ _ABSENCE_SOURCE_DOMAINS = {
     "openinsider_purchase": "insider", "institutional_13f": "institutional",
     "activist_13d": "institutional",
     "finviz_unusual_volume": "technical", "finviz_short_squeeze": "institutional",
+    "finviz_insider": "insider",
     "massive_snapshot": "technical",
     "eia_energy": "energy",
     "congress_legislation": "government",
@@ -974,7 +976,12 @@ class MarketSensingHook:
             signals = fetch_13f_holdings(self._edgar_enhanced_client, from_13f_holding, from_activist_filing)
 
         elif source_name == "finviz":
-            signals = fetch_finviz(self._finviz_client, from_finviz_unusual_volume, from_finviz_short_squeeze)
+            signals = fetch_finviz(
+                self._finviz_client,
+                from_finviz_unusual_volume,
+                from_finviz_short_squeeze,
+                from_finviz_insider,
+            )
 
         elif source_name == "economic_calendar":
             signals = fetch_economic_calendar(self._economic_calendar_client, from_suppression_event)
