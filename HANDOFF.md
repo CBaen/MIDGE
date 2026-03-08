@@ -2,6 +2,35 @@
 
 ## What Happened
 
+### Ecosystem Activation — Wire the Octopus (2026-03-09)
+
+**Pipeline bridge built (two disconnected pipelines now connected):**
+- **OctopusColony bootstrapped** — 5 pre-existing files (~1500 lines), never wired. Now bootstrapped as part of Layer 33 with 3 octopuses, auto-scaling 3-7. Market task handlers injected (investigate_partial, archaeology_lookup, situation_check).
+- **Partial convergence emission** — When ConvergenceAlerter sees 2 domains (below min_domains=3), it now emits `CH_PARTIAL_CONVERGENCE` on EventBus. Previously silently returned None. OctopusColony registers these as DevelopingSituation entries for investigation.
+- **Market → Attention bridge** — `MarketConvergenceTranslator` and `MarketPartialTranslator` registered in PatternBus. Full convergence alerts → `PatternDomain.OPPORTUNITY/THREAT`. Partial convergences → `PatternDomain.NOVELTY`. Market signals now reach AttentionalGate → GlobalWorkspace for the first time.
+- **Post-spawn arm patching** — Subscribe to `octopus.spawn` channel so auto-scaled arms get market handlers.
+- **Group 34 connections** — 3 triadic connections (octopus↔alerter, octopus↔watcher, octopus↔eventbus).
+
+**10-point independent review, all findings fixed:**
+- 2 CRITICAL (wrong ctx attribute names, race window), 3 HIGH (spawn gap, silent monitoring, holon orphan), 3 MEDIUM (dict race, ticker key, stale count), 2 LOW (size cap, test mock).
+
+**Files changed (12 modified, 4 new):**
+- `mae_core/market/channels.py` — 2 new channel constants
+- `mae_core/market/translators/__init__.py` — NEW package marker
+- `mae_core/market/translators/market_signal_translator.py` — NEW: pipeline bridge translators
+- `mae_core/network/market_task_handlers.py` — NEW: octopus arm dispatch handlers
+- `mae_core/market/intelligence/convergence_alerter.py` — partial emission + helper methods
+- `mae_core/bootstrap/market_systems.py` — OctopusColony instantiation
+- `mae_core/bootstrap/market_hooks.py` — coordination cycle, spawn patching, partial callback
+- `mae_core/bootstrap/market_connections.py` — Group 34
+- `mae_core/bootstrap/market_registration.py` — holon + fractal registration
+- `mae_core/bootstrap/market.py` — system count + octopus_colony attr
+- `mae_core/bootstrap/patterns.py` — market translator registration
+- `main.py` — systems dict
+- `tests/test_market_signal_translator.py` — NEW: 15 tests
+- `tests/test_market_task_handlers.py` — NEW: 5 tests
+- `tests/test_octopus_bootstrap.py` — NEW: 3 tests
+
 ### Comprehensive Audit + Build Session (2026-03-09)
 
 **4 broken systems fixed:**
@@ -130,8 +159,8 @@ See git log for full history. Key milestones: Granger causality (2026-03-07), te
 
 ## Stats
 
-- **147 systems** (92 core + 55 market), **4,536+ tests**, **157 holons**, **425 connections**
-- **114 market files** (33 API + 12 edge + 36 intelligence + 8 signal_adapters + 10 archaeology + 15 root)
+- **148 systems** (92 core + 56 market), **4,536+ tests**, **157 holons**, **428 connections**
+- **117 market files** (33 API + 12 edge + 36 intelligence + 8 signal_adapters + 10 archaeology + 3 translators + 15 root)
 - **12 domains**, **32 sources** in sensing rotation (Yahoo RSS + FinViz insider trades added)
 - **33-layer bootstrap**, **14 mixins** on MycelialAgent
 - **222,916 fingerprints**, **39 templates** (26 cross-validated across 3+ symbols)
@@ -155,6 +184,8 @@ See git log for full history. Key milestones: Granger causality (2026-03-07), te
 - **Parallelism: 12 concurrent + 25-step cadence.** Full source rotation in ~94 steps.
 - **Templates: REBUILT.** 39 templates live. PatternWatcher matching.
 - **Thompson: FIXED.** Forgetting/learning aligned. Independence correction active.
+- **OctopusColony: WIRED.** Bootstrapped in Layer 33 with 3 octopuses. Market handlers injected (investigate_partial, archaeology_lookup, situation_check). Partial convergences emitted from alerter. Auto-scaling arms get patched on spawn.
+- **Pipeline Bridge: ACTIVE.** MarketConvergenceTranslator + MarketPartialTranslator registered in PatternBus. Market signals now reach AttentionalGate → GlobalWorkspace via PatternTranslator protocol.
 - **Kalshi: SDK INSTALLED.** Needs verification against demo env.
 - **Alpaca: CLIENT BUILT.** Awaiting API keys.
 
@@ -166,22 +197,21 @@ This fundamentally reframes the architecture. Components are LIVING ENTITIES wit
 
 **Evolution blueprint**: `research/evolution-blueprint/MIDGE-EVOLUTION-BLUEPRINT.md` — 10-team synthesis.
 
-**Critical finding**: Two completely disconnected pipelines. Core organism attention (AttentionalGate→GlobalWorkspace) processes ZERO market data. Market intelligence (SensingHook→ConvergenceAlerter) has NO connection to attention mechanisms. The Octopus (5 files, ~1500 lines) is fully built but NEVER bootstrapped.
+**Critical finding (NOW FIXED)**: Two disconnected pipelines bridged. OctopusColony bootstrapped. Market signals now reach core attention via PatternTranslator protocol.
 
 ## What's Next
 
 See `midge-queue.md` for comprehensive task list (70+ items, 4 priority tiers).
 
 ### Immediate
-1. **Wire the Octopus** — Bootstrap OctopusColony in Layer 33. First step toward multi-attention ecosystem.
-2. **Bridge the two pipelines** — Market signals → PatternBus → AttentionalGate → GlobalWorkspace.
-3. **Activate biological systems** — Pheromones=trail-leaving, Quorum=collective confidence, Immune=deception patrol, Curiosity=intrinsic exploration, Circadian=market cycle awareness.
+1. **Activate biological systems** — Pheromones=trail-leaving, Quorum=collective confidence, Immune=deception patrol, Curiosity=intrinsic exploration, Circadian=market cycle awareness. These 33 systems are running but market-disconnected.
+2. **Agent-level situation claiming** — SEC_WATCHER claims insider situations, MARKET_ANALYST claims highest-convergence.
+3. **DevelopingSituation → full investigation** — Octopus arms query archaeology, prediction markets, targeted re-fetch.
 
-### Priority 1: Ecosystem Activation (from Evolution Blueprint Phase 2)
-- Emit CH_PARTIAL_CONVERGENCE from ConvergenceAlerter (2 domains → investigate)
-- OctopusColony subscribes to partial convergences (arms become investigators)
-- DevelopingSituation tracker in octopus arms (timeline tracking, template matching)
+### Priority 1: Ecosystem Deepening (from Evolution Blueprint Phase 2)
+- Focused attention: when partial convergence starts, increase polling priority for missing domains
 - Agent-level situation claiming (SEC_WATCHER claims insider situations)
+- DevelopingSituation → full investigation pipeline
 
 ### Priority 2: Shed Weight + Speed Up (Evolution Blueprint Phase 1)
 - Wall-clock cadences (replace step-based)
