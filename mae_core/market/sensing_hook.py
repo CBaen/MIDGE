@@ -353,7 +353,7 @@ class MarketSensingHook:
         self._watchlist = watchlist or load_watchlist()
 
         # Async fetch state — 3 concurrent workers for parallel senses
-        self._executor = ThreadPoolExecutor(max_workers=3, thread_name_prefix="mkt-sense")
+        self._executor = ThreadPoolExecutor(max_workers=12, thread_name_prefix="mkt-sense")
         self._pending_futures: Dict[str, Future] = {}  # source_name -> future
         self._fetch_queue = deque(SOURCE_ROTATION)
         self._step_counter = 0
