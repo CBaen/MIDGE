@@ -274,11 +274,9 @@ def _wire_renal_filter(ctx: SimpleNamespace, bus: Any) -> int:
         source = msg.get("source", "unknown")
         severity = msg.get("severity", 0.5)
         try:
-            renal.add_toxin_pattern(
-                {"source": source, "type": "deception", "severity": severity},
-            )
+            renal.add_toxin_pattern(f"deception:{source}:{severity:.1f}")
             renal.filter_item(
-                item_id=f"deception_{source}_{int(time.time())}",
+                item_id=f"deception_{source}_{time.monotonic_ns()}",
                 source=source,
                 data=msg,
             )

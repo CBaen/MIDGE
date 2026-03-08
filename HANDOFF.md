@@ -241,7 +241,7 @@ See git log for full history. Key milestones: Granger causality (2026-03-07), te
 - **Thompson: FIXED.** Forgetting/learning aligned. Independence correction active.
 - **OctopusColony: WIRED.** Bootstrapped in Layer 33 with 3 octopuses. Market handlers injected (investigate_partial, archaeology_lookup, situation_check). Partial convergences emitted from alerter. Auto-scaling arms get patched on spawn.
 - **Pipeline Bridge: ACTIVE.** MarketConvergenceTranslator + MarketPartialTranslator registered in PatternBus. Market signals now reach AttentionalGate → GlobalWorkspace via PatternTranslator protocol.
-- **Bio-Market Activation: WIRED.** 14 biological systems (5 Tier 2 + 9 Tier 3) connected to market EventBus channels. EmotionalSystem feels market fear/curiosity. NociceptionSystem feels prediction pain. QuorumSpace receives organism-level convergence votes. ThreatDetector has deception quills. CircadianRhythm modulates sensing cadence. ResourceGovernor built for API budget governance.
+- **Bio-Market Activation: COMPLETE.** 29 of 30 biological systems wired to market EventBus channels (14 Tier 2+3 + 15 Tier 4+5). Only GenerativeReplayMemory remains unwired (needs bootstrap). Every system from DigestiveSystem (data=nutrients) to PredictiveField (spatial coordination) now has a real market job. ResourceGovernor built for API budget governance.
 - **Kalshi: SDK INSTALLED.** Needs verification against demo env.
 - **Alpaca: CLIENT BUILT.** Awaiting API keys.
 
