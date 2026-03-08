@@ -191,8 +191,8 @@ See git log for full history. Key milestones: Granger causality (2026-03-07), te
 
 ## Stats
 
-- **148 systems** (92 core + 56 market), **4,536+ tests**, **157 holons**, **428 connections**
-- **117 market files** (33 API + 12 edge + 36 intelligence + 8 signal_adapters + 10 archaeology + 3 translators + 15 root)
+- **149 systems** (92 core + 57 market), **4,536+ tests**, **157 holons**, **428 connections**
+- **119 market files** (33 API + 12 edge + 36 intelligence + 8 signal_adapters + 10 archaeology + 3 translators + 17 root)
 - **12 domains**, **32 sources** in sensing rotation (Yahoo RSS + FinViz insider trades added)
 - **33-layer bootstrap**, **14 mixins** on MycelialAgent
 - **222,916 fingerprints**, **39 templates** (26 cross-validated across 3+ symbols)
@@ -218,6 +218,7 @@ See git log for full history. Key milestones: Granger causality (2026-03-07), te
 - **Thompson: FIXED.** Forgetting/learning aligned. Independence correction active.
 - **OctopusColony: WIRED.** Bootstrapped in Layer 33 with 3 octopuses. Market handlers injected (investigate_partial, archaeology_lookup, situation_check). Partial convergences emitted from alerter. Auto-scaling arms get patched on spawn.
 - **Pipeline Bridge: ACTIVE.** MarketConvergenceTranslator + MarketPartialTranslator registered in PatternBus. Market signals now reach AttentionalGate → GlobalWorkspace via PatternTranslator protocol.
+- **Bio-Market Activation: WIRED.** 14 biological systems (5 Tier 2 + 9 Tier 3) connected to market EventBus channels. EmotionalSystem feels market fear/curiosity. NociceptionSystem feels prediction pain. QuorumSpace receives organism-level convergence votes. ThreatDetector has deception quills. CircadianRhythm modulates sensing cadence. ResourceGovernor built for API budget governance.
 - **Kalshi: SDK INSTALLED.** Needs verification against demo env.
 - **Alpaca: CLIENT BUILT.** Awaiting API keys.
 
