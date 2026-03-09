@@ -264,7 +264,11 @@ See git log for full history. Key milestones: Granger causality (2026-03-07), te
 - **Daemon: STOPPED.** Needs restart with: `python main.py --daemon --agents 12 --steps 500 --pace 2.0`
 - **Raw Data Store: COMPLETE.** All 24 clients store raw data before processing. SQLite per domain in `data/market/raw/`.
 - **FinnhubWebSocket: FIXED.** start() now called at bootstrap. Real-time streaming operational.
-- **WorldModel: WIRED.** 114 nodes, 102 edges, 38 tickers. Causal chain graph injected into convergence_alerter.
+- **WorldModel: WIRED + BIDIRECTIONAL.** 114 nodes, 102 edges, 38 tickers. Forward: `find_ripple_effects()`. Backward: `find_root_causes()`. Feedback loop closed via CascadeTracker.
+- **CascadeTracker: ACTIVE.** Watches causal chains unfold. Confirms links. Energy ratio tracking (actual vs predicted lag). Feeds WorldModel outcomes.
+- **Focused Attention: ACTIVE.** Priority polling boosts Thompson scores for missing domains when partial convergence fires.
+- **Chain Boost: ACTIVE.** Cascade confirmations inject synthetic "cascade" domain signals into convergence engine.
+- **Backward Discovery: ACTIVE.** Mid-chain signal detection traces backward to find genesis. Populates priority queue or registers late-joining cascades.
 - **Post-Mortem: WIRED.** Runs every 500 steps alongside Granger. Writes insights to `data/market/post_mortem_insights.json`.
 - **Temporal Ordering: ACTIVE.** domain_sequence + sequence_score on every convergence alert.
 - **Social Text: WIRED.** SocialTextAnalyzer reads StockTwits messages from raw_store, emits theme signals.
@@ -303,7 +307,7 @@ See `midge-queue.md` for comprehensive task list (70+ items, 4 priority tiers).
 3. **DevelopingSituation → full investigation** — Octopus arms query archaeology, prediction markets, targeted re-fetch.
 
 ### Priority 1: Ecosystem Deepening (from Evolution Blueprint Phase 2)
-- Focused attention: when partial convergence starts, increase polling priority for missing domains
+- ~~Focused attention: when partial convergence starts, increase polling priority for missing domains~~ **DONE**
 - Agent-level situation claiming (SEC_WATCHER claims insider situations)
 - DevelopingSituation → full investigation pipeline
 
