@@ -84,6 +84,7 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
         "velocity_detector", "correlation_tracker", "outcome_tracker",
         "regime_classifier",
         "signal_archive_reader", "lag_correlation_analyzer",
+        "granger_analyzer",
         "thompson_calibrator", "kelly_position_sizer",
         "hypothesis_registry", "hypothesis_generator",
         "hypothesis_validator", "hypothesis_engine",
@@ -100,6 +101,15 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
         "somatic_anticipation", "pattern_completion_engine",
         # Layer 6
         "cot_client", "stocktwits_client", "vix_client", "trends_client",
+        # Always-On Wave 2+3
+        "coingecko_client", "coincap_client",
+        "openinsider_client", "edgar_enhanced_client",
+        "finviz_client", "economic_calendar_client",
+        "finnhub_websocket",
+        # Massive/Polygon.io
+        "massive_client",
+        # Real-economy
+        "eia_client", "congress_gov_client",
         # WP-B: Market Clock
         "market_clock",
         # Pattern Archaeology

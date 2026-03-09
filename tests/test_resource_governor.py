@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from mae_core.market.resource_governor import ResourceGovernor
+from mae_core.market.resource_governor import ResourceGovernor, SourceTier
 
 
 class TestResourceGovernor:
@@ -100,3 +100,88 @@ class TestResourceGovernor:
         gov.can_call("test_src")  # throttled again
         usage = gov.get_usage("test_src")
         assert usage["total_throttled"] == 2
+
+
+class TestSourceTiers:
+    """Tests for DEB priority tier logic."""
+
+    def test_maintenance_tier_never_throttled(self):
+        gov = ResourceGovernor()
+        gov.register_source("heartbeat", hourly_limit=2, tier=SourceTier.MAINTENANCE)
+        gov.record_call("heartbeat")
+        gov.record_call("heartbeat")
+        # Over limit but MAINTENANCE — always allowed
+        assert gov.can_call("heartbeat") is True
+
+    def test_active_tier_gets_1_5x_multiplier(self):
+        gov = ResourceGovernor()
+        gov.register_source("sec_edgar", hourly_limit=10, tier=SourceTier.ACTIVE)
+        for _ in range(10):
+            gov.record_call("sec_edgar")
+        # At nominal limit but ACTIVE gets 1.5x (15) — still allowed
+        assert gov.can_call("sec_edgar") is True
+        for _ in range(5):
+            gov.record_call("sec_edgar")
+        # Now at 15 = effective limit — throttled
+        assert gov.can_call("sec_edgar") is False
+
+    def test_explore_tier_uses_standard_limit(self):
+        gov = ResourceGovernor()
+        gov.register_source("test", hourly_limit=5, tier=SourceTier.EXPLORE)
+        for _ in range(5):
+            gov.record_call("test")
+        assert gov.can_call("test") is False
+
+    def test_set_source_tier(self):
+        gov = ResourceGovernor()
+        gov.register_source("src", hourly_limit=5)
+        assert gov.get_usage("src")["tier"] == "explore"  # default
+        gov.set_source_tier("src", SourceTier.ACTIVE)
+        assert gov.get_usage("src")["tier"] == "active"
+
+    def test_set_source_tier_unregistered_is_noop(self):
+        gov = ResourceGovernor()
+        gov.set_source_tier("nonexistent", SourceTier.MAINTENANCE)  # no crash
+
+    def test_tighten_only_affects_explore(self):
+        gov = ResourceGovernor()
+        gov.register_source("active_src", hourly_limit=100, tier=SourceTier.ACTIVE)
+        gov.register_source("explore_src", hourly_limit=100, tier=SourceTier.EXPLORE)
+        gov.register_source("maint_src", hourly_limit=100, tier=SourceTier.MAINTENANCE)
+        gov.tighten_budgets(0.5)
+        assert gov.get_usage("explore_src")["hourly_limit"] == 50
+        assert gov.get_usage("active_src")["hourly_limit"] == 100
+        assert gov.get_usage("maint_src")["hourly_limit"] == 100
+
+    def test_relax_only_affects_explore(self):
+        gov = ResourceGovernor()
+        gov.register_source("explore_src", hourly_limit=100, tier=SourceTier.EXPLORE)
+        gov.register_source("active_src", hourly_limit=100, tier=SourceTier.ACTIVE)
+        gov.tighten_budgets(0.5)  # explore_src → 50
+        gov.relax_budgets(1.5)    # explore_src → 75 (capped at original 100)
+        assert gov.get_usage("explore_src")["hourly_limit"] == 75
+        assert gov.get_usage("active_src")["hourly_limit"] == 100
+
+    def test_relax_capped_at_original(self):
+        gov = ResourceGovernor()
+        gov.register_source("src", hourly_limit=100, tier=SourceTier.EXPLORE)
+        gov.relax_budgets(2.0)  # Would be 200 but capped at original 100
+        assert gov.get_usage("src")["hourly_limit"] == 100
+
+    def test_tighten_rejects_factor_above_one(self):
+        gov = ResourceGovernor()
+        gov.register_source("src", hourly_limit=100, tier=SourceTier.EXPLORE)
+        gov.tighten_budgets(1.5)  # Should be rejected
+        assert gov.get_usage("src")["hourly_limit"] == 100
+
+    def test_relax_rejects_factor_below_one(self):
+        gov = ResourceGovernor()
+        gov.register_source("src", hourly_limit=100, tier=SourceTier.EXPLORE)
+        gov.relax_budgets(0.5)  # Should be rejected
+        assert gov.get_usage("src")["hourly_limit"] == 100
+
+    def test_tighten_floor_at_one(self):
+        gov = ResourceGovernor()
+        gov.register_source("src", hourly_limit=2, tier=SourceTier.EXPLORE)
+        gov.tighten_budgets(0.1)  # 2 * 0.1 = 0.2 → max(1, 0) = 1
+        assert gov.get_usage("src")["hourly_limit"] == 1
