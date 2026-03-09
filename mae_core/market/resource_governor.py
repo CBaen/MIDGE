@@ -228,6 +228,7 @@ class ResourceGovernor:
         """
         if factor < 1.0:
             logger.warning("ResourceGovernor.relax_budgets: factor < 1.0 (%s) — use tighten_budgets instead", factor)
+            return
         with self._lock:
             for budget in self._sources.values():
                 if budget.tier == SourceTier.EXPLORE:
