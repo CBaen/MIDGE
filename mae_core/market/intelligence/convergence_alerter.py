@@ -82,6 +82,9 @@ class ConvergenceAlert:
     # Default 1.0 = neutral (no lag data or single domain).
     domain_sequence: List[str] = field(default_factory=list)
     sequence_score: float = 1.0
+    # Causal cascade — WorldModel ripple effects predicting downstream dominoes.
+    # Each entry: {ticker, direction, strength, lag_days, path, confidence}
+    ripple_effects: List[dict] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return {
@@ -100,6 +103,7 @@ class ConvergenceAlert:
             "combo_key": self.combo_key,
             "domain_sequence": self.domain_sequence,
             "sequence_score": round(self.sequence_score, 3),
+            "ripple_effects": self.ripple_effects,
         }
 
 
