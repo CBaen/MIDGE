@@ -1266,14 +1266,18 @@ class ConvergenceAlerter:
             # Emit partial convergence for ecosystem investigation
             if directional_signals and self._bus is not None:
                 try:
+                    signal_dicts = [{"source": s.source, "strength": s.strength,
+                                     "symbol": getattr(s, "symbol", ""),
+                                     "metadata": s.metadata} for s in directional_signals[:5]]
+                    # Causal predictions: what the WorldModel says should follow
+                    causal_predictions = self._compute_ripple_effects(directional_signals)
                     self._bus.publish("market.intel.partial_convergence", {
                         "direction": direction,
                         "domains_seen": list(domains_seen),
                         "missing_domains": self._compute_missing_domains(domains_seen),
-                        "signals": [{"source": s.source, "strength": s.strength,
-                                     "symbol": getattr(s, "symbol", ""),
-                                     "metadata": s.metadata} for s in directional_signals[:5]],
+                        "signals": signal_dicts,
                         "min_domains_required": self.min_domains,
+                        "causal_predictions": causal_predictions,
                     })
                 except Exception:
                     pass  # Never block convergence check
@@ -1458,6 +1462,7 @@ class ConvergenceAlerter:
             combo_key=combo_key,
             domain_sequence=domain_sequence,
             sequence_score=sequence_score,
+            ripple_effects=self._compute_ripple_effects(all_contributing),
         )
 
         return alert
@@ -1505,6 +1510,45 @@ class ConvergenceAlerter:
         """Return domains with current signals that haven't fired for this direction."""
         all_domains = set(self.signals.keys())
         return sorted(all_domains - domains_seen)
+
+    def _compute_ripple_effects(self, signals) -> List[dict]:
+        """Trace downstream causal cascade from alert signals via WorldModel.
+
+        For each signal, maps it to a world model trigger (e.g. an EIA crude
+        draw maps to 'eia_crude_draw'), then traces all downstream effects
+        (tickers that should move if the thesis is correct).
+
+        This is what makes MIDGE an inevitability surfacer — not just detecting
+        convergence, but predicting what should follow.
+        """
+        if self._world_model is None:
+            return []
+
+        seen_tickers = set()
+        ripples = []
+
+        for signal in signals:
+            source = signal.source if hasattr(signal, "source") else signal.get("source", "")
+            metadata = signal.metadata if hasattr(signal, "metadata") else signal.get("metadata", {})
+            trigger = self._world_model.map_signal_to_trigger(source, metadata)
+            if not trigger:
+                continue
+
+            effects = self._world_model.find_ripple_effects(trigger)
+            for effect in effects:
+                if effect.ticker not in seen_tickers:
+                    seen_tickers.add(effect.ticker)
+                    ripples.append({
+                        "ticker": effect.ticker,
+                        "direction": effect.direction,
+                        "strength": round(effect.strength, 3),
+                        "lag_days": effect.total_lag_days,
+                        "path": effect.path,
+                        "confidence": round(effect.confidence, 3),
+                    })
+
+        ripples.sort(key=lambda r: r["strength"], reverse=True)
+        return ripples[:20]
 
     def check_ticker_convergence_for(self, ticker: str) -> list:
         """Check convergence for a single ticker symbol."""
@@ -1637,6 +1681,7 @@ class ConvergenceAlerter:
                     combo_key=combo_key,
                     domain_sequence=domain_sequence,
                     sequence_score=sequence_score,
+                    ripple_effects=self._compute_ripple_effects(converging),
                 )
                 alerts.append(alert)
 

@@ -421,6 +421,42 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
 
     ctx.bus.register_callback("market.intel.partial_convergence", _on_partial_convergence)
 
+    # --- Proactive causal watch: signal → WorldModel → downstream predictions ---
+    # When any signal maps to a world model trigger, trace the causal chain
+    # forward and emit predictions about what should move next. This is the
+    # "inevitability detection" layer — noticing dominoes before they fall.
+    world_model = getattr(ctx, "world_model", None)
+    if world_model is not None:
+        from mae_core.market.channels import CH_SIGNAL_INGESTED
+
+        def _on_signal_causal_watch(channel, data):
+            try:
+                msg = data if isinstance(data, dict) else {}
+                source = msg.get("source", "")
+                metadata = msg.get("metadata", {})
+                trigger = world_model.map_signal_to_trigger(source, metadata)
+                if not trigger:
+                    return
+                effects = world_model.find_ripple_effects(trigger, min_strength=0.4)
+                if not effects:
+                    return
+                ctx.bus.publish("market.intel.causal_watch", {
+                    "trigger": trigger,
+                    "source": source,
+                    "effects": [{
+                        "ticker": e.ticker,
+                        "direction": e.direction,
+                        "strength": round(e.strength, 3),
+                        "lag_days": e.total_lag_days,
+                        "path": e.path,
+                    } for e in effects[:10]],
+                })
+            except Exception:
+                pass  # Never block signal ingestion
+
+        ctx.bus.register_callback(CH_SIGNAL_INGESTED, _on_signal_causal_watch)
+        logger.info("Layer 33f - Causal watch: signal → WorldModel → downstream predictions wired")
+
     logger.info("Layer 33f - Market EventBus: convergence + hypothesis -> endocrine coupling wired")
 
 

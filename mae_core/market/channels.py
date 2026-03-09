@@ -57,3 +57,6 @@ CH_PATTERN_COMPLETED = "market.intel.pattern_completed"
 # Ecosystem Activation channels
 CH_PARTIAL_CONVERGENCE = "market.intel.partial_convergence"
 CH_OCTOPUS_INVESTIGATION = "market.intel.octopus_investigation"
+
+# Causal reasoning channels (WorldModel inevitability cascade)
+CH_CAUSAL_WATCH = "market.intel.causal_watch"
