@@ -203,8 +203,8 @@ class ResourceGovernor:
                 factor=0.7 means 30% reduction (limit *= 0.7).
                 Must be in (0, 1] for meaningful tightening.
         """
-        if factor <= 0:
-            logger.warning("ResourceGovernor.tighten_budgets: factor must be > 0, got %s", factor)
+        if factor <= 0 or factor > 1.0:
+            logger.warning("ResourceGovernor.tighten_budgets: factor must be in (0, 1], got %s", factor)
             return
         with self._lock:
             for budget in self._sources.values():
