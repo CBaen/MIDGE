@@ -428,6 +428,11 @@ class MarketSensingHook:
         self._total_fetches = 0
         self._last_fetch_source = None
 
+        # Reactive convergence cache — alerts fired immediately on signal ingestion.
+        # Step-hook convergence check in market_hooks.py reads this to avoid
+        # double-processing. List is cleared each step by _collect_results caller.
+        self._cached_reactive_alerts: List = []
+
         # Ensure data dirs exist
         SIGNALS_DIR.mkdir(parents=True, exist_ok=True)
 
