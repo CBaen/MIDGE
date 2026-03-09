@@ -500,6 +500,35 @@ class EndocrineSystem:
 
         self.register_consumer(HormoneType.OXYTOCIN, "vdn", _on_oxytocin)
 
+    def register_resource_governor(self, rg: Any) -> None:
+        """Wire cortisol -> ResourceGovernor budget tightening/relaxation.
+
+        High cortisol (> 0.6) signals organism stress — tighten EXPLORE
+        budgets to conserve API quota.  Low cortisol (< 0.3) signals calm
+        — relax EXPLORE budgets to allow more exploration.  The neutral
+        zone [0.3, 0.6] produces no action.
+
+        factor semantics (matching ResourceGovernor interface):
+          tighten_budgets(factor): factor = cortisol level (e.g. 0.8 means
+              reduce EXPLORE budgets by 20% of their current value).
+          relax_budgets(factor): factor = 1.0 + (0.3 - cortisol) (e.g.
+              cortisol at 0.1 → factor 1.2, increase EXPLORE budgets 20%).
+        """
+        def _on_cortisol(_ht: HormoneType, level: float) -> None:
+            if level > 0.6:
+                if hasattr(rg, "tighten_budgets"):
+                    rg.tighten_budgets(level)
+                elif hasattr(rg, "set_hormone_level"):
+                    rg.set_hormone_level("cortisol", level)
+            elif level < 0.3:
+                if hasattr(rg, "relax_budgets"):
+                    rg.relax_budgets(1.0 + (0.3 - level))
+                elif hasattr(rg, "set_hormone_level"):
+                    rg.set_hormone_level("cortisol", level)
+            # Neutral zone [0.3, 0.6]: no action
+
+        self.register_consumer(HormoneType.CORTISOL, "resource_governor", _on_cortisol)
+
     # =========================================================================
     # EventBus Handlers
     # =========================================================================
