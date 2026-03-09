@@ -72,9 +72,10 @@ class GovernanceLogger:
         parent = os.path.dirname(os.path.abspath(log_path))
         os.makedirs(parent, exist_ok=True)
 
-        # Subscribe to all governance channels.
-        for channel in _GOVERNANCE_CHANNELS:
-            self._bus.register_callback(channel, self._on_event)
+        # Subscribe to all governance channels (guard for None bus).
+        if self._bus is not None:
+            for channel in _GOVERNANCE_CHANNELS:
+                self._bus.register_callback(channel, self._on_event)
 
         logger.info(
             "GovernanceLogger: subscribed to %d channels, writing to %s",
@@ -92,6 +93,13 @@ class GovernanceLogger:
         Must never raise — all errors are caught and logged.
         """
         now = datetime.now(timezone.utc)
+        # EventBus delivers JSON strings — decode to avoid double-encoding.
+        if isinstance(event_data, str):
+            try:
+                event_data = json.loads(event_data)
+            except (json.JSONDecodeError, ValueError):
+                pass  # Keep as string if not valid JSON.
+
         record = {
             "timestamp": now.isoformat(),
             "channel": channel,

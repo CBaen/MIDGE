@@ -1485,6 +1485,15 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
         if bus is not None:
             bus.register_callback("octopus.spawn", _on_octopus_spawn)
 
+    # Start InhabitantScheduler daemon thread
+    _sched = getattr(ctx, "inhabitant_scheduler", None)
+    if _sched is not None:
+        try:
+            _sched.start()
+            logger.info("InhabitantScheduler: daemon thread started")
+        except Exception:
+            logger.debug("InhabitantScheduler start() failed", exc_info=True)
+
     # Store hook reference on ctx for monitoring
     ctx._market_sensing_hook = hook
 
