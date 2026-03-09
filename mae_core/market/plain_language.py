@@ -326,6 +326,23 @@ def format_convergence_alert(
         _section_action("medium", confidence),
         _section_tracking(ticker),
     ]
+
+    # Cascade section — WorldModel downstream predictions
+    ripples = getattr(alert, "ripple_effects", [])
+    if ripples:
+        domino_lines = []
+        for r in ripples[:5]:
+            lag = r.get("lag_days", 0)
+            lag_str = f"~{int(lag)} days" if lag >= 1 else "immediate"
+            domino_lines.append(
+                f"  - {r['ticker']} ({r['direction']}, {lag_str}, "
+                f"strength {round(r.get('strength', 0) * 100)}%)"
+            )
+        sections.append(
+            "CASCADE: If this thesis is correct, these should follow:\n"
+            + "\n".join(domino_lines)
+        )
+
     return "\n\n".join(sections)
 
 

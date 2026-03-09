@@ -64,7 +64,10 @@
 ### Causal Reasoning
 - [ ] Sequential chain detection (A→B→C stage-gating)
 - [ ] Per-domain temporal ordering in pattern templates
-- [ ] Wire world_model ripple effects into convergence alert enrichment
+- [x] Wire world_model ripple effects into convergence alert enrichment (DONE — inevitability cascade)
+- [x] Partial convergence enriched with causal_predictions for Octopus investigation
+- [x] Proactive causal watch emitted on signal ingestion (CH_CAUSAL_WATCH)
+- [x] Plain-language CASCADE section in human-readable alerts
 
 ### LLM Integration
 - [ ] Run nvidia-smi to determine GPU VRAM
