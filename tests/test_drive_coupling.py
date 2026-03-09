@@ -1,16 +1,21 @@
-"""Tests for drive coupling: HomeostasisRegulator.compute_drive_urgency()
-and OrganismState.get_reflex_override() Priority 6 (homeostasis deviation).
+"""Tests for drive coupling: HomeostasisRegulator.compute_drive_urgency(),
+OrganismState.get_reflex_override() Priority 6 (homeostasis deviation),
+and EndocrineSystem.register_resource_governor() cortisol coupling.
 
 These tests verify:
 1. compute_drive_urgency() returns the correct structure and values.
 2. The homeostasis deviation reflex fires at the right threshold.
 3. Priority ordering is preserved — acute emergencies trump homeostasis.
+4. register_resource_governor() calls tighten/relax at the right cortisol levels.
 """
 
 from __future__ import annotations
 
+from unittest.mock import MagicMock
+
 import pytest
 
+from mae_core.coordination.endocrine_system import EndocrineSystem, HormoneType
 from mae_core.coordination.homeostasis import HomeostasisRegulator, Setpoint
 from mae_core.coordination.organism_state import OrganismState
 
@@ -193,3 +198,78 @@ class TestReflexOverrideHomeostasisDeviation:
         )
         assert isinstance(OrganismState._HOMEOSTASIS_URGENCY_THRESHOLD, float)
         assert 0.0 < OrganismState._HOMEOSTASIS_URGENCY_THRESHOLD < 1.0
+
+
+# =====================================================================
+# EndocrineSystem.register_resource_governor() tests
+# =====================================================================
+
+
+class TestRegisterResourceGovernor:
+    """Tests for cortisol -> ResourceGovernor budget coupling."""
+
+    def _make_endocrine_with_rg(self) -> tuple[EndocrineSystem, MagicMock]:
+        """Return an EndocrineSystem wired to a mock ResourceGovernor."""
+        endocrine = EndocrineSystem()
+        rg = MagicMock()
+        endocrine.register_resource_governor(rg)
+        return endocrine, rg
+
+    def test_register_resource_governor_high_cortisol(self):
+        """Cortisol 0.8 (> 0.6) -> tighten_budgets(0.8) called, relax_budgets not called."""
+        endocrine, rg = self._make_endocrine_with_rg()
+        # Release enough cortisol to push level to 0.8
+        endocrine.release_hormone(HormoneType.CORTISOL, 0.6, "test_stress")
+        rg.tighten_budgets.assert_called()
+        call_arg = rg.tighten_budgets.call_args[0][0]
+        assert call_arg > 0.6, (
+            f"tighten_budgets should receive the cortisol level (> 0.6), got {call_arg}"
+        )
+        rg.relax_budgets.assert_not_called()
+
+    def test_register_resource_governor_low_cortisol(self):
+        """Cortisol 0.1 (< 0.3) -> relax_budgets(1.2) called, tighten_budgets not called."""
+        endocrine = EndocrineSystem()
+        rg = MagicMock()
+        endocrine.register_resource_governor(rg)
+        # Force cortisol level to 0.1 by suppressing below baseline (default 0.2)
+        endocrine.suppress_hormone(HormoneType.CORTISOL, 0.2, "test_calm")
+        # Now release a tiny amount to trigger the subscriber dispatch at low level
+        endocrine.release_hormone(HormoneType.CORTISOL, 0.0, "test_trigger")
+        # The level is < 0.3, so relax_budgets should be called on any release
+        # Alternatively, directly test via a release from below-baseline state
+        # Reset and use a direct approach: set level to 0.1 then release
+        endocrine2 = EndocrineSystem()
+        rg2 = MagicMock()
+        endocrine2.register_resource_governor(rg2)
+        endocrine2._levels[HormoneType.CORTISOL] = 0.05
+        endocrine2.release_hormone(HormoneType.CORTISOL, 0.05, "test_calm")
+        # Level after release = 0.10, which is < 0.3 → relax_budgets
+        rg2.relax_budgets.assert_called()
+        call_arg = rg2.relax_budgets.call_args[0][0]
+        # factor = 1.0 + (0.3 - level); level ~= 0.1 → factor ~= 1.2
+        assert call_arg > 1.0, (
+            f"relax_budgets factor should be > 1.0 for low cortisol, got {call_arg}"
+        )
+        rg2.tighten_budgets.assert_not_called()
+
+    def test_register_resource_governor_neutral_cortisol(self):
+        """Cortisol 0.4 (in neutral zone 0.3-0.6) -> neither method called."""
+        endocrine = EndocrineSystem()
+        rg = MagicMock()
+        endocrine.register_resource_governor(rg)
+        # Start from baseline 0.2, add 0.2 → level = 0.4 (neutral zone)
+        endocrine.release_hormone(HormoneType.CORTISOL, 0.2, "test_neutral")
+        rg.tighten_budgets.assert_not_called()
+        rg.relax_budgets.assert_not_called()
+
+    def test_register_resource_governor_none(self):
+        """No resource_governor registered -> no AttributeError, no calls."""
+        endocrine = EndocrineSystem()
+        # Do not register any resource governor — just fire cortisol
+        try:
+            endocrine.release_hormone(HormoneType.CORTISOL, 0.8, "test_no_rg")
+        except Exception as exc:
+            pytest.fail(
+                f"release_hormone raised unexpectedly when no rg registered: {exc}"
+            )
