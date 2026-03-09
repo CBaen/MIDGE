@@ -202,7 +202,7 @@ def bootstrap_foundation(ctx: SimpleNamespace) -> None:
             somatic_map=getattr(ctx, "somatic_map", None),
         )
 
-    ctx.organ_builder = OrganBuilder(agent_factory=_morphogenesis_factory)
+    ctx.organ_builder = OrganBuilder(agent_factory=_morphogenesis_factory, event_bus=ctx.bus)
     ctx.morph_coordinator = MorphogenesisCoordinator(
         event_bus=ctx.bus,
         organ_builder=ctx.organ_builder,

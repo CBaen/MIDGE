@@ -74,6 +74,25 @@ def wire_bio_systems_to_market(ctx: SimpleNamespace) -> None:
     except Exception:
         logger.debug("Tier 4+5 bio wiring failed", exc_info=True)
 
+    # Endocrine → ResourceGovernor cortisol coupling.
+    # High cortisol (stress) tightens EXPLORE budgets; low cortisol relaxes them.
+    # Must run after both endocrine (Layer 26) and resource_governor (Layer 33a)
+    # are fully initialized.
+    if hasattr(ctx, "resource_governor") and ctx.resource_governor is not None:
+        endocrine = getattr(ctx, "endocrine", None)
+        if endocrine is not None and hasattr(endocrine, "register_resource_governor"):
+            try:
+                endocrine.register_resource_governor(ctx.resource_governor)
+                count += 1
+                logger.debug(
+                    "Layer 33k - Endocrine → ResourceGovernor cortisol coupling wired"
+                )
+            except Exception:
+                logger.debug(
+                    "Layer 33k - Endocrine → ResourceGovernor coupling failed",
+                    exc_info=True,
+                )
+
     logger.info(
         "Layer 33k - Bio-market activation: %d systems wired to market channels",
         count,

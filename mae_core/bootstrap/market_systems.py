@@ -225,6 +225,7 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
             causal_engine=getattr(ctx, "shared_causal_engine", None),
             event_bus=getattr(ctx, "bus", None),
             economic_calendar=getattr(ctx, "economic_calendar_client", None),
+            quorum_space=getattr(ctx, "quorum_space", None),
         )
     except Exception:
         logger.debug("Market: convergence_alerter failed to construct", exc_info=True)
@@ -455,6 +456,7 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
             max_octopuses=7,
             world_model=getattr(ctx, "world_model", None),
             signal_bus=getattr(ctx, "signal_bus", None),
+            stigmergy=getattr(ctx, "stigmergy", None),
         )
         # Pre-initialize situation tracking so EventBus callbacks
         # registered in step 7 can safely write before inject_market_handlers
@@ -474,8 +476,24 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         logger.debug("Market: resource_governor failed to construct", exc_info=True)
         ctx.resource_governor = None
 
+    # --- InhabitantScheduler (organism-internal wall-clock cadence dispatch) ---
+    try:
+        from mae_core.scheduling.inhabitant_scheduler import InhabitantScheduler
+        ctx.inhabitant_scheduler = InhabitantScheduler(event_bus=getattr(ctx, "bus", None))
+    except Exception:
+        logger.debug("Market: inhabitant_scheduler failed to construct", exc_info=True)
+        ctx.inhabitant_scheduler = None
+
+    # --- GovernanceLogger (append-only governance event audit trail) ---
+    try:
+        from mae_core.governance.governance_logger import GovernanceLogger
+        ctx.governance_logger = GovernanceLogger(event_bus=getattr(ctx, "bus", None))
+    except Exception:
+        logger.debug("Market: governance_logger failed to construct", exc_info=True)
+        ctx.governance_logger = None
+
     _register_trust_and_gateway(ctx)
 
     logger.info(
-        "Layer 33a - Market systems: %d instantiated (%d failures)", 57 - failures, failures,
+        "Layer 33a - Market systems: %d instantiated (%d failures)", 59 - failures, failures,
     )

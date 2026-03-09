@@ -48,7 +48,7 @@ logger = logging.getLogger("midge.bootstrap")
 
 
 def bootstrap_market(ctx: SimpleNamespace) -> None:
-    """Wire Layer 33: Market Intelligence organ (57 systems, 109 connections).
+    """Wire Layer 33: Market Intelligence organ (59 systems, 115 connections).
 
     Call order is load-bearing — sub-modules have dependencies:
       1. _instantiate_market_systems: build all objects first

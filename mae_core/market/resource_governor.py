@@ -257,6 +257,7 @@ class ResourceGovernor:
             return {
                 "source": source_name,
                 "registered": True,
+                "tier": budget.tier.value,
                 "calls_last_hour": recent,
                 "hourly_limit": budget.hourly_limit,
                 "usage_ratio": recent / budget.hourly_limit if budget.hourly_limit > 0 else 0,
@@ -275,6 +276,7 @@ class ResourceGovernor:
             for name, budget in self._sources.items():
                 recent = sum(1 for t in budget.calls if t > cutoff)
                 source_stats[name] = {
+                    "tier": budget.tier.value,
                     "calls_last_hour": recent,
                     "hourly_limit": budget.hourly_limit,
                     "usage_ratio": recent / budget.hourly_limit if budget.hourly_limit > 0 else 0,
