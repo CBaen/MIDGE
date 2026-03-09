@@ -948,6 +948,81 @@ class MarketSensingHook:
             except Exception:
                 logger.debug("Outcome registration failed", exc_info=True)
 
+        # --- Reactive convergence check ---
+        # Run convergence immediately after signals are ingested rather than
+        # waiting for the next step tick. The step-tick check in market_hooks.py
+        # remains as a safety net; alerter deduplication (cooldown window) prevents
+        # duplicate alerts from firing on both paths.
+        self._trigger_reactive_convergence(signals)
+
+    def _trigger_reactive_convergence(self, signals: list) -> None:
+        """Fire convergence checks immediately after signals are ingested.
+
+        Called from _collect_one() so that patterns are detected without
+        waiting for the next step-tick. Never blocks signal collection.
+
+        Three checks:
+        1. Global check_convergence() — same path as step-tick
+        2. Per-ticker check_ticker_convergence() for tickers in this batch
+        Both publish to CH_CONVERGENCE and cache to _cached_reactive_alerts.
+        """
+        if self._convergence_alerter is None or not signals:
+            return
+
+        from mae_core.market.channels import CH_CONVERGENCE
+
+        try:
+            # 1. Global convergence
+            alerts = self._convergence_alerter.check_convergence()
+            for alert in alerts:
+                alert_dict = alert.to_dict() if hasattr(alert, "to_dict") else {}
+                if self._bus is not None:
+                    try:
+                        self._bus.publish(CH_CONVERGENCE, alert_dict)
+                    except Exception:
+                        logger.debug("Reactive convergence: failed to publish global alert", exc_info=True)
+                self._cached_reactive_alerts.append(alert)
+            if alerts:
+                logger.info(
+                    "Reactive convergence: %d global alert(s) after [%s] ingestion",
+                    len(alerts), self._last_fetch_source,
+                )
+        except Exception:
+            logger.debug("Reactive convergence: global check_convergence failed", exc_info=True)
+
+        try:
+            # 2. Per-ticker convergence for tickers that received signals
+            tickers = {
+                sig.metadata.get("symbol") or getattr(sig, "symbol", "")
+                for sig in signals
+            }
+            tickers.discard("")
+            if tickers:
+                ticker_alerts = self._convergence_alerter.check_ticker_convergence()
+                # Filter to only tickers from this batch
+                relevant = [
+                    a for a in ticker_alerts
+                    if any(
+                        s.metadata.get("symbol", "") in tickers
+                        for s in getattr(a, "signals", [])
+                    )
+                ]
+                for alert in relevant:
+                    alert_dict = alert.to_dict() if hasattr(alert, "to_dict") else {}
+                    if self._bus is not None:
+                        try:
+                            self._bus.publish(CH_CONVERGENCE, alert_dict)
+                        except Exception:
+                            logger.debug("Reactive convergence: failed to publish ticker alert", exc_info=True)
+                    self._cached_reactive_alerts.append(alert)
+                if relevant:
+                    logger.info(
+                        "Reactive convergence: %d ticker alert(s) for %s",
+                        len(relevant), sorted(tickers),
+                    )
+        except Exception:
+            logger.debug("Reactive convergence: ticker check_ticker_convergence failed", exc_info=True)
+
     # ------------------------------------------------------------------
     # Fetch sources (runs in background thread)
     # ------------------------------------------------------------------

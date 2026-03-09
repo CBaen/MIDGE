@@ -958,6 +958,56 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                 except Exception:
                     logger.debug("OctopusColony coordination failed", exc_info=True)
 
+                # Dispatch investigation tasks for developing situations.
+                # Each partial convergence gets an arm to check if new signals
+                # have completed the picture.  Cap at 5 submissions per cycle
+                # to avoid flooding the colony.
+                try:
+                    lock = getattr(colony, "_situations_lock", None)
+                    situations_snapshot = {}
+                    if lock is not None:
+                        with lock:
+                            situations_snapshot = dict(colony._developing_situations)
+                    else:
+                        situations_snapshot = dict(
+                            getattr(colony, "_developing_situations", {})
+                        )
+
+                    task_budget = 5
+                    for key, sit in situations_snapshot.items():
+                        if task_budget <= 0:
+                            break
+                        check_count = sit.get("check_count", 0)
+                        if check_count >= 20:
+                            continue  # Will be evicted by situation_check
+
+                        colony.submit_task(
+                            {
+                                "ticker": sit["ticker"],
+                                "direction": sit["direction"],
+                                "domains_seen": sit.get("domains_seen", []),
+                                "missing_domains": sit.get("missing_domains", []),
+                            },
+                            "investigate_partial",
+                        )
+                        task_budget -= 1
+
+                        # Every 5th check: submit a situation_check for eviction
+                        if check_count > 0 and check_count % 5 == 0:
+                            if task_budget > 0:
+                                colony.submit_task(
+                                    {
+                                        "ticker": sit["ticker"],
+                                        "direction": sit["direction"],
+                                    },
+                                    "situation_check",
+                                )
+                                task_budget -= 1
+                except Exception:
+                    logger.debug(
+                        "Investigation dispatcher failed", exc_info=True
+                    )
+
         # Every 500 steps: lag-correlation analysis
         if step % 500 == 0:
             lag = getattr(ctx, "lag_correlation_analyzer", None)
@@ -1717,6 +1767,38 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
         bus = getattr(ctx, "bus", None)
         if bus is not None:
             bus.register_callback("octopus.spawn", _on_octopus_spawn)
+
+        # Subscribe to investigation results so they are visible in the log
+        # and can trigger focused-attention escalation.
+        try:
+            from mae_core.network.market_task_handlers import CH_OCTOPUS_INVESTIGATION
+
+            def _on_octopus_investigation(channel, data):
+                msg = data if isinstance(data, dict) else {}
+                ticker = msg.get("ticker", "?")
+                source = msg.get("source", "?")
+                check_count = msg.get("check_count", 0)
+                priority_created = msg.get("priority_request_created", False)
+                historical = msg.get("historical_templates", [])
+                logger.info(
+                    "OctopusInvestigation[%s] ticker=%s check=%d templates=%d%s",
+                    source,
+                    ticker,
+                    check_count,
+                    len(historical),
+                    " [FOCUSED-ATTENTION ENGAGED]" if priority_created else "",
+                )
+
+            bus_obj = getattr(ctx, "bus", None)
+            if bus_obj is not None:
+                bus_obj.register_callback(
+                    CH_OCTOPUS_INVESTIGATION, _on_octopus_investigation
+                )
+                logger.info("OctopusColony: investigation subscriber wired")
+        except Exception:
+            logger.debug(
+                "OctopusColony investigation subscriber failed", exc_info=True
+            )
 
     # Start InhabitantScheduler daemon thread
     _sched = getattr(ctx, "inhabitant_scheduler", None)

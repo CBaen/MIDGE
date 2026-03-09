@@ -44,6 +44,8 @@ def inject_market_handlers(
     convergence_alerter: "ConvergenceAlerter | None",
     pattern_watcher: "PatternWatcher | None",
     event_bus: "EventBus | None",
+    pattern_library: Any = None,
+    world_model: Any = None,
 ) -> int:
     """Inject market task handlers into every arm in the colony.
 
@@ -56,6 +58,8 @@ def inject_market_handlers(
         convergence_alerter: ConvergenceAlerter instance (may be None).
         pattern_watcher: PatternWatcher instance (may be None).
         event_bus: EventBus for publishing investigation results (may be None).
+        pattern_library: PatternLibrary for historical template queries (may be None).
+        world_model: WorldModel for causal chain queries (may be None).
 
     Returns:
         Number of arms patched.
@@ -66,6 +70,11 @@ def inject_market_handlers(
         colony._developing_situations: dict[str, dict[str, Any]] = {}
     if not hasattr(colony, "_situations_lock"):
         colony._situations_lock = threading.Lock()
+
+    # Attach pattern_library and world_model so handler closures can reach them
+    # without needing ctx (handlers are arm-level, no direct ctx access).
+    colony._pattern_library = pattern_library
+    colony._world_model_ref = world_model
 
     arms_patched = 0
 
@@ -211,31 +220,102 @@ def _make_investigate_partial(
                 }
             situation = colony._developing_situations[key]
             situation["check_count"] += 1
+            current_check = situation["check_count"]
+            domains_seen = situation.get("domains_seen", [])
+            causal_predictions = situation.get("causal_predictions", [])
 
         # Ask convergence alerter whether a full alert now fires.
-        if convergence_alerter is None:
-            return
+        alert = None
+        if convergence_alerter is not None:
+            check_fn = getattr(convergence_alerter, "check_ticker_convergence_for", None)
+            if check_fn is not None:
+                try:
+                    alert = check_fn(ticker)
+                except Exception:
+                    logger.exception("investigate_partial: check_ticker_convergence_for raised")
 
-        check_fn = getattr(convergence_alerter, "check_ticker_convergence_for", None)
-        if check_fn is None:
-            return
+        # --- Pattern library: find historical templates matching domains seen ---
+        historical_templates: list[dict] = []
+        priority_request_created = False
 
-        try:
-            alert = check_fn(ticker)
-        except Exception:
-            logger.exception("investigate_partial: check_ticker_convergence_for raised")
-            return
+        # pattern_library lives on the colony (injected by bootstrap) or on ctx.
+        # The colony carries _handler_refs but not ctx directly.  We use a
+        # module-level weak reference injected by inject_market_handlers (see below).
+        pattern_library = getattr(colony, "_pattern_library", None)
+        if pattern_library is not None and domains_seen:
+            try:
+                domains_set = set(domains_seen)
+                matches = pattern_library.query_similar(
+                    live_sources=domains_set,
+                    direction=direction,
+                )
+                for m in matches:
+                    tmpl = m.template
+                    total = (tmpl.win_count or 0) + (tmpl.loss_count or 0)
+                    win_rate = tmpl.win_count / total if total > 0 else 0.0
+                    historical_templates.append({
+                        "domain_signature": list(getattr(tmpl, "domains", [])),
+                        "win_rate": round(win_rate, 3),
+                        "instances": getattr(tmpl, "instance_count", total),
+                        "cross_validated": getattr(tmpl, "cross_validated", False),
+                    })
+                    # Boost missing-domain polling when template is historically reliable
+                    if win_rate > 0.6 and getattr(tmpl, "instance_count", total) >= 5:
+                        _prio = getattr(colony, "_priority_requests", None)
+                        if _prio is None:
+                            colony._priority_requests = {}
+                            _prio = colony._priority_requests
+                        if len(_prio) < 50:
+                            _prio[ticker] = {
+                                "ticker": ticker,
+                                "direction": direction,
+                                "domains_seen": domains_seen,
+                                "win_rate": win_rate,
+                                "timestamp": time.time(),
+                            }
+                            priority_request_created = True
+            except Exception:
+                logger.debug("investigate_partial: pattern_library query failed", exc_info=True)
 
-        if alert and event_bus:
+        # --- World model: root causes + ripple effects ---
+        world_model = getattr(colony, "_world_model_ref", None)
+        if world_model is not None:
+            try:
+                # Check if ticker maps to downstream effects of causal predictions
+                for pred in causal_predictions[:3]:
+                    trigger = pred if isinstance(pred, str) else pred.get("trigger", "")
+                    if not trigger:
+                        continue
+                    ripples = world_model.find_ripple_effects(trigger)
+                    for ripple in ripples[:5]:
+                        if getattr(ripple, "ticker", "") == ticker:
+                            logger.debug(
+                                "investigate_partial: causal path confirmed %s -> %s (strength=%.2f)",
+                                trigger, ticker, getattr(ripple, "strength", 0),
+                            )
+                # Root causes for this ticker
+                root_causes = world_model.find_root_causes(ticker)
+                if root_causes:
+                    logger.debug(
+                        "investigate_partial: %d root cause(s) for %s", len(root_causes), ticker
+                    )
+            except Exception:
+                logger.debug("investigate_partial: world_model query failed", exc_info=True)
+
+        # Publish investigation result if there is anything to report.
+        if event_bus and (alert or historical_templates or priority_request_created):
             event_bus.publish(CH_OCTOPUS_INVESTIGATION, {
                 "source": "investigate_partial",
                 "ticker": ticker,
                 "direction": direction,
                 "alert": alert,
-                "check_count": situation["check_count"],
+                "check_count": current_check,
+                "historical_templates": historical_templates,
+                "priority_request_created": priority_request_created,
             })
             logger.debug(
-                "investigate_partial: full alert fired for %s (%s)", ticker, direction
+                "investigate_partial: published for %s (%s) check=%d templates=%d priority=%s",
+                ticker, direction, current_check, len(historical_templates), priority_request_created,
             )
 
     return _handle
