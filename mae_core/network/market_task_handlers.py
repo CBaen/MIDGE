@@ -102,6 +102,8 @@ def inject_market_handlers(
         "convergence_alerter": convergence_alerter,
         "pattern_watcher": pattern_watcher,
         "event_bus": event_bus,
+        "pattern_library": pattern_library,
+        "world_model": world_model,
     }
 
     logger.info(
@@ -130,6 +132,7 @@ def patch_new_arm(colony: "OctopusColony", arm: Any) -> bool:
         refs["pattern_watcher"],
         refs["event_bus"],
     )
+    # pattern_library / world_model already attached to colony; no extra work needed.
     return True
 
 
@@ -417,5 +420,12 @@ def _make_situation_check(colony: Any) -> Any:
                     key,
                     check_count,
                 )
+                # Persist updated situations after eviction.
+                save_fn = getattr(colony, "_save_developing_situations", None)
+                if save_fn is not None:
+                    try:
+                        save_fn(colony)
+                    except Exception:
+                        logger.debug("situation_check: save failed", exc_info=True)
 
     return _handle

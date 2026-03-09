@@ -475,6 +475,51 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         import threading as _th
         ctx.octopus_colony._developing_situations = {}
         ctx.octopus_colony._situations_lock = _th.Lock()
+
+        # Load persisted developing situations (entries older than 2 hours dropped).
+        import json as _json
+        import time as _time
+        _sit_path = (
+            __import__("pathlib").Path(__file__).resolve().parents[2]
+            / "data" / "market" / "developing_situations.json"
+        )
+        try:
+            if _sit_path.exists():
+                _raw = _json.loads(_sit_path.read_text(encoding="utf-8"))
+                _now = _time.time()
+                _loaded = {
+                    k: v for k, v in _raw.items()
+                    if (_now - v.get("first_seen", 0)) < 7200
+                }
+                ctx.octopus_colony._developing_situations = _loaded
+                if _loaded:
+                    logger.debug(
+                        "Market: loaded %d developing situations from disk", len(_loaded)
+                    )
+        except Exception:
+            logger.debug("Market: failed to load developing_situations.json", exc_info=True)
+
+        # Attach save helper to colony so situation_check handler can call it.
+        _sit_path_ref = _sit_path
+
+        def _save_developing_situations(colony_obj: Any) -> None:
+            """Atomic write of _developing_situations to disk."""
+            try:
+                lock = getattr(colony_obj, "_situations_lock", None)
+                if lock is not None:
+                    with lock:
+                        snapshot = dict(colony_obj._developing_situations)
+                else:
+                    snapshot = dict(getattr(colony_obj, "_developing_situations", {}))
+                tmp = _sit_path_ref.with_suffix(".tmp")
+                tmp.write_text(
+                    _json.dumps(snapshot, default=str), encoding="utf-8"
+                )
+                tmp.replace(_sit_path_ref)
+            except Exception:
+                logger.debug("Market: failed to save developing_situations", exc_info=True)
+
+        ctx.octopus_colony._save_developing_situations = _save_developing_situations
     except Exception:
         logger.debug("Market: octopus_colony failed to construct", exc_info=True)
         ctx.octopus_colony = None

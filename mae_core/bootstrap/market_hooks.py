@@ -1737,6 +1737,8 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
                 convergence_alerter=getattr(ctx, "convergence_alerter", None),
                 pattern_watcher=getattr(ctx, "pattern_watcher", None),
                 event_bus=getattr(ctx, "bus", None),
+                pattern_library=getattr(ctx, "pattern_library", None),
+                world_model=getattr(ctx, "world_model", None),
             )
             logger.info("OctopusColony: market handlers injected")
         except Exception:
