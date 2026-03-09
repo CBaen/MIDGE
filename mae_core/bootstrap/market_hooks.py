@@ -415,6 +415,7 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
                         "ticker": ticker, "direction": direction,
                         "domains_seen": msg.get("domains_seen", []),
                         "missing_domains": msg.get("missing_domains", []),
+                        "causal_predictions": msg.get("causal_predictions", []),
                         "first_seen": __import__("time").time(),
                         "check_count": 0,
                     }
