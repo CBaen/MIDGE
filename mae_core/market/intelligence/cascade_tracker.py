@@ -109,6 +109,15 @@ class CascadeTracker:
                     link["status"] = "confirmed"
                     link["confirmed_at"] = time.time()
 
+                    # Temporal energy: actual lag vs predicted lag
+                    # energy_ratio > 1.0 → energy moving faster than predicted
+                    # energy_ratio < 1.0 → energy decaying (slower than predicted)
+                    actual_lag_days = (link["confirmed_at"] - chain["registered_at"]) / 86400
+                    link["actual_lag_days"] = actual_lag_days
+                    predicted_lag = max(link.get("predicted_lag_days", 0), 0.0)
+                    energy_ratio = predicted_lag / max(actual_lag_days, 0.1)
+                    link["energy_ratio"] = round(energy_ratio, 4)
+
                     # Feed back to WorldModel — strengthen the causal edge
                     if self._world_model is not None:
                         try:
@@ -131,6 +140,8 @@ class CascadeTracker:
                         "confirmed_direction": direction,
                         "confirmed_count": confirmed,
                         "total_links": total,
+                        "energy_ratio": link["energy_ratio"],
+                        "actual_lag_days": round(actual_lag_days, 4),
                         "remaining": [{
                             "ticker": l["ticker"],
                             "direction": l["predicted_direction"],
@@ -201,18 +212,31 @@ class CascadeTracker:
         return dict(self._active_chains)
 
     def get_statistics(self) -> dict:
-        """Return tracker statistics."""
+        """Return tracker statistics.
+
+        Includes mean_energy_ratio: average energy_ratio across all confirmed
+        links in all active chains.  Values > 1.0 indicate that cascades are
+        moving faster than the WorldModel predicted; < 1.0 means slower.
+        """
         total_links = 0
         confirmed = 0
         pending = 0
+        energy_ratios = []
 
         for chain in self._active_chains.values():
             for link in chain["links"]:
                 total_links += 1
                 if link["status"] == "confirmed":
                     confirmed += 1
+                    if "energy_ratio" in link:
+                        energy_ratios.append(link["energy_ratio"])
                 elif link["status"] == "pending":
                     pending += 1
+
+        mean_energy_ratio = (
+            round(sum(energy_ratios) / len(energy_ratios), 4)
+            if energy_ratios else None
+        )
 
         return {
             "active_chains": len(self._active_chains),
@@ -220,4 +244,5 @@ class CascadeTracker:
             "confirmed_links": confirmed,
             "pending_links": pending,
             "confirmation_rate": round(confirmed / max(total_links, 1), 3),
+            "mean_energy_ratio": mean_energy_ratio,
         }

@@ -53,6 +53,17 @@ class RippleEffect:
 
 
 @dataclass
+class RootCause:
+    """A genesis event traced backward from a known downstream effect."""
+    trigger: str           # genesis event name
+    direction: str         # bullish/bearish — net effect toward original node
+    strength: float        # 0-1, combined chain strength (multiplied backward)
+    path: List[str]        # observed_node → intermediate → ... → trigger (reversed)
+    total_lag_days: float  # estimated propagation time from trigger to observed effect
+    confidence: float      # based on edge evidence quality
+
+
+@dataclass
 class CausalEdge:
     """Metadata for a single causal link."""
     strength: float = 0.7
@@ -329,6 +340,94 @@ class WorldModel:
 
         effects.sort(key=lambda e: e.strength, reverse=True)
         return effects
+
+    def find_root_causes(
+        self, node: str, min_strength: float = 0.3, max_depth: int = 4
+    ) -> List["RootCause"]:
+        """Trace all upstream genesis events that causally reach a known node.
+
+        Reverse BFS from ``node`` using predecessor edges. Accumulates
+        strength and lag the same way find_ripple_effects does, but walks
+        the graph backward.  Only nodes that are genesis triggers (no
+        predecessors, or all predecessors below min_strength) are returned.
+
+        Args:
+            node: Downstream node (e.g. a ticker like "XLE" or intermediate
+                  node like "crude_price_spike") to trace backward from.
+            min_strength: Minimum cumulative strength to retain a path.
+            max_depth: Maximum backward hops to prevent runaway traversal.
+
+        Returns:
+            List of RootCause, sorted by strength descending.
+        """
+        if self._graph is None or node not in self._graph:
+            return []
+
+        causes: List[RootCause] = []
+        # queue: (current_node, path_so_far, cum_strength, cum_lag)
+        # path is built from node → ... → trigger (reversed at the end)
+        queue = [(node, [node], 1.0, 0.0)]
+        visited: set = set()
+
+        while queue:
+            current, path, cum_strength, cum_lag = queue.pop(0)
+
+            # Avoid revisiting nodes (prevents cycles in discovered-edge graphs)
+            if current in visited:
+                continue
+            visited.add(current)
+
+            predecessors = list(self._graph.predecessors(current))
+
+            # If no predecessors (or all would be too weak), this node IS a root
+            if not predecessors and current != node:
+                # Determine direction: use the edge direction from this root
+                # to its first successor on our path (last element before current)
+                direction = "neutral"
+                if len(path) >= 2:
+                    child = path[-2]  # node before current in reversed path
+                    if self._graph.has_edge(current, child):
+                        direction = self._graph.edges[current, child].get("direction", "neutral")
+                causes.append(RootCause(
+                    trigger=current,
+                    direction=direction,
+                    strength=cum_strength,
+                    path=list(reversed(path)),
+                    total_lag_days=cum_lag,
+                    confidence=cum_strength * (0.95 ** (len(path) - 2)),
+                ))
+                continue
+
+            if len(path) > max_depth:
+                # Report as a root even if we haven't reached a true genesis
+                if current != node:
+                    direction = "neutral"
+                    if len(path) >= 2:
+                        child = path[-2]
+                        if self._graph.has_edge(current, child):
+                            direction = self._graph.edges[current, child].get("direction", "neutral")
+                    causes.append(RootCause(
+                        trigger=current,
+                        direction=direction,
+                        strength=cum_strength,
+                        path=list(reversed(path)),
+                        total_lag_days=cum_lag,
+                        confidence=cum_strength * (0.95 ** (len(path) - 2)),
+                    ))
+                continue
+
+            for pred in predecessors:
+                if pred in visited:
+                    continue
+                edge = self._graph.edges[pred, current]
+                new_strength = cum_strength * edge["strength"]
+                if new_strength < min_strength:
+                    continue
+                new_lag = cum_lag + edge["lag_days"]
+                queue.append((pred, path + [pred], new_strength, new_lag))
+
+        causes.sort(key=lambda c: c.strength, reverse=True)
+        return causes
 
     def _is_ticker(self, node: str) -> bool:
         """Check if a node represents a tradeable instrument."""

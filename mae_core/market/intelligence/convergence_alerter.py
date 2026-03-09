@@ -311,6 +311,8 @@ class ConvergenceAlerter:
             "volatility": "market",
             # Real-economy
             "energy": "fundamental",
+            # Causal chain — synthetic signals from confirmed cascade dominoes (Law 2)
+            "cascade": "causal",
         }
 
         self._alert_counter = 0

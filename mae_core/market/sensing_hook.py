@@ -250,6 +250,38 @@ def _absence_source_to_domain(source: str) -> str:
     return _ABSENCE_SOURCE_DOMAINS.get(source, "unknown")
 
 
+def _build_domain_to_sources() -> Dict[str, List[str]]:
+    """Build reverse mapping: domain → list of SOURCE_ROTATION names that serve it.
+
+    Approach:
+    1. For each SOURCE_ROTATION name, look up its Thompson key via _ROTATION_TO_THOMPSON.
+    2. Look up that Thompson key in _ABSENCE_SOURCE_DOMAINS to find the domain.
+    3. Also check if the rotation name itself is in _ABSENCE_SOURCE_DOMAINS directly.
+    4. Group rotation names by domain.
+
+    This is a heuristic — a few sources serve multiple domains (e.g., "finviz"
+    produces signals across technical + institutional + insider).  We assign
+    each rotation source to its PRIMARY domain (via its primary Thompson key).
+    """
+    result: Dict[str, List[str]] = {}
+    for rotation_name in SOURCE_ROTATION:
+        # Prefer direct match (rotation_name == absence source key)
+        domain = _ABSENCE_SOURCE_DOMAINS.get(rotation_name)
+        if domain is None:
+            # Try via Thompson key mapping
+            thompson_key = _ROTATION_TO_THOMPSON.get(rotation_name)
+            if thompson_key:
+                domain = _ABSENCE_SOURCE_DOMAINS.get(thompson_key)
+        if domain is not None:
+            result.setdefault(domain, []).append(rotation_name)
+    return result
+
+
+# Pre-built reverse map: domain → SOURCE_ROTATION names that cover it.
+# Used by _launch_thompson_guided() to boost priority-requested sources.
+_DOMAIN_TO_SOURCES: Dict[str, List[str]] = _build_domain_to_sources()
+
+
 class MarketSensingHook:
     """Async market data fetcher that runs as a step hook.
 
@@ -383,6 +415,13 @@ class MarketSensingHook:
 
         # Recent signal domains per ticker (for archetype scanning)
         self._recent_domains: Dict[str, set] = {}
+
+        # Priority polling: market_hooks.py writes here when partial convergence
+        # is detected (2 of 3+ domains seen, missing domain identified).
+        # Format: {ticker: {"ticker": str, "domains_needed": List[str],
+        #                   "priority": str, "expires": float, "source": str}}
+        # Cap: 50 entries. Entries expire after 1 hour (3600 seconds).
+        self._priority_requests: Dict[str, dict] = {}
 
         # Stats
         self._total_signals_fed = 0
@@ -623,6 +662,16 @@ class MarketSensingHook:
         exploitation (proven sources with high means). Falls back to
         round-robin when no sampler is available.
         """
+        # Clean up expired priority requests so stale entries don't accumulate.
+        try:
+            now = time.time()
+            expired = [t for t, entry in self._priority_requests.items()
+                       if now > entry.get("expires", 0)]
+            for ticker in expired:
+                del self._priority_requests[ticker]
+        except Exception:
+            logger.debug("Priority request cleanup failed", exc_info=True)
+
         # Collect any completed futures first
         self._collect_results()
 
@@ -650,7 +699,26 @@ class MarketSensingHook:
             self._launch_round_robin(slots)
 
     def _launch_thompson_guided(self, eligible: list, slots: int):
-        """Select sources via Thompson sampling draws."""
+        """Select sources via Thompson sampling draws.
+
+        Priority polling: if _priority_requests is non-empty (and within the
+        50-entry cap), sources that serve the needed domains receive a 2x boost
+        on their sampled score (capped at 1.0).  This steers sensing toward
+        the missing evidence for a developing convergence without blocking any
+        other source entirely — it is a soft, probabilistic nudge.
+        """
+        # Build a set of boosted source names from active priority requests.
+        # Only apply boost when the queue is within the 50-entry cap.
+        boosted_sources: set = set()
+        try:
+            if 0 < len(self._priority_requests) <= 50:
+                for entry in self._priority_requests.values():
+                    for domain in entry.get("domains_needed", []):
+                        for src in _DOMAIN_TO_SOURCES.get(domain, []):
+                            boosted_sources.add(src)
+        except Exception:
+            logger.debug("Priority boost computation failed", exc_info=True)
+
         # Draw from each source's Beta distribution
         scored = []
         for source in eligible:
@@ -670,6 +738,11 @@ class MarketSensingHook:
                         score = random.betavariate(1.0, 1.0)
                 except Exception:
                     score = random.betavariate(1.0, 1.0)
+
+            # Apply priority boost: multiply by 2, cap at 1.0
+            if source in boosted_sources:
+                score = min(1.0, score * 2.0)
+
             scored.append((score, source))
 
         # Sort descending by score, pick top N
