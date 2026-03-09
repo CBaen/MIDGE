@@ -2,6 +2,44 @@
 
 ## What Happened
 
+### Inevitability Surfacing — Focused Attention + Chain Boost + Backward Discovery (2026-03-09)
+
+**Three connected features that make MIDGE a true inevitability investigator:**
+
+1. **Focused Attention (Priority Polling)** — When partial convergence fires (2 domains, not yet 3), MIDGE boosts Thompson sampling scores for sources that serve the missing domains. `_DOMAIN_TO_SOURCES` reverse map, `_priority_requests` dict on SensingHook, 2x Thompson boost for focused sources. Entries expire after 1 hour, capped at 50.
+
+2. **Sequential Chain Boost** — `_on_cascade_confirmed` subscriber in market_hooks.py. When CascadeTracker confirms a domino, injects synthetic `domain="cascade"` signals into ConvergenceAlerter for each remaining predicted domino. Strength proportional to `confirmed_count / total_links`. "cascade" added to domain_categories as "causal".
+
+3. **Backward Cascade Discovery** — `find_root_causes()` on WorldModel (reverse BFS using `predecessors()`). `RootCause` dataclass mirrors `RippleEffect`. When a signal matches a downstream WorldModel node, MIDGE traces backward to find likely genesis triggers. If evidence exists in signal buffer: registers late-joining cascade. If not: populates `_priority_requests` so Focused Attention goes looking.
+
+4. **Temporal Energy Tracking** — CascadeTracker now measures actual vs. predicted lag for each confirmed link. `energy_ratio = predicted_lag / actual_lag` — ratio > 1.0 means energy is accelerating through the chain (dominoes falling faster than expected). Stored per-link, reported in statistics, carried in CH_CASCADE_CONFIRMED payload.
+
+**Tests:** 55 new (23 priority polling + 32 chain boost/backward/energy). Full suite: 961/962 pass (1 pre-existing congress.gov flake).
+
+**Files changed:**
+- `mae_core/market/sensing_hook.py` — `_DOMAIN_TO_SOURCES`, `_priority_requests`, Thompson boost in `_launch_thompson_guided()`
+- `mae_core/bootstrap/market_hooks.py` — `_on_cascade_confirmed` subscriber, backward discovery in `_on_signal_causal_watch`, priority queue population
+- `mae_core/market/intelligence/convergence_alerter.py` — `"cascade": "causal"` in domain_categories
+- `mae_core/market/intelligence/world_model.py` — `RootCause` dataclass, `find_root_causes()` reverse BFS
+- `mae_core/market/intelligence/cascade_tracker.py` — energy_ratio tracking per link
+- `tests/test_priority_polling.py` — NEW: 23 tests
+- `tests/test_chain_boost.py` — NEW: 32 tests
+
+### Inevitability Cascade + CascadeTracker (2026-03-09)
+
+**WorldModel wired into live convergence pipeline:**
+- Every convergence alert carries `ripple_effects` (downstream tickers from causal graph)
+- Partial convergences carry `causal_predictions` for Octopus investigation
+- `CH_CAUSAL_WATCH` emitted proactively on signal ingestion when triggers map to strong downstream effects
+- Plain-language alerts get CASCADE section showing top 5 downstream dominoes
+
+**CascadeTracker (NEW):**
+- `mae_core/market/intelligence/cascade_tracker.py` — watches active causal chains as dominoes confirm
+- Registers cascades from convergence alerts, confirms links when signals match predicted tickers
+- Closes WorldModel feedback loop: `record_outcome()` was never called before — now confirmed = True, expired = False
+- `CH_CASCADE_CONFIRMED` emitted on confirmation (now consumed by Chain Boost subscriber above)
+- 16 + 21 = 37 tests
+
 ### Bio-Market Activation — Every System Gets a Market Job (2026-03-09)
 
 **29 biological systems wired to market intelligence channels (14 Tier 2+3 + 15 Tier 4+5):**
