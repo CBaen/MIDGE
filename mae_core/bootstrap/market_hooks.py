@@ -430,33 +430,117 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
     if world_model is not None:
         from mae_core.market.channels import CH_SIGNAL_INGESTED
 
+        import time as _time
+
         def _on_signal_causal_watch(channel, data):
             try:
                 msg = data if isinstance(data, dict) else {}
                 source = msg.get("source", "")
                 metadata = msg.get("metadata", {})
+                ticker = (
+                    msg.get("symbol", "")
+                    or metadata.get("symbol", "")
+                )
+
+                # --- Forward: map signal → world model trigger → downstream predictions ---
                 trigger = world_model.map_signal_to_trigger(source, metadata)
-                if not trigger:
-                    return
-                effects = world_model.find_ripple_effects(trigger, min_strength=0.4)
-                if not effects:
-                    return
-                ctx.bus.publish("market.intel.causal_watch", {
-                    "trigger": trigger,
-                    "source": source,
-                    "effects": [{
-                        "ticker": e.ticker,
-                        "direction": e.direction,
-                        "strength": round(e.strength, 3),
-                        "lag_days": e.total_lag_days,
-                        "path": e.path,
-                    } for e in effects[:10]],
-                })
+                if trigger:
+                    effects = world_model.find_ripple_effects(trigger, min_strength=0.4)
+                    if effects:
+                        ctx.bus.publish("market.intel.causal_watch", {
+                            "trigger": trigger,
+                            "source": source,
+                            "effects": [{
+                                "ticker": e.ticker,
+                                "direction": e.direction,
+                                "strength": round(e.strength, 3),
+                                "lag_days": e.total_lag_days,
+                                "path": e.path,
+                            } for e in effects[:10]],
+                        })
+
+                # --- Backward: does this ticker appear as a downstream world-model node? ---
+                # If so, trace back to find what genesis event would cause this.
+                # This handles mid-pattern discovery: we see a domino fall and ask
+                # "what caused THIS, and what else should we expect?"
+                if ticker and ticker in world_model._graph:
+                    root_causes = world_model.find_root_causes(ticker, min_strength=0.3)
+                    _ct = getattr(ctx, "cascade_tracker", None)
+                    for rc in root_causes[:3]:  # cap to top 3 root causes
+                        try:
+                            active_chains = _ct.get_active_chains() if _ct is not None else {}
+                            # Check if any active chain already tracks this trigger
+                            existing = any(
+                                c.get("trigger") == rc.trigger
+                                for c in active_chains.values()
+                            )
+
+                            if not existing and _ct is not None:
+                                # Mid-pattern discovery: register a late-joining cascade
+                                # from the genesis trigger forward
+                                forward_effects = world_model.find_ripple_effects(
+                                    rc.trigger, min_strength=0.3
+                                )
+                                if forward_effects:
+                                    ripple_dicts = [{
+                                        "ticker": e.ticker,
+                                        "direction": e.direction,
+                                        "strength": round(e.strength, 3),
+                                        "lag_days": e.total_lag_days,
+                                    } for e in forward_effects[:10]]
+                                    _ct.register_cascade(
+                                        alert_id=f"backward_{ticker}_{rc.trigger}",
+                                        trigger=rc.trigger,
+                                        ripple_effects=ripple_dicts,
+                                        direction=rc.direction,
+                                    )
+                                    logger.info(
+                                        "Backward discovery: %s is downstream of '%s' "
+                                        "(strength=%.2f) — late-joining cascade registered",
+                                        ticker, rc.trigger, rc.strength,
+                                    )
+
+                            # Populate priority requests so focused attention can
+                            # investigate the genesis domain
+                            _prio = getattr(ctx, "_priority_requests", None)
+                            if _prio is None:
+                                ctx._priority_requests = {}
+                                _prio = ctx._priority_requests
+
+                            # Cap at 50 to prevent unbounded growth
+                            if len(_prio) < 50:
+                                # Determine domain of genesis trigger
+                                genesis_domain = "macro"  # sensible default
+                                if "energy" in rc.trigger or "eia" in rc.trigger:
+                                    genesis_domain = "energy"
+                                elif "fed" in rc.trigger or "rate" in rc.trigger or "cpi" in rc.trigger:
+                                    genesis_domain = "macro"
+                                elif "defense" in rc.trigger or "geopolit" in rc.trigger:
+                                    genesis_domain = "government"
+                                elif "crypto" in rc.trigger:
+                                    genesis_domain = "crypto"
+                                elif "vix" in rc.trigger:
+                                    genesis_domain = "volatility"
+
+                                _prio[f"{ticker}_{rc.trigger}"] = {
+                                    "ticker": ticker,
+                                    "domains_needed": [genesis_domain],
+                                    "priority": "high",
+                                    "expires": _time.time() + 3600,
+                                    "source": "backward_discovery",
+                                    "root_cause_trigger": rc.trigger,
+                                    "root_cause_strength": round(rc.strength, 3),
+                                }
+                        except Exception:
+                            logger.debug(
+                                "Backward cascade discovery failed for ticker %s trigger %s",
+                                ticker, rc.trigger, exc_info=True,
+                            )
             except Exception:
                 pass  # Never block signal ingestion
 
         ctx.bus.register_callback(CH_SIGNAL_INGESTED, _on_signal_causal_watch)
-        logger.info("Layer 33f - Causal watch: signal → WorldModel → downstream predictions wired")
+        logger.info("Layer 33f - Causal watch: signal → WorldModel → downstream + backward root-cause wired")
 
     # --- Cascade tracking: watch dominoes fall, confirm chain links ---
     # When signals arrive, check if they confirm any predicted cascade.
@@ -503,6 +587,72 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
         ctx.bus.register_callback(CH_SIGNAL_INGESTED, _on_signal_cascade_check)
         ctx.bus.register_callback(CH_CONVERGENCE, _on_convergence_register_cascade)
         logger.info("Layer 33f - Cascade tracker: domino confirmation + WorldModel feedback wired")
+
+    # --- Forward Chain Boost: inject synthetic signals for remaining dominoes ---
+    # When a cascade link is confirmed, we boost the remaining predicted dominoes
+    # by injecting them as "cascade" domain signals into the convergence alerter.
+    # This creates a feedback loop: confirmed dominoes raise confidence that the
+    # rest will fall — pushing them toward the convergence threshold faster.
+    _alerter_ref = getattr(ctx, "convergence_alerter", None)
+    if _alerter_ref is not None and getattr(ctx, "cascade_tracker", None) is not None:
+        from mae_core.market.channels import CH_CASCADE_CONFIRMED
+
+        def _on_cascade_confirmed(channel, data):
+            try:
+                msg = data if isinstance(data, dict) else {}
+                chain_id = msg.get("chain_id", "")
+                trigger = msg.get("trigger", "")
+                confirmed_count = msg.get("confirmed_count", 0)
+                total_links = msg.get("total_links", 1)
+                remaining = msg.get("remaining", [])
+
+                if not remaining or total_links == 0:
+                    return  # Nothing left to boost
+
+                confirmed_ratio = confirmed_count / max(total_links, 1)
+
+                injected = 0
+                for domino in remaining:
+                    domino_ticker = domino.get("ticker", "")
+                    domino_direction = domino.get("direction", "neutral")
+                    domino_strength = domino.get("strength", 0.5)
+                    domino_lag_days = domino.get("lag_days", 0)
+
+                    if not domino_ticker or domino_direction not in ("bullish", "bearish"):
+                        continue
+
+                    try:
+                        _alerter_ref.record_signal(
+                            signal_id=f"cascade_{chain_id}_{domino_ticker}",
+                            strength=confirmed_ratio * domino_strength,
+                            domain="cascade",
+                            direction=domino_direction,
+                            confidence=confirmed_ratio,
+                            metadata={
+                                "cascade_boosted": True,
+                                "chain_id": chain_id,
+                                "trigger": trigger,
+                                "remaining_lag_days": domino_lag_days,
+                                "symbol": domino_ticker,
+                            },
+                        )
+                        injected += 1
+                    except Exception:
+                        logger.debug(
+                            "Cascade boost signal injection failed for %s", domino_ticker,
+                            exc_info=True,
+                        )
+
+                if injected > 0:
+                    logger.info(
+                        "Cascade boost: injected %d synthetic signals for chain %s",
+                        injected, chain_id,
+                    )
+            except Exception:
+                logger.debug("_on_cascade_confirmed handler failed", exc_info=True)
+
+        ctx.bus.register_callback(CH_CASCADE_CONFIRMED, _on_cascade_confirmed)
+        logger.info("Layer 33f - Forward chain boost: cascade confirmed → synthetic signal injection wired")
 
     logger.info("Layer 33f - Market EventBus: convergence + hypothesis -> endocrine coupling wired")
 
