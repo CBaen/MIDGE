@@ -72,6 +72,7 @@ class SourceBudget:
     total_calls: int = 0
     total_throttled: int = 0
     tier: SourceTier = SourceTier.EXPLORE
+    original_hourly_limit: int = 0  # set by register_source; caps relax_budgets
 
 
 class ResourceGovernor:
@@ -107,6 +108,7 @@ class ResourceGovernor:
                 hourly_limit=hourly_limit,
                 warn_at=warn_at,
                 tier=tier,
+                original_hourly_limit=hourly_limit,
             )
 
     def set_source_tier(self, source_name: str, tier: SourceTier) -> None:
@@ -229,7 +231,8 @@ class ResourceGovernor:
         with self._lock:
             for budget in self._sources.values():
                 if budget.tier == SourceTier.EXPLORE:
-                    budget.hourly_limit = int(budget.hourly_limit * factor)
+                    cap = budget.original_hourly_limit or budget.hourly_limit
+                    budget.hourly_limit = min(int(budget.hourly_limit * factor), cap)
         logger.debug(
             "ResourceGovernor.relax_budgets: factor=%.2f applied to EXPLORE sources",
             factor,

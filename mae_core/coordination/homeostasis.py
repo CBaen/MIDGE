@@ -255,7 +255,7 @@ class HomeostasisRegulator:
                 "target": sp.target_value,
                 "error": round(error, 4),
                 "correction": round(correction, 4),
-                "urgency": round(urgency, 4),
+                "urgency": round(min(urgency, 1.0), 4),
                 "in_range": sp.in_range,
             }
             corrections.append(correction_data)
@@ -277,6 +277,30 @@ class HomeostasisRegulator:
     # =========================================================================
     # Public Query API
     # =========================================================================
+
+    def compute_drive_urgency(self) -> dict[str, float]:
+        """Return urgency values for all parameters currently outside their range.
+
+        Each key is a parameter name; each value is the urgency float in [0.0, 1.0].
+        Parameters within their acceptable range are excluded from the result.
+
+        Urgency = |error| / range_width, clamped to [0.0, 1.0].
+        A value near 0.0 means the parameter is just barely out of range.
+        A value near 1.0 means it is at or beyond the boundary limit.
+
+        This is a thin public wrapper around _compute_urgency() — all computation
+        logic lives in the private method to avoid duplication.
+
+        Returns:
+            Dict mapping parameter_name -> urgency_float for out-of-range parameters.
+            Empty dict means all parameters are within their acceptable ranges.
+        """
+        result: dict[str, float] = {}
+        for name, sp in self._setpoints.items():
+            if not sp.in_range:
+                urgency = self._compute_urgency(sp)
+                result[name] = min(1.0, urgency)
+        return result
 
     def get_deviation_score(self) -> float:
         """Root mean square of all setpoint errors.
