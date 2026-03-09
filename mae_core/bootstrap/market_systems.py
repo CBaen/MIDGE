@@ -349,6 +349,17 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         failures += 1
 
     try:
+        from mae_core.market.intelligence.cascade_tracker import CascadeTracker
+        ctx.cascade_tracker = CascadeTracker(
+            world_model=getattr(ctx, "world_model", None),
+            event_bus=getattr(ctx, "bus", None),
+        )
+    except Exception:
+        logger.debug("Market: cascade_tracker failed to construct", exc_info=True)
+        ctx.cascade_tracker = None
+        failures += 1
+
+    try:
         from mae_core.market.intelligence.thompson_calibrator import ThompsonCalibrator
         ctx.thompson_calibrator = (
             ThompsonCalibrator(thompson_sampler=ctx.thompson_sampler)

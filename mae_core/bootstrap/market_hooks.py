@@ -458,6 +458,52 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
         ctx.bus.register_callback(CH_SIGNAL_INGESTED, _on_signal_causal_watch)
         logger.info("Layer 33f - Causal watch: signal → WorldModel → downstream predictions wired")
 
+    # --- Cascade tracking: watch dominoes fall, confirm chain links ---
+    # When signals arrive, check if they confirm any predicted cascade.
+    # When convergence alerts fire, register new cascades from ripple_effects.
+    cascade_tracker = getattr(ctx, "cascade_tracker", None)
+    if cascade_tracker is not None:
+        from mae_core.market.channels import CH_SIGNAL_INGESTED, CH_CONVERGENCE
+
+        def _on_signal_cascade_check(channel, data):
+            try:
+                msg = data if isinstance(data, dict) else {}
+                ticker = msg.get("symbol", "") or msg.get("metadata", {}).get("symbol", "")
+                direction = msg.get("direction", "")
+                if ticker and direction in ("bullish", "bearish"):
+                    cascade_tracker.check_signal(ticker, direction)
+            except Exception:
+                pass
+
+        def _on_convergence_register_cascade(channel, data):
+            try:
+                msg = data if isinstance(data, dict) else {}
+                alert_id = msg.get("alert_id", "")
+                ripples = msg.get("ripple_effects", [])
+                if not alert_id or not ripples:
+                    return
+                # Find the trigger by mapping contributing signals
+                wm = getattr(ctx, "world_model", None)
+                if wm is None:
+                    return
+                trigger = None
+                for sig in msg.get("signals", []):
+                    source = sig.get("source", "") if isinstance(sig, dict) else getattr(sig, "source", "")
+                    metadata = sig.get("metadata", {}) if isinstance(sig, dict) else getattr(sig, "metadata", {})
+                    trigger = wm.map_signal_to_trigger(source, metadata)
+                    if trigger:
+                        break
+                if trigger:
+                    cascade_tracker.register_cascade(
+                        alert_id, trigger, ripples, msg.get("direction", "neutral"),
+                    )
+            except Exception:
+                pass
+
+        ctx.bus.register_callback(CH_SIGNAL_INGESTED, _on_signal_cascade_check)
+        ctx.bus.register_callback(CH_CONVERGENCE, _on_convergence_register_cascade)
+        logger.info("Layer 33f - Cascade tracker: domino confirmation + WorldModel feedback wired")
+
     logger.info("Layer 33f - Market EventBus: convergence + hypothesis -> endocrine coupling wired")
 
 

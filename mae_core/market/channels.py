@@ -60,3 +60,4 @@ CH_OCTOPUS_INVESTIGATION = "market.intel.octopus_investigation"
 
 # Causal reasoning channels (WorldModel inevitability cascade)
 CH_CAUSAL_WATCH = "market.intel.causal_watch"
+CH_CASCADE_CONFIRMED = "market.intel.cascade_confirmed"
