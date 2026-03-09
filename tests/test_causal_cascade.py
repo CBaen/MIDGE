@@ -172,15 +172,19 @@ class TestPartialConvergenceCausalPredictions:
         )
 
         # Add signals from 2 domains (below min_domains=3) including a mappable source
-        alerter.add_signal(_make_signal(
-            "eia_energy", "energy", "bullish", 0.8,
+        alerter.record_signal(
+            signal_id="eia-1", strength=0.8, domain="energy",
+            direction="bullish", source="eia_energy",
             metadata={"series_id": "crude_inventory", "direction": "bullish"},
-        ))
-        alerter.add_signal(_make_signal("sec_form4", "insider", "bullish", 0.7))
+        )
+        alerter.record_signal(
+            signal_id="sec-1", strength=0.7, domain="insider",
+            direction="bullish", source="sec_form4",
+        )
 
-        # Check convergence — should emit partial (2 < 3)
+        # Check convergence — should emit partial (2 < 3), no full alerts
         result = alerter.check_convergence(direction_filter="bullish")
-        assert result is None  # Below threshold
+        assert len(result) == 0  # Below threshold
 
         # Verify partial convergence was published with causal_predictions
         if bus.publish.called:
@@ -197,11 +201,17 @@ class TestPartialConvergenceCausalPredictions:
             world_model=None,
             event_bus=bus,
         )
-        alerter.add_signal(_make_signal("sec_form4", "insider", "bullish", 0.7))
-        alerter.add_signal(_make_signal("congressional", "government", "bullish", 0.7))
+        alerter.record_signal(
+            signal_id="sec-1", strength=0.7, domain="insider",
+            direction="bullish", source="sec_form4",
+        )
+        alerter.record_signal(
+            signal_id="cong-1", strength=0.7, domain="government",
+            direction="bullish", source="congressional",
+        )
 
         result = alerter.check_convergence(direction_filter="bullish")
-        assert result is None
+        assert len(result) == 0
 
         if bus.publish.called:
             calls = [c for c in bus.publish.call_args_list
