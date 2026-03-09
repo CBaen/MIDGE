@@ -249,7 +249,8 @@ class InhabitantScheduler:
         with self._lock:
             if not self._heap:
                 # Nothing scheduled — sleep briefly and check again.
-                pass
+                self._stop_event.wait(timeout=0.1)
+                return
             else:
                 next_run, neg_priority, system_name = self._heap[0]
                 if now >= next_run:
