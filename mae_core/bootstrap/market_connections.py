@@ -467,4 +467,30 @@ def _register_market_connections(ctx: SimpleNamespace) -> None:
             witnesses=["convergence_alerter", "auditor"],
             description="ResourceGovernor publishes budget warnings via EventBus for organism awareness")
 
-    logger.info("Layer 33d - Market connections: triadic connections registered (Group 14-35)")
+    # --- Group 36: InhabitantScheduler (organism-internal wall-clock cadence) ---
+    if getattr(ctx, "inhabitant_scheduler", None) is not None:
+        reg("inhabitant_scheduler", "event_bus", eb,
+            channel="scheduling.inhabitant_dispatched",
+            witnesses=["resource_governor", "auditor"],
+            description="InhabitantScheduler publishes dispatch events; resource_governor witnesses cadence")
+        reg("inhabitant_scheduler", "resource_governor", dr,
+            witnesses=["event_bus", "auditor"],
+            description="Scheduler observes resource governor — may adjust cadence under throttle pressure")
+        reg("inhabitant_scheduler", "governance_logger", dr,
+            witnesses=["event_bus", "auditor"],
+            description="GovernanceLogger records all dispatch events emitted by InhabitantScheduler")
+
+    # --- Group 37: GovernanceLogger (append-only audit trail) ---
+    if getattr(ctx, "governance_logger", None) is not None:
+        reg("governance_logger", "event_bus", cb,
+            channel="market.resource.throttle",
+            witnesses=["resource_governor", "auditor"],
+            description="GovernanceLogger subscribes to throttle events for audit trail")
+        reg("governance_logger", "resource_governor", dr,
+            witnesses=["event_bus", "auditor"],
+            description="GovernanceLogger observes resource governor budget events")
+        reg("governance_logger", "inhabitant_scheduler", dr,
+            witnesses=["event_bus", "auditor"],
+            description="GovernanceLogger observes inhabitant scheduler dispatch events")
+
+    logger.info("Layer 33d - Market connections: triadic connections registered (Group 14-37)")

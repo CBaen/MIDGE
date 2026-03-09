@@ -19,7 +19,7 @@ This mirrors how Mae handles all optional systems — advisory, never blocking.
 Sub-module responsibilities:
   market_systems.py       — Layer 33a: construct all market objects on ctx
   market_registration.py — Layer 33b-e: somatic, holons, fractal, stem roles
-  market_connections.py  — Layer 33d: 106 triadic connections (Groups 14-34)
+  market_connections.py  — Layer 33d: 115 triadic connections (Groups 14-37)
   market_hooks.py        — Layer 33f-h: EventBus callbacks, step hooks, sensing hook
   market_agents.py       — Layer 33i: agent differentiation + market reflexes
 """
@@ -108,6 +108,9 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
         "octopus_colony",
         # Resource Governance (Law 6 autopoiesis)
         "resource_governor",
+        # Organism-internal scheduling + governance audit
+        "inhabitant_scheduler",
+        "governance_logger",
     ]
     active = sum(1 for a in market_attrs if getattr(ctx, a, None) is not None)
     holon_count = len([
@@ -116,7 +119,7 @@ def bootstrap_market(ctx: SimpleNamespace) -> None:
     ])
 
     logger.info(
-        "Layer 33  - Market Intelligence organ complete: %d systems, %d holons, 109 connections",
+        "Layer 33  - Market Intelligence organ complete: %d systems, %d holons, 115 connections",
         active, holon_count,
     )
     logger.info(
