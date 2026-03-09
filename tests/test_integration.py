@@ -137,6 +137,9 @@ class TestBootstrap:
             "congress_gov_client",
             # Resource Governance (Law 6 autopoiesis)
             "resource_governor",
+            # Organism-internal scheduling + governance audit
+            "inhabitant_scheduler",
+            "governance_logger",
         ]
         for key in market_keys:
             assert key in systems, f"Missing market system: {key}"

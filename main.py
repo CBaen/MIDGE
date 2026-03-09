@@ -258,6 +258,9 @@ def _build_systems_dict(ctx) -> dict:
         "octopus_colony":           getattr(ctx, "octopus_colony", None),
         # Resource Governance (Law 6 autopoiesis)
         "resource_governor":        getattr(ctx, "resource_governor", None),
+        # Organism-internal scheduling + governance audit
+        "inhabitant_scheduler":     getattr(ctx, "inhabitant_scheduler", None),
+        "governance_logger":        getattr(ctx, "governance_logger", None),
     }
 
 

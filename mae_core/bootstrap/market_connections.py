@@ -1,7 +1,7 @@
 """Bootstrap Layer 33d: Market triadic connections.
 
-One job: register all 106 triadic connections for the market intelligence organ
-(Groups 14-35). No bare dyads — every A<->B has witness C.
+One job: register all 115 triadic connections for the market intelligence organ
+(Groups 14-37). No bare dyads — every A<->B has witness C.
 
 Groups:
   14 - Market K3 subsystems + EventBus pub/sub + TA indicators
@@ -26,6 +26,8 @@ Groups:
   33 - Pattern Archaeology (reverse-engineered historical patterns)
   34 - OctopusColony (ecosystem bridge)
   35 - ResourceGovernor (Law 6 autopoietic self-governance)
+  36 - InhabitantScheduler (organism-internal wall-clock cadence dispatch)
+  37 - GovernanceLogger (append-only governance audit trail)
 """
 
 from __future__ import annotations
@@ -37,7 +39,7 @@ logger = logging.getLogger("midge.bootstrap")
 
 
 def _register_market_connections(ctx: SimpleNamespace) -> None:
-    """Register 106 triadic connections for market systems (Group 14-35)."""
+    """Register 115 triadic connections for market systems (Group 14-37)."""
     from mae_core.backbone.connection_registry import (
         ConnectionType,
         ConnectionCriticality,
