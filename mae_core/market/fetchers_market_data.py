@@ -48,6 +48,32 @@ def fetch_fred_yields(fred: Any, converter: Callable) -> list:
     return signals
 
 
+def fetch_usda(usda_client: Any, converter: Callable) -> list:
+    """Fetch USDA agricultural supply/demand indicators for key commodities.
+
+    Queries the USDA PSD (Production, Supply and Distribution) free API for
+    wheat, corn, soybeans, and cotton. Returns one MarketSignal per commodity
+    with a stocks-to-use ratio as the direction driver.
+
+    Cadence: registered in SOURCE_ROTATION — fetched every cycle but the
+    client's 6-hour cache ensures API calls happen at most once per day.
+    """
+    if usda_client is None:
+        return []
+
+    signals = []
+    try:
+        snapshot = usda_client.get_agricultural_snapshot()
+        for indicator in snapshot:
+            try:
+                signals.append(converter(indicator))
+            except Exception:
+                pass
+    except Exception as e:
+        logger.debug("USDA agriculture fetch failed: %s", e)
+    return signals
+
+
 def fetch_cot(cot_client: Any, watchlist: dict, converter: Callable) -> list:
     """Fetch CFTC Commitments of Traders for futures watchlist."""
     if cot_client is None:

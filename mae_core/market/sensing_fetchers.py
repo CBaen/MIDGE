@@ -30,6 +30,7 @@ from mae_core.market.fetchers_government import (
 )
 from mae_core.market.fetchers_market_data import (
     fetch_fred,
+    fetch_fred_yields,
     fetch_cot,
     fetch_vix,
     fetch_eia,
@@ -71,6 +72,7 @@ __all__ = [
     "fetch_usa_spending",
     "fetch_sam_gov",
     "fetch_fred",
+    "fetch_fred_yields",
     "fetch_cot",
     "fetch_vix",
     "fetch_eia",
