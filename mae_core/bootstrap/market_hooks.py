@@ -870,8 +870,10 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                                 _oc.register_convergence_alert(alert, _sym)
                             except Exception:
                                 logger.debug("Combo registration failed", exc_info=True)
-            except Exception:
+            except Exception as exc:
                 logger.debug("Convergence alerter step failed", exc_info=True)
+                if _shm:
+                    _shm.record_error("convergence_check", exc)
 
         # Every 10 steps: Thompson stats (regime-aware)
         if step % 10 == 0:
@@ -887,8 +889,12 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                         stats = sampler.get_stats(regime)
                     stats["regime"] = regime
                     ctx.bus.publish(CH_THOMPSON_STATS, stats)
-                except Exception:
+                    if _shm:
+                        _shm.record_success("thompson")
+                except Exception as exc:
                     logger.debug("Thompson sampler stats step failed", exc_info=True)
+                    if _shm:
+                        _shm.record_error("thompson", exc)
 
         # Every 50 steps: stigmergy evaporation (triggers global pheromone decay)
         # StigmergicEnvironment._apply_decay() is lazy — it only fires when
@@ -948,8 +954,10 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                     regime_clf = getattr(ctx, "regime_classifier", None)
                     regime = regime_clf.classify() if regime_clf is not None else "default"
                     sampler.regime_aware_forget(regime)
-                except Exception:
+                except Exception as exc:
                     logger.debug("Thompson forgetting step failed", exc_info=True)
+                    if _shm:
+                        _shm.record_error("thompson", exc)
 
             # Convergence heartbeat: overwrite data/midge/convergence_state.json
             _write_convergence_heartbeat(ctx, step)
@@ -1102,8 +1110,12 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                             pm_summary.get("combos_analyzed", 0),
                             pm_summary.get("sequences_analyzed", 0),
                         )
-                except Exception:
+                    if _shm:
+                        _shm.record_success("post_mortem")
+                except Exception as exc:
                     logger.debug("Post-mortem review step failed", exc_info=True)
+                    if _shm:
+                        _shm.record_error("post_mortem", exc)
 
         # Every 1000 steps: Thompson calibration diagnostic
         if step % 1000 == 0:
@@ -1172,8 +1184,12 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                         hyp_engine.step()
                 else:
                     hyp_engine.step()
-            except Exception:
+                if _shm:
+                    _shm.record_success("hypothesis_engine")
+            except Exception as exc:
                 logger.debug("Hypothesis engine step failed", exc_info=True)
+                if _shm:
+                    _shm.record_error("hypothesis_engine", exc)
 
         # Kelly sizing: fires on per-ticker convergence alerts
         if step % 50 == 0:
@@ -1553,6 +1569,7 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
                     logger.debug("Tiered alerter %s query failed", tier_name, exc_info=True)
 
         # Every 10 steps: pattern archaeology stacking detection
+        _shm_sensing = getattr(ctx, "system_health_monitor", None)
         if step % 10 == 0 and getattr(ctx, "pattern_watcher", None) is not None:
             try:
                 # Build active signals from convergence alerter's signal buffer
@@ -1574,6 +1591,8 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
                     if _active:
                         _stacks = ctx.pattern_watcher.check(_active)
                         ctx._cached_pattern_stacks = _stacks or []
+                        if _shm_sensing:
+                            _shm_sensing.record_success("pattern_watcher")
                         # Register stacks for outcome tracking (Thompson feedback)
                         # + write plain-language alerts
                         _oc = getattr(ctx, "outcome_collector", None)
