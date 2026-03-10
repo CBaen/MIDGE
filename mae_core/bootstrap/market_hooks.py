@@ -550,16 +550,21 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
         from mae_core.market.channels import CH_SIGNAL_INGESTED, CH_CONVERGENCE
 
         def _on_signal_cascade_check(channel, data):
+            _shm_ct = getattr(ctx, "system_health_monitor", None)
             try:
                 msg = data if isinstance(data, dict) else {}
                 ticker = msg.get("symbol", "") or msg.get("metadata", {}).get("symbol", "")
                 direction = msg.get("direction", "")
                 if ticker and direction in ("bullish", "bearish"):
                     cascade_tracker.check_signal(ticker, direction)
-            except Exception:
-                pass
+                    if _shm_ct:
+                        _shm_ct.record_success("cascade_tracker")
+            except Exception as exc:
+                if _shm_ct:
+                    _shm_ct.record_error("cascade_tracker", exc)
 
         def _on_convergence_register_cascade(channel, data):
+            _shm_ct = getattr(ctx, "system_health_monitor", None)
             try:
                 msg = data if isinstance(data, dict) else {}
                 alert_id = msg.get("alert_id", "")
@@ -581,8 +586,9 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
                     cascade_tracker.register_cascade(
                         alert_id, trigger, ripples, msg.get("direction", "neutral"),
                     )
-            except Exception:
-                pass
+            except Exception as exc:
+                if _shm_ct:
+                    _shm_ct.record_error("cascade_tracker", exc)
 
         ctx.bus.register_callback(CH_SIGNAL_INGESTED, _on_signal_cascade_check)
         ctx.bus.register_callback(CH_CONVERGENCE, _on_convergence_register_cascade)
@@ -1488,7 +1494,22 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
         """Wrap the sensing hook step to also update the market advisory."""
         _sensing_step_counter[0] += 1
         step = _sensing_step_counter[0]
-        original_step()
+        _shm = getattr(ctx, "system_health_monitor", None)
+        try:
+            original_step()
+            if _shm:
+                _shm.record_success("sensing")
+            # outcome_evaluation runs inside original_step() on a 200-step cadence.
+            # Record a success proxy on the same cadence so the health tier reflects
+            # that outcome evaluation is functioning whenever sensing succeeds.
+            if _shm and step % 200 == 0:
+                _shm.record_success("outcome_evaluation")
+        except Exception as exc:
+            logger.debug("Sensing hook step failed", exc_info=True)
+            if _shm:
+                _shm.record_error("sensing", exc)
+                if step % 200 == 0:
+                    _shm.record_error("outcome_evaluation", exc)
 
         # Reuse cached convergence alerts (written by _market_sense_hook)
         alerts = ctx._cached_alerts[0] or []
@@ -1646,8 +1667,10 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
                                             _at.register(_stack, _entry)
                                     except Exception:
                                         logger.debug("Active tracker registration failed", exc_info=True)
-            except Exception:
+            except Exception as exc:
                 logger.debug("Pattern watcher check failed", exc_info=True)
+                if _shm_sensing:
+                    _shm_sensing.record_error("pattern_watcher", exc)
 
         # Active tracker price check (every 20 steps)
         _at = getattr(ctx, "active_tracker", None)
