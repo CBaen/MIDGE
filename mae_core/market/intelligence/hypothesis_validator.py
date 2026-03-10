@@ -23,11 +23,8 @@ Retirement triggers (any one):
 
 from __future__ import annotations
 
-import json
 import logging
-import math
 from dataclasses import dataclass
-from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Optional
 
@@ -36,6 +33,17 @@ from mae_core.market.intelligence.hypothesis import (
     HypothesisStats,
     HypothesisStatus,
     SourceType,
+)
+from mae_core.market.intelligence.hypothesis_dsr import (  # noqa: F401
+    compute_sharpe,
+    compute_dsr,
+    load_dsr_trials,
+    save_dsr_trials,
+)
+from mae_core.market.intelligence.hypothesis_event_search import (  # noqa: F401
+    find_trigger_events,
+    find_composite_trigger_events,
+    check_event_outcome,
 )
 
 logger = logging.getLogger(__name__)
@@ -119,7 +127,7 @@ class HypothesisValidator:
         # Global DSR counter — tracks total hypotheses ever tested
         # Persisted so it survives restarts
         self._dsr_state_path = self._data_dir / "dsr_state.json"
-        self._dsr_trials_tracked = self._load_dsr_trials()
+        self._dsr_trials_tracked = load_dsr_trials(self._dsr_state_path)
 
     def validate(
         self,
@@ -140,7 +148,7 @@ class HypothesisValidator:
         """
         # Increment global trial counter
         self._dsr_trials_tracked += 1
-        self._save_dsr_trials()
+        save_dsr_trials(self._dsr_state_path, self._data_dir, self._dsr_trials_tracked)
 
         # BACKTEST_DERIVED hypotheses have pre-computed stats from
         # historical trades. Use them directly — the backtest IS the evidence.
@@ -150,12 +158,12 @@ class HypothesisValidator:
         # Find historical trigger events — composite hypotheses require both sources
         is_composite = bool(hypothesis.trigger.conjunct_source)
         if is_composite:
-            trigger_events = self._find_composite_trigger_events(
-                hypothesis, lookback_days
+            trigger_events = find_composite_trigger_events(
+                hypothesis, self._signals_dir, lookback_days
             )
         else:
-            trigger_events = self._find_trigger_events(
-                hypothesis, lookback_days
+            trigger_events = find_trigger_events(
+                hypothesis, self._signals_dir, lookback_days
             )
 
         if not trigger_events:
@@ -169,7 +177,7 @@ class HypothesisValidator:
         returns = []
 
         for event in trigger_events:
-            outcome = self._check_event_outcome(event, hypothesis)
+            outcome = check_event_outcome(event, hypothesis, self._outcomes_path)
             if outcome is None:
                 continue
 
@@ -187,8 +195,8 @@ class HypothesisValidator:
             )
 
         win_rate = wins / total
-        sharpe = self._compute_sharpe(returns)
-        dsr = self._compute_dsr(sharpe, total)
+        sharpe = compute_sharpe(returns)
+        dsr = compute_dsr(sharpe, total, self._dsr_trials_tracked)
 
         # Promotion/retirement decisions
         has_real_causal_story = (
@@ -216,7 +224,9 @@ class HypothesisValidator:
         # Causal engine confounding check — if the correlation is likely
         # driven by a hidden confounder, tighten the promotion gate.
         _confounded = False
-        if self._causal_engine is not None and hypothesis.trigger.source_a and hypothesis.trigger.source_b:
+        if (self._causal_engine is not None
+                and hypothesis.trigger.source_a
+                and hypothesis.trigger.source_b):
             try:
                 result = self._causal_engine.query_causation(
                     hypothesis.trigger.source_a,
@@ -251,7 +261,10 @@ class HypothesisValidator:
                 retire_reason = f"Win rate {win_rate:.3f} < {_rwr} after {total} obs"
             elif dsr < _rdsr:
                 recommend_retire = True
-                retire_reason = f"DSR {dsr:.3f} < {_rdsr} after {total} obs (multiple testing penalty)"
+                retire_reason = (
+                    f"DSR {dsr:.3f} < {_rdsr} after {total} obs "
+                    f"(multiple testing penalty)"
+                )
 
         result = ValidationResult(
             hypothesis_id=hypothesis.hypothesis_id,
@@ -299,7 +312,7 @@ class HypothesisValidator:
 
         win_rate = wins / total
         sharpe = hypothesis.stats.sharpe_ratio
-        dsr = self._compute_dsr(sharpe, total)
+        dsr = compute_dsr(sharpe, total, self._dsr_trials_tracked)
 
         has_real_causal_story = (
             hypothesis.causal_story
@@ -359,295 +372,29 @@ class HypothesisValidator:
 
         return result
 
-    def _find_trigger_events(
-        self,
-        hypothesis: Hypothesis,
-        lookback_days: int,
-    ) -> List[dict]:
-        """Find historical instances where source_a fired.
+    # ── Private method aliases for backward compatibility ──────────────
+    # Some tests may call these as instance methods via the validator object.
 
-        Scans signal archive JSONL files for signals matching
-        hypothesis.trigger.source_a within lookback window.
-        """
-        cutoff = datetime.now() - timedelta(days=lookback_days)
-        events = []
+    def _find_trigger_events(self, hypothesis, lookback_days: int) -> list:
+        return find_trigger_events(hypothesis, self._signals_dir, lookback_days)
 
-        if not self._signals_dir.exists():
-            return events
+    def _find_composite_trigger_events(self, hypothesis, lookback_days: int) -> list:
+        return find_composite_trigger_events(hypothesis, self._signals_dir, lookback_days)
 
-        for jsonl_file in sorted(self._signals_dir.glob("*.jsonl")):
-            try:
-                with open(jsonl_file) as f:
-                    for line in f:
-                        line = line.strip()
-                        if not line:
-                            continue
-                        try:
-                            record = json.loads(line)
-                        except json.JSONDecodeError:
-                            continue
-
-                        source = record.get("source", "")
-                        if source != hypothesis.trigger.source_a:
-                            continue
-
-                        ts_str = record.get("timestamp", "")
-                        if not ts_str:
-                            continue
-                        try:
-                            ts = datetime.fromisoformat(ts_str)
-                        except ValueError:
-                            continue
-
-                        if ts < cutoff:
-                            continue
-
-                        events.append(record)
-            except Exception:
-                continue
-
-        return events
-
-    def _find_composite_trigger_events(
-        self,
-        hypothesis: Hypothesis,
-        lookback_days: int,
-    ) -> List[dict]:
-        """Find historical instances where BOTH source_a AND conjunct_source fired.
-
-        For each source_a event, checks whether conjunct_source also fired
-        within ± lag_days/2 of the source_a event. Only events where both
-        conditions are met are returned.
-
-        This ensures composite hypotheses are validated against co-firing
-        patterns, not just single-source events.
-        """
-        cutoff = datetime.now() - timedelta(days=lookback_days)
-
-        # First pass: collect all source_a events
-        source_a_events = self._find_trigger_events(hypothesis, lookback_days)
-        if not source_a_events:
-            return []
-
-        # Second pass: collect all conjunct_source events for window matching
-        conjunct_source = hypothesis.trigger.conjunct_source
-        lag = hypothesis.trigger.lag_days
-        half_window = timedelta(days=max(1, lag // 2))
-
-        conjunct_events: List[dict] = []
-        if self._signals_dir.exists():
-            for jsonl_file in sorted(self._signals_dir.glob("*.jsonl")):
-                try:
-                    with open(jsonl_file) as f:
-                        for line in f:
-                            line = line.strip()
-                            if not line:
-                                continue
-                            try:
-                                record = json.loads(line)
-                            except json.JSONDecodeError:
-                                continue
-
-                            if record.get("source", "") != conjunct_source:
-                                continue
-
-                            ts_str = record.get("timestamp", "")
-                            if not ts_str:
-                                continue
-                            try:
-                                ts = datetime.fromisoformat(ts_str)
-                            except ValueError:
-                                continue
-
-                            if ts < cutoff:
-                                continue
-
-                            conjunct_events.append(record)
-                except Exception:
-                    continue
-
-        if not conjunct_events:
-            return []
-
-        # Third pass: keep only source_a events that have a matching conjunct event
-        matched_events = []
-        for event_a in source_a_events:
-            ts_a_str = event_a.get("timestamp", "")
-            if not ts_a_str:
-                continue
-            try:
-                ts_a = datetime.fromisoformat(ts_a_str)
-            except ValueError:
-                continue
-
-            symbol_a = event_a.get("symbol", "")
-            window_start = ts_a - half_window
-            window_end = ts_a + half_window
-
-            for event_c in conjunct_events:
-                # Symbol must match if source_a had a symbol
-                if symbol_a and event_c.get("symbol", "") != symbol_a:
-                    continue
-
-                ts_c_str = event_c.get("timestamp", "")
-                if not ts_c_str:
-                    continue
-                try:
-                    ts_c = datetime.fromisoformat(ts_c_str)
-                except ValueError:
-                    continue
-
-                if window_start <= ts_c <= window_end:
-                    matched_events.append(event_a)
-                    break  # One conjunct match per source_a event is enough
-
-        return matched_events
-
-    def _check_event_outcome(
-        self,
-        trigger_event: dict,
-        hypothesis: Hypothesis,
-    ) -> Optional[tuple]:
-        """Check if a trigger event resulted in a successful prediction.
-
-        Looks for outcome records in outcomes.jsonl where the source matches
-        hypothesis.trigger.source_b and the timing aligns with the lag window.
-
-        Returns (pct_return, success) or None if no matching outcome found.
-        """
-        trigger_ts_str = trigger_event.get("timestamp", "")
-        if not trigger_ts_str:
-            return None
-        try:
-            trigger_ts = datetime.fromisoformat(trigger_ts_str)
-        except ValueError:
-            return None
-
-        trigger_symbol = trigger_event.get("symbol", "")
-        lag = hypothesis.trigger.lag_days
-        expected_outcome_start = trigger_ts + timedelta(days=max(1, lag - 10))
-        expected_outcome_end = trigger_ts + timedelta(days=lag + 10)
-
-        if not self._outcomes_path.exists():
-            return None
-
-        try:
-            with open(self._outcomes_path) as f:
-                for line in f:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        outcome = json.loads(line)
-                    except json.JSONDecodeError:
-                        continue
-
-                    outcome_source = outcome.get("source", "")
-                    if outcome_source != hypothesis.trigger.source_b:
-                        continue
-
-                    # Symbol match (if trigger had a symbol)
-                    if trigger_symbol and outcome.get("symbol", "") != trigger_symbol:
-                        continue
-
-                    predicted_at_str = outcome.get("predicted_at", "")
-                    if not predicted_at_str:
-                        continue
-                    try:
-                        predicted_at = datetime.fromisoformat(predicted_at_str)
-                    except ValueError:
-                        continue
-
-                    if expected_outcome_start <= predicted_at <= expected_outcome_end:
-                        pct = outcome.get("price_change_pct", 0.0)
-                        success = outcome.get("success", False)
-
-                        # Adjust for hypothesis direction
-                        if hypothesis.trigger.direction == "negative":
-                            # Negative correlation: source_a up → source_b down
-                            direction_match = pct < 0
-                        elif hypothesis.trigger.direction == "positive":
-                            direction_match = pct > 0
-                        else:
-                            direction_match = True
-
-                        return (pct, success and direction_match)
-        except Exception:
-            pass
-
-        return None
+    def _check_event_outcome(self, trigger_event: dict, hypothesis) -> Optional[tuple]:
+        return check_event_outcome(trigger_event, hypothesis, self._outcomes_path)
 
     def _compute_sharpe(self, returns: List[float]) -> float:
-        """Compute annualized Sharpe ratio from returns series."""
-        if len(returns) < 2:
-            return 0.0
-
-        mean_r = sum(returns) / len(returns)
-        variance = sum((r - mean_r) ** 2 for r in returns) / (len(returns) - 1)
-        std_r = math.sqrt(variance) if variance > 0 else 1e-10
-
-        # Annualize: assume ~12 observations per year (monthly-ish cadence)
-        return (mean_r / std_r) * math.sqrt(12)
+        return compute_sharpe(returns)
 
     def _compute_dsr(self, sharpe: float, n_obs: int) -> float:
-        """Compute Deflated Sharpe Ratio (Bailey & Lopez de Prado 2014).
-
-        DSR adjusts the observed Sharpe ratio for the number of independent
-        trials (hypotheses tested). The more you test, the higher the bar.
-
-        DSR = SR * sqrt(n) / sqrt(1 + (SR^2/2) * ((gamma_3 * SR / 3) + ((gamma_4 - 3) / 4)))
-              adjusted by E[max(SR)] over M trials
-
-        Simplified approximation used here:
-            E[max(SR)] ≈ sqrt(2 * log(M)) * (1 - gamma / (2 * log(M)))
-            where M = dsr_trials_tracked, gamma = Euler-Mascheroni constant
-
-        The DSR penalizes the observed Sharpe by the expected maximum Sharpe
-        you'd get from M random strategies.
-        """
-        if n_obs < 2 or self._dsr_trials_tracked < 1:
-            return 0.0
-
-        M = max(1, self._dsr_trials_tracked)
-
-        # Expected maximum Sharpe from M random trials
-        # (Bonferroni-style approximation)
-        euler_gamma = 0.5772156649
-        log_M = math.log(max(2, M))
-        e_max_sr = math.sqrt(2 * log_M) * (1 - euler_gamma / (2 * log_M))
-
-        # Standard error of the Sharpe ratio
-        se_sr = math.sqrt((1 + 0.5 * sharpe ** 2) / max(1, n_obs))
-
-        # DSR = P(SR > E[max(SR)]) approximated as z-score
-        if se_sr < 1e-10:
-            return 0.0
-
-        dsr = (sharpe - e_max_sr) / se_sr
-        return dsr
-
-    # ── Persistence ─────────────────────────────────────────────────
+        return compute_dsr(sharpe, n_obs, self._dsr_trials_tracked)
 
     def _load_dsr_trials(self) -> int:
-        """Load global DSR trial counter."""
-        if self._dsr_state_path.exists():
-            try:
-                data = json.loads(self._dsr_state_path.read_text())
-                return data.get("trials_tracked", 0)
-            except (json.JSONDecodeError, Exception):
-                pass
-        return 0
+        return load_dsr_trials(self._dsr_state_path)
 
     def _save_dsr_trials(self) -> None:
-        """Persist global DSR trial counter."""
-        self._data_dir.mkdir(parents=True, exist_ok=True)
-        try:
-            self._dsr_state_path.write_text(json.dumps({
-                "trials_tracked": self._dsr_trials_tracked,
-                "last_updated": datetime.now().isoformat(),
-            }))
-        except Exception as e:
-            logger.warning("Failed to persist DSR state: %s", e)
+        save_dsr_trials(self._dsr_state_path, self._data_dir, self._dsr_trials_tracked)
 
     def get_statistics(self) -> dict:
         """Summary stats for monitoring."""
