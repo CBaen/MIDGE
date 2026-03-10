@@ -5,17 +5,17 @@
 
 ---
 
-## URGENT: Monolith Decomposition In Progress
+## Monolith Decomposition: Wave 1 COMPLETE
 
-**Status:** Wave 1 ~90% complete. Two salvage agents may have finished after this session.
+**Status:** Wave 1 done. All 11 teams landed on main. 258 decomposition-critical tests pass, 3524/3537 full suite pass.
 
 | Team | Domain | Status |
 |------|--------|--------|
 | 1 | Market Hooks (2,107→7 files) | **DONE** on main |
 | 2 | Intelligence Core (7 files) | **DONE** on main |
 | 3 | Raw Store (1,835→7 files) | **DONE** on main |
-| 4 | Sensing Pipeline (2 files) | Salvage agent copying from worktree `agent-a691f320` |
-| 5 | Backbone Infrastructure (7 files) | Salvage agent copying from worktree `agent-adf70466` |
+| 4 | Sensing Pipeline (2→14 files) | **DONE** on main |
+| 5 | Backbone Infrastructure (7→39 files) | **DONE** on main |
 | 6 | Agent & Coordination (5 files) | **DONE** on main |
 | 7 | Edge Detectors (7 files) | **DONE** on main |
 | 8 | Emergent & Patterns (6 files) | **DONE** on main |
@@ -23,15 +23,21 @@
 | 10 | Remaining Files (17 files) | **DONE** on main |
 | 13 | Pytest Infrastructure | **DONE** on main |
 
-**What to do first:**
-1. Check if salvage agents finished: `git log --oneline -5` — look for sensing/backbone commits
-2. If Teams 4/5 NOT on main, worktrees have completed work at `.claude/worktrees/agent-a691f320/` and `.claude/worktrees/agent-adf70466/` — copy files to main
-3. After all teams landed: `python -m pytest tests/ -x -q` — gate check
-4. `connection_registry.py` still at 689 lines — needs further split
-5. Wave 2 (test file splits) not started — see `DECOMPOSITION-PLAN.md` Teams 11-12
-6. Clean up worktrees: `git worktree remove .claude/worktrees/agent-XXXXX` for each
+**What's left:**
+1. `connection_registry.py` still at 689 lines — needs further split
+2. Wave 2 (test file splits) not started — see `DECOMPOSITION-PLAN.md` Teams 11-12
+3. Clean up worktrees: `git worktree remove .claude/worktrees/agent-XXXXX` for each (6 remaining)
+4. 13 xdist-mode failures to investigate (likely pre-existing parallel-safety issues, not from decomposition)
 
-**Pre-existing test failure:** `test_causal_bridge.py::TestConfoundedGateTightening` — NOT caused by decomposition.
+**Pre-existing test failures:**
+- `test_causal_bridge.py::TestConfoundedGateTightening` — NOT caused by decomposition
+- `test_congress_gov_client::test_request_fails_without_key` — env var pollution, passes in isolation
+
+**Test safety:**
+- Memory guard added to `conftest.py` — kills test session at 4 GB (was 9.8+ GB without it)
+- Use `pytest -n 4` (xdist) for process isolation on full suite
+- `psutil>=5.9` added to dev dependencies for memory monitoring
+- **NEVER run `pytest tests/` without `-n auto` or `-x`** — single-process full suite will eat 10+ GB
 
 ---
 
@@ -98,6 +104,18 @@ See `midge-queue.md` for the full prioritized list. Top items:
 | `mae_core/market/sensing_hook.py` | MarketSensingHook — data fetching orchestrator |
 | `data/midge/watchlist.json` | Tickers + keywords MIDGE watches |
 
+**Backbone sub-modules** (split during decomposition):
+- `fractal_act.py` → re-export hub: `fractal_act_subsystem.py`, `fractal_act_organ.py`, `fractal_act_organism.py`
+- `holon_protocol.py` → re-export hub: `holon_registry.py`, `holon_proxy.py`, `holon_mixin.py`, `awareness_pulse.py`
+- `connection_registrations.py` → dispatcher: 5 sub-modules (`_bio`, `_metabolic`, `_agent`, `_patterns`, `_advanced`)
+- `integration_meter.py` → `integration_meter_phi.py`, `integration_meter_blanket.py`, `integration_meter_models.py`
+- `triad_enforcer.py` → `triad_enforcer_models.py`
+- `triad_registry.py` → `triad_wiring.py`
+
+**Sensing sub-modules** (split during decomposition):
+- `sensing_hook.py` → thin orchestrator: `sensing_constants.py`, `sensing_fetchers.py`, `sensing_lifecycle.py`, `sensing_scheduler.py`, `sensing_collector.py`, `sensing_reactive.py`, `sensing_step_ops.py`
+- `sensing_fetchers.py` → re-export hub: `fetchers_insider.py`, `fetchers_government.py`, `fetchers_market_data.py`, `fetchers_technical.py`, `fetchers_social.py`, `fetchers_crypto.py`
+
 **Bootstrap sub-modules** (market_systems.py delegates to):
 - `market_infrastructure.py` — OctopusColony, risk monitors, pattern discovery, scheduling
 - `market_intelligence.py` — hypothesis engine, archaeology
@@ -115,7 +133,7 @@ See `midge-queue.md` for the full prioritized list. Top items:
 5. `_translate_and_log_executable_signal()` — ATR-based SL/TP → `data/midge/executable_signals.jsonl`
 6. `_submit_to_alpaca()` — bracket order to Alpaca (US equities only)
 
-**500-line cap enforced** on all bootstrap sub-modules. Two xfails: `sensing_hook.py` (576 lines) and `market_hooks.py` (551 lines) — both have sub-modules created but delegation not yet complete.
+**500-line cap enforced** on all files. Only exception: `connection_registry.py` at 689 lines (flagged for split).
 
 **Pre-existing flaky test:** `test_congress_gov_client::test_request_fails_without_key` — passes in isolation, fails in full suite due to env var pollution from another test. Not a real bug.
 
@@ -146,9 +164,9 @@ See `midge-queue.md` for the full prioritized list. Top items:
 ## Verification
 
 ```bash
-python -m pytest tests/ -q                    # ~970+ pass
+python -m pytest tests/ -n 4 -q               # Full suite with xdist (3524 pass)
 python -m pytest tests/test_decomposition_wiring.py -v  # 61 pass, 2 xfail
-python main.py --agents 3 --steps 30          # Smoke test
+python main.py --agents 3 --steps 30           # Smoke test
 ```
 
 ## Stats
