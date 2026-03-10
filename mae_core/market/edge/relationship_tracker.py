@@ -11,11 +11,6 @@ from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict, field
 from typing import List, Dict, Optional
 
-from mae_core.market.edge.cluster_detector import (
-    ClusterSignal, InsiderRelationship,
-    QDRANT_URL, SIGNALS_COLLECTION, OLLAMA_URL,
-)
-
 logger = logging.getLogger(__name__)
 
 

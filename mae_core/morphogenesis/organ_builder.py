@@ -16,6 +16,9 @@ which types), topology (how they connect), and coordination protocol
 Agent spawning: Uses Mesa 3.4 dynamic agent creation. Agents are
 created via the model and auto-registered, then connected through
 substrate topology.
+
+Sub-modules:
+  organ_builder_design.py — design_organ() and on_system_senescent() helpers
 """
 
 from __future__ import annotations
@@ -28,10 +31,13 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Optional
 
-logger = logging.getLogger(__name__)
+from mae_core.morphogenesis.organ_builder_design import (
+    design_organ as _design_organ_fn,
+    on_system_senescent as _on_system_senescent_fn,
+    CH_REBUILD_REQUESTED,
+)
 
-# Channel published by OrganBuilder
-CH_REBUILD_REQUESTED = "morphogenesis.rebuild_requested"
+logger = logging.getLogger(__name__)
 
 
 class OrganStatus(Enum):
