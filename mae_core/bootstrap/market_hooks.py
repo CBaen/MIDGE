@@ -311,6 +311,90 @@ def _write_paper_trade(alert, ctx: SimpleNamespace) -> None:
         logger.debug("_write_paper_trade failed", exc_info=True)
 
 
+def _translate_and_log_executable_signal(alert, ctx: SimpleNamespace) -> None:
+    """Translate a ConvergenceAlert into an ExecutableSignal and append it to
+    data/midge/executable_signals.jsonl.
+
+    This runs AFTER _write_paper_trade so it never blocks the existing paper-
+    trade path.  All errors are swallowed -- failure here must never cascade.
+
+    Pipeline:
+      1. Resolve the ticker from alert.signals (same logic as _write_paper_trade).
+      2. Fetch current price via ctx.price_fetcher (if available).
+      3. Fetch 30 days of daily OHLCV from price_fetcher.get_daily_history().
+      4. Compute 14-period ATR from those bars (compute_atr from ta_indicators).
+      5. Call translate_alert() -> ExecutableSignal.
+      6. Append JSON line to data/midge/executable_signals.jsonl.
+    """
+    try:
+        from mae_core.market.execution.signal_translator import translate_alert
+        from mae_core.market.edge.ta_indicators import compute_atr
+
+        # --- Resolve ticker (mirrors _write_paper_trade logic) ---
+        ticker = "MULTI"
+        for sig in getattr(alert, "signals", []):
+            sym = getattr(sig, "metadata", {}).get("symbol", "")
+            if sym:
+                ticker = sym
+                break
+
+        if ticker == "MULTI":
+            logger.debug("_translate_and_log: no ticker resolved -- skipping")
+            return
+
+        # --- Current price ---
+        price_fetcher = getattr(ctx, "price_fetcher", None)
+        if price_fetcher is None:
+            logger.debug("_translate_and_log: no price_fetcher on ctx -- skipping")
+            return
+
+        price_data = price_fetcher.get_current_price(ticker)
+        if not price_data or not price_data.price:
+            logger.debug("_translate_and_log: could not fetch price for %s", ticker)
+            return
+
+        current_price = float(price_data.price)
+
+        # --- ATR from daily history ---
+        history = price_fetcher.get_daily_history(ticker, days=30)
+        atr = 0.0
+        if len(history) >= 15:
+            highs  = [p.high  for p in history]
+            lows   = [p.low   for p in history]
+            closes = [p.price for p in history]
+            atr = compute_atr(highs, lows, closes, period=14)
+
+        if atr <= 0:
+            logger.debug("_translate_and_log: ATR unavailable for %s -- skipping", ticker)
+            return
+
+        # --- Translate ---
+        alert_dict = alert.to_dict() if hasattr(alert, "to_dict") else {}
+        # Ensure signals list present for ticker re-resolution inside translate_alert
+        if not alert_dict.get("signals"):
+            alert_dict["signals"] = [{"metadata": {"symbol": ticker}}]
+
+        signal = translate_alert(alert_dict, current_price, atr)
+        if signal is None:
+            return
+
+        # --- Persist ---
+        out_path = Path("data/midge/executable_signals.jsonl")
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(out_path, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(signal.to_dict()) + "\n")
+
+        logger.info(
+            "Executable signal: %s %s entry=%.4f SL=%.4f TP=%.4f RR=%.2f pos=%.2f%%",
+            signal.direction.upper(), signal.ticker,
+            signal.entry_price, signal.stop_loss, signal.take_profit,
+            signal.rr_ratio, signal.position_size_pct * 100,
+        )
+
+    except Exception:
+        logger.debug("_translate_and_log_executable_signal failed", exc_info=True)
+
+
 def _register_market_eventbus(ctx: SimpleNamespace) -> None:
     """Wire EventBus channels — endocrine coupling for convergence alerts."""
     from mae_core.market.channels import CH_CONVERGENCE
@@ -1610,8 +1694,10 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
                                         logger.warning("Paper trade BLOCKED — behavioral anomaly detected: %s", _sm._anomaly_flags)
                                     else:
                                         _write_paper_trade(alert, ctx)
+                                        _translate_and_log_executable_signal(alert, ctx)
                                 else:
                                     _write_paper_trade(alert, ctx)
+                                    _translate_and_log_executable_signal(alert, ctx)
             except Exception:
                 logger.debug("Paper trading gate failed", exc_info=True)
 
