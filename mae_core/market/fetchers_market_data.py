@@ -30,6 +30,24 @@ def fetch_fred(fred: Any, converter: Callable) -> list:
     return signals
 
 
+def fetch_fred_yields(fred: Any, converter: Callable) -> list:
+    """Fetch forex-critical FRED yield curve and dollar index series."""
+    if fred is None:
+        return []
+
+    signals = []
+    try:
+        snapshot = fred.get_yield_curves_and_dollar()
+        for indicator in snapshot:
+            try:
+                signals.append(converter(indicator))
+            except Exception:
+                pass
+    except Exception as e:
+        logger.debug("FRED yields fetch failed: %s", e)
+    return signals
+
+
 def fetch_cot(cot_client: Any, watchlist: dict, converter: Callable) -> list:
     """Fetch CFTC Commitments of Traders for futures watchlist."""
     if cot_client is None:
