@@ -278,7 +278,15 @@ def _run_synergy_detection(ctx: SimpleNamespace) -> None:
         logger.debug("Synergy detection failed", exc_info=True)
 
 
-def _build_sensing_infrastructure(ctx: SimpleNamespace):
+# Infrastructure setup and OctopusColony wiring live in the setup module
+# to keep this file under 500 lines.
+from mae_core.bootstrap.market_hooks_sensing_setup import (  # noqa: E402
+    _build_sensing_infrastructure,
+    _wire_octopus_colony,
+)
+
+
+def _REMOVED_build_sensing_infrastructure(ctx: SimpleNamespace):
     """Build OutcomeCollector, SignalMemory, form8k_sentiment, market_clock,
     tiered alerters, and MarketSensingHook.
 

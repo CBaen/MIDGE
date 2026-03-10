@@ -11,6 +11,9 @@ Repeated prefrontal decisions form new habits automatically.
 
 Biological analogy: Spinal cord → basal ganglia → prefrontal cortex.
 Based on: Kahneman (2011) "Thinking Fast and Slow", dual-process theory.
+
+Sub-modules:
+  decision_reflexes.py — reflex/habit check, registration, habit formation
 """
 
 from __future__ import annotations
@@ -24,6 +27,13 @@ from enum import Enum
 from typing import Any, Optional
 
 import numpy as np
+
+from mae_core.cognition.decision_reflexes import (
+    register_default_reflexes as _register_default_reflexes_fn,
+    check_reflex as _check_reflex_fn,
+    check_habit as _check_habit_fn,
+    track_for_habit_formation as _track_for_habit_formation_fn,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -390,60 +400,12 @@ class DecisionRouter:
     def _check_reflex(
         self, stimulus: str, bias: float = 0.0
     ) -> ReflexPattern | None:
-        """Check if stimulus matches any reflex pattern.
-
-        Args:
-            stimulus: The input stimulus string.
-            bias: Reflex bias (0.0-1.0). When > 0.5, enables fuzzy
-                matching: any word in the stimulus that shares a
-                common prefix (length proportional to bias) with a
-                reflex pattern counts as a match.  This models how
-                adrenaline makes the nervous system hypersensitive -
-                ambiguous signals are more likely to trigger reflexes.
-        """
-        stimulus_lower = stimulus.lower()
-        with self._lock:
-            # Check exact/substring matches first (always)
-            for pattern in sorted(
-                self._reflex_patterns.values(),
-                key=lambda p: p.priority,
-                reverse=True,
-            ):
-                if pattern.stimulus_pattern in stimulus_lower:
-                    return pattern
-
-            # Fuzzy matching only when bias is elevated
-            if bias > 0.5:
-                # Minimum prefix length decreases as bias rises:
-                #   bias 0.5 → min_prefix = full pattern length (no fuzz)
-                #   bias 1.0 → min_prefix = 3 chars
-                stimulus_words = stimulus_lower.split()
-                for pattern in sorted(
-                    self._reflex_patterns.values(),
-                    key=lambda p: p.priority,
-                    reverse=True,
-                ):
-                    pat = pattern.stimulus_pattern.lower()
-                    # Scale: at bias=1.0 require only 5 chars; at bias=0.5 require full length
-                    # Floor of 5 prevents overly broad matching ("dan" -> "danger" AND "dance")
-                    min_prefix = max(5, int(len(pat) * (1.0 - (bias - 0.5) * 2)))
-                    min_prefix = min(min_prefix, len(pat))
-                    prefix = pat[:min_prefix]
-                    for word in stimulus_words:
-                        if word.startswith(prefix) or prefix in word:
-                            return pattern
-        return None
+        """Check if stimulus matches any reflex pattern."""
+        return _check_reflex_fn(self, stimulus, bias)
 
     def _check_habit(self, stimulus: str) -> Habit | None:
         """Check if stimulus has a learned habit."""
-        with self._lock:
-            habit_id = self._habit_lookup.get(stimulus)
-            if habit_id and habit_id in self._habits:
-                habit = self._habits[habit_id]
-                # Only fire if strength is above threshold
-                if habit.strength >= 0.3:
-                    return habit
-        return None
+        return _check_habit_fn(self, stimulus)
 
     def _invoke_prefrontal(
         self,
@@ -518,27 +480,7 @@ class DecisionRouter:
 
     def _track_for_habit_formation(self, stimulus: str, action: Any) -> None:
         """Track prefrontal decisions for automatic habit formation."""
-        with self._lock:
-            seq = self._prefrontal_sequences[stimulus]
-            seq.append(action)
-
-            if len(seq) >= self._habit_threshold:
-                # Check if actions are consistent
-                action_strs = [str(a) for a in seq[-self._habit_threshold:]]
-                if len(set(action_strs)) == 1:
-                    # Consistent action → form habit
-                    habit_id = f"auto-habit-{self._habits_formed}"
-                    habit = Habit(
-                        habit_id=habit_id,
-                        stimulus=stimulus,
-                        action=action,
-                        strength=0.5,
-                    )
-                    self._habits[habit_id] = habit
-                    self._habit_lookup[stimulus] = habit_id
-                    self._habits_formed += 1
-                    self._prefrontal_sequences.pop(stimulus, None)
-                    logger.info("Habit formed: %s for stimulus '%s'", habit_id, stimulus)
+        _track_for_habit_formation_fn(self, stimulus, action)
 
     def _create_decision(
         self,
@@ -589,13 +531,7 @@ class DecisionRouter:
 
     def _register_default_reflexes(self) -> None:
         """Register built-in survival reflexes."""
-        defaults = [
-            ReflexPattern("danger", "danger", {"type": "flee"}, 0.99, 10),
-            ReflexPattern("threat", "threat", {"type": "alert"}, 0.95, 9),
-            ReflexPattern("collision", "collision", {"type": "avoid"}, 0.98, 10),
-        ]
-        for pattern in defaults:
-            self._reflex_patterns[pattern.pattern_id] = pattern
+        _register_default_reflexes_fn(self)
 
     def __repr__(self) -> str:
         return (
