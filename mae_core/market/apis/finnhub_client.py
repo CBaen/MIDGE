@@ -11,16 +11,35 @@ Auth: ?token={API_KEY} query parameter (env var: MAE_FINNHUB_API_KEY)
 Signals produced:
   - NewsSentiment: bullish/bearish percentages + buzz score for a ticker
   - EarningsEvent:  upcoming or recently-reported earnings with EPS/revenue
+
+Sub-modules:
+  finnhub_models.py  — dataclasses (NewsSentiment, EconomicEvent, AnalystRec, EarningsEvent)
+  finnhub_parsers.py — static parser functions for each Finnhub endpoint
 """
 
 import os
 import time
 import logging
-from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Tuple
 
 import requests
+
+# Re-export models so all existing imports continue to work
+from mae_core.market.apis.finnhub_models import (
+    NewsSentiment,
+    EconomicEvent,
+    AnalystRec,
+    EarningsEvent,
+)
+
+# Re-export parsers (used internally and by tests)
+from mae_core.market.apis.finnhub_parsers import (
+    parse_sentiment as _parse_sentiment_fn,
+    parse_earnings_calendar as _parse_earnings_calendar_fn,
+    parse_economic_calendar as _parse_economic_calendar_fn,
+    parse_analyst_recommendations as _parse_analyst_recommendations_fn,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -31,164 +50,6 @@ REQUEST_DELAY = 1.0  # seconds between calls
 # Cache TTLs
 SENTIMENT_CACHE_TTL = 15 * 60   # 15 minutes — news changes quickly
 EARNINGS_CACHE_TTL  = 60 * 60   # 1 hour — calendar updates infrequently
-
-
-# ---------------------------------------------------------------------------
-# Dataclasses
-# ---------------------------------------------------------------------------
-
-@dataclass
-class NewsSentiment:
-    """
-    News sentiment snapshot for a single ticker from Finnhub.
-
-    buzz_score = articles_in_last_week / weekly_average
-    Values > 1.0 mean above-average coverage volume.
-    """
-    ticker: str
-    bullish_pct: float          # 0.0 – 1.0  (e.g. 0.65 = 65% bullish)
-    bearish_pct: float          # 0.0 – 1.0
-    news_score: float           # Finnhub's companyNewsScore (0–1)
-    buzz_score: float           # articles_in_last_week / weekly_average
-    detected_at: str            # ISO-8601 timestamp when we fetched this
-    signal_source: str = "finnhub_news"
-    decay_rate: float = 0.20    # ~3-day half-life; sentiment fades fast
-    confidence: float = 0.50    # Base confidence before Bayesian update
-
-    def to_plain_language(self) -> str:
-        """Format for dashboard display."""
-        buzz_label = "above-average" if self.buzz_score > 1.0 else "below-average"
-        sentiment_label = "bullish" if self.bullish_pct >= 0.5 else "bearish"
-        return (
-            f"{self.ticker}: {sentiment_label} ({self.bullish_pct:.0%} bullish, "
-            f"{self.bearish_pct:.0%} bearish), {buzz_label} buzz "
-            f"(score {self.buzz_score:.2f}), news score {self.news_score:.2f}"
-        )
-
-
-@dataclass
-class EconomicEvent:
-    """
-    Economic calendar entry from Finnhub (FOMC, CPI, NFP, etc.).
-
-    High-impact events move markets. actual vs estimate determines surprise.
-    """
-    event: str                          # "CPI", "FOMC", "Nonfarm Payrolls", etc.
-    country: str                        # "US", "EU", etc.
-    date: str                           # YYYY-MM-DD
-    time: str                           # HH:MM or ""
-    impact: str                         # "high", "medium", "low"
-    actual: Optional[float]             # None if not yet released
-    estimate: Optional[float]
-    previous: Optional[float]
-    unit: str                           # "%", "K", etc.
-    signal_source: str = "finnhub_economic"
-    decay_rate: float = 0.30            # Economic events price in fast
-    confidence: float = 0.55
-
-    def surprise_pct(self) -> Optional[float]:
-        """Percentage surprise vs estimate. None if data missing."""
-        if self.actual is None or self.estimate is None:
-            return None
-        if self.estimate == 0:
-            return None
-        return (self.actual - self.estimate) / abs(self.estimate)
-
-    def to_plain_language(self) -> str:
-        if self.actual is not None:
-            surprise = self.surprise_pct()
-            s_str = f" (surprise {surprise:+.1%})" if surprise else ""
-            return f"{self.event} on {self.date}: actual={self.actual}{self.unit}{s_str}"
-        return f"{self.event} on {self.date}: estimate={self.estimate}{self.unit} (upcoming)"
-
-
-@dataclass
-class AnalystRec:
-    """
-    Analyst recommendation summary from Finnhub for a ticker.
-
-    Aggregates buy/sell/hold/strong_buy/strong_sell counts.
-    """
-    symbol: str
-    period: str                         # YYYY-MM-DD
-    strong_buy: int
-    buy: int
-    hold: int
-    sell: int
-    strong_sell: int
-    signal_source: str = "finnhub_analyst"
-    decay_rate: float = 0.05            # Slow decay — analyst recs are monthly
-    confidence: float = 0.50
-
-    @property
-    def total(self) -> int:
-        return self.strong_buy + self.buy + self.hold + self.sell + self.strong_sell
-
-    @property
-    def buy_ratio(self) -> float:
-        """Fraction of analysts with buy/strong_buy. 0.0-1.0."""
-        t = self.total
-        return (self.strong_buy + self.buy) / max(1, t)
-
-    def to_plain_language(self) -> str:
-        return (
-            f"{self.symbol}: {self.strong_buy} strong buy, {self.buy} buy, "
-            f"{self.hold} hold, {self.sell} sell, {self.strong_sell} strong sell "
-            f"(period {self.period})"
-        )
-
-
-@dataclass
-class EarningsEvent:
-    """
-    Single earnings calendar entry from Finnhub.
-
-    eps_actual and revenue_actual are None when the report has not
-    yet been released.  Once reported they are floats.
-    """
-    symbol: str
-    date: str                           # YYYY-MM-DD
-    eps_estimate: Optional[float]
-    eps_actual: Optional[float]         # None if not yet reported
-    revenue_estimate: Optional[float]
-    revenue_actual: Optional[float]     # None if not yet reported
-    hour: str                           # "bmo" (before market open) | "amc" (after market close)
-    signal_source: str = "finnhub_earnings"
-    decay_rate: float = 0.25            # Earnings are priced in fast
-    confidence: float = 0.65           # Higher base; hard calendar events
-
-    def is_reported(self) -> bool:
-        """True when actual results have come in."""
-        return self.eps_actual is not None
-
-    def eps_surprise_pct(self) -> Optional[float]:
-        """
-        Percentage EPS surprise vs estimate.
-
-        Returns None when either value is missing or estimate is zero.
-        """
-        if self.eps_actual is None or self.eps_estimate is None:
-            return None
-        if self.eps_estimate == 0:
-            return None
-        return (self.eps_actual - self.eps_estimate) / abs(self.eps_estimate)
-
-    def to_plain_language(self) -> str:
-        """Format for dashboard display."""
-        timing = "before open" if self.hour == "bmo" else "after close"
-        if self.is_reported():
-            surprise = self.eps_surprise_pct()
-            surprise_str = (
-                f" — EPS surprise {surprise:+.1%}" if surprise is not None
-                else " — EPS reported"
-            )
-            return f"{self.symbol} reported on {self.date}{surprise_str}"
-        else:
-            est_str = f"${self.eps_estimate:.2f}" if self.eps_estimate is not None else "N/A"
-            return (
-                f"{self.symbol} earnings on {self.date} {timing}, "
-                f"EPS estimate {est_str}"
-            )
 
 
 # ---------------------------------------------------------------------------
@@ -546,172 +407,25 @@ class FinnhubClient:
             logger.error("Finnhub request failed [%s]: %s", endpoint, exc)
             return None
 
+    # ------------------------------------------------------------------
+    # Parser delegates — thin wrappers so internal call sites are unchanged
+    # ------------------------------------------------------------------
+
     @staticmethod
     def _parse_sentiment(symbol: str, data: dict) -> Optional[NewsSentiment]:
-        """
-        Parse /news-sentiment response into a NewsSentiment dataclass.
-
-        Expected keys:
-            buzz.articlesInLastWeek, buzz.weeklyAverage,
-            companyNewsScore, sentiment.bullishPercent, sentiment.bearishPercent
-        """
-        try:
-            buzz_block = data.get("buzz", {})
-            articles_this_week = float(buzz_block.get("articlesInLastWeek", 0))
-            weekly_average     = float(buzz_block.get("weeklyAverage", 1) or 1)
-            buzz_score         = articles_this_week / weekly_average
-
-            sentiment_block = data.get("sentiment", {})
-            bullish_pct = float(sentiment_block.get("bullishPercent", 0.5))
-            bearish_pct = float(sentiment_block.get("bearishPercent", 0.5))
-            news_score  = float(data.get("companyNewsScore", 0.0))
-
-            return NewsSentiment(
-                ticker=symbol,
-                bullish_pct=bullish_pct,
-                bearish_pct=bearish_pct,
-                news_score=news_score,
-                buzz_score=buzz_score,
-                detected_at=datetime.now(timezone.utc).isoformat(),
-            )
-        except Exception as exc:
-            logger.warning("Failed to parse sentiment for %s: %s", symbol, exc)
-            return None
+        return _parse_sentiment_fn(symbol, data)
 
     @staticmethod
     def _parse_earnings_calendar(data: dict) -> List[EarningsEvent]:
-        """
-        Parse /calendar/earnings response into EarningsEvent objects.
-
-        Expected structure: {"earningsCalendar": [...]}
-        Each entry has: symbol, date, epsActual, epsEstimate, hour,
-                        quarter, revenueActual, revenueEstimate, year
-        """
-        events: List[EarningsEvent] = []
-        calendar = data.get("earningsCalendar") or []
-
-        for entry in calendar:
-            try:
-                symbol = (entry.get("symbol") or "").upper()
-                if not symbol:
-                    continue
-
-                date = entry.get("date") or ""
-
-                # Actual fields are null until the report is released
-                eps_actual = entry.get("epsActual")
-                eps_estimate = entry.get("epsEstimate")
-                rev_actual = entry.get("revenueActual")
-                rev_estimate = entry.get("revenueEstimate")
-
-                # Cast non-null numerics; keep None as-is
-                eps_actual    = float(eps_actual)    if eps_actual    is not None else None
-                eps_estimate  = float(eps_estimate)  if eps_estimate  is not None else None
-                rev_actual    = float(rev_actual)    if rev_actual    is not None else None
-                rev_estimate  = float(rev_estimate)  if rev_estimate  is not None else None
-
-                hour = (entry.get("hour") or "").lower()  # "bmo" or "amc"
-
-                events.append(EarningsEvent(
-                    symbol=symbol,
-                    date=date,
-                    eps_estimate=eps_estimate,
-                    eps_actual=eps_actual,
-                    revenue_estimate=rev_estimate,
-                    revenue_actual=rev_actual,
-                    hour=hour,
-                ))
-            except Exception as exc:
-                logger.debug("Skipping malformed earnings entry: %s | %s", entry, exc)
-                continue
-
-        return events
+        return _parse_earnings_calendar_fn(data)
 
     @staticmethod
     def _parse_economic_calendar(data: dict) -> List[EconomicEvent]:
-        """
-        Parse /calendar/economic response into EconomicEvent objects.
-
-        Expected structure: {"economicCalendar": [...]}
-        Each entry has: country, event, date, time, impact, actual, estimate, prev, unit
-        """
-        events: List[EconomicEvent] = []
-        calendar = data.get("economicCalendar") or []
-
-        for entry in calendar:
-            try:
-                country = (entry.get("country") or "").upper()
-                # Focus on US events only
-                if country != "US":
-                    continue
-
-                event_name = entry.get("event") or ""
-                if not event_name:
-                    continue
-
-                date = entry.get("date") or ""
-                event_time = entry.get("time") or ""
-                impact = (entry.get("impact") or "low").lower()
-
-                actual = entry.get("actual")
-                estimate = entry.get("estimate")
-                previous = entry.get("prev")
-                unit = entry.get("unit") or ""
-
-                actual   = float(actual)   if actual   is not None else None
-                estimate = float(estimate) if estimate is not None else None
-                previous = float(previous) if previous is not None else None
-
-                events.append(EconomicEvent(
-                    event=event_name,
-                    country=country,
-                    date=date,
-                    time=event_time,
-                    impact=impact,
-                    actual=actual,
-                    estimate=estimate,
-                    previous=previous,
-                    unit=unit,
-                ))
-            except Exception as exc:
-                logger.debug("Skipping malformed economic entry: %s | %s", entry, exc)
-                continue
-
-        # Sort by date ascending
-        events.sort(key=lambda e: e.date)
-        return events
+        return _parse_economic_calendar_fn(data)
 
     @staticmethod
     def _parse_analyst_recommendations(data: list) -> List[AnalystRec]:
-        """
-        Parse /stock/recommendation response into AnalystRec objects.
-
-        Response is a list of dicts with: buy, hold, period, sell, strongBuy, strongSell, symbol
-        """
-        results: List[AnalystRec] = []
-
-        for entry in data:
-            try:
-                symbol = (entry.get("symbol") or "").upper()
-                if not symbol:
-                    continue
-
-                results.append(AnalystRec(
-                    symbol=symbol,
-                    period=entry.get("period", ""),
-                    strong_buy=int(entry.get("strongBuy", 0)),
-                    buy=int(entry.get("buy", 0)),
-                    hold=int(entry.get("hold", 0)),
-                    sell=int(entry.get("sell", 0)),
-                    strong_sell=int(entry.get("strongSell", 0)),
-                ))
-            except Exception as exc:
-                logger.debug("Skipping malformed analyst entry: %s | %s", entry, exc)
-                continue
-
-        # Most recent first
-        results.sort(key=lambda r: r.period, reverse=True)
-        return results
+        return _parse_analyst_recommendations_fn(data)
 
 
 # ---------------------------------------------------------------------------
