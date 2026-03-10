@@ -26,8 +26,6 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Optional
 
-import numpy as np
-
 from mae_core.cognition.decision_reflexes import (
     register_default_reflexes as _register_default_reflexes_fn,
     check_reflex as _check_reflex_fn,
@@ -416,47 +414,8 @@ class DecisionRouter:
         context: dict[str, Any],
         available_actions: list[Any] | None = None,
     ) -> tuple[Any, float, str]:
-        """Deliberative reasoning - the slow, thoughtful path."""
-        import random as _rng  # local import: avoids module-level side-effect, used in two branches below
-
-        if self._prefrontal_fn is not None:
-            result = self._prefrontal_fn(stimulus, context, available_actions)
-            if isinstance(result, tuple):
-                action, confidence = result[0], result[1] if len(result) > 1 else 0.7
-                return action, confidence, "Custom prefrontal function"
-            return result, 0.7, "Custom prefrontal function"
-
-        # Use WorldModel for simulation-based deliberation if available
-        if self._world_model is not None and available_actions:
-            try:
-                best_actions = []
-                best_reward = float("-inf")
-                for action in available_actions:
-                    pred = self._world_model.step(
-                        context.get("state", np.zeros(10, dtype=np.float32)),
-                        action,
-                        deterministic=True,
-                    )
-                    if pred.reward > best_reward:
-                        best_reward = pred.reward
-                        best_actions = [action]
-                    elif pred.reward == best_reward:
-                        best_actions.append(action)
-                best_action = _rng.choice(best_actions)
-                return (
-                    best_action,
-                    0.75,
-                    f"WorldModel simulation (best reward={best_reward:.3f})",
-                )
-            except Exception:
-                logger.debug("WorldModel simulation failed, falling back")
-
-        # Default: select from available actions or generate response
-        if available_actions:
-            action = _rng.choice(available_actions)
-            return action, 0.6, "Default selection (random from available)"
-
-        return {"type": "deliberate", "stimulus": stimulus}, 0.5, "Default deliberation"
+        """Deliberative reasoning — delegates to decision_reflexes."""
+        return _invoke_prefrontal_fn(self, stimulus, context, available_actions)
 
     def _force_tier(
         self,
@@ -466,20 +425,7 @@ class DecisionRouter:
         available_actions: list[Any] | None,
     ) -> tuple[DecisionTier, Any, float, str]:
         """Force decision through a specific tier."""
-        if tier == DecisionTier.REFLEX:
-            reflex = self._check_reflex(stimulus)
-            if reflex:
-                return DecisionTier.REFLEX, reflex.action, reflex.confidence, "Forced reflex"
-            return DecisionTier.NONE, None, 0.0, "No reflex match (forced)"
-        if tier == DecisionTier.HABIT:
-            habit = self._check_habit(stimulus)
-            if habit:
-                return DecisionTier.HABIT, habit.action, habit.strength, "Forced habit"
-            return DecisionTier.NONE, None, 0.0, "No habit match (forced)"
-        if tier == DecisionTier.PREFRONTAL:
-            action, conf, reason = self._invoke_prefrontal(stimulus, context, available_actions)
-            return DecisionTier.PREFRONTAL, action, conf, f"Forced prefrontal: {reason}"
-        return DecisionTier.NONE, None, 0.0, "Unknown tier"
+        return _force_tier_fn(self, tier, stimulus, context, available_actions)
 
     def _track_for_habit_formation(self, stimulus: str, action: Any) -> None:
         """Track prefrontal decisions for automatic habit formation."""
@@ -498,39 +444,7 @@ class DecisionRouter:
         reasoning: list[str],
     ) -> RouterDecision:
         """Build RouterDecision and update statistics."""
-        response_time = (time.perf_counter() - start_time) * 1000
-
-        decision = RouterDecision(
-            decision_id=f"dec-{self._total_decisions}",
-            tier_used=tier,
-            stimulus=stimulus,
-            context=context,
-            action_taken=action,
-            response_time=response_time,
-            tier_times=tier_times,
-            tiers_checked=tiers_checked,
-            confidence=confidence,
-            reasoning=reasoning,
-        )
-
-        with self._lock:
-            self._total_decisions += 1
-            self._tier_usage[tier.value] += 1
-            self._decision_history.append(decision)
-
-        if self._bus is not None:
-            try:
-                self._bus.publish("cognition.decision_routed", {
-                    "decision_id": decision.decision_id,
-                    "tier": tier.value,
-                    "stimulus": stimulus,
-                    "confidence": confidence,
-                    "response_time_ms": response_time,
-                })
-            except Exception:
-                logger.debug("EventBus publish failed for decision_routed")
-
-        return decision
+        return _create_decision_fn(self, tier, stimulus, context, action, confidence, start_time, tier_times, tiers_checked, reasoning)
 
     def _register_default_reflexes(self) -> None:
         """Register built-in survival reflexes."""
