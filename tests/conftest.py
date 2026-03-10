@@ -7,12 +7,45 @@ directories instead of data/market/.
 
 The HistoricalDataFetcher guard prevents tests from loading the 130 MB
 production signal archive (911+ JSONL files in data/midge/signals/).
+
+Memory guard: Fails the test session if process memory exceeds 4 GB,
+preventing the 13.8 GB memory bloat that crashed Wardenclyffe.
 """
 
 import copy
 import gc
+import os
 import pytest
 from pathlib import Path
+
+# ---------------------------------------------------------------------------
+# Memory guard — fail hard before the OS starts thrashing or killing things
+# ---------------------------------------------------------------------------
+_MEMORY_LIMIT_GB = float(os.environ.get("MIDGE_TEST_MEMORY_LIMIT_GB", "4"))
+
+try:
+    import psutil
+    _HAS_PSUTIL = True
+except ImportError:
+    _HAS_PSUTIL = False
+
+
+@pytest.fixture(autouse=True, scope="function")
+def _memory_guard():
+    """Abort the test session if process memory exceeds the limit."""
+    yield
+    if not _HAS_PSUTIL:
+        return
+    process = psutil.Process()
+    mem_gb = process.memory_info().rss / (1024 ** 3)
+    if mem_gb > _MEMORY_LIMIT_GB:
+        pytest.exit(
+            f"MEMORY GUARD: Process using {mem_gb:.1f} GB "
+            f"(limit {_MEMORY_LIMIT_GB:.0f} GB). "
+            f"Aborting to protect the system. "
+            f"Run with pytest-xdist (-n auto) for process isolation.",
+            returncode=99,
+        )
 
 
 @pytest.fixture(autouse=True)

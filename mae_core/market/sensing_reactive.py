@@ -140,7 +140,7 @@ class SensingReactiveMixin:
             fetch_fractal_resonance, fetch_crypto_prices, fetch_crypto_exchange,
             fetch_openinsider, fetch_13f_holdings, fetch_finviz, fetch_economic_calendar,
             fetch_eia, fetch_congress_legislation, fetch_massive_snapshot,
-            fetch_social_text, fetch_yahoo_rss,
+            fetch_social_text, fetch_yahoo_rss, fetch_usda, fetch_fred_yields,
         )
         from mae_core.market.sensing_lifecycle import enrich_signal
 
@@ -256,6 +256,14 @@ class SensingReactiveMixin:
         elif source_name == "yahoo_rss":
             from mae_core.market.signal_adapters.layer6 import from_yahoo_rss_signal
             signals = fetch_yahoo_rss(self._yahoo_rss_client, self._watchlist, from_yahoo_rss_signal)
+
+        elif source_name == "usda_agriculture":
+            from mae_core.market.signal_adapters.market_data import from_usda_indicator
+            signals = fetch_usda(self._usda_client, from_usda_indicator)
+
+        elif source_name == "fred_yields":
+            from mae_core.market.signal_adapters.market_data import from_fred_yield
+            signals = fetch_fred_yields(self._fred, from_fred_yield)
 
         # Enrich in background thread (velocity, filing-time, Ollama sentiment)
         # Moved from _collect_results() so Ollama's 15s timeout doesn't block

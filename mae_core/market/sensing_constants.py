@@ -123,6 +123,10 @@ SOURCE_ROTATION: List[str] = [
     "social_text",
     # Yahoo Finance RSS — per-ticker headline velocity (free, no key)
     "yahoo_rss",
+    # USDA agricultural supply/demand
+    "usda_agriculture",
+    # Forex-critical FRED yields / DXY
+    "fred_yields",
 ]
 
 # Map rotation source names → Thompson distribution keys for guided selection.
@@ -160,6 +164,8 @@ _ROTATION_TO_THOMPSON: Dict[str, str] = {
     "congress_legislation": "congress_legislation",
     "social_text": "social_text",
     "yahoo_rss": "yahoo_rss",
+    "usda_agriculture": "usda_agriculture",
+    "fred_yields": "fred_macro",
 }
 
 # Map absence source names back to convergence domains
@@ -180,6 +186,8 @@ _ABSENCE_SOURCE_DOMAINS: Dict[str, str] = {
     "eia_energy": "energy",
     "congress_legislation": "government",
     "yahoo_rss": "events",
+    "usda_agriculture": "macro",
+    "fred_yields": "macro",
 }
 
 
