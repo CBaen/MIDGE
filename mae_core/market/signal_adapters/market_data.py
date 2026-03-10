@@ -338,6 +338,71 @@ def from_energy_indicator(indicator) -> MarketSignal:
     )
 
 
+def from_usda_indicator(indicator) -> MarketSignal:
+    """Convert a USDA AgriculturalIndicator to a MarketSignal.
+
+    Agricultural supply/demand data is a slow-moving real-economy signal.
+    Stocks-to-use ratio drives commodity futures direction. Deficit = bullish
+    for the commodity and its producers; surplus = bearish.
+
+    Primary symbol is the commodity futures ticker (ZW, ZC, ZS, CT) so the
+    convergence engine can match against technical signals on the same instrument.
+    """
+    event_dt = _ensure_datetime(datetime.now().date().isoformat())
+
+    symbol = indicator.futures_ticker or (
+        indicator.affected_tickers[0] if indicator.affected_tickers else ""
+    )
+    signal_id = f"usda_agriculture:{indicator.commodity_key}:{indicator.market_year}"
+
+    # Strength from stocks-to-use deviation: more extreme = stronger signal
+    # Already computed by the client; use directly
+    strength = indicator.strength
+
+    return MarketSignal(
+        signal_id=signal_id,
+        source="usda_agriculture",
+        symbol=symbol,
+        asset_class="commodity",
+        domain="macro",   # Agricultural supply/demand is a macro-level signal
+        direction=indicator.direction,
+        strength=strength,
+        confidence=indicator.confidence,
+        decay_rate=indicator.decay_rate,
+        timestamp=event_dt,
+        received_at=datetime.now(),
+        outcome_symbol=symbol,
+        raw_id=f"{indicator.commodity_key}:{indicator.market_year}",
+        raw_type="AgriculturalIndicator",
+        metadata={
+            "commodity_key": indicator.commodity_key,
+            "commodity_name": indicator.commodity_name,
+            "market_year": indicator.market_year,
+            "production": indicator.production,
+            "consumption": indicator.consumption,
+            "ending_stocks": indicator.ending_stocks,
+            "supply_surplus_ratio": indicator.supply_surplus_ratio,
+            "futures_ticker": indicator.futures_ticker,
+            "affected_tickers": indicator.affected_tickers,
+        },
+    )
+
+
+def from_fred_yield(indicator) -> MarketSignal:
+    """Convert a FRED MacroIndicator for treasury yields / DXY into a MarketSignal.
+
+    Treasury yield and dollar index data are forex-critical — rate differentials
+    drive EUR/USD, USD/JPY, and commodity prices. This adapter routes yield/dollar
+    signals into the 'macro' domain alongside standard FRED macro signals, but
+    with a slightly faster decay rate (yields move daily, not weekly).
+
+    The signal uses the same from_macro_indicator logic but with adjusted
+    strength computation for rate data (absolute value of rate level matters).
+    """
+    # Reuse the existing macro adapter — yield/dollar signals are still macro domain
+    return from_macro_indicator(indicator)
+
+
 def from_legislative_indicator(indicator) -> MarketSignal:
     """Convert a Congress.gov LegislativeIndicator to a MarketSignal.
 

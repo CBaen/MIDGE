@@ -212,9 +212,9 @@ class OutcomeTracker:
                 except Exception as e:
                     self._logger.warning(f"Thompson update failed for {source}: {e}")
 
-                # Record outcome
+                # Record outcome — use aliased signal_id (handles old "prediction_id" format)
                 outcome = {
-                    "signal_id": pred.get("signal_id", ""),
+                    "signal_id": signal_id,
                     "source": source,
                     "symbol": outcome_symbol,
                     "direction": pred.get("direction", ""),
