@@ -126,6 +126,7 @@ class MarketSensingHook(SensingSchedulerMixin, SensingCollectorMixin, SensingRea
         congress_gov_client: Any = None,
         social_text_analyzer: Any = None,
         yahoo_rss_client: Any = None,
+        usda_client: Any = None,
     ):
         # API clients (all optional — graceful degradation)
         self._sec_client = sec_client
