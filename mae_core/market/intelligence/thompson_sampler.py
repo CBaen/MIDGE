@@ -40,6 +40,16 @@ HISTORY_FILE = DATA_DIR / "thompson_history.jsonl"
 # which survives forgetting (max(2.0, 7.2*0.99) = 7.13).
 DEFAULT_PRIOR_SCALE = 20
 
+# Regime-aware forgetting rates. Volatile regimes forget faster (recent data
+# dominates), stable regimes forget slower (accumulated evidence matters more).
+REGIME_DECAY_RATES: Dict[str, float] = {
+    "volatile": 0.90,   # Fast — market structure changing rapidly
+    "bear":     0.92,   # Slightly fast — conditions shifting downward
+    "bull":     0.95,   # Normal — steady uptrend, moderate evidence weight
+    "sideways": 0.97,   # Slow — accumulate evidence in range-bound markets
+    "default":  0.99,   # Conservative fallback when regime unknown
+}
+
 
 @dataclass
 class BetaDistribution:
