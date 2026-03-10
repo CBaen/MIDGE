@@ -11,6 +11,9 @@ Three Qdrant collections (Rule of Three):
   - midge_narrative: Individual agent episode narratives
   - midge_ancestral: Distilled cross-agent patterns
   - midge_meta: Memory about memory (strange loop)
+
+Sub-modules:
+  deep_memory_search.py — embed_text, search, search_with_filter, _sparse_embed
 """
 
 from __future__ import annotations
@@ -18,7 +21,6 @@ from __future__ import annotations
 import hashlib
 import logging
 import uuid
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
@@ -28,6 +30,16 @@ try:
     import requests
 except ImportError:
     requests = None  # type: ignore[assignment]
+
+from mae_core.memory.deep_memory_search import (
+    _sanitize_payload,
+    _sparse_embed,
+    embed_text as _embed_text_fn,
+    embed_texts_batch as _embed_texts_batch_fn,
+    embed_sparse as _embed_sparse_fn,
+    search as _search_fn,
+    search_with_filter as _search_with_filter_fn,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -231,64 +243,15 @@ class DeepMemoryStore:
 
     def embed_text(self, text: str) -> np.ndarray | None:
         """Get dense embedding from Ollama."""
+        return _embed_text_fn(self, text)
 
-        try:
-            resp = requests.post(
-                f"{self._config.ollama_url}/api/embeddings",
-                json={
-                    "model": self._config.embedding_model,
-                    "prompt": text[:8000],
-                },
-                timeout=self._config.timeout,
-            )
-            if resp.status_code == 200:
-                embedding = resp.json().get("embedding", [])
-                if embedding and len(embedding) == self._config.embedding_dim:
-                    return np.array(embedding, dtype=np.float32)
-        except Exception:
-            logger.debug("Ollama embedding failed", exc_info=True)
-        return None
-
-    def embed_texts_batch(
-        self, texts: list[str]
-    ) -> list[np.ndarray | None]:
+    def embed_texts_batch(self, texts: list[str]) -> list[np.ndarray | None]:
         """Get dense embeddings for multiple texts in parallel."""
-        if not texts:
-            return []
-
-        if len(texts) <= 2:
-            return [self.embed_text(t) for t in texts]
-
-        results: list[np.ndarray | None] = [None] * len(texts)
-
-        def _embed_single(idx_text: tuple[int, str]) -> tuple[int, np.ndarray | None]:
-            idx, text = idx_text
-            return idx, self.embed_text(text)
-
-        workers = min(len(texts), self._config.max_workers)
-        with ThreadPoolExecutor(max_workers=workers) as executor:
-            futures = {
-                executor.submit(_embed_single, (i, t)): i
-                for i, t in enumerate(texts)
-            }
-            for future in as_completed(futures):
-                try:
-                    idx, embedding = future.result()
-                    results[idx] = embedding
-                except Exception:
-                    logger.debug("Batch embedding error", exc_info=True)
-
-        return results
+        return _embed_texts_batch_fn(self, texts)
 
     def embed_sparse(self, text: str) -> tuple[list[int], list[float]] | None:
         """Get sparse embedding for hybrid search (TF-IDF fallback)."""
-        try:
-            indices, values = _sparse_embed(text)
-            if indices and values:
-                return indices, values
-        except Exception:
-            logger.debug("Sparse embedding failed", exc_info=True)
-        return None
+        return _embed_sparse_fn(self, text)
 
     # -- Storage --
 

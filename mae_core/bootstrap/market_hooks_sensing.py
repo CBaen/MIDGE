@@ -294,9 +294,6 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
     """
     from mae_core.market.sensing_hook import MarketSensingHook
     from mae_core.market.intelligence.convergence_alerter import ConvergenceAlerter
-    from mae_core.bootstrap.market_hooks_trades import (
-        _write_paper_trade, _translate_and_log_executable_signal,
-    )
 
     # --- Tiered ConvergenceAlerters (tactical/strategic/thematic) ---
     tiered_alerters = {}
@@ -478,51 +475,7 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
             except Exception:
                 logger.debug("Advisory bridge failed", exc_info=True)
 
-            try:
-                from mae_core.market.intelligence.learning_config import LEARNING_CONFIG
-                _pt_conf = LEARNING_CONFIG.get("paper_trade_min_confidence", 0.45)
-                _pt_str = LEARNING_CONFIG.get("paper_trade_min_strength", 0.65)
-                _pt_combo = LEARNING_CONFIG.get("paper_trade_min_combo_mean", 0.25)
-                for alert in alerts:
-                    if (
-                        hasattr(alert, "confidence")
-                        and hasattr(alert, "strength")
-                        and alert.confidence > _pt_conf
-                        and alert.strength > _pt_str
-                    ):
-                        _pass_combo = True
-                        _ts = getattr(ctx, "thompson_sampler", None)
-                        _raw_domains = getattr(alert, "domains_converging", None)
-                        if _raw_domains and _ts is not None:
-                            _domains = sorted(_raw_domains)
-                            if len(_domains) >= 2:
-                                _combo_key = "combo:" + "+".join(_domains)
-                                _cd = _ts.get_distribution(_combo_key)
-                                if _cd.samples >= 3 and _cd.mean < _pt_combo:
-                                    _pass_combo = False
-                        if _pass_combo:
-                            _dm = getattr(ctx, "drawdown_monitor", None)
-                            if _dm and _dm.is_trading_halted():
-                                logger.info("Paper trade BLOCKED — drawdown circuit breaker active")
-                            else:
-                                _sm = getattr(ctx, "self_monitor", None)
-                                if _sm:
-                                    _sm.record_alert(
-                                        direction=getattr(alert, "direction", "unknown"),
-                                        confidence=getattr(alert, "confidence", 0.0),
-                                        ticker=getattr(alert, "ticker", ""),
-                                        step=step,
-                                    )
-                                    if _sm.is_alerting_suppressed():
-                                        logger.warning("Paper trade BLOCKED — behavioral anomaly detected: %s", _sm._anomaly_flags)
-                                    else:
-                                        _write_paper_trade(alert, ctx)
-                                        _translate_and_log_executable_signal(alert, ctx)
-                                else:
-                                    _write_paper_trade(alert, ctx)
-                                    _translate_and_log_executable_signal(alert, ctx)
-            except Exception:
-                logger.debug("Paper trading gate failed", exc_info=True)
+            _run_paper_trading_gate(ctx, alerts, step)
 
         # Every 10 steps: query tiered alerters
         if step % 10 == 0 and ctx._tiered_alerters:
@@ -581,67 +534,7 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
         except Exception:
             logger.debug("FinnhubWebSocket shutdown hook registration failed", exc_info=True)
 
-    colony = getattr(ctx, "octopus_colony", None)
-    if colony is not None:
-        try:
-            from mae_core.network.market_task_handlers import inject_market_handlers, patch_new_arm
-            inject_market_handlers(
-                colony=colony,
-                convergence_alerter=getattr(ctx, "convergence_alerter", None),
-                pattern_watcher=getattr(ctx, "pattern_watcher", None),
-                event_bus=getattr(ctx, "bus", None),
-                pattern_library=getattr(ctx, "pattern_library", None),
-                world_model=getattr(ctx, "world_model", None),
-            )
-            logger.info("OctopusColony: market handlers injected")
-        except Exception:
-            logger.debug("OctopusColony handler injection failed", exc_info=True)
-
-        try:
-            colony.start_monitoring()
-            logger.info("OctopusColony: monitoring started")
-        except Exception:
-            logger.debug("OctopusColony monitoring start failed", exc_info=True)
-
-        def _on_octopus_spawn(channel, data):
-            msg = data if isinstance(data, dict) else {}
-            oct_id = msg.get("octopus_id", "")
-            oct_obj = colony.octopuses.get(oct_id)
-            if oct_obj is None:
-                return
-            cognition = getattr(oct_obj, "cognition", oct_obj)
-            for arm in getattr(cognition, "arms", {}).values():
-                try:
-                    patch_new_arm(colony, arm)
-                except Exception:
-                    logger.debug("Failed to patch arm on spawned %s", oct_id, exc_info=True)
-
-        bus = getattr(ctx, "bus", None)
-        if bus is not None:
-            bus.register_callback("octopus.spawn", _on_octopus_spawn)
-
-        try:
-            from mae_core.network.market_task_handlers import CH_OCTOPUS_INVESTIGATION
-
-            def _on_octopus_investigation(channel, data):
-                msg = data if isinstance(data, dict) else {}
-                ticker = msg.get("ticker", "?")
-                source = msg.get("source", "?")
-                check_count = msg.get("check_count", 0)
-                priority_created = msg.get("priority_request_created", False)
-                historical = msg.get("historical_templates", [])
-                logger.info(
-                    "OctopusInvestigation[%s] ticker=%s check=%d templates=%d%s",
-                    source, ticker, check_count, len(historical),
-                    " [FOCUSED-ATTENTION ENGAGED]" if priority_created else "",
-                )
-
-            bus_obj = getattr(ctx, "bus", None)
-            if bus_obj is not None:
-                bus_obj.register_callback(CH_OCTOPUS_INVESTIGATION, _on_octopus_investigation)
-                logger.info("OctopusColony: investigation subscriber wired")
-        except Exception:
-            logger.debug("OctopusColony investigation subscriber failed", exc_info=True)
+    _wire_octopus_colony(ctx)
 
     _sched = getattr(ctx, "inhabitant_scheduler", None)
     if _sched is not None:

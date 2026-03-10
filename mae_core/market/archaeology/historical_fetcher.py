@@ -10,6 +10,7 @@ Data source tiers:
   Tier 1 (fully retroactive — compute from raw data):
     - TA indicators: RSI, MACD, Bollinger, market structure, candles from price data
     - Price/volume: gap analysis, unusual volume from OHLCV history
+    Sub-module: historical_ta.py
 
   Tier 2 (API-fetchable history):
     - SEC EDGAR Form 4: insider trades (years of history per company)
@@ -27,10 +28,18 @@ from __future__ import annotations
 
 import json
 import logging
-import math
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Optional
+
+from mae_core.market.archaeology.historical_ta import (
+    compute_ta_signals,
+    compute_rsi_series,
+    compute_macd_series,
+    compute_bollinger_series,
+    compute_volume_signals,
+    _make_signal,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +100,7 @@ class HistoricalDataFetcher:
             return 0
 
         for f in sorted(signal_dir.glob("*.jsonl")):
-            date_str = f.stem  # "2025-01-15"
+            date_str = f.stem
             if date_str in self._signal_cache:
                 continue
             signals: list[dict] = []
@@ -127,7 +136,6 @@ class HistoricalDataFetcher:
             self._ta_cache[symbol] = []
             return []
 
-        # Compute for full date range of the price history
         first_ts = getattr(price_history[0], "timestamp", "")[:10]
         last_ts = getattr(price_history[-1], "timestamp", "")[:10]
         if not first_ts or not last_ts:
@@ -198,7 +206,7 @@ class HistoricalDataFetcher:
 
         return deduped
 
-    # ── Tier 1: TA from price data ────────────────────────────────────────
+    # ── Tier 1: TA from price data (delegates to historical_ta module) ────────
 
     def _compute_ta_signals(
         self,
@@ -207,282 +215,19 @@ class HistoricalDataFetcher:
         start_date: date,
         end_date: date,
     ) -> list[dict]:
-        """Compute TA indicators retroactively from price history.
+        return compute_ta_signals(symbol, price_history, start_date, end_date)
 
-        For each day in [start_date, end_date), check if significant
-        TA conditions existed. Generate signal records for:
-        - RSI extreme (oversold < 30, overbought > 70)
-        - MACD crossover
-        - Bollinger squeeze / breakout
-        - Volume anomaly (> 2x 20-day average)
-        """
-        if len(price_history) < 35:
-            return []
+    def _compute_rsi_series(self, symbol, history, date_idx, start, end):
+        return compute_rsi_series(symbol, history, date_idx, start, end)
 
-        signals: list[dict] = []
+    def _compute_macd_series(self, symbol, history, date_idx, start, end):
+        return compute_macd_series(symbol, history, date_idx, start, end)
 
-        # Build date-indexed price map
-        prices_by_date: dict[str, int] = {}
-        for idx, p in enumerate(price_history):
-            ts = getattr(p, "timestamp", "")[:10]
-            if ts:
-                prices_by_date[ts] = idx
+    def _compute_bollinger_series(self, symbol, history, date_idx, start, end):
+        return compute_bollinger_series(symbol, history, date_idx, start, end)
 
-        # RSI series
-        rsi_signals = self._compute_rsi_series(symbol, price_history, prices_by_date, start_date, end_date)
-        signals.extend(rsi_signals)
-
-        # MACD crossover detection
-        macd_signals = self._compute_macd_series(symbol, price_history, prices_by_date, start_date, end_date)
-        signals.extend(macd_signals)
-
-        # Bollinger squeeze/breakout
-        bb_signals = self._compute_bollinger_series(symbol, price_history, prices_by_date, start_date, end_date)
-        signals.extend(bb_signals)
-
-        # Volume anomaly
-        vol_signals = self._compute_volume_signals(symbol, price_history, prices_by_date, start_date, end_date)
-        signals.extend(vol_signals)
-
-        return signals
-
-    def _compute_rsi_series(
-        self, symbol: str, history: list, date_idx: dict, start: date, end: date,
-    ) -> list[dict]:
-        """Compute RSI for all dates and flag extremes in the window."""
-        closes = [p.price for p in history]
-        if len(closes) < 15:
-            return []
-
-        period = 14
-        deltas = [closes[i] - closes[i - 1] for i in range(1, len(closes))]
-        gains = [max(d, 0) for d in deltas]
-        losses_arr = [abs(min(d, 0)) for d in deltas]
-
-        avg_gain = sum(gains[:period]) / period
-        avg_loss = sum(losses_arr[:period]) / period
-
-        rsi_values: list[Optional[float]] = [None] * (period + 1)
-        if avg_loss == 0:
-            rsi_values.append(100.0)
-        else:
-            rs = avg_gain / avg_loss
-            rsi_values.append(round(100 - (100 / (1 + rs)), 2))
-
-        for i in range(period + 1, len(deltas)):
-            avg_gain = (avg_gain * (period - 1) + gains[i]) / period
-            avg_loss = (avg_loss * (period - 1) + losses_arr[i]) / period
-            if avg_loss == 0:
-                rsi_values.append(100.0)
-            else:
-                rs = avg_gain / avg_loss
-                rsi_values.append(round(100 - (100 / (1 + rs)), 2))
-
-        signals: list[dict] = []
-        for idx in range(len(rsi_values)):
-            rsi = rsi_values[idx]
-            if rsi is None:
-                continue
-            if idx >= len(history):
-                continue
-            ts = getattr(history[idx], "timestamp", "")[:10]
-            if not ts:
-                continue
-            try:
-                sig_date = date.fromisoformat(ts)
-            except ValueError:
-                continue
-            if sig_date < start or sig_date >= end:
-                continue
-
-            if rsi < 30:
-                signals.append(self._make_signal(
-                    f"hist:ta_rsi:oversold:{symbol}:{ts}",
-                    "ta_rsi", symbol, "technical", "bullish",
-                    round(min(1.0, (30 - rsi) / 30), 2), ts,
-                    {"rsi_value": rsi, "condition": "oversold"},
-                ))
-            elif rsi > 70:
-                signals.append(self._make_signal(
-                    f"hist:ta_rsi:overbought:{symbol}:{ts}",
-                    "ta_rsi", symbol, "technical", "bearish",
-                    round(min(1.0, (rsi - 70) / 30), 2), ts,
-                    {"rsi_value": rsi, "condition": "overbought"},
-                ))
-
-        return signals
-
-    def _compute_macd_series(
-        self, symbol: str, history: list, date_idx: dict, start: date, end: date,
-    ) -> list[dict]:
-        """Detect MACD crossovers in the window."""
-        closes = [p.price for p in history]
-        if len(closes) < 35:
-            return []
-
-        fast, slow, sig_period = 12, 26, 9
-
-        def ema(data: list[float], period: int) -> list[float]:
-            result = [data[0]]
-            mult = 2 / (period + 1)
-            for val in data[1:]:
-                result.append(val * mult + result[-1] * (1 - mult))
-            return result
-
-        ema_fast = ema(closes, fast)
-        ema_slow = ema(closes, slow)
-        macd_line = [f - s for f, s in zip(ema_fast, ema_slow)]
-        signal_line = ema(macd_line[slow - 1:], sig_period)
-
-        # Align signal_line with macd_line
-        offset = slow - 1
-        signals: list[dict] = []
-
-        for i in range(1, len(signal_line)):
-            abs_idx = offset + i
-            if abs_idx >= len(history):
-                continue
-
-            ts = getattr(history[abs_idx], "timestamp", "")[:10]
-            if not ts:
-                continue
-            try:
-                sig_date = date.fromisoformat(ts)
-            except ValueError:
-                continue
-            if sig_date < start or sig_date >= end:
-                continue
-
-            prev_macd = macd_line[offset + i - 1]
-            curr_macd = macd_line[offset + i]
-            prev_sig = signal_line[i - 1]
-            curr_sig = signal_line[i]
-
-            # Bullish crossover: MACD crosses above signal
-            if prev_macd <= prev_sig and curr_macd > curr_sig:
-                signals.append(self._make_signal(
-                    f"hist:ta_macd:crossover_bull:{symbol}:{ts}",
-                    "ta_macd", symbol, "technical", "bullish",
-                    round(min(1.0, abs(curr_macd - curr_sig) * 10), 2), ts,
-                    {"crossover": "bullish", "macd": round(curr_macd, 4), "signal": round(curr_sig, 4)},
-                ))
-            # Bearish crossover: MACD crosses below signal
-            elif prev_macd >= prev_sig and curr_macd < curr_sig:
-                signals.append(self._make_signal(
-                    f"hist:ta_macd:crossover_bear:{symbol}:{ts}",
-                    "ta_macd", symbol, "technical", "bearish",
-                    round(min(1.0, abs(curr_macd - curr_sig) * 10), 2), ts,
-                    {"crossover": "bearish", "macd": round(curr_macd, 4), "signal": round(curr_sig, 4)},
-                ))
-
-        return signals
-
-    def _compute_bollinger_series(
-        self, symbol: str, history: list, date_idx: dict, start: date, end: date,
-    ) -> list[dict]:
-        """Detect Bollinger Band squeezes and breakouts in the window."""
-        closes = [p.price for p in history]
-        period = 20
-        if len(closes) < period + 1:
-            return []
-
-        signals: list[dict] = []
-
-        for i in range(period, len(closes)):
-            if i >= len(history):
-                break
-            ts = getattr(history[i], "timestamp", "")[:10]
-            if not ts:
-                continue
-            try:
-                sig_date = date.fromisoformat(ts)
-            except ValueError:
-                continue
-            if sig_date < start or sig_date >= end:
-                continue
-
-            window = closes[i - period:i]
-            sma = sum(window) / period
-            variance = sum((x - sma) ** 2 for x in window) / period
-            std = math.sqrt(variance) if variance > 0 else 0.001
-            upper = sma + 2 * std
-            lower = sma - 2 * std
-            bandwidth = (upper - lower) / sma if sma > 0 else 0
-
-            price = closes[i]
-
-            # Breakout above upper band
-            if price > upper:
-                signals.append(self._make_signal(
-                    f"hist:ta_bollinger:upper_break:{symbol}:{ts}",
-                    "ta_bollinger", symbol, "technical", "bullish",
-                    round(min(1.0, (price - upper) / (upper - sma) if upper != sma else 0.5), 2), ts,
-                    {"condition": "upper_breakout", "bandwidth": round(bandwidth, 4)},
-                ))
-            # Breakout below lower band
-            elif price < lower:
-                signals.append(self._make_signal(
-                    f"hist:ta_bollinger:lower_break:{symbol}:{ts}",
-                    "ta_bollinger", symbol, "technical", "bearish",
-                    round(min(1.0, (lower - price) / (sma - lower) if sma != lower else 0.5), 2), ts,
-                    {"condition": "lower_breakout", "bandwidth": round(bandwidth, 4)},
-                ))
-            # Squeeze (bandwidth < 0.04 = tight range)
-            elif bandwidth < 0.04 and i > period + 10:
-                # Check if this is a new squeeze (wasn't squeezing before)
-                prev_window = closes[i - period - 1:i - 1]
-                prev_sma = sum(prev_window) / period
-                prev_var = sum((x - prev_sma) ** 2 for x in prev_window) / period
-                prev_std = math.sqrt(prev_var) if prev_var > 0 else 0.001
-                prev_bw = (2 * prev_std * 2) / prev_sma if prev_sma > 0 else 0
-                if prev_bw >= 0.04:
-                    signals.append(self._make_signal(
-                        f"hist:ta_bollinger:squeeze:{symbol}:{ts}",
-                        "ta_bollinger", symbol, "technical", "neutral",
-                        0.5, ts,
-                        {"condition": "squeeze_entry", "bandwidth": round(bandwidth, 4)},
-                    ))
-
-        return signals
-
-    def _compute_volume_signals(
-        self, symbol: str, history: list, date_idx: dict, start: date, end: date,
-    ) -> list[dict]:
-        """Detect unusual volume (> 2x 20-day average) in the window."""
-        if len(history) < 21:
-            return []
-
-        signals: list[dict] = []
-        for i in range(20, len(history)):
-            ts = getattr(history[i], "timestamp", "")[:10]
-            if not ts:
-                continue
-            try:
-                sig_date = date.fromisoformat(ts)
-            except ValueError:
-                continue
-            if sig_date < start or sig_date >= end:
-                continue
-
-            vol = getattr(history[i], "volume", 0) or 0
-            avg_vol = sum(getattr(history[j], "volume", 0) or 0 for j in range(i - 20, i)) / 20
-            if avg_vol <= 0 or vol <= 0:
-                continue
-
-            ratio = vol / avg_vol
-            if ratio >= 2.0:
-                # Direction from price change
-                prev_price = history[i - 1].price
-                curr_price = history[i].price
-                direction = "bullish" if curr_price > prev_price else "bearish"
-                signals.append(self._make_signal(
-                    f"hist:volume_anomaly:{symbol}:{ts}",
-                    "finviz_unusual_volume", symbol, "technical", direction,
-                    round(min(1.0, (ratio - 2) / 3), 2), ts,
-                    {"volume_ratio": round(ratio, 2), "volume": vol, "avg_volume": round(avg_vol, 0)},
-                ))
-
-        return signals
+    def _compute_volume_signals(self, symbol, history, date_idx, start, end):
+        return compute_volume_signals(symbol, history, date_idx, start, end)
 
     # ── Tier 2: API-fetchable history ─────────────────────────────────────
 
@@ -495,7 +240,6 @@ class HistoricalDataFetcher:
 
         signals: list[dict] = []
         try:
-            # Fetch with large enough window from today to cover the dig site
             days_from_now = (date.today() - start_date).days + 30
             trades = self._sec_client.get_recent_form4s(symbol, days=days_from_now)
 
@@ -515,7 +259,7 @@ class HistoricalDataFetcher:
                 total_value = abs(getattr(trade, "total_value", 0) or 0)
                 strength = min(1.0, total_value / 1_000_000) if total_value > 0 else 0.3
 
-                signals.append(self._make_signal(
+                signals.append(_make_signal(
                     f"hist:sec_form4:{symbol}:{trade_date_str}:{getattr(trade, 'accession_number', '')}",
                     "sec_form4", symbol, "insider", direction,
                     round(strength, 2), trade_date_str[:10],
@@ -542,7 +286,6 @@ class HistoricalDataFetcher:
 
         for series_id, name in series_configs:
             try:
-                # Check cache first
                 if series_id not in self._fred_cache:
                     days_from_now = (date.today() - start_date).days + 30
                     data = self._fred_client.get_historical_series(series_id, days=days_from_now)
@@ -563,7 +306,7 @@ class HistoricalDataFetcher:
                     if direction == "neutral":
                         continue
 
-                    signals.append(self._make_signal(
+                    signals.append(_make_signal(
                         f"hist:fred_macro:{series_id}:{ind_date_str}",
                         "fred_macro", "", "macro", direction,
                         0.5, ind_date_str[:10],
@@ -593,8 +336,6 @@ class HistoricalDataFetcher:
 
             for year in years_needed:
                 for pos in self._cot_cache.get(year, []):
-                    # COT tickers might not match stock tickers directly
-                    # COT is futures-focused, applies as macro context
                     report_date_str = getattr(pos, "report_date", "")
                     if not report_date_str:
                         continue
@@ -605,14 +346,13 @@ class HistoricalDataFetcher:
                     if report_date < start_date or report_date >= end_date:
                         continue
 
-                    # COT positioning direction from commercial net position trend
                     commercial_net = getattr(pos, "commercial_net", 0) or 0
                     direction = "bullish" if commercial_net > 0 else "bearish" if commercial_net < 0 else "neutral"
                     if direction == "neutral":
                         continue
 
                     ticker = getattr(pos, "ticker", "")
-                    signals.append(self._make_signal(
+                    signals.append(_make_signal(
                         f"hist:cot_positioning:{ticker}:{report_date_str}",
                         "cot_positioning", "", "positioning", direction,
                         0.5, report_date_str[:10],
@@ -638,7 +378,6 @@ class HistoricalDataFetcher:
                 continue
             try:
                 if self._congress_cache is None:
-                    # Bulk download all trades (the free path gets everything)
                     days_from_now = (date.today() - start_date).days + 60
                     self._congress_cache = client.search_by_ticker(symbol, days=days_from_now)
 
@@ -658,7 +397,7 @@ class HistoricalDataFetcher:
                     if direction == "neutral":
                         continue
 
-                    signals.append(self._make_signal(
+                    signals.append(_make_signal(
                         f"hist:congressional:{client_name}:{symbol}:{trade_date_str}:{getattr(trade, 'representative', '')}",
                         "congressional", symbol, "government", direction,
                         0.5, trade_date_str[:10],
@@ -684,9 +423,7 @@ class HistoricalDataFetcher:
             for sig in self._load_signals_for_date(date_str):
                 sig_symbol = sig.get("symbol", "")
                 sig_domain = sig.get("domain", "")
-                # Match symbol OR symbol-agnostic domains
                 if sig_symbol == symbol or sig_domain in SYMBOL_AGNOSTIC_DOMAINS:
-                    # Look-ahead bias guard
                     received = sig.get("received_at") or sig.get("timestamp", "")
                     if received:
                         try:
@@ -732,19 +469,7 @@ class HistoricalDataFetcher:
         metadata: Optional[dict] = None,
     ) -> dict:
         """Create a signal dict in archive format."""
-        return {
-            "signal_id": signal_id,
-            "source": source,
-            "symbol": symbol,
-            "domain": domain,
-            "direction": direction,
-            "strength": strength,
-            "confidence": 0.5,
-            "velocity": 0.0,
-            "timestamp": f"{date_str}T00:00:00",
-            "received_at": f"{date_str}T00:00:00",
-            "metadata": metadata or {},
-        }
+        return _make_signal(signal_id, source, symbol, domain, direction, strength, date_str, metadata)
 
     def clear_cache(self) -> None:
         """Clear per-symbol caches between symbols.
