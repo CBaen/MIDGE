@@ -21,27 +21,15 @@ Usage:
 import json
 import logging
 import math
-from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Set
 from collections import deque
 
+from mae_core.market.intelligence.correlation_models import CorrelationPair  # noqa: F401
+from mae_core.market.intelligence.correlation_analysis import find_leading_pairs as _find_leading_pairs  # noqa: F401
+
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class CorrelationPair:
-    """Tracks correlation between two signals."""
-    signal_a: str
-    signal_b: str
-    current_correlation: float = 0.0
-    historical_mean: float = 0.0
-    historical_std: float = 0.1
-    correlation_zscore: float = 0.0
-    is_anomalous: bool = False
-    observation_count: int = 0
-    last_updated: datetime = None
 
 
 class CorrelationTracker:
@@ -344,29 +332,16 @@ class CorrelationTracker:
             List of (pair, reason) tuples
         """
         self.update_correlations()
-
-        leading = []
-        for pair in self.correlations.values():
-            if pair.observation_count < self.min_observations:
-                continue
-
-            reasons = []
-
-            # High correlation that's anomalously high
-            if abs(pair.current_correlation) >= correlation_threshold:
-                if pair.correlation_zscore > self.anomaly_threshold:
-                    reasons.append(f"unusual positive correlation ({pair.current_correlation:.2f}, z={pair.correlation_zscore:.2f})")
-                elif pair.correlation_zscore < -self.anomaly_threshold:
-                    reasons.append(f"unusual negative correlation ({pair.current_correlation:.2f}, z={pair.correlation_zscore:.2f})")
-                elif not anomaly_only:
-                    reasons.append(f"strong correlation ({pair.current_correlation:.2f})")
-
-            if reasons:
-                leading.append((pair, "; ".join(reasons)))
-
-        # Sort by z-score
-        leading.sort(key=lambda x: abs(x[0].correlation_zscore), reverse=True)
-        return leading
+        return _find_leading_pairs(
+            correlations=self.correlations,
+            correlation_history=self.correlation_history,
+            signal_domains=self.signal_domains,
+            window_size=self.window_size,
+            anomaly_threshold=self.anomaly_threshold,
+            min_observations=self.min_observations,
+            correlation_threshold=correlation_threshold,
+            anomaly_only=anomaly_only,
+        )
 
     def seed_from_lag_data(self, lag_file_path: str) -> int:
         """Pre-populate correlation state from lag_correlations.json.
@@ -502,50 +477,3 @@ class CorrelationTracker:
                     history_values, maxlen=self.window_size)
         except Exception as e:
             logger.warning(f"Could not load correlation state: {e}")
-
-
-if __name__ == "__main__":
-    import random
-    from datetime import datetime, timedelta
-
-    ct = CorrelationTracker(window_size=20, min_observations=5)
-
-    # Register signals with domains
-    ct.register_signal("crypto_whales", "crypto")
-    ct.register_signal("btc_price", "crypto")
-    ct.register_signal("insider_buys", "insider")
-    ct.register_signal("congress_trades", "government")
-    ct.register_signal("reddit_sentiment", "sentiment")
-
-    # Simulate data - crypto signals correlated, others independent
-    base_time = datetime.now() - timedelta(days=20)
-
-    for i in range(20):
-        ts = base_time + timedelta(days=i)
-
-        # Crypto signals correlated
-        crypto_base = random.uniform(0.3, 0.7)
-        ct.record("crypto_whales", crypto_base + random.uniform(-0.1, 0.1), ts)
-        ct.record("btc_price", crypto_base + random.uniform(-0.1, 0.1), ts)
-
-        # Other signals independent
-        ct.record("insider_buys", random.uniform(0, 1), ts)
-        ct.record("congress_trades", random.uniform(0, 1), ts)
-        ct.record("reddit_sentiment", random.uniform(0, 1), ts)
-
-    # Update correlations
-    ct.update_correlations()
-
-    print("=== Most Correlated Pairs ===")
-    for sig_a, sig_b, corr in ct.get_most_correlated_pairs(5):
-        print(f"  {sig_a} <-> {sig_b}: {corr:.3f}")
-
-    print("\n=== Correlation Anomalies ===")
-    anomalies = ct.detect_correlation_anomalies()
-    for pair in anomalies[:3]:
-        print(f"  {pair.signal_a} <-> {pair.signal_b}: corr={pair.current_correlation:.3f}, z={pair.correlation_zscore:.2f}")
-
-    print("\n=== Cross-Domain Anomalies ===")
-    cross = ct.detect_cross_domain_anomalies()
-    for pair, dom_a, dom_b in cross[:3]:
-        print(f"  {pair.signal_a} ({dom_a}) <-> {pair.signal_b} ({dom_b}): z={pair.correlation_zscore:.2f}")
