@@ -167,6 +167,7 @@ class MarketSensingHook(SensingSchedulerMixin, SensingCollectorMixin, SensingRea
         self._congress_gov_client = congress_gov_client
         self._social_text_analyzer = social_text_analyzer
         self._yahoo_rss_client = yahoo_rss_client
+        self._usda_client = usda_client
 
         # EventBus (injected by bootstrap for signal bridge)
         self._bus = None

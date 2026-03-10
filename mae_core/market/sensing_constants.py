@@ -73,6 +73,10 @@ TIER_ROUTING: Dict[str, str] = {
     "social_text": "thematic",
     # Yahoo Finance RSS — per-ticker headline velocity
     "yahoo_rss": "tactical",
+    # USDA agricultural supply/demand
+    "usda_agriculture": "strategic",
+    # Forex-critical FRED yields / DXY
+    "fred_yields": "thematic",
 }
 
 # Source names for rotation — 34 sources, 8 concurrent per cadence tick
