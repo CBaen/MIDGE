@@ -20,6 +20,9 @@ Stats tracking:
   - Win rate with Clopper-Pearson 95% CI
   - Cross-symbol validation count
   - Regime-conditional performance
+
+Disk I/O is delegated to pattern_library_io — see that module for load/persist
+function implementations.
 """
 
 from __future__ import annotations
@@ -35,6 +38,12 @@ from typing import Optional
 from mae_core.market.archaeology.fingerprint import (
     MoveFingerprint,
     PatternTemplate,
+)
+from mae_core.market.archaeology.pattern_library_io import (
+    load_library,
+    load_fingerprints_from_disk,
+    persist_fingerprints_dict,
+    persist_templates,
 )
 
 logger = logging.getLogger(__name__)
@@ -90,76 +99,24 @@ class PatternLibrary:
         self._load()
 
     def _load(self) -> None:
-        """Load templates from disk; scan fingerprint file for IDs and count only."""
-        fp_count = 0
-        if self._path.exists():
-            try:
-                with open(self._path, "r") as f:
-                    for line in f:
-                        line = line.strip()
-                        if not line:
-                            continue
-                        try:
-                            data = json.loads(line)
-                            fid = data.get("fingerprint_id", "")
-                            if fid:
-                                self._fingerprint_ids.add(fid)
-                            fp_count += 1
-                        except json.JSONDecodeError as e:
-                            logger.debug("Skipping malformed fingerprint: %s", e)
-            except OSError as e:
-                logger.warning("Could not load pattern library: %s", e)
+        """Load templates from disk; scan fingerprint file for IDs and count only.
+
+        Delegates to pattern_library_io.load_library.
+        """
+        fp_count, templates, template_key_index = load_library(
+            self._path, self._templates_path, self._fingerprint_ids,
+        )
         self._fingerprint_count = fp_count
-
-        tmpl_count = 0
-        if self._templates_path.exists():
-            try:
-                with open(self._templates_path, "r") as f:
-                    for line in f:
-                        line = line.strip()
-                        if not line:
-                            continue
-                        try:
-                            data = json.loads(line)
-                            t = PatternTemplate.from_dict(data)
-                            self._templates[t.template_id] = t
-                            self._template_key_index[f"{t.direction}:{t.domain_signature}"] = t.template_id
-                            tmpl_count += 1
-                        except (json.JSONDecodeError, KeyError) as e:
-                            logger.debug("Skipping malformed template: %s", e)
-            except OSError as e:
-                logger.warning("Could not load pattern templates: %s", e)
-
-        if fp_count or tmpl_count:
-            logger.info(
-                "Pattern library loaded: %d fingerprints (lazy), %d templates",
-                fp_count, tmpl_count,
-            )
+        self._templates.update(templates)
+        self._template_key_index.update(template_key_index)
 
     def _load_fingerprints(self) -> dict[str, MoveFingerprint]:
         """Load all fingerprints from disk into a temporary dict.
 
         Called only by rebuild_templates() and update_outcome(fingerprint_id=...).
-        The caller is responsible for keeping or discarding the returned dict.
+        Delegates to pattern_library_io.load_fingerprints_from_disk.
         """
-        fingerprints: dict[str, MoveFingerprint] = {}
-        if not self._path.exists():
-            return fingerprints
-        try:
-            with open(self._path, "r") as f:
-                for line in f:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        data = json.loads(line)
-                        fp = MoveFingerprint.from_dict(data)
-                        fingerprints[fp.fingerprint_id] = fp
-                    except (json.JSONDecodeError, KeyError) as e:
-                        logger.debug("Skipping malformed fingerprint on full load: %s", e)
-        except OSError as e:
-            logger.warning("Could not load fingerprints from disk: %s", e)
-        return fingerprints
+        return load_fingerprints_from_disk(self._path)
 
     def store(self, fingerprint: MoveFingerprint) -> bool:
         """Store a single fingerprint. Returns False if duplicate.

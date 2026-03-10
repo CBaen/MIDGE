@@ -278,6 +278,82 @@ def _run_synergy_detection(ctx: SimpleNamespace) -> None:
         logger.debug("Synergy detection failed", exc_info=True)
 
 
+def _wire_octopus_colony(ctx: SimpleNamespace) -> None:
+    """Wire OctopusColony market handlers, start monitoring, and register subscribers.
+
+    Extracted from _wire_sensing_hook to keep that function under 500 lines.
+    Idempotent: no-ops if octopus_colony not on ctx.
+    """
+    colony = getattr(ctx, "octopus_colony", None)
+    if colony is None:
+        return
+
+    try:
+        from mae_core.network.market_task_handlers import inject_market_handlers, patch_new_arm
+        inject_market_handlers(
+            colony=colony,
+            convergence_alerter=getattr(ctx, "convergence_alerter", None),
+            pattern_watcher=getattr(ctx, "pattern_watcher", None),
+            event_bus=getattr(ctx, "bus", None),
+            pattern_library=getattr(ctx, "pattern_library", None),
+            world_model=getattr(ctx, "world_model", None),
+        )
+        logger.info("OctopusColony: market handlers injected")
+    except Exception:
+        logger.debug("OctopusColony handler injection failed", exc_info=True)
+
+    try:
+        colony.start_monitoring()
+        logger.info("OctopusColony: monitoring started")
+    except Exception:
+        logger.debug("OctopusColony monitoring start failed", exc_info=True)
+
+    try:
+        from mae_core.network.market_task_handlers import patch_new_arm as _pna
+
+        def _on_octopus_spawn(channel, data):
+            msg = data if isinstance(data, dict) else {}
+            oct_id = msg.get("octopus_id", "")
+            oct_obj = colony.octopuses.get(oct_id)
+            if oct_obj is None:
+                return
+            cognition = getattr(oct_obj, "cognition", oct_obj)
+            for arm in getattr(cognition, "arms", {}).values():
+                try:
+                    _pna(colony, arm)
+                except Exception:
+                    logger.debug("Failed to patch arm on spawned %s", oct_id, exc_info=True)
+
+        bus = getattr(ctx, "bus", None)
+        if bus is not None:
+            bus.register_callback("octopus.spawn", _on_octopus_spawn)
+    except Exception:
+        logger.debug("OctopusColony spawn subscriber failed", exc_info=True)
+
+    try:
+        from mae_core.network.market_task_handlers import CH_OCTOPUS_INVESTIGATION
+
+        def _on_octopus_investigation(channel, data):
+            msg = data if isinstance(data, dict) else {}
+            ticker = msg.get("ticker", "?")
+            source = msg.get("source", "?")
+            check_count = msg.get("check_count", 0)
+            priority_created = msg.get("priority_request_created", False)
+            historical = msg.get("historical_templates", [])
+            logger.info(
+                "OctopusInvestigation[%s] ticker=%s check=%d templates=%d%s",
+                source, ticker, check_count, len(historical),
+                " [FOCUSED-ATTENTION ENGAGED]" if priority_created else "",
+            )
+
+        bus_obj = getattr(ctx, "bus", None)
+        if bus_obj is not None:
+            bus_obj.register_callback(CH_OCTOPUS_INVESTIGATION, _on_octopus_investigation)
+            logger.info("OctopusColony: investigation subscriber wired")
+    except Exception:
+        logger.debug("OctopusColony investigation subscriber failed", exc_info=True)
+
+
 def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
     """Wire the MarketSensingHook into the step lifecycle.
 

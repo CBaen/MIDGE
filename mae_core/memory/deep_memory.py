@@ -389,76 +389,8 @@ class DeepMemoryStore:
         score_threshold: float = 0.3,
         filters: dict[str, Any] | None = None,
     ) -> list[SearchResult]:
-        """Search Qdrant using hybrid (dense + sparse) vectors.
-
-        Returns list of SearchResult ordered by relevance.
-        """
-        if not self.is_available():
-            return []
-
-
-        # Embed query
-        dense = self.embed_text(query_text)
-        if dense is None:
-            return []
-
-        # Build search request
-        sparse = self.embed_sparse(query_text)
-        if sparse is not None:
-            indices, values = sparse
-            # Hybrid search with RRF fusion
-            request_body: dict[str, Any] = {
-                "prefetch": [
-                    {
-                        "query": dense.tolist(),
-                        "using": "dense",
-                        "limit": limit * 3,
-                    },
-                    {
-                        "query": {
-                            "indices": indices,
-                            "values": values,
-                        },
-                        "using": "sparse",
-                        "limit": limit * 3,
-                    },
-                ],
-                "query": {"fusion": "rrf"},
-                "limit": limit,
-                "with_payload": True,
-            }
-        else:
-            # Dense-only fallback
-            request_body = {
-                "vector": {"name": "dense", "vector": dense.tolist()},
-                "limit": limit,
-                "score_threshold": score_threshold,
-                "with_payload": True,
-            }
-
-        if filters:
-            request_body["filter"] = filters
-
-        try:
-            resp = requests.post(
-                f"{self._config.url}/collections/{collection}/points/query",
-                json=request_body,
-                timeout=self._config.timeout,
-            )
-            if resp.status_code == 200:
-                points = resp.json().get("result", {}).get("points", [])
-                return [
-                    SearchResult(
-                        point_id=str(p.get("id", "")),
-                        score=float(p.get("score", 0.0)),
-                        payload=p.get("payload", {}),
-                        text=p.get("payload", {}).get("text", ""),
-                    )
-                    for p in points
-                ]
-        except Exception:
-            logger.debug("Deep memory: search error", exc_info=True)
-        return []
+        """Search Qdrant using hybrid (dense + sparse) vectors."""
+        return _search_fn(self, collection, query_text, limit, score_threshold, filters)
 
     def search_with_filter(
         self,
@@ -467,15 +399,8 @@ class DeepMemoryStore:
         must_conditions: list[dict[str, Any]] | None = None,
         limit: int = 5,
     ) -> list[SearchResult]:
-        """Search with Qdrant filter conditions.
-
-        Example must_conditions:
-            [{"key": "agent_id", "match": {"value": "agent-3"}}]
-        """
-        filters = None
-        if must_conditions:
-            filters = {"must": must_conditions}
-        return self.search(collection, query_text, limit=limit, filters=filters)
+        """Search with Qdrant filter conditions."""
+        return _search_with_filter_fn(self, collection, query_text, must_conditions, limit)
 
     # -- Witness Hash --
 
@@ -502,69 +427,6 @@ class DeepMemoryStore:
         return f"DeepMemoryStore({avail}, url={self._config.url})"
 
 
-# -- Module-level helpers --
-
-
-def _sanitize_payload(obj: Any) -> Any:
-    """Recursively sanitize payloads for UTF-8 safety and JSON compatibility."""
-    if isinstance(obj, str):
-        return obj.encode("utf-8", errors="replace").decode("utf-8")
-    if isinstance(obj, dict):
-        return {k: _sanitize_payload(v) for k, v in obj.items()}
-    if isinstance(obj, list):
-        return [_sanitize_payload(item) for item in obj]
-    if isinstance(obj, np.ndarray):
-        return obj.tolist()
-    if isinstance(obj, (np.integer, np.floating)):
-        return obj.item()
-    return obj
-
-
-def _sparse_embed(text: str) -> tuple[list[int], list[float]]:
-    """Generate sparse embedding using TF-IDF hash-based approach.
-
-    Lightweight reimplementation of the sparse embedding strategy
-    from the lineage infrastructure, avoiding external dependencies.
-    """
-    import math
-    import re
-    from collections import Counter
-
-    VOCAB_SIZE = 30000
-    STOPWORDS = {
-        "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for",
-        "of", "with", "by", "from", "as", "is", "was", "are", "were", "been",
-        "be", "have", "has", "had", "do", "does", "did", "will", "would",
-        "could", "should", "may", "might", "must", "shall", "can", "need",
-        "this", "that", "these", "those", "it", "its", "they", "them", "their",
-        "we", "our", "you", "your", "i", "my", "he", "she", "him", "her", "his",
-        "what", "which", "who", "whom", "when", "where", "why", "how",
-        "all", "each", "every", "both", "few", "more", "most", "other", "some",
-        "such", "no", "not", "only", "same", "so", "than", "too", "very",
-    }
-
-    # Tokenize
-    text_lower = re.sub(r"[^\w\s]", " ", text.lower())
-    tokens = [t for t in text_lower.split() if len(t) > 2 and t not in STOPWORDS]
-
-    if not tokens:
-        return [], []
-
-    # Hash tokens to vocabulary indices
-    def hash_token(token: str) -> int:
-        h = 0
-        for c in token:
-            h = (h * 31 + ord(c)) & 0xFFFFFFFF
-        return h % VOCAB_SIZE
-
-    counts = Counter(hash_token(t) for t in tokens)
-    max_count = max(counts.values())
-
-    # TF-IDF-style scoring
-    indices = sorted(counts.keys())
-    values = [
-        (0.5 + 0.5 * counts[idx] / max_count) * math.log(1 + VOCAB_SIZE / (1 + counts[idx]))
-        for idx in indices
-    ]
-
-    return indices, values
+# Module-level helpers are re-exported from deep_memory_search for backward compat
+# _sanitize_payload and _sparse_embed remain importable from this module via the
+# import at the top: from mae_core.memory.deep_memory_search import _sanitize_payload, _sparse_embed
