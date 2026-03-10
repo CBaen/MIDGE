@@ -607,6 +607,53 @@ def compute_candlestick_patterns(
     )
 
 
+def compute_atr(
+    highs: List[float],
+    lows: List[float],
+    closes: List[float],
+    period: int = 14,
+) -> float:
+    """Compute Average True Range (ATR) using Wilder's smoothed moving average (vectorized).
+
+    ATR measures volatility as the average of True Range over `period` bars.
+    True Range = max(high-low, |high-prev_close|, |low-prev_close|).
+
+    Used by the signal translator to set ATR-proportional stop-loss and
+    take-profit levels that adapt to the instrument's current volatility.
+
+    Args:
+        highs:  List of bar high prices (oldest first, length >= period+1)
+        lows:   List of bar low prices  (oldest first, length >= period+1)
+        closes: List of bar close/last prices (oldest first, same length)
+        period: ATR smoothing period (default 14)
+
+    Returns:
+        ATR value as a positive float, or 0.0 when insufficient data.
+    """
+    if len(highs) < period + 1 or len(lows) < period + 1 or len(closes) < period + 1:
+        return 0.0
+
+    h = np.array(highs, dtype=float)
+    l = np.array(lows, dtype=float)
+    c = np.array(closes, dtype=float)
+
+    # True Range for each bar (starting from bar 1 so we have prev_close)
+    prev_c = c[:-1]
+    curr_h = h[1:]
+    curr_l = l[1:]
+
+    hl   = curr_h - curr_l
+    h_pc = np.abs(curr_h - prev_c)
+    l_pc = np.abs(curr_l - prev_c)
+
+    tr_series = pd.Series(np.maximum(hl, np.maximum(h_pc, l_pc)))
+
+    # Wilder smoothing = EMA with alpha=1/period (com = period-1), same as compute_rsi
+    atr_series = tr_series.ewm(com=period - 1, min_periods=period).mean()
+    val = float(atr_series.iloc[-1])
+    return val if not math.isnan(val) else 0.0
+
+
 # ---------------------------------------------------------------------------
 # Top-level computation function
 # ---------------------------------------------------------------------------

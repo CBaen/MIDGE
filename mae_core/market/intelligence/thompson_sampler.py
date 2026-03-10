@@ -134,9 +134,27 @@ class ThompsonSampler:
         self.distributions: Dict[str, Dict[str, Dict[str, float]]] = {}
         self._load_distributions()
 
-        # Seed from reliability scores if empty and requested
-        if seed_from_reliability and not self.distributions:
-            self._seed_from_reliability()
+        # Seed from reliability scores ONLY on first run (file does not exist).
+        # If the file exists but is empty or corrupt, log a warning instead of
+        # silently overwriting — the recovery path is replay_from_history().
+        if seed_from_reliability:
+            if not self.persistence_path.exists():
+                # Genuine first run — safe to seed.
+                self._seed_from_reliability()
+            elif not self.distributions:
+                # File existed but yielded no data (empty / corrupt).
+                logger.warning(
+                    "Thompson distributions file exists but is empty/corrupt — "
+                    "NOT re-seeding to avoid overwriting history. "
+                    "Call replay_from_history() to rebuild from thompson_history.jsonl."
+                )
+                # Attempt automatic recovery from history log if it exists.
+                if self.history_path.exists():
+                    recovered = self.replay_from_history(self.history_path)
+                    if recovered:
+                        logger.info(
+                            "Auto-recovered %d Thompson updates from history log.", recovered
+                        )
 
     def _load_distributions(self) -> None:
         """Load distributions from disk."""
@@ -196,6 +214,84 @@ class ThompsonSampler:
         except ImportError:
             # No reliability scores available
             pass
+
+    def replay_from_history(self, history_path: Optional[Path] = None) -> int:
+        """Rebuild distributions by replaying all 'update' events from history log.
+
+        Reads thompson_history.jsonl and re-applies every recorded outcome
+        (success/failure) to reconstruct the learned state.  Existing in-memory
+        distributions are CLEARED first so the replay is authoritative.
+
+        This is the recovery mechanism for Bug 2: if distributions.json is lost
+        or corrupt, the history log is the source of truth.
+
+        Args:
+            history_path: Path to thompson_history.jsonl (default: self.history_path)
+
+        Returns:
+            Number of update events replayed.
+        """
+        path = history_path or self.history_path
+        if not path.exists():
+            logger.warning("replay_from_history: history file not found at %s", path)
+            return 0
+
+        # Clear in-memory state — replay is authoritative
+        self.distributions = {}
+
+        replayed = 0
+        skipped = 0
+        with open(path, "r") as fh:
+            for raw_line in fh:
+                raw_line = raw_line.strip()
+                if not raw_line:
+                    continue
+                try:
+                    entry = json.loads(raw_line)
+                except json.JSONDecodeError:
+                    skipped += 1
+                    continue
+
+                # Only replay 'update' events — forgetting events are intentionally
+                # not replayed (they represent time-based decay that is already
+                # encoded in the update sequence through the cadence).
+                # Fields come from UpdateResult.asdict():
+                #   signal_id, success, regime, timestamp, old_alpha/beta, new_alpha/beta
+                if "signal_id" not in entry or "success" not in entry:
+                    continue
+
+                signal_id = entry["signal_id"]
+                success = bool(entry["success"])
+                regime = entry.get("regime", "default")
+
+                # Apply the Bayesian update directly — do NOT use self.update()
+                # to avoid writing to the history file again (would double the log).
+                if signal_id not in self.distributions:
+                    self.distributions[signal_id] = {}
+                if regime not in self.distributions[signal_id]:
+                    self.distributions[signal_id][regime] = {"alpha": 1.0, "beta": 1.0}
+
+                params = self.distributions[signal_id][regime]
+                if success:
+                    params["alpha"] += 1
+                else:
+                    params["beta"] += 1
+                replayed += 1
+
+        if replayed:
+            with self._lock:
+                self._save_distributions_locked()
+            logger.info(
+                "replay_from_history: replayed %d updates, skipped %d malformed lines.",
+                replayed, skipped,
+            )
+        else:
+            logger.warning(
+                "replay_from_history: no update events found in %s (skipped %d lines).",
+                path, skipped,
+            )
+
+        return replayed
 
     def seed_combo_distributions(self, replay_path: Path) -> int:
         """Seed combo Thompson distributions from replay results file.
