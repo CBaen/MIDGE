@@ -2,43 +2,37 @@
 """
 thompson_sampler.py - Exploration/Exploitation Balance via Beta Distributions
 
-Manages Beta(α, β) distributions for each signal type.
+Manages Beta(alpha, beta) distributions for each signal type.
 Samples to balance trying new patterns vs exploiting proven ones.
 
 Thompson Sampling algorithm:
-1. Each signal maintains Beta(α, β) representing reliability belief
+1. Each signal maintains Beta(alpha, beta) representing reliability belief
 2. Sample from each distribution to get a score
 3. Select signal with highest sampled score
-4. After observing outcome, update: success → α += 1, failure → β += 1
+4. After observing outcome, update: success → alpha += 1, failure → beta += 1
 
 This creates automatic exploration-exploitation balance without tuning.
 """
 
-import json
 import logging
-import os
 import threading
 import numpy as np
 from pathlib import Path
 from datetime import datetime
-from dataclasses import dataclass, asdict, field
 from typing import Dict, List, Tuple, Optional
 
+from mae_core.market.intelligence.thompson_persistence import (  # noqa: F401
+    BetaDistribution,
+    SamplingResult,
+    UpdateResult,
+    ThompsonPersistenceMixin,
+    DATA_DIR,
+    DISTRIBUTIONS_FILE,
+    HISTORY_FILE,
+    DEFAULT_PRIOR_SCALE,
+)
+
 logger = logging.getLogger(__name__)
-
-
-# Persistence path
-# Resolve data directory relative to project root
-DATA_DIR = Path(__file__).resolve().parents[3] / "data" / "market"
-DISTRIBUTIONS_FILE = DATA_DIR / "thompson_distributions.json"
-HISTORY_FILE = DATA_DIR / "thompson_history.jsonl"
-
-# Default prior scale (higher = more confident in prior).
-# Must be well above the forgetting floor (2.0) or seeded distributions
-# collapse to uniform after a single forgetting event.
-# At scale=20, a source with reliability=0.36 seeds to alpha=7.2, beta=12.8,
-# which survives forgetting (max(2.0, 7.2*0.99) = 7.13).
-DEFAULT_PRIOR_SCALE = 20
 
 # Regime-aware forgetting rates. Volatile regimes forget faster (recent data
 # dominates), stable regimes forget slower (accumulated evidence matters more).
@@ -51,55 +45,7 @@ REGIME_DECAY_RATES: Dict[str, float] = {
 }
 
 
-@dataclass
-class BetaDistribution:
-    """Beta distribution parameters for a signal."""
-    alpha: float
-    beta: float
-
-    @property
-    def mean(self) -> float:
-        """Expected value of the distribution."""
-        return self.alpha / (self.alpha + self.beta)
-
-    @property
-    def variance(self) -> float:
-        """Variance of the distribution."""
-        a, b = self.alpha, self.beta
-        return (a * b) / ((a + b) ** 2 * (a + b + 1))
-
-    @property
-    def samples(self) -> int:
-        """Approximate number of observations."""
-        return int(self.alpha + self.beta - 2)  # Subtract initial prior
-
-
-@dataclass
-class SamplingResult:
-    """Result of a Thompson sampling selection."""
-    timestamp: str
-    signal_id: str
-    sampled_score: float
-    distribution: BetaDistribution
-    regime: str
-
-
-@dataclass
-class UpdateResult:
-    """Result of a distribution update."""
-    timestamp: str
-    signal_id: str
-    success: bool
-    regime: str
-    old_alpha: float
-    old_beta: float
-    new_alpha: float
-    new_beta: float
-    old_mean: float
-    new_mean: float
-
-
-class ThompsonSampler:
+class ThompsonSampler(ThompsonPersistenceMixin):
     """
     Beta distribution manager for Thompson Sampling.
 
@@ -155,169 +101,6 @@ class ThompsonSampler:
                         logger.info(
                             "Auto-recovered %d Thompson updates from history log.", recovered
                         )
-
-    def _load_distributions(self) -> None:
-        """Load distributions from disk."""
-        if self.persistence_path.exists():
-            try:
-                data = json.loads(self.persistence_path.read_text())
-                if isinstance(data, dict):
-                    self.distributions = data
-                else:
-                    logger.warning(
-                        "Thompson distributions file has unexpected format — treating as empty"
-                    )
-                    self.distributions = {}
-            except (json.JSONDecodeError, OSError):
-                logger.warning(
-                    "Thompson distributions file is corrupt or unreadable — treating as empty"
-                )
-                self.distributions = {}
-
-    def _save_distributions_locked(self) -> None:
-        """Atomic write — assumes caller already holds self._lock."""
-        tmp = self.persistence_path.with_suffix(".tmp")
-        try:
-            tmp.write_text(json.dumps(self.distributions, indent=2))
-            os.replace(tmp, self.persistence_path)
-        except Exception:
-            logger.warning("Failed to persist Thompson distributions", exc_info=True)
-            if tmp.exists():
-                tmp.unlink(missing_ok=True)
-
-    def _save_distributions(self) -> None:
-        """Atomic write with lock."""
-        with self._lock:
-            self._save_distributions_locked()
-
-    def _seed_from_reliability(self) -> None:
-        """
-        Seed distributions from existing reliability scores.
-
-        Converts reliability r to Beta(α, β) where:
-        α = r × scale
-        β = (1-r) × scale
-        """
-        try:
-            from mae_core.market.intelligence.learning_config import LEARNING_CONFIG
-            SOURCE_RELIABILITY = LEARNING_CONFIG.get("source_reliability", {})
-
-            for signal_id, reliability in SOURCE_RELIABILITY.items():
-                alpha = reliability * self.prior_scale
-                beta = (1 - reliability) * self.prior_scale
-
-                self.distributions[signal_id] = {
-                    "default": {"alpha": alpha, "beta": beta}
-                }
-
-            self._save_distributions()
-        except ImportError:
-            # No reliability scores available
-            pass
-
-    def replay_from_history(self, history_path: Optional[Path] = None) -> int:
-        """Rebuild distributions by replaying all 'update' events from history log.
-
-        Reads thompson_history.jsonl and re-applies every recorded outcome
-        (success/failure) to reconstruct the learned state.  Existing in-memory
-        distributions are CLEARED first so the replay is authoritative.
-
-        This is the recovery mechanism for Bug 2: if distributions.json is lost
-        or corrupt, the history log is the source of truth.
-
-        Args:
-            history_path: Path to thompson_history.jsonl (default: self.history_path)
-
-        Returns:
-            Number of update events replayed.
-        """
-        path = history_path or self.history_path
-        if not path.exists():
-            logger.warning("replay_from_history: history file not found at %s", path)
-            return 0
-
-        # Clear in-memory state — replay is authoritative
-        self.distributions = {}
-
-        replayed = 0
-        skipped = 0
-        with open(path, "r") as fh:
-            for raw_line in fh:
-                raw_line = raw_line.strip()
-                if not raw_line:
-                    continue
-                try:
-                    entry = json.loads(raw_line)
-                except json.JSONDecodeError:
-                    skipped += 1
-                    continue
-
-                # Only replay 'update' events — forgetting events are intentionally
-                # not replayed (they represent time-based decay that is already
-                # encoded in the update sequence through the cadence).
-                # Fields come from UpdateResult.asdict():
-                #   signal_id, success, regime, timestamp, old_alpha/beta, new_alpha/beta
-                if "signal_id" not in entry or "success" not in entry:
-                    continue
-
-                signal_id = entry["signal_id"]
-                success = bool(entry["success"])
-                regime = entry.get("regime", "default")
-
-                # Apply the Bayesian update directly — do NOT use self.update()
-                # to avoid writing to the history file again (would double the log).
-                if signal_id not in self.distributions:
-                    self.distributions[signal_id] = {}
-                if regime not in self.distributions[signal_id]:
-                    self.distributions[signal_id][regime] = {"alpha": 1.0, "beta": 1.0}
-
-                params = self.distributions[signal_id][regime]
-                if success:
-                    params["alpha"] += 1
-                else:
-                    params["beta"] += 1
-                replayed += 1
-
-        if replayed:
-            with self._lock:
-                self._save_distributions_locked()
-            logger.info(
-                "replay_from_history: replayed %d updates, skipped %d malformed lines.",
-                replayed, skipped,
-            )
-        else:
-            logger.warning(
-                "replay_from_history: no update events found in %s (skipped %d lines).",
-                path, skipped,
-            )
-
-        return replayed
-
-    def seed_combo_distributions(self, replay_path: Path) -> int:
-        """Seed combo Thompson distributions from replay results file.
-
-        Reads domain_combos from replay_results.json and creates Beta
-        distributions for each combo with total >= 3 observations.
-        Idempotent: skips combos where live samples already exceed replay total.
-        """
-        if not replay_path.exists():
-            return 0
-        results = json.loads(replay_path.read_text())
-        combos = results.get("report", {}).get("domain_combos", {})
-        seeded = 0
-        for combo_str, stats in combos.items():
-            total = stats.get("total", 0)
-            if total < 3:
-                continue
-            key = f"combo:{combo_str}"
-            if self.get_distribution(key).samples >= total:
-                continue
-            for _ in range(stats.get("wins", 0)):
-                self.update(key, success=True)
-            for _ in range(total - stats.get("wins", 0)):
-                self.update(key, success=False)
-            seeded += 1
-        return seeded
 
     def get_distribution(
         self,
@@ -418,11 +201,6 @@ class ThompsonSampler:
             self._save_distributions_locked()
 
         return result
-
-    def _log_update(self, result: UpdateResult) -> None:
-        """Append update to history file."""
-        with open(self.history_path, "a") as f:
-            f.write(json.dumps(asdict(result)) + "\n")
 
     def select_top_n(
         self,
@@ -562,6 +340,7 @@ class ThompsonSampler:
             # Log one summary entry per forgetting call so decay is visible
             if count > 0:
                 try:
+                    import json
                     entry = {
                         "event": "forgetting_applied",
                         "decay_factor": decay_factor,

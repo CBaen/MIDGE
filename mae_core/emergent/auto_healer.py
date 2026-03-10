@@ -25,6 +25,12 @@ Connection points:
 - Morphogenesis can spawn replacement agents
 - EventBus publishes healing lifecycle events
 - Endocrine triggers cortisol during healing (stress response)
+
+Implementation is split across sub-modules for the 500-line cap:
+  auto_healer_models.py  -- HealingPhase, FailureType, FailureReport,
+                            HealingAction, HealingRecord
+  auto_healer_phases.py  -- _AutoHealerPhasesMixin (pipeline + registration)
+  auto_healer_monitor.py -- _AutoHealerMonitorMixin (self-monitoring triad)
 """
 
 from __future__ import annotations
@@ -33,80 +39,35 @@ import logging
 import threading
 import time
 from collections import defaultdict, deque
-from dataclasses import dataclass, field
-from enum import Enum
 from typing import Any, Callable, Optional
+
+from mae_core.emergent.auto_healer_models import (
+    FailureReport,
+    FailureType,
+    HealingAction,
+    HealingPhase,
+    HealingRecord,
+)
+from mae_core.emergent.auto_healer_phases import (
+    _AutoHealerPhasesMixin,
+    CH_HEALING_COMPLETE,
+    CH_HEALING_FAILED,
+    CH_HEALING_PHASE,
+)
+from mae_core.emergent.auto_healer_monitor import (
+    _AutoHealerMonitorMixin,
+    CH_HEALING_SELF_HEALED,
+)
 
 logger = logging.getLogger(__name__)
 
-# EventBus channels
+# EventBus channels (kept here for backward-compatible import)
 CH_FAILURE_DETECTED = "healing.failure_detected"
 CH_HEALING_STARTED = "healing.started"
-CH_HEALING_PHASE = "healing.phase_changed"
-CH_HEALING_COMPLETE = "healing.complete"
-CH_HEALING_FAILED = "healing.failed"
-CH_HEALING_SELF_HEALED = "healing.self_healed"
+# CH_HEALING_PHASE, CH_HEALING_COMPLETE, CH_HEALING_FAILED re-exported below
 
 
-class HealingPhase(Enum):
-    DETECTING = "detecting"
-    ISOLATING = "isolating"
-    ASSESSING = "assessing"
-    RESTORING = "restoring"
-    VERIFYING = "verifying"
-    COMPLETE = "complete"
-    FAILED = "failed"
-
-
-class FailureType(Enum):
-    PERFORMANCE_DEGRADATION = "performance_degradation"
-    AGENT_CRASH = "agent_crash"
-    COMMUNICATION_BREAK = "communication_break"
-    RESOURCE_EXHAUSTION = "resource_exhaustion"
-    POLICY_CONTAGION = "policy_contagion"
-    STARVATION = "starvation"
-    CASCADE_FAILURE = "cascade_failure"
-
-
-@dataclass
-class FailureReport:
-    """Detected failure requiring healing."""
-
-    failure_id: str
-    failure_type: FailureType
-    affected_agents: list[str] = field(default_factory=list)
-    affected_region: Optional[str] = None
-    severity: float = 0.5  # [0, 1]
-    detected_at: float = field(default_factory=time.time)
-    metadata: dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass
-class HealingAction:
-    """A specific recovery action taken."""
-
-    action: str
-    target: str
-    success: bool = False
-    details: str = ""
-    timestamp: float = field(default_factory=time.time)
-
-
-@dataclass
-class HealingRecord:
-    """Complete record of a healing operation."""
-
-    failure: FailureReport
-    phase: HealingPhase = HealingPhase.DETECTING
-    root_cause: Optional[str] = None
-    causal_path: list[str] = field(default_factory=list)
-    actions_taken: list[HealingAction] = field(default_factory=list)
-    started_at: float = field(default_factory=time.time)
-    completed_at: Optional[float] = None
-    success: bool = False
-
-
-class AutoHealer:
+class AutoHealer(_AutoHealerPhasesMixin, _AutoHealerMonitorMixin):
     """Three-phase biological healing system.
 
     Phase 1 - ISOLATE: Seal the wound. Prevent cascade failure by
@@ -294,159 +255,6 @@ class AutoHealer:
                     pass
 
     # =========================================================================
-    # Meta-Healing Triad (Law 6: Autopoietic Closure)
-    # =========================================================================
-
-    def _self_monitor(self) -> None:
-        """Monitor AutoHealer's own health and self-heal when degraded.
-
-        The healer must be part of the system it heals (autopoietic closure).
-        Three health indicators form the self-monitoring triad:
-
-        1. Scan staleness: Has the healer run a scan recently?
-        2. Queue overflow: Is the failure queue growing unboundedly?
-        3. Detection blindness: Is the healer detecting anything at all?
-
-        When degradation is detected, targeted self-healing actions restore
-        the healer's capability. SomaticMap witnesses the self-healing event.
-        """
-        healed_actions: list[str] = []
-
-        # --- Indicator 1: Scan staleness ---
-        # If no scan has run in the last N steps, the scanner may be stuck.
-        steps_since_scan = self._step_count - self._last_scan_step
-        if steps_since_scan > self._scan_staleness_threshold and self._step_count > self._scan_staleness_threshold:
-            logger.warning(
-                "AutoHealer self-monitor: scan stale (%d steps since last scan), resetting",
-                steps_since_scan,
-            )
-            # Self-heal: reset scan counter to force immediate scan on next interval
-            self._last_scan_step = self._step_count - self._scan_interval
-            healed_actions.append("reset_scan_staleness")
-
-        # --- Indicator 2: Queue overflow ---
-        # If history is growing unboundedly, prune oldest entries.
-        with self._lock:
-            history_size = len(self._history)
-        if history_size > self._max_failure_queue_size:
-            logger.warning(
-                "AutoHealer self-monitor: history overflow (%d entries, threshold %d), pruning",
-                history_size,
-                self._max_failure_queue_size,
-            )
-            # Self-heal: prune oldest 50% of history
-            with self._lock:
-                prune_count = history_size // 2
-                for _ in range(prune_count):
-                    if self._history:
-                        self._history.popleft()
-            healed_actions.append(f"pruned_history_{prune_count}_entries")
-
-        # --- Indicator 3: Detection blindness ---
-        # If the system has been active for a while but no failures detected,
-        # the healer's sensitivity may have drifted.
-        if (
-            self._step_count > self._detection_blindness_threshold
-            and self._total_detections == 0
-            and self._step_count - self._last_detection_step > self._detection_blindness_threshold
-        ):
-            # Only flag this if there are active systems to monitor
-            somatic = getattr(self, "_somatic_map", None)
-            system_count = 0
-            if somatic is not None:
-                get_all = getattr(somatic, "get_all_systems", None)
-                if get_all is not None:
-                    try:
-                        system_count = len(get_all())
-                    except Exception:
-                        pass
-            if system_count > 0:
-                logger.warning(
-                    "AutoHealer self-monitor: detection blindness "
-                    "(%d steps, 0 detections, %d systems active), widening threshold",
-                    self._step_count,
-                    system_count,
-                )
-                # Self-heal: widen detection criteria by lowering health threshold
-                old_threshold = self._health_threshold
-                self._health_threshold = min(self._health_threshold + 0.1, 0.8)
-                healed_actions.append(
-                    f"widened_health_threshold_{old_threshold:.2f}_to_{self._health_threshold:.2f}"
-                )
-
-        # --- Report self-healing to EventBus and SomaticMap ---
-        if healed_actions:
-            self._self_heal_count += len(healed_actions)
-
-            if self._bus:
-                self._bus.publish(CH_HEALING_SELF_HEALED, {
-                    "step": self._step_count,
-                    "actions": healed_actions,
-                    "self_heal_count": self._self_heal_count,
-                })
-
-            # SomaticMap witnesses the self-healing (third party in the triad)
-            somatic = getattr(self, "_somatic_map", None)
-            if somatic is not None:
-                heartbeat = getattr(somatic, "heartbeat", None)
-                if heartbeat is not None:
-                    try:
-                        heartbeat("auto_healer", health=0.7)  # Recovering, not fully healthy
-                    except Exception:
-                        pass
-
-            logger.info(
-                "AutoHealer self-healed: %d actions taken at step %d: %s",
-                len(healed_actions),
-                self._step_count,
-                ", ".join(healed_actions),
-            )
-
-    def register_self_healing_triad(self) -> None:
-        """Register the meta-healing triad with ConnectionRegistry.
-
-        Triad members:
-          A = auto_healer (the system being healed)
-          B = auto_healer.self_monitor (the monitoring function)
-          C = somatic_map (the witness — independently tracks system health)
-
-        This creates a proper triadic connection for the self-healing loop,
-        satisfying Law 1 (No Bare Dyads) for the healing system itself.
-
-        Called from main.py after ConnectionRegistry is available.
-        Idempotent — safe to call multiple times.
-        """
-        if self._self_healing_triad_registered:
-            return
-
-        registry = getattr(self, "_connection_registry", None)
-        if registry is None:
-            logger.debug("Cannot register self-healing triad: no ConnectionRegistry")
-            return
-
-        try:
-            register_conn = getattr(registry, "register_connection", None)
-            if register_conn is None:
-                return
-
-            # Import ConnectionType locally to avoid circular imports
-            from mae_core.backbone.connection_registry import ConnectionType
-
-            register_conn(
-                source="auto_healer",
-                target="auto_healer.self_monitor",
-                connection_type=ConnectionType.DIRECT_REFERENCE,
-                witness="somatic_map",
-                description="Meta-healing triad: AutoHealer monitors and heals itself, "
-                            "witnessed by SomaticMap (Law 6: Autopoietic Closure)",
-            )
-
-            self._self_healing_triad_registered = True
-            logger.info("AutoHealer: self-healing triad registered with ConnectionRegistry")
-        except Exception:
-            logger.debug("Failed to register self-healing triad", exc_info=True)
-
-    # =========================================================================
     # Failure Detection
     # =========================================================================
 
@@ -528,238 +336,24 @@ class AutoHealer:
                 self.report_failure(failure)
 
     # =========================================================================
-    # Three-Phase Healing Pipeline
+    # Helpers
     # =========================================================================
 
-    def _execute_healing(self, record: HealingRecord) -> None:
-        """Run the three-phase healing pipeline."""
-        try:
-            # Phase 1: Isolate
-            self._phase_isolate(record)
-
-            # Phase 2: Assess
-            self._phase_assess(record)
-
-            # Phase 3: Restore
-            self._phase_restore(record)
-
-            # Verify
-            self._phase_verify(record)
-
-        except Exception as e:
-            logger.error("Healing failed for %s: %s", record.failure.failure_id, e)
-            record.phase = HealingPhase.FAILED
-            record.success = False
-            self._failed_healings += 1
-            if self._bus:
-                self._bus.publish(CH_HEALING_FAILED, {
-                    "failure_id": record.failure.failure_id,
-                    "error": str(e),
-                })
-        finally:
-            record.completed_at = time.time()
-            self._active_healings.pop(record.failure.failure_id, None)
-            self._history.append(record)
-            # Stamp cooldown so proactive scan doesn't immediately re-heal
-            for agent_id in record.failure.affected_agents:
-                self._healing_cooldowns[agent_id] = self._step_count
-
-    def _phase_isolate(self, record: HealingRecord) -> None:
-        """Phase 1: Isolate the affected region (clotting)."""
-        record.phase = HealingPhase.ISOLATING
-        self._publish_phase(record)
-
-        failure = record.failure
-
-        # Isolate affected agents via HAVEN
-        if self._haven and failure.severity >= self._auto_isolate:
-            for agent_id in failure.affected_agents:
-                self._haven.isolate_agent(agent_id, reason=f"auto-heal: {failure.failure_type.value}")
-                record.actions_taken.append(HealingAction(
-                    action="isolate_agent",
-                    target=agent_id,
-                    success=True,
-                    details=f"HAVEN isolation for {failure.failure_type.value}",
-                ))
-
-        # Isolate substrate region if available
-        if self._substrate and failure.affected_region:
-            self._substrate.isolate_region(failure.affected_region)
-            record.actions_taken.append(HealingAction(
-                action="isolate_region",
-                target=failure.affected_region,
-                success=True,
-                details="Substrate region isolated",
-            ))
-            self._cascade_preventions += 1
-
-        logger.info(
-            "Phase 1 ISOLATE complete for %s (%d actions)",
-            failure.failure_id,
-            len(record.actions_taken),
-        )
-
-    def _phase_assess(self, record: HealingRecord) -> None:
-        """Phase 2: Root cause analysis (immune inspection)."""
-        record.phase = HealingPhase.ASSESSING
-        self._publish_phase(record)
-
-        failure = record.failure
-
-        # Use causal engine to find root cause
-        if self._causal:
-            # Query for causal links to this failure type
-            result = self._causal.query_causation(
-                failure.failure_type.value,
-                "system_degradation",
-            )
-            if result.is_causal:
-                record.root_cause = result.cause
-                record.causal_path = result.causal_path
-            else:
-                record.root_cause = failure.failure_type.value
-        else:
-            # Without causal engine, failure type IS the root cause
-            record.root_cause = failure.failure_type.value
-
-        record.actions_taken.append(HealingAction(
-            action="root_cause_analysis",
-            target=failure.failure_id,
-            success=record.root_cause is not None,
-            details=f"Root cause: {record.root_cause}",
-        ))
-
-        logger.info(
-            "Phase 2 ASSESS complete for %s: root_cause=%s",
-            failure.failure_id,
-            record.root_cause,
-        )
-
-    def _phase_restore(self, record: HealingRecord) -> None:
-        """Phase 3: Recovery (tissue regeneration)."""
-        record.phase = HealingPhase.RESTORING
-        self._publish_phase(record)
-
-        failure = record.failure
-
-        # Execute registered recovery actions for this failure type
-        for callback in self._recovery_actions.get(failure.failure_type, []):
+    def _publish_phase(self, record: HealingRecord) -> None:
+        if self._bus:
+            self._bus.publish(CH_HEALING_PHASE, {
+                "failure_id": record.failure.failure_id,
+                "phase": record.phase.value,
+            })
+        # Notify somatic map of healing phase changes for body awareness
+        if self._somatic_map is not None:
             try:
-                result = callback(record)
-                record.actions_taken.append(HealingAction(
-                    action=f"recovery_{callback.__name__}",
-                    target=failure.failure_id,
-                    success=True,
-                    details=str(result) if result else "",
-                ))
-            except Exception as e:
-                record.actions_taken.append(HealingAction(
-                    action=f"recovery_{callback.__name__}",
-                    target=failure.failure_id,
-                    success=False,
-                    details=str(e),
-                ))
-
-        # Restore isolated agents
-        if self._haven:
-            for agent_id in failure.affected_agents:
-                if self._haven.is_agent_isolated(agent_id):
-                    self._haven.restore_agent(agent_id)
-                    record.actions_taken.append(HealingAction(
-                        action="restore_agent",
-                        target=agent_id,
-                        success=True,
-                        details="Agent restored from isolation",
-                    ))
-
-        # Restore substrate region
-        if self._substrate and failure.affected_region:
-            self._substrate.restore_region(failure.affected_region)
-            record.actions_taken.append(HealingAction(
-                action="restore_region",
-                target=failure.affected_region,
-                success=True,
-                details="Substrate region reconnected",
-            ))
-
-        logger.info(
-            "Phase 3 RESTORE complete for %s (%d actions)",
-            failure.failure_id,
-            len(record.actions_taken),
-        )
-
-    def _phase_verify(self, record: HealingRecord) -> None:
-        """Verify healing was successful."""
-        record.phase = HealingPhase.VERIFYING
-        self._publish_phase(record)
-
-        # Check that isolated agents are restored
-        all_restored = True
-        if self._haven:
-            for agent_id in record.failure.affected_agents:
-                if self._haven.is_agent_isolated(agent_id):
-                    all_restored = False
-
-        record.success = all_restored
-        record.phase = HealingPhase.COMPLETE if all_restored else HealingPhase.FAILED
-
-        if record.success:
-            self._successful_healings += 1
-            self._last_successful_heal = time.time()
-            if self._bus:
-                self._bus.publish(CH_HEALING_COMPLETE, {
-                    "failure_id": record.failure.failure_id,
-                    "root_cause": record.root_cause,
-                    "actions_count": len(record.actions_taken),
-                    "duration": time.time() - record.started_at,
-                })
-        else:
-            self._failed_healings += 1
-            if self._bus:
-                self._bus.publish(CH_HEALING_FAILED, {
-                    "failure_id": record.failure.failure_id,
-                    "reason": "verification_failed",
-                })
-
-    # =========================================================================
-    # Recovery Action Registration
-    # =========================================================================
-
-    def register_recovery(
-        self, failure_type: FailureType, callback: Callable
-    ) -> None:
-        """Register a recovery callback for a failure type."""
-        self._recovery_actions[failure_type].append(callback)
-
-    def _register_defaults(self) -> None:
-        """Register default recovery strategies."""
-
-        def _redistribute_load(record: HealingRecord) -> str:
-            """Redistribute work from failed agents to healthy neighbors."""
-            if not self._substrate:
-                return "no_substrate"
-            for agent_id in record.failure.affected_agents:
-                peers = self._substrate.get_peers(agent_id, max_peers=3)
-                if peers:
-                    return f"load_distributed_to_{len(peers)}_peers"
-            return "no_peers_found"
-
-        def _inject_nutrients(record: HealingRecord) -> str:
-            """Inject resources into starving region."""
-            if not self._substrate:
-                return "no_substrate"
-            flow = getattr(self._substrate, "nutrient_flow", None)
-            if flow is None or not hasattr(flow, "inject_resources"):
-                return "no_nutrient_flow"
-            injected = 0
-            for node_id in record.failure.affected_agents:
-                if flow.inject_resources(str(node_id), 0.5):
-                    injected += 1
-            return f"nutrients_injected_for_{injected}_nodes"
-
-        self.register_recovery(FailureType.PERFORMANCE_DEGRADATION, _redistribute_load)
-        self.register_recovery(FailureType.STARVATION, _inject_nutrients)
-        self.register_recovery(FailureType.RESOURCE_EXHAUSTION, _inject_nutrients)
+                self._somatic_map.heartbeat(
+                    "auto_healer",
+                    health=0.5 if record.phase != HealingPhase.COMPLETE else 1.0,
+                )
+            except Exception:
+                logger.debug("Could not notify somatic_map of phase change")
 
     # =========================================================================
     # Hormonal Modulation
@@ -786,26 +380,6 @@ class AutoHealer:
         """
         if hormone == "cortisol":
             self.set_cortisol_priority(level)
-
-    # =========================================================================
-    # Helpers
-    # =========================================================================
-
-    def _publish_phase(self, record: HealingRecord) -> None:
-        if self._bus:
-            self._bus.publish(CH_HEALING_PHASE, {
-                "failure_id": record.failure.failure_id,
-                "phase": record.phase.value,
-            })
-        # Notify somatic map of healing phase changes for body awareness
-        if self._somatic_map is not None:
-            try:
-                self._somatic_map.heartbeat(
-                    "auto_healer",
-                    health=0.5 if record.phase != HealingPhase.COMPLETE else 1.0,
-                )
-            except Exception:
-                logger.debug("Could not notify somatic_map of phase change")
 
     # =========================================================================
     # Statistics
