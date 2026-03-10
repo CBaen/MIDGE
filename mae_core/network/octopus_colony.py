@@ -184,6 +184,10 @@ class OctopusColony:
             world_model=self._world_model,
             signal_bus=self._signal_bus,
         )
+        # Assign genome role for role-affinity task routing (Law 5).
+        _ROLES = ("SEC_WATCHER", "CONTRACT_TRACKER", "MARKET_ANALYST",
+                  "HYPOTHESIS_EXPLORER", "HYPOTHESIS_VALIDATOR")
+        octopus._genome_role = _ROLES[self._octopus_counter % len(_ROLES)]
         octopus.start()
 
         self.octopuses[octopus_id] = octopus
