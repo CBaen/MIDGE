@@ -55,11 +55,12 @@ class TestDirectionStrength:
         assert direction == "bullish"
 
     def test_exact_upper_bearish_boundary(self):
-        # 0.40 is the boundary between neutral and mild surplus
+        # 0.40 satisfies > 0.30 but not > 0.40 → mild surplus (bearish)
         direction, _ = _compute_direction_strength(0.40)
-        assert direction == "neutral"
+        assert direction == "bearish"
 
-    def test_just_above_upper_bearish_boundary(self):
+    def test_above_upper_strong_bearish_boundary(self):
+        # 0.401 satisfies > 0.40 → strong bearish zone
         direction, _ = _compute_direction_strength(0.401)
         assert direction == "bearish"
 

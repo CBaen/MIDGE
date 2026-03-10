@@ -1,7 +1,7 @@
 # MIDGE Queue
 
 **Purpose:** Active tasks only. Git history preserves completed work.
-**Last updated:** 2026-03-09 (audited — stale items cleared)
+**Last updated:** 2026-03-09
 
 ---
 
