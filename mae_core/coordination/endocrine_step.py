@@ -3,13 +3,19 @@
 Contains step(), _apply_cascades(), set_circadian_phase(), and EventBus
 callbacks _on_phi_measurement() and _on_healing_phase_changed(). Extracted
 from endocrine_system.py to stay under 500-line limit.
+
+Note: HormoneType and constants are imported lazily inside methods to avoid
+circular imports with endocrine_system.py (which imports this module at class
+composition time).
 """
 
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
-from mae_core.coordination.endocrine_system import CH_HORMONE_STATE, HormoneType
+if TYPE_CHECKING:
+    from mae_core.coordination.endocrine_system import HormoneType
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +37,7 @@ class EndocrineStepMixin:
 
         Advisory: effect size +-0.05, never blocks, clamped by hormone bounds.
         """
+        from mae_core.coordination.endocrine_system import HormoneType
         import json as _json
         try:
             msg = _json.loads(message) if isinstance(message, str) else message
@@ -56,6 +63,7 @@ class EndocrineStepMixin:
         cortisol to signal stress to the rest of the system. When
         healing completes, suppress cortisol.
         """
+        from mae_core.coordination.endocrine_system import HormoneType
         if isinstance(message, str):
             try:
                 import json
@@ -81,6 +89,7 @@ class EndocrineStepMixin:
         Called each model step. Hormones naturally decay toward their
         baseline levels, simulating metabolic clearance.
         """
+        from mae_core.coordination.endocrine_system import CH_HORMONE_STATE
         self._step_count += 1
 
         with self._lock:
@@ -112,6 +121,7 @@ class EndocrineStepMixin:
         CONSOLIDATION: Moderate melatonin, suppress adrenaline.
         REST: High melatonin, suppress cortisol and adrenaline.
         """
+        from mae_core.coordination.endocrine_system import HormoneType
         if phase == "REST":
             self.release_hormone(HormoneType.MELATONIN, 0.3, "circadian_rest")
             self.suppress_hormone(HormoneType.ADRENALINE, 0.2, "circadian_rest")
@@ -127,7 +137,7 @@ class EndocrineStepMixin:
     # Internal cascade
     # =========================================================================
 
-    def _apply_cascades(self, source: HormoneType, amount: float) -> None:
+    def _apply_cascades(self, source: "HormoneType", amount: float) -> None:
         """Apply cascade effects from a hormone release."""
         from mae_core.coordination.endocrine_system import HORMONE_CASCADES
         for src, target, multiplier in HORMONE_CASCADES:

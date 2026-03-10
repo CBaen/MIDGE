@@ -2,6 +2,9 @@
 
 Extracted from market_hooks.py — purely structural split.
 Contains: _wire_sensing_hook (with all nested closures).
+Heavy sub-blocks extracted to module-level helpers:
+  - _run_sensing_archaeology(ctx, step, _shm_sensing)
+  - _run_synergy_detection(ctx)
 
 Critical constraint: ctx._cached_alerts must already exist when this runs.
 _register_market_step_hooks() MUST be called before _wire_sensing_hook().
@@ -13,6 +16,206 @@ import logging
 from types import SimpleNamespace
 
 logger = logging.getLogger("midge.bootstrap")
+
+
+def _run_sensing_archaeology(ctx: SimpleNamespace, step: int, _shm_sensing) -> None:
+    """Pattern archaeology stacking detection + active tracker price check.
+
+    Called every 10 steps from _sensing_step_with_advisory.
+    Builds active signal map, runs PatternWatcher.check(), registers stacks,
+    writes plain-language alerts, and updates ActiveTracker.
+    """
+    if getattr(ctx, "pattern_watcher", None) is not None:
+        try:
+            _alerter = getattr(ctx, "convergence_alerter", None)
+            if _alerter is not None and hasattr(_alerter, "signals"):
+                _active: dict = {}
+                for _domain, _sigs in _alerter.signals.items():
+                    for _sig in _sigs:
+                        _sym = getattr(_sig, "metadata", {}).get("symbol", "")
+                        _dir = getattr(_sig, "direction", "")
+                        _src = getattr(_sig, "source", "")
+                        if not _sym or not _dir or not _src:
+                            continue
+                        if _sym not in _active:
+                            _active[_sym] = {}
+                        if _dir not in _active[_sym]:
+                            _active[_sym][_dir] = set()
+                        _active[_sym][_dir].add(_src)
+                if _active:
+                    _stacks = ctx.pattern_watcher.check(_active)
+                    ctx._cached_pattern_stacks = _stacks or []
+                    if _shm_sensing:
+                        _shm_sensing.record_success("pattern_watcher")
+                    _oc = getattr(ctx, "outcome_collector", None)
+                    if _stacks:
+                        for _stack in _stacks:
+                            if _oc is not None:
+                                try:
+                                    _oc.register_pattern_stack(_stack, _stack.symbol)
+                                except Exception:
+                                    logger.debug("Pattern stack registration failed", exc_info=True)
+                            try:
+                                from mae_core.market.plain_language import (
+                                    format_pattern_stack_alert, write_plain_alert,
+                                )
+                                _tmpl_windows = []
+                                for _act in _stack.activations:
+                                    _tw = getattr(_act.template, "expected_move_window_days", None)
+                                    if _tw is not None:
+                                        _tmpl_windows.append(_tw)
+                                if _tmpl_windows:
+                                    _tmpl_windows.sort()
+                                    _win_days = _tmpl_windows[len(_tmpl_windows) // 2]
+                                    _win_src = "dynamic"
+                                else:
+                                    _win_days = 14
+                                    _win_src = "fallback"
+                                _msg = format_pattern_stack_alert(
+                                    _stack, window_days=_win_days, window_source=_win_src,
+                                )
+                                write_plain_alert(
+                                    _msg, _stack.symbol, _stack.direction,
+                                    source="pattern_stack",
+                                    metadata={"tier": _stack.tier,
+                                              "confidence": _stack.stack_confidence,
+                                              "n_patterns": len(_stack.activations)},
+                                )
+                            except Exception:
+                                logger.debug("Plain-language alert failed", exc_info=True)
+                            _at = getattr(ctx, "active_tracker", None)
+                            if _at is not None:
+                                try:
+                                    _pf = getattr(ctx, "price_fetcher", None)
+                                    _entry = 0.0
+                                    if _pf is not None:
+                                        _pd = _pf.get_current_price(_stack.symbol)
+                                        if _pd and _pd.price > 0:
+                                            _entry = _pd.price
+                                    if _entry > 0:
+                                        _at.register(_stack, _entry)
+                                except Exception:
+                                    logger.debug("Active tracker registration failed", exc_info=True)
+        except Exception as exc:
+            logger.debug("Pattern watcher check failed", exc_info=True)
+            if _shm_sensing:
+                _shm_sensing.record_error("pattern_watcher", exc)
+
+
+def _run_active_tracker_check(ctx: SimpleNamespace) -> None:
+    """Active tracker price check — writes plain-language status updates.
+
+    Called every 20 steps from _sensing_step_with_advisory.
+    """
+    _at = getattr(ctx, "active_tracker", None)
+    if _at is None or _at.count <= 0:
+        return
+    try:
+        _events = _at.check_prices()
+        if _events:
+            try:
+                from mae_core.market.plain_language import write_plain_alert
+                for _ev in _events:
+                    _status = _ev["new_status"]
+                    _sym = _ev["symbol"]
+                    _pct = _ev.get("current_pct", 0)
+                    if _status == "confirmed":
+                        _msg = (
+                            f"UPDATE: {_sym} prediction CONFIRMED. "
+                            f"Price moved {abs(_pct):.1f}% in the expected direction. "
+                            f"MIDGE was right on this one."
+                        )
+                    elif _status == "failed":
+                        _msg = (
+                            f"UPDATE: {_sym} prediction DID NOT PLAY OUT. "
+                            f"Price moved {abs(_pct):.1f}% in the wrong direction. "
+                            f"MIDGE is learning from this outcome."
+                        )
+                    elif _status == "expired":
+                        _msg = (
+                            f"UPDATE: {_sym} prediction window expired. "
+                            f"Final move: {_pct:+.1f}%. "
+                            f"The expected move did not materialize in time."
+                        )
+                    elif _status == "confirming":
+                        _msg = (
+                            f"UPDATE: {_sym} is showing early signs of the expected move "
+                            f"({_pct:+.1f}% so far). MIDGE is watching closely."
+                        )
+                    else:
+                        continue
+                    write_plain_alert(
+                        _msg, _sym, _ev.get("direction", ""),
+                        source="active_tracking",
+                        metadata={"status": _status, "pct_change": _pct},
+                    )
+            except Exception:
+                logger.debug("Active tracking alert write failed", exc_info=True)
+    except Exception:
+        logger.debug("Active tracker check failed", exc_info=True)
+
+
+def _run_synergy_detection(ctx: SimpleNamespace) -> None:
+    """Detect dual confirmation: convergence alert + pattern stack on same ticker.
+
+    Called every step from _sensing_step_with_advisory after pattern watcher runs.
+    Publishes CH_DUAL_CONFIRMATION when both fire on the same ticker + direction.
+    """
+    from mae_core.market.channels import CH_DUAL_CONFIRMATION
+
+    _conv_alerts = ctx._cached_alerts[0] or []
+    _p_stacks = getattr(ctx, "_cached_pattern_stacks", [])
+    if not _conv_alerts or not _p_stacks:
+        return
+    try:
+        _stack_keys = set()
+        for _ps in _p_stacks:
+            _stack_keys.add((_ps.symbol, _ps.direction))
+
+        for _alert in _conv_alerts:
+            _alert_sym = None
+            for _sig in getattr(_alert, "signals", []):
+                _alert_sym = getattr(_sig, "metadata", {}).get("symbol", "")
+                if _alert_sym:
+                    break
+            if not _alert_sym:
+                _alert_sym = getattr(_alert, "ticker", "")
+            _alert_dir = getattr(_alert, "direction", "")
+            if _alert_sym and (_alert_sym, _alert_dir) in _stack_keys:
+                _match_stack = next(
+                    (s for s in _p_stacks
+                     if s.symbol == _alert_sym and s.direction == _alert_dir),
+                    None,
+                )
+                if _match_stack is not None:
+                    logger.info(
+                        "DUAL CONFIRMATION: %s %s — convergence (%.2f) + "
+                        "pattern stack (%d patterns, %.2f confidence)",
+                        _alert_sym, _alert_dir.upper(),
+                        _alert.confidence, len(_match_stack.activations),
+                        _match_stack.stack_confidence,
+                    )
+                    if getattr(ctx, "bus", None) is not None:
+                        ctx.bus.publish(
+                            CH_DUAL_CONFIRMATION,
+                            {
+                                "symbol": _alert_sym,
+                                "direction": _alert_dir,
+                                "convergence_confidence": _alert.confidence,
+                                "convergence_strength": _alert.strength,
+                                "convergence_domains": getattr(_alert, "domains_converging", []),
+                                "stack_confidence": _match_stack.stack_confidence,
+                                "stack_patterns": len(_match_stack.activations),
+                                "stack_tier": _match_stack.tier,
+                                "stack_independent_pairs": _match_stack.independent_pairs,
+                                "combined_confidence": min(
+                                    0.99,
+                                    1.0 - (1.0 - _alert.confidence) * (1.0 - _match_stack.stack_confidence),
+                                ),
+                            },
+                        )
+    except Exception:
+        logger.debug("Synergy detection failed", exc_info=True)
 
 
 def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
@@ -31,7 +234,6 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
     """
     from mae_core.market.sensing_hook import MarketSensingHook
     from mae_core.market.intelligence.convergence_alerter import ConvergenceAlerter
-    from mae_core.market.channels import CH_CONVERGENCE, CH_DUAL_CONFIRMATION
     from mae_core.bootstrap.market_hooks_trades import (
         _write_paper_trade, _translate_and_log_executable_signal,
     )
@@ -52,10 +254,6 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
         logger.debug("Tiered alerter construction failed", exc_info=True)
 
     # --- OutcomeCollector (signal → prediction → Thompson feedback) ---
-    # Bug 1 fix: verify ThompsonSampler is present and log its identity so we
-    # can confirm OutcomeCollector and the live sampler share the same object.
-    # If sampler is None, skip construction rather than create a collector that
-    # silently discards all Thompson updates.
     outcome_collector = None
     try:
         from mae_core.market.intelligence.outcome_collector import OutcomeCollector
@@ -66,9 +264,7 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
                 "Ensure ThompsonSampler is bootstrapped before OutcomeCollector."
             )
         else:
-            logger.info(
-                "OutcomeCollector using ThompsonSampler id=%d", id(_ts)
-            )
+            logger.info("OutcomeCollector using ThompsonSampler id=%d", id(_ts))
             outcome_collector = OutcomeCollector(
                 price_fetcher=getattr(ctx, "price_fetcher", None),
                 thompson_sampler=_ts,
@@ -77,10 +273,8 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
     except Exception:
         logger.debug("OutcomeCollector construction failed", exc_info=True)
 
-    # Store on ctx so combo Thompson feedback can find it (lines 265, 509)
     if outcome_collector is not None:
         ctx.outcome_collector = outcome_collector
-        # Wire pattern library for template outcome feedback
         _plib = getattr(ctx, "pattern_library", None)
         if _plib is not None:
             outcome_collector.set_pattern_library(_plib)
@@ -112,7 +306,7 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
     except Exception:
         logger.debug("Market clock initialization failed", exc_info=True)
 
-    # --- Instantiate the sensing hook (with optional CorrelationTracker) ---
+    # --- Instantiate the sensing hook ---
     try:
         hook = MarketSensingHook(
             sec_client=getattr(ctx, "sec_edgar_client", None),
@@ -169,24 +363,14 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
         logger.warning("MarketSensingHook construction failed — agents will not sense market data", exc_info=True)
         return
 
-    # Inject CorrelationTracker (already bootstrapped in Layer 33a, receives no
-    # data until now — Package C of "Completing the Circle" wiring)
     hook._correlation_tracker = getattr(ctx, "correlation_tracker", None)
-
-    # Inject AbsenceMonitor (Package B of "Completing the Circle")
     hook._absence_monitor = getattr(ctx, "absence_monitor", None)
 
-    # Wire endocrine system into somatic anticipation (Gift 9 — two-phase init)
     somatic = getattr(ctx, "somatic_anticipation", None)
     if somatic is not None:
         somatic._endocrine_system = getattr(ctx, "endocrine", None)
 
-    # --- Store tiered alerters on ctx for agent access ---
     ctx._tiered_alerters = tiered_alerters
-
-    # --- Market advisory dict (Channel B: supplements endocrine Channel A) ---
-    # Separate from _latest_advisory which PatternCortex overwrites every step.
-    # Market-role agents read this in their decision cascade.
     ctx._market_advisory = {
         "alert": None,
         "updated_step": 0,
@@ -198,10 +382,9 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
     }
     ctx._ticker_alerts = []
     ctx._latest_kelly = {}
-    ctx._paper_trade_dedup = {}  # {"{direction}:{ticker}" -> datetime} dedup for paper trades
-    ctx._bypass_dedup = {}  # {"{direction}:{ticker}" -> datetime} dedup for bypass trades
+    ctx._paper_trade_dedup = {}
+    ctx._bypass_dedup = {}
 
-    # Wire convergence alerts into the advisory dict
     _sensing_step_counter = [0]
     original_step = hook.step
 
@@ -214,9 +397,6 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
             original_step()
             if _shm:
                 _shm.record_success("sensing")
-            # outcome_evaluation runs inside original_step() on a 200-step cadence.
-            # Record a success proxy on the same cadence so the health tier reflects
-            # that outcome evaluation is functioning whenever sensing succeeds.
             if _shm and step % 200 == 0:
                 _shm.record_success("outcome_evaluation")
         except Exception as exc:
@@ -226,7 +406,6 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
                 if step % 200 == 0:
                     _shm.record_error("outcome_evaluation", exc)
 
-        # Reuse cached convergence alerts (written by _market_sense_hook)
         alerts = ctx._cached_alerts[0] or []
         if alerts:
             try:
@@ -239,8 +418,6 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
             except Exception:
                 logger.debug("Advisory bridge failed", exc_info=True)
 
-            # Paper trading gate — convert high-confidence convergence to TradeSignal
-            # Thresholds from learning_config (replay-proven edge at 0.45)
             try:
                 from mae_core.market.intelligence.learning_config import LEARNING_CONFIG
                 _pt_conf = LEARNING_CONFIG.get("paper_trade_min_confidence", 0.45)
@@ -253,7 +430,6 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
                         and alert.confidence > _pt_conf
                         and alert.strength > _pt_str
                     ):
-                        # Combo filter: block combos with poor historical WR
                         _pass_combo = True
                         _ts = getattr(ctx, "thompson_sampler", None)
                         _raw_domains = getattr(alert, "domains_converging", None)
@@ -262,11 +438,9 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
                             if len(_domains) >= 2:
                                 _combo_key = "combo:" + "+".join(_domains)
                                 _cd = _ts.get_distribution(_combo_key)
-                                # Let unseen combos through (samples < 3), block known losers
                                 if _cd.samples >= 3 and _cd.mean < _pt_combo:
                                     _pass_combo = False
                         if _pass_combo:
-                            # Risk architecture gates
                             _dm = getattr(ctx, "drawdown_monitor", None)
                             if _dm and _dm.is_trading_halted():
                                 logger.info("Paper trade BLOCKED — drawdown circuit breaker active")
@@ -290,7 +464,7 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
             except Exception:
                 logger.debug("Paper trading gate failed", exc_info=True)
 
-        # Every 10 steps: query tiered alerters (tactical/strategic/thematic)
+        # Every 10 steps: query tiered alerters
         if step % 10 == 0 and ctx._tiered_alerters:
             for tier_name, tier_alerter in ctx._tiered_alerters.items():
                 try:
@@ -308,200 +482,20 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
 
         # Every 10 steps: pattern archaeology stacking detection
         _shm_sensing = getattr(ctx, "system_health_monitor", None)
-        if step % 10 == 0 and getattr(ctx, "pattern_watcher", None) is not None:
-            try:
-                # Build active signals from convergence alerter's signal buffer
-                _alerter = getattr(ctx, "convergence_alerter", None)
-                if _alerter is not None and hasattr(_alerter, "signals"):
-                    _active: dict = {}
-                    for _domain, _sigs in _alerter.signals.items():
-                        for _sig in _sigs:
-                            _sym = getattr(_sig, "metadata", {}).get("symbol", "")
-                            _dir = getattr(_sig, "direction", "")
-                            _src = getattr(_sig, "source", "")
-                            if not _sym or not _dir or not _src:
-                                continue
-                            if _sym not in _active:
-                                _active[_sym] = {}
-                            if _dir not in _active[_sym]:
-                                _active[_sym][_dir] = set()
-                            _active[_sym][_dir].add(_src)
-                    if _active:
-                        _stacks = ctx.pattern_watcher.check(_active)
-                        ctx._cached_pattern_stacks = _stacks or []
-                        if _shm_sensing:
-                            _shm_sensing.record_success("pattern_watcher")
-                        # Register stacks for outcome tracking (Thompson feedback)
-                        # + write plain-language alerts
-                        _oc = getattr(ctx, "outcome_collector", None)
-                        if _stacks:
-                            for _stack in _stacks:
-                                if _oc is not None:
-                                    try:
-                                        _oc.register_pattern_stack(_stack, _stack.symbol)
-                                    except Exception:
-                                        logger.debug("Pattern stack registration failed", exc_info=True)
-                                # Plain-language alert for each pattern stack
-                                try:
-                                    from mae_core.market.plain_language import (
-                                        format_pattern_stack_alert, write_plain_alert,
-                                    )
-                                    _tmpl_windows = []
-                                    for _act in _stack.activations:
-                                        _tw = getattr(_act.template, "expected_move_window_days", None)
-                                        if _tw is not None:
-                                            _tmpl_windows.append(_tw)
-                                    if _tmpl_windows:
-                                        _tmpl_windows.sort()
-                                        _win_days = _tmpl_windows[len(_tmpl_windows) // 2]
-                                        _win_src = "dynamic"
-                                    else:
-                                        _win_days = 14
-                                        _win_src = "fallback"
-                                    _msg = format_pattern_stack_alert(
-                                        _stack, window_days=_win_days, window_source=_win_src,
-                                    )
-                                    write_plain_alert(
-                                        _msg, _stack.symbol, _stack.direction,
-                                        source="pattern_stack",
-                                        metadata={"tier": _stack.tier,
-                                                  "confidence": _stack.stack_confidence,
-                                                  "n_patterns": len(_stack.activations)},
-                                    )
-                                except Exception:
-                                    logger.debug("Plain-language alert failed", exc_info=True)
-                                # Register with Active Tracker for continuous monitoring
-                                _at = getattr(ctx, "active_tracker", None)
-                                if _at is not None:
-                                    try:
-                                        _pf = getattr(ctx, "price_fetcher", None)
-                                        _entry = 0.0
-                                        if _pf is not None:
-                                            _pd = _pf.get_current_price(_stack.symbol)
-                                            if _pd and _pd.price > 0:
-                                                _entry = _pd.price
-                                        if _entry > 0:
-                                            _at.register(_stack, _entry)
-                                    except Exception:
-                                        logger.debug("Active tracker registration failed", exc_info=True)
-            except Exception as exc:
-                logger.debug("Pattern watcher check failed", exc_info=True)
-                if _shm_sensing:
-                    _shm_sensing.record_error("pattern_watcher", exc)
+        if step % 10 == 0:
+            _run_sensing_archaeology(ctx, step, _shm_sensing)
 
         # Active tracker price check (every 20 steps)
-        _at = getattr(ctx, "active_tracker", None)
-        if _at is not None and step % 20 == 0 and _at.count > 0:
-            try:
-                _events = _at.check_prices()
-                if _events:
-                    # Write plain-language updates for status changes
-                    try:
-                        from mae_core.market.plain_language import write_plain_alert
-                        for _ev in _events:
-                            _status = _ev["new_status"]
-                            _sym = _ev["symbol"]
-                            _pct = _ev.get("current_pct", 0)
-                            if _status == "confirmed":
-                                _msg = (
-                                    f"UPDATE: {_sym} prediction CONFIRMED. "
-                                    f"Price moved {abs(_pct):.1f}% in the expected direction. "
-                                    f"MIDGE was right on this one."
-                                )
-                            elif _status == "failed":
-                                _msg = (
-                                    f"UPDATE: {_sym} prediction DID NOT PLAY OUT. "
-                                    f"Price moved {abs(_pct):.1f}% in the wrong direction. "
-                                    f"MIDGE is learning from this outcome."
-                                )
-                            elif _status == "expired":
-                                _msg = (
-                                    f"UPDATE: {_sym} prediction window expired. "
-                                    f"Final move: {_pct:+.1f}%. "
-                                    f"The expected move did not materialize in time."
-                                )
-                            elif _status == "confirming":
-                                _msg = (
-                                    f"UPDATE: {_sym} is showing early signs of the expected move "
-                                    f"({_pct:+.1f}% so far). MIDGE is watching closely."
-                                )
-                            else:
-                                continue
-                            write_plain_alert(
-                                _msg, _sym, _ev.get("direction", ""),
-                                source="active_tracking",
-                                metadata={"status": _status, "pct_change": _pct},
-                            )
-                    except Exception:
-                        logger.debug("Active tracking alert write failed", exc_info=True)
-            except Exception:
-                logger.debug("Active tracker check failed", exc_info=True)
+        if step % 20 == 0:
+            _run_active_tracker_check(ctx)
 
         # Synergy detection: convergence alerts + pattern stacks on same ticker
-        _conv_alerts = ctx._cached_alerts[0] or []
-        _p_stacks = getattr(ctx, "_cached_pattern_stacks", [])
-        if _conv_alerts and _p_stacks:
-            try:
-                # Build lookup of pattern stack symbols+directions
-                _stack_keys = set()
-                for _ps in _p_stacks:
-                    _stack_keys.add((_ps.symbol, _ps.direction))
+        _run_synergy_detection(ctx)
 
-                for _alert in _conv_alerts:
-                    # Extract primary symbol from the convergence alert
-                    _alert_sym = None
-                    for _sig in getattr(_alert, "signals", []):
-                        _alert_sym = getattr(_sig, "metadata", {}).get("symbol", "")
-                        if _alert_sym:
-                            break
-                    if not _alert_sym:
-                        _alert_sym = getattr(_alert, "ticker", "")
-                    _alert_dir = getattr(_alert, "direction", "")
-                    if _alert_sym and (_alert_sym, _alert_dir) in _stack_keys:
-                        # Find the matching stack
-                        _match_stack = next(
-                            (s for s in _p_stacks
-                             if s.symbol == _alert_sym and s.direction == _alert_dir),
-                            None,
-                        )
-                        if _match_stack is not None:
-                            logger.info(
-                                "DUAL CONFIRMATION: %s %s — convergence (%.2f) + "
-                                "pattern stack (%d patterns, %.2f confidence)",
-                                _alert_sym, _alert_dir.upper(),
-                                _alert.confidence, len(_match_stack.activations),
-                                _match_stack.stack_confidence,
-                            )
-                            # Publish dual confirmation event
-                            if getattr(ctx, "bus", None) is not None:
-                                ctx.bus.publish(
-                                    CH_DUAL_CONFIRMATION,
-                                    {
-                                        "symbol": _alert_sym,
-                                        "direction": _alert_dir,
-                                        "convergence_confidence": _alert.confidence,
-                                        "convergence_strength": _alert.strength,
-                                        "convergence_domains": getattr(_alert, "domains_converging", []),
-                                        "stack_confidence": _match_stack.stack_confidence,
-                                        "stack_patterns": len(_match_stack.activations),
-                                        "stack_tier": _match_stack.tier,
-                                        "stack_independent_pairs": _match_stack.independent_pairs,
-                                        "combined_confidence": min(
-                                            0.99,
-                                            1.0 - (1.0 - _alert.confidence) * (1.0 - _match_stack.stack_confidence),
-                                        ),
-                                    },
-                                )
-            except Exception:
-                logger.debug("Synergy detection failed", exc_info=True)
-
-    # Register the wrapped step hook
     ctx.model.add_step_hook(_sensing_step_with_advisory)
 
-    # Inject EventBus for signal bridge (Phase 1 of hypothesis loop)
     hook._bus = ctx.bus
 
-    # Start FinnhubWebSocket background thread now that sensing hook is wired
     _ws = getattr(ctx, "finnhub_websocket", None)
     if _ws is not None:
         try:
@@ -510,8 +504,6 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
         except Exception:
             logger.debug("FinnhubWebSocket start() failed", exc_info=True)
 
-    # Register FinnhubWebSocket stop() as a shutdown hook so the background
-    # thread is cleaned up when the model terminates
     if _ws is not None:
         try:
             original_shutdown = getattr(hook, "shutdown", None)
@@ -529,7 +521,6 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
         except Exception:
             logger.debug("FinnhubWebSocket shutdown hook registration failed", exc_info=True)
 
-    # --- Wire market task handlers into OctopusColony ---
     colony = getattr(ctx, "octopus_colony", None)
     if colony is not None:
         try:
@@ -546,15 +537,12 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
         except Exception:
             logger.debug("OctopusColony handler injection failed", exc_info=True)
 
-        # Start monitoring in a separate try so injection failure doesn't
-        # silently prevent the colony from running at all.
         try:
             colony.start_monitoring()
             logger.info("OctopusColony: monitoring started")
         except Exception:
             logger.debug("OctopusColony monitoring start failed", exc_info=True)
 
-        # Subscribe to spawn events so newly auto-scaled arms get handlers.
         def _on_octopus_spawn(channel, data):
             msg = data if isinstance(data, dict) else {}
             oct_id = msg.get("octopus_id", "")
@@ -572,8 +560,6 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
         if bus is not None:
             bus.register_callback("octopus.spawn", _on_octopus_spawn)
 
-        # Subscribe to investigation results so they are visible in the log
-        # and can trigger focused-attention escalation.
         try:
             from mae_core.network.market_task_handlers import CH_OCTOPUS_INVESTIGATION
 
@@ -586,25 +572,17 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
                 historical = msg.get("historical_templates", [])
                 logger.info(
                     "OctopusInvestigation[%s] ticker=%s check=%d templates=%d%s",
-                    source,
-                    ticker,
-                    check_count,
-                    len(historical),
+                    source, ticker, check_count, len(historical),
                     " [FOCUSED-ATTENTION ENGAGED]" if priority_created else "",
                 )
 
             bus_obj = getattr(ctx, "bus", None)
             if bus_obj is not None:
-                bus_obj.register_callback(
-                    CH_OCTOPUS_INVESTIGATION, _on_octopus_investigation
-                )
+                bus_obj.register_callback(CH_OCTOPUS_INVESTIGATION, _on_octopus_investigation)
                 logger.info("OctopusColony: investigation subscriber wired")
         except Exception:
-            logger.debug(
-                "OctopusColony investigation subscriber failed", exc_info=True
-            )
+            logger.debug("OctopusColony investigation subscriber failed", exc_info=True)
 
-    # Start InhabitantScheduler daemon thread
     _sched = getattr(ctx, "inhabitant_scheduler", None)
     if _sched is not None:
         try:
@@ -613,7 +591,6 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
         except Exception:
             logger.debug("InhabitantScheduler start() failed", exc_info=True)
 
-    # Store hook reference on ctx for monitoring
     ctx._market_sensing_hook = hook
 
     logger.info(

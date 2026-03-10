@@ -1,7 +1,8 @@
 """Step hook helpers for MIDGE market hooks.
 
 Extracted from market_hooks.py — purely structural split.
-Contains: _write_convergence_heartbeat, _run_drift_detector.
+Contains: _write_convergence_heartbeat, _run_drift_detector,
+          _run_slow_cadence_ops (every-500/1000/5000-step analysis).
 """
 
 from __future__ import annotations

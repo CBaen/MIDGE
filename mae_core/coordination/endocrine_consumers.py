@@ -3,14 +3,18 @@
 Contains subscribe() and all 14 register_* convenience methods that wire
 external systems to specific hormones. Extracted from endocrine_system.py
 to stay under 500-line limit.
+
+Note: HormoneType is imported lazily inside methods to avoid circular imports
+with endocrine_system.py (which imports this module at class composition time).
 """
 
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
-from mae_core.coordination.endocrine_system import HormoneType
+if TYPE_CHECKING:
+    from mae_core.coordination.endocrine_system import HormoneType
 
 logger = logging.getLogger(__name__)
 
@@ -19,16 +23,16 @@ class EndocrineConsumersMixin:
     """Hormone consumer registration: subscribe + 14 register_* methods."""
 
     def subscribe(
-        self, hormone: HormoneType, callback: Callable[[HormoneType, float], None]
+        self, hormone: "HormoneType", callback: Callable[["HormoneType", float], None]
     ) -> None:
         """Subscribe to changes in a specific hormone."""
         self._subscribers[hormone].append(callback)
 
     def register_consumer(
         self,
-        hormone_type: HormoneType,
+        hormone_type: "HormoneType",
         consumer_name: str,
-        callback: Callable[[HormoneType, float], None],
+        callback: Callable[["HormoneType", float], None],
     ) -> None:
         """Register a named consumer for a specific hormone."""
         logger.info(
@@ -37,17 +41,12 @@ class EndocrineConsumersMixin:
         self.subscribe(hormone_type, callback)
 
     def register_hormone_consumer(
-        self, hormone_type: HormoneType, consumer: Any, method_name: str
+        self, hormone_type: "HormoneType", consumer: Any, method_name: str
     ) -> None:
         """Register an external system as a hormone consumer.
 
         When the specified hormone is released, the consumer's method
         will be called with the new hormone level as argument.
-
-        Args:
-            hormone_type: Which hormone to react to.
-            consumer: Reference to the consuming system.
-            method_name: Name of the method to call on the consumer.
         """
         if consumer is None:
             return
@@ -59,6 +58,8 @@ class EndocrineConsumersMixin:
 
     def register_threat_detector(self, td: Any) -> None:
         """Wire cortisol -> ThreatDetector sensitivity."""
+        from mae_core.coordination.endocrine_system import HormoneType
+
         def _on_cortisol(_ht: HormoneType, level: float) -> None:
             if hasattr(td, "set_sensitivity"):
                 td.set_sensitivity(level)
@@ -69,6 +70,8 @@ class EndocrineConsumersMixin:
 
     def register_auto_healer(self, ah: Any) -> None:
         """Wire cortisol -> AutoHealer priority."""
+        from mae_core.coordination.endocrine_system import HormoneType
+
         def _on_cortisol(_ht: HormoneType, level: float) -> None:
             if hasattr(ah, "set_cortisol_priority"):
                 ah.set_cortisol_priority(level)
@@ -81,6 +84,8 @@ class EndocrineConsumersMixin:
 
     def register_curiosity_drive(self, cd: Any) -> None:
         """Wire dopamine -> CuriosityDrive exploration bonus."""
+        from mae_core.coordination.endocrine_system import HormoneType
+
         def _on_dopamine(_ht: HormoneType, level: float) -> None:
             if hasattr(cd, "set_exploration_bonus"):
                 cd.set_exploration_bonus(level)
@@ -91,6 +96,8 @@ class EndocrineConsumersMixin:
 
     def register_quorum_sensor(self, qs: Any) -> None:
         """Wire serotonin -> QuorumSensor threshold modifier."""
+        from mae_core.coordination.endocrine_system import HormoneType
+
         def _on_serotonin(_ht: HormoneType, level: float) -> None:
             if hasattr(qs, "set_threshold_modifier"):
                 qs.set_threshold_modifier(level)
@@ -101,6 +108,8 @@ class EndocrineConsumersMixin:
 
     def register_memory_consolidator(self, mc: Any) -> None:
         """Wire melatonin -> MemoryConsolidator consolidation trigger."""
+        from mae_core.coordination.endocrine_system import HormoneType
+
         def _on_melatonin(_ht: HormoneType, level: float) -> None:
             if hasattr(mc, "trigger_consolidation"):
                 mc.trigger_consolidation()
@@ -111,6 +120,8 @@ class EndocrineConsumersMixin:
 
     def register_decision_router(self, dr: Any) -> None:
         """Wire adrenaline -> DecisionRouter reflex bias."""
+        from mae_core.coordination.endocrine_system import HormoneType
+
         def _on_adrenaline(_ht: HormoneType, level: float) -> None:
             if hasattr(dr, "set_reflex_bias"):
                 dr.set_reflex_bias(level)
@@ -121,6 +132,8 @@ class EndocrineConsumersMixin:
 
     def register_gamification_mixin(self, gm: Any) -> None:
         """Wire dopamine -> GamificationMixin motivation."""
+        from mae_core.coordination.endocrine_system import HormoneType
+
         def _on_dopamine(_ht: HormoneType, level: float) -> None:
             if hasattr(gm, "set_motivation"):
                 gm.set_motivation(level)
@@ -131,6 +144,8 @@ class EndocrineConsumersMixin:
 
     def register_frl(self, frl: Any) -> None:
         """Wire serotonin -> FRL trust in peer policies, oxytocin -> cooperation weight."""
+        from mae_core.coordination.endocrine_system import HormoneType
+
         def _on_serotonin(_ht: HormoneType, level: float) -> None:
             if hasattr(frl, "set_peer_trust"):
                 frl.set_peer_trust(level)
@@ -148,6 +163,8 @@ class EndocrineConsumersMixin:
 
     def register_vdn(self, vdn: Any) -> None:
         """Wire oxytocin -> VDN cooperation weight."""
+        from mae_core.coordination.endocrine_system import HormoneType
+
         def _on_oxytocin(_ht: HormoneType, level: float) -> None:
             if hasattr(vdn, "set_cooperation_weight"):
                 vdn.set_cooperation_weight(level)
@@ -163,6 +180,8 @@ class EndocrineConsumersMixin:
         budgets to conserve API quota. Low cortisol (< 0.3) signals calm
         — relax EXPLORE budgets to allow more exploration.
         """
+        from mae_core.coordination.endocrine_system import HormoneType
+
         def _on_cortisol(_ht: HormoneType, level: float) -> None:
             if level > 0.6:
                 if hasattr(rg, "tighten_budgets"):

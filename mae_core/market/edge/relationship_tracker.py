@@ -1,7 +1,8 @@
 """
 relationship_tracker.py - Insider trading relationship tracker + storage helpers
 
-RelationshipTracker class, store_cluster_signal(), and scan_all_symbols().
+RelationshipTracker class, InsiderRelationship dataclass,
+store_cluster_signal(), and scan_all_symbols().
 Extracted from cluster_detector.py to keep each file under 500 lines.
 """
 
@@ -12,6 +13,42 @@ from dataclasses import dataclass, asdict, field
 from typing import List, Dict, Optional
 
 logger = logging.getLogger(__name__)
+
+QDRANT_URL = "http://localhost:6333"
+SIGNALS_COLLECTION = "midge_signals"
+OLLAMA_URL = "http://localhost:11434"
+
+
+@dataclass
+class InsiderRelationship:
+    """Tracks coordinated trading between two insiders.
+
+    If A and B consistently trade within 48 hours across multiple stocks,
+    when A trades, we can PREDICT B will follow.
+    """
+    insider_a: str
+    insider_b: str
+    symbols_traded: List[str] = field(default_factory=list)
+    trades_together: int = 0
+    avg_time_delta_hours: float = 0.0
+    correlation_score: float = 0.0
+    first_seen: str = ""
+    last_seen: str = ""
+
+    def __post_init__(self):
+        if not self.first_seen:
+            self.first_seen = datetime.now().isoformat()
+        if not self.last_seen:
+            self.last_seen = datetime.now().isoformat()
+
+    def to_plain_language(self) -> str:
+        """Format for dashboard."""
+        return (
+            f"{self.insider_a} and {self.insider_b} traded together "
+            f"{self.trades_together} times across {len(self.symbols_traded)} stocks. "
+            f"Avg lag: {self.avg_time_delta_hours:.1f}h. "
+            f"Correlation: {self.correlation_score:.0%}"
+        )
 
 
 class RelationshipTracker:
@@ -177,8 +214,11 @@ class RelationshipTracker:
         return all_rels
 
 
-def store_cluster_signal(cluster: ClusterSignal, qdrant_url: str = QDRANT_URL) -> bool:
-    """Store a cluster signal to Qdrant."""
+def store_cluster_signal(cluster, qdrant_url: str = QDRANT_URL) -> bool:
+    """Store a cluster signal to Qdrant.
+
+    cluster: ClusterSignal (imported lazily to avoid circular import)
+    """
     import hashlib
 
     text = cluster.to_plain_language()
@@ -228,7 +268,7 @@ def store_cluster_signal(cluster: ClusterSignal, qdrant_url: str = QDRANT_URL) -
 
 def scan_all_symbols(
     symbols: List[str], days_back: int = 30, min_insiders: int = 3,
-) -> List[ClusterSignal]:
+) -> list:
     """Scan multiple symbols for clusters. Convenience for batch processing."""
     from mae_core.market.edge.cluster_detector import ClusterDetector
     detector = ClusterDetector()

@@ -23,11 +23,14 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Optional
 from collections import defaultdict
 
-logger = logging.getLogger(__name__)
+# InsiderRelationship lives in relationship_tracker to avoid circular imports.
+from mae_core.market.edge.relationship_tracker import (  # noqa: F401
+    InsiderRelationship, RelationshipTracker,
+    store_cluster_signal, scan_all_symbols,
+    QDRANT_URL, SIGNALS_COLLECTION, OLLAMA_URL,
+)
 
-QDRANT_URL = "http://localhost:6333"
-SIGNALS_COLLECTION = "midge_signals"
-OLLAMA_URL = "http://localhost:11434"
+logger = logging.getLogger(__name__)
 
 ROLE_WEIGHTS = {
     "ceo": 3.0,
@@ -52,38 +55,6 @@ class InsiderInCluster:
     value: float
     role_weight: float
     conviction_score: float
-
-
-@dataclass
-class InsiderRelationship:
-    """Tracks coordinated trading between two insiders.
-
-    If A and B consistently trade within 48 hours across multiple stocks,
-    when A trades, we can PREDICT B will follow.
-    """
-    insider_a: str
-    insider_b: str
-    symbols_traded: List[str] = field(default_factory=list)
-    trades_together: int = 0
-    avg_time_delta_hours: float = 0.0
-    correlation_score: float = 0.0
-    first_seen: str = ""
-    last_seen: str = ""
-
-    def __post_init__(self):
-        if not self.first_seen:
-            self.first_seen = datetime.now().isoformat()
-        if not self.last_seen:
-            self.last_seen = datetime.now().isoformat()
-
-    def to_plain_language(self) -> str:
-        """Format for dashboard."""
-        return (
-            f"{self.insider_a} and {self.insider_b} traded together "
-            f"{self.trades_together} times across {len(self.symbols_traded)} stocks. "
-            f"Avg lag: {self.avg_time_delta_hours:.1f}h. "
-            f"Correlation: {self.correlation_score:.0%}"
-        )
 
 
 @dataclass
