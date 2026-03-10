@@ -46,6 +46,11 @@ from mae_core.market.intelligence.convergence_confidence import (
 )
 from mae_core.market.intelligence.convergence_detection import ConvergenceDetectionMixin
 
+# ConvergenceDetectionMixin inherits ConvergenceTickerMixin
+# ConvergenceConfidenceMixin inherits ConvergenceLagScoringMixin + ConvergenceBufferMixin
+# Full MRO: ConvergenceAlerter → ConvergenceConfidenceMixin → ConvergenceDetectionMixin
+#         → ConvergenceLagScoringMixin → ConvergenceBufferMixin → ConvergenceTickerMixin
+
 logger = logging.getLogger(__name__)
 
 
