@@ -331,11 +331,12 @@ See `midge-queue.md` for comprehensive task list (70+ items, 4 priority tiers).
 ### Priority 1: Ecosystem Deepening (from Evolution Blueprint Phase 2)
 - ~~Focused attention: when partial convergence starts, increase polling priority for missing domains~~ **DONE**
 - Agent-level situation claiming (SEC_WATCHER claims insider situations)
-- DevelopingSituation → full investigation pipeline
+- ~~DevelopingSituation → full investigation pipeline~~ **DONE**
+- ~~Signal-triggered convergence (fire on signal arrival, not step tick)~~ **DONE**
 
 ### Priority 2: Shed Weight + Speed Up (Evolution Blueprint Phase 1)
 - Wall-clock cadences (replace step-based)
-- Signal-triggered convergence (fire on signal arrival, not step tick)
+- ~~Signal-triggered convergence (fire on signal arrival, not step tick)~~ **DONE**
 - ADTS (regime-aware Thompson forgetting, 50 lines)
 - Unload 223K fingerprints from RAM
 
