@@ -60,8 +60,8 @@ class TestSignalReexports:
         import mae_core.market.signal as sig
 
         exported = [n for n in dir(sig) if n.startswith("from_")]
-        assert len(exported) == 37, (
-            f"Expected 37 from_* converters, found {len(exported)}: {exported}"
+        assert len(exported) == 38, (
+            f"Expected 38 from_* converters, found {len(exported)}: {exported}"
         )
 
 
