@@ -174,7 +174,9 @@ class OutcomeTracker:
                     continue
 
                 # Skip if already evaluated (prevents duplication across runs)
-                signal_id = pred.get("signal_id", "")
+                # Bug 4 fix: alias old-format field names to new ones.
+                # Old format used "prediction_id" instead of "signal_id".
+                signal_id = pred.get("signal_id") or pred.get("prediction_id", "")
                 if pred.get("evaluated", False) or signal_id in already_evaluated:
                     continue
 

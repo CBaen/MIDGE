@@ -43,6 +43,11 @@ FRED_SERIES: Dict[str, tuple] = {
     "DFF":         ("Federal Funds Rate (Effective)", "rates"),
     "UNRATE":      ("Unemployment Rate", "employment"),
     "CPIAUCSL":    ("Consumer Price Index (All Urban)", "inflation"),
+    # Forex-critical additions
+    "DGS2":        ("2-Year Treasury Constant Maturity Rate", "treasury_2y"),
+    "DGS10":       ("10-Year Treasury Constant Maturity Rate", "treasury_10y"),
+    "T10Y3M":      ("10Y-3M Treasury Spread (Alt Recession Indicator)", "yield_curve_3m"),
+    "DTWEXBGS":    ("US Dollar Index - Broad, Goods (DXY proxy)", "dollar_index"),
 }
 
 
@@ -89,6 +94,30 @@ def _determine_direction(series_id: str, value: float) -> str:
     elif series_id == "DFF":
         # Rates: just reporting — direction is context-dependent
         # High rates = tighter conditions but not directly bullish/bearish
+        return "neutral"
+
+    elif series_id in ("DGS2", "DGS10"):
+        # Raw treasury yields: rising = bearish for equities/bonds, bullish for USD
+        # Report neutral — used for spread computation context
+        return "neutral"
+
+    elif series_id == "T10Y3M":
+        # Alt recession indicator: 10Y minus 3-month T-bill
+        # Inversion (negative) more reliable recession predictor than T10Y2Y
+        if value < 0:
+            return "bearish"
+        elif value > 1.0:
+            return "bullish"
+        return "neutral"
+
+    elif series_id == "DTWEXBGS":
+        # Broad Dollar Index (DXY proxy): rising dollar = bearish for commodities/EM
+        # Thresholds: historically around 100-130 range for the broad index
+        # Use change-based direction via a level band
+        if value > 120:
+            return "bearish"   # Very strong dollar = bearish risk assets
+        elif value < 105:
+            return "bullish"   # Weak dollar = bullish commodities, EM, risk
         return "neutral"
 
     elif series_id == "UNRATE":
@@ -416,7 +445,11 @@ class FREDClient:
             List of MacroIndicator objects, one per available series.
             Failures are skipped silently (logged at WARNING level).
         """
-        snapshot_series = ["T10Y2Y", "BAMLH0A0HYM2", "VIXCLS", "DFF", "UNRATE"]
+        snapshot_series = [
+            "T10Y2Y", "BAMLH0A0HYM2", "VIXCLS", "DFF", "UNRATE",
+            # Forex-critical additions
+            "DGS2", "DGS10", "T10Y3M", "DTWEXBGS",
+        ]
         results = []
 
         for series_id in snapshot_series:

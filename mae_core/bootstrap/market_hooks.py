@@ -809,6 +809,10 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
     _last_convergence_state = [None]  # {"direction": str, "strength": float}
     ctx._cached_alerts = [None]  # Shared: written by _market_sense_hook, read by advisory bridge
     ctx._cached_pattern_stacks = []  # Written by pattern watcher, read by synergy detector
+    # Bug 3 fix: track last evaluated outcome count so forgetting gate can compare.
+    # Forgetting is skipped if no new outcomes have been graded since the last
+    # forgetting event — prevents systematic erosion during quiet learning periods.
+    _last_evaluated_count = [0]
 
     def _get_regime():
         """Get current market regime (cached daily, essentially free)."""
@@ -953,13 +957,37 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
         # Every 200 steps: Bayesian forgetting (decay old evidence)
         # Cadence matches outcome evaluation (sensing_hook._outcome_cadence=200)
         # so forgetting never outpaces learning.
+        # Bug 3 fix: only forget if at least one outcome was graded since the
+        # last forgetting event.  During quiet periods (no mature predictions)
+        # forgetting would otherwise drive all distributions to the floor (2.0,
+        # 2.0) with no offsetting learning signal.
         if step % 200 == 0:
             sampler = getattr(ctx, "thompson_sampler", None)
             if sampler is not None:
                 try:
-                    regime_clf = getattr(ctx, "regime_classifier", None)
-                    regime = regime_clf.classify() if regime_clf is not None else "default"
-                    sampler.regime_aware_forget(regime)
+                    # Check if any new outcomes have been graded since last forget
+                    _oc_for_gate = getattr(ctx, "outcome_collector", None)
+                    current_evaluated = 0
+                    if _oc_for_gate is not None:
+                        try:
+                            current_evaluated = (
+                                _oc_for_gate.get_statistics().get("total_evaluated", 0)
+                            )
+                        except Exception:
+                            pass
+
+                    if current_evaluated > _last_evaluated_count[0]:
+                        # New outcomes graded — safe to apply forgetting
+                        regime_clf = getattr(ctx, "regime_classifier", None)
+                        regime = regime_clf.classify() if regime_clf is not None else "default"
+                        sampler.regime_aware_forget(regime)
+                        _last_evaluated_count[0] = current_evaluated
+                    else:
+                        logger.debug(
+                            "Skipping Thompson forget — no outcomes graded since last forget "
+                            "(step=%d, total_evaluated=%d)",
+                            step, current_evaluated,
+                        )
                 except Exception as exc:
                     logger.debug("Thompson forgetting step failed", exc_info=True)
                     if _shm:
@@ -1352,14 +1380,28 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
         logger.debug("Tiered alerter construction failed", exc_info=True)
 
     # --- OutcomeCollector (signal → prediction → Thompson feedback) ---
+    # Bug 1 fix: verify ThompsonSampler is present and log its identity so we
+    # can confirm OutcomeCollector and the live sampler share the same object.
+    # If sampler is None, skip construction rather than create a collector that
+    # silently discards all Thompson updates.
     outcome_collector = None
     try:
         from mae_core.market.intelligence.outcome_collector import OutcomeCollector
-        outcome_collector = OutcomeCollector(
-            price_fetcher=getattr(ctx, "price_fetcher", None),
-            thompson_sampler=getattr(ctx, "thompson_sampler", None),
-            regime_classifier=getattr(ctx, "regime_classifier", None),
-        )
+        _ts = getattr(ctx, "thompson_sampler", None)
+        if _ts is None:
+            logger.error(
+                "OutcomeCollector skipped — ThompsonSampler not found on ctx. "
+                "Ensure ThompsonSampler is bootstrapped before OutcomeCollector."
+            )
+        else:
+            logger.info(
+                "OutcomeCollector using ThompsonSampler id=%d", id(_ts)
+            )
+            outcome_collector = OutcomeCollector(
+                price_fetcher=getattr(ctx, "price_fetcher", None),
+                thompson_sampler=_ts,
+                regime_classifier=getattr(ctx, "regime_classifier", None),
+            )
     except Exception:
         logger.debug("OutcomeCollector construction failed", exc_info=True)
 
