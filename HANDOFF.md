@@ -2,6 +2,28 @@
 
 ## What Happened
 
+### Investigation Pipeline + Signal-Triggered Convergence (2026-03-09)
+
+**Octopus investigation wired — developing situations now get investigated:**
+- Step-cadence dispatcher (every 20 steps) iterates `_developing_situations` and submits `investigate_partial` + `situation_check` tasks to OctopusColony. Max 5 tasks per step.
+- `investigate_partial` enhanced: now queries PatternLibrary for historical templates matching domain combo (win rates, instance counts, cross-validation). Also checks WorldModel for causal chain evidence. High win-rate matches (>60%, 5+ instances) populate `_priority_requests` for Focused Attention.
+- `CH_OCTOPUS_INVESTIGATION` subscriber wired — investigation results logged and fed back into priority polling.
+- `_developing_situations` now persists to `data/market/developing_situations.json` (atomic write, loaded on bootstrap).
+- Situation eviction now runs (was dead code — `situation_check` handler was never called before).
+
+**Signal-triggered convergence — reactive, not polling:**
+- After `_collect_one()` ingests signals, immediately calls `check_convergence()` inline. New signals evaluated instantly instead of waiting for next step tick.
+- Deduplication prevents double-alerts (step-tick check remains as safety net).
+- Per-ticker convergence also checked reactively.
+
+**Tests:** 57 new (test_investigation_pipeline.py + test_signal_triggered.py). Full suite: 961/962 pass.
+
+**Files changed:**
+- `mae_core/network/market_task_handlers.py` — PatternLibrary + WorldModel queries in investigate_partial, pattern_library injection
+- `mae_core/bootstrap/market_hooks.py` — investigation dispatcher, CH_OCTOPUS_INVESTIGATION subscriber
+- `mae_core/bootstrap/market_systems.py` — developing_situations persistence + pattern_library injection
+- `mae_core/market/sensing_hook.py` — reactive convergence check after signal ingestion
+
 ### Inevitability Surfacing — Focused Attention + Chain Boost + Backward Discovery (2026-03-09)
 
 **Three connected features that make MIDGE a true inevitability investigator:**
