@@ -352,12 +352,11 @@ class TestGetStatistics:
 
     def test_stats_reflect_trades(self):
         m = _make_monitor(starting_capital=10_000.0, max_drawdown_pct=0.40)
-        m.record_trade_result("AAPL", realized_pnl=2_000.0)  # peak = 12,000
-        m.record_trade_result("TSLA", realized_pnl=-4_800.0) # equity = 9,200, drawdown = 7200/12000 = 60%
+        m.record_trade_result("AAPL", realized_pnl=2_000.0)  # equity=12,000 peak=12,000
+        m.record_trade_result("TSLA", realized_pnl=-4_800.0) # equity=7,200, drawdown=4800/12000=40%
+        # 10,000 + 2,000 - 4,800 = 7,200
         stats = m.get_statistics()
         assert stats["peak_equity"] == pytest.approx(12_000.0)
-        assert stats["current_equity"] == pytest.approx(9_200.0 - 2_000.0 + 10_000.0)
-        # 10,000 + 2,000 - 4,800 = 7,200
         assert stats["current_equity"] == pytest.approx(7_200.0)
         assert stats["trading_halted"] is True
         assert stats["trade_count"] == 2
