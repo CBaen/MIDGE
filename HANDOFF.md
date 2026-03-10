@@ -385,7 +385,7 @@ See git log for full history. Key milestones: Granger causality (2026-03-07), te
 - **Pipeline Bridge: ACTIVE.** MarketConvergenceTranslator + MarketPartialTranslator registered in PatternBus. Market signals now reach AttentionalGate → GlobalWorkspace via PatternTranslator protocol.
 - **Bio-Market Activation: COMPLETE.** 29 of 30 biological systems wired to market EventBus channels (14 Tier 2+3 + 15 Tier 4+5). Only GenerativeReplayMemory remains unwired (needs bootstrap). Every system from DigestiveSystem (data=nutrients) to PredictiveField (spatial coordination) now has a real market job. ResourceGovernor built for API budget governance.
 - **Kalshi: SDK INSTALLED.** Needs verification against demo env.
-- **Alpaca: CLIENT BUILT.** Awaiting API keys.
+- **Alpaca: CLIENT + KEYS READY.** `ALPACA_API_KEY` + `ALPACA_SECRET_KEY` in `.env`. Client bootstrapped on ctx. ExecutableSignal pipeline logs trades. **Missing: ~10 lines to call `submit_market_order()`** — the last gap to live paper trading.
 
 ## Guiding Light's Ecosystem Vision (2026-03-08)
 
@@ -399,31 +399,23 @@ This fundamentally reframes the architecture. Components are LIVING ENTITIES wit
 
 ## What's Next
 
-See `midge-queue.md` for comprehensive task list (70+ items, 4 priority tiers).
+See `midge-queue.md` for audited task list.
 
-### Immediate
-1. **Activate biological systems** — Pheromones=trail-leaving, Quorum=collective confidence, Immune=deception patrol, Curiosity=intrinsic exploration, Circadian=market cycle awareness. These 33 systems are running but market-disconnected.
-2. ~~**Agent-level situation claiming** — SEC_WATCHER claims insider situations, MARKET_ANALYST claims highest-convergence.~~ **DONE**
-3. ~~**DevelopingSituation → full investigation** — Octopus arms query archaeology, prediction markets, targeted re-fetch.~~ **DONE**
+### Immediate: Wire Alpaca Paper Trading
+- Alpaca API keys are in `.env`. Client bootstrapped. Signal translator built. DrawdownMonitor gates trades.
+- **One gap:** ~10 lines in market_hooks.py to call `ctx.alpaca_client.submit_market_order()` from ExecutableSignal.
+- After wiring: start daemon, convergence alerts auto-submit paper trades to Alpaca.
 
-### Priority 1: Ecosystem Deepening (from Evolution Blueprint Phase 2)
-- ~~Focused attention: when partial convergence starts, increase polling priority for missing domains~~ **DONE**
-- ~~Agent-level situation claiming (SEC_WATCHER claims insider situations)~~ **DONE**
-- ~~DevelopingSituation → full investigation pipeline~~ **DONE**
-- ~~Signal-triggered convergence (fire on signal arrival, not step tick)~~ **DONE**
+### Next: Kalshi Integration
+- kalshi-python SDK installed, needs verification against demo env
+- Review ToS for algo trading restrictions
+- Prototype MarketSelector (map alerts to contracts)
 
-### Priority 2: Shed Weight + Speed Up (Evolution Blueprint Phase 1)
+### Remaining
 - Wall-clock cadences (replace step-based)
-- ~~Signal-triggered convergence (fire on signal arrival, not step tick)~~ **DONE**
-- ~~ADTS (regime-aware Thompson forgetting, 50 lines)~~ **DONE**
-- ~~Unload 223K fingerprints from RAM~~ **DONE**
-
-### Priority 3: Execution + Risk (Evolution Blueprint Phases 4-5)
-- Kalshi SDK verification + MarketSelector prototype
-- ~~DrawdownMonitor, SystemHealthMonitor, SelfMonitor~~ **DONE** (pending: independent review, SystemHealthMonitor error wiring, daemon persistence flush)
-- Broker-side bracket orders (survive MIDGE process failure)
-- **FTMO execution engine integration** — port sibling's backtester, build signal translator, validate with historical convergence data. Guiding Light wants research backing first.
-- FTMO free trial signup (Guiding Light action: ftmo.com + Alpaca API keys)
+- LLM integration (Ollama causal narratives)
+- New data sources (BDI logistics, central bank, crypto depth)
+- FTMO after forex/commodity signals validated
 
 ## Verification
 

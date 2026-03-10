@@ -391,8 +391,79 @@ def _translate_and_log_executable_signal(alert, ctx: SimpleNamespace) -> None:
             signal.rr_ratio, signal.position_size_pct * 100,
         )
 
+        # --- Submit to Alpaca (paper trading) ---
+        _submit_to_alpaca(signal, ctx)
+
     except Exception:
         logger.debug("_translate_and_log_executable_signal failed", exc_info=True)
+
+
+def _submit_to_alpaca(signal, ctx: SimpleNamespace) -> None:
+    """Submit an ExecutableSignal to Alpaca paper trading.
+
+    Guards:
+    - Only fires if ctx.alpaca_client exists and is connected
+    - Skips non-equity tickers (forex =X, futures =F, crypto -USD)
+    - Skips if already holding a position in this ticker
+    - All errors swallowed — failure here must never cascade
+    """
+    try:
+        alpaca = getattr(ctx, "alpaca_client", None)
+        if alpaca is None or not alpaca.connected:
+            return
+
+        ticker = signal.ticker
+
+        # Only US equities — Alpaca doesn't trade forex/futures/crypto
+        if any(suffix in ticker for suffix in ("=X", "=F", "-USD", ".X")):
+            logger.debug("Alpaca: skipping non-equity ticker %s", ticker)
+            return
+
+        # Dedup — skip if we already have a position in this ticker
+        existing = alpaca.get_positions()
+        if any(p.symbol == ticker for p in existing):
+            logger.debug("Alpaca: already holding %s — skipping", ticker)
+            return
+
+        # Position sizing — convert percentage to share count
+        account = alpaca.get_account()
+        if account is None:
+            return
+
+        dollar_amount = account.equity * signal.position_size_pct
+        if dollar_amount < 1.0:
+            logger.debug("Alpaca: position too small ($%.2f) for %s", dollar_amount, ticker)
+            return
+
+        qty = round(dollar_amount / signal.entry_price, 2)
+        if qty <= 0:
+            return
+
+        side = "buy" if signal.direction == "long" else "sell"
+
+        result = alpaca.submit_market_order(
+            symbol=ticker,
+            qty=qty,
+            side=side,
+            take_profit_price=round(signal.take_profit, 2),
+            stop_loss_price=round(signal.stop_loss, 2),
+            metadata={
+                "source": "convergence_alert",
+                "confidence": signal.confidence,
+                "domains": signal.domains,
+                "alert_id": signal.source_alert_id,
+                "rr_ratio": signal.rr_ratio,
+            },
+        )
+
+        if result:
+            logger.info(
+                "ALPACA PAPER TRADE: %s %s shares of %s @ ~%.2f | SL=%.2f TP=%.2f | order=%s",
+                side.upper(), qty, ticker, signal.entry_price,
+                signal.stop_loss, signal.take_profit, result.order_id,
+            )
+    except Exception:
+        logger.debug("_submit_to_alpaca failed", exc_info=True)
 
 
 def _register_market_eventbus(ctx: SimpleNamespace) -> None:
