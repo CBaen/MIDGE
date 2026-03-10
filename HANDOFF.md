@@ -2,6 +2,16 @@
 
 ## What Happened
 
+### Agent Claiming + ADTS + Fingerprint Offload (2026-03-09)
+
+**Agent-level situation claiming:** `ROLE_DOMAIN_AFFINITY` maps stem cell roles to domain expertise. `select_preferred_role()` picks best role per situation. Octopus routing tries role-matched agents first, falls back to least-loaded. 27 tests. Note: octopuses need `_genome_role` assigned at spawn for live effect.
+
+**ADTS (Regime-Aware Thompson Forgetting):** `REGIME_DECAY_RATES` — volatile=0.90, bear=0.92, bull=0.95, sideways=0.97. Thompson forgetting adapts to market conditions via `regime_aware_forget()`. ~45 lines. 9 tests.
+
+**Fingerprint RAM Offload:** 223K fingerprints no longer loaded into RAM at startup. Templates (39) stay in memory. Fingerprints loaded on-demand for rebuild/grading only. ~3.3MB ID set vs ~100MB+ full data. 22 tests.
+
+**Tests:** 58 new. Full suite: 970/971 pass.
+
 ### Investigation Pipeline + Signal-Triggered Convergence (2026-03-09)
 
 **Octopus investigation wired — developing situations now get investigated:**
