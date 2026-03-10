@@ -157,6 +157,64 @@ def _run_active_tracker_check(ctx: SimpleNamespace) -> None:
         logger.debug("Active tracker check failed", exc_info=True)
 
 
+def _run_paper_trading_gate(ctx: SimpleNamespace, alerts: list, step: int) -> None:
+    """Paper trading gate — convert high-confidence convergence alerts to TradeSignals.
+
+    Reads thresholds from LEARNING_CONFIG. Applies combo filter and risk gates.
+    Called from _sensing_step_with_advisory whenever convergence alerts are present.
+    """
+    from mae_core.bootstrap.market_hooks_trades import (
+        _write_paper_trade, _translate_and_log_executable_signal,
+    )
+    try:
+        from mae_core.market.intelligence.learning_config import LEARNING_CONFIG
+        _pt_conf = LEARNING_CONFIG.get("paper_trade_min_confidence", 0.45)
+        _pt_str = LEARNING_CONFIG.get("paper_trade_min_strength", 0.65)
+        _pt_combo = LEARNING_CONFIG.get("paper_trade_min_combo_mean", 0.25)
+        for alert in alerts:
+            if not (
+                hasattr(alert, "confidence")
+                and hasattr(alert, "strength")
+                and alert.confidence > _pt_conf
+                and alert.strength > _pt_str
+            ):
+                continue
+            _pass_combo = True
+            _ts = getattr(ctx, "thompson_sampler", None)
+            _raw_domains = getattr(alert, "domains_converging", None)
+            if _raw_domains and _ts is not None:
+                _domains = sorted(_raw_domains)
+                if len(_domains) >= 2:
+                    _combo_key = "combo:" + "+".join(_domains)
+                    _cd = _ts.get_distribution(_combo_key)
+                    if _cd.samples >= 3 and _cd.mean < _pt_combo:
+                        _pass_combo = False
+            if not _pass_combo:
+                continue
+            _dm = getattr(ctx, "drawdown_monitor", None)
+            if _dm and _dm.is_trading_halted():
+                logger.info("Paper trade BLOCKED — drawdown circuit breaker active")
+                continue
+            _sm = getattr(ctx, "self_monitor", None)
+            if _sm:
+                _sm.record_alert(
+                    direction=getattr(alert, "direction", "unknown"),
+                    confidence=getattr(alert, "confidence", 0.0),
+                    ticker=getattr(alert, "ticker", ""),
+                    step=step,
+                )
+                if _sm.is_alerting_suppressed():
+                    logger.warning(
+                        "Paper trade BLOCKED — behavioral anomaly detected: %s",
+                        _sm._anomaly_flags,
+                    )
+                    continue
+            _write_paper_trade(alert, ctx)
+            _translate_and_log_executable_signal(alert, ctx)
+    except Exception:
+        logger.debug("Paper trading gate failed", exc_info=True)
+
+
 def _run_synergy_detection(ctx: SimpleNamespace) -> None:
     """Detect dual confirmation: convergence alert + pattern stack on same ticker.
 
