@@ -61,3 +61,10 @@ CH_OCTOPUS_INVESTIGATION = "market.intel.octopus_investigation"
 # Causal reasoning channels (WorldModel inevitability cascade)
 CH_CAUSAL_WATCH = "market.intel.causal_watch"
 CH_CASCADE_CONFIRMED = "market.intel.cascade_confirmed"
+
+# Risk architecture channels (DrawdownMonitor, SystemHealthMonitor, SelfMonitor)
+CH_DRAWDOWN_WARNING = "market.risk.drawdown_warning"
+CH_TRADING_HALTED = "market.risk.trading_halted"
+CH_TRADING_RESUMED = "market.risk.trading_resumed"
+CH_HEALTH_TIER_CHANGE = "market.health.tier_change"
+CH_BEHAVIORAL_ANOMALY = "market.risk.behavioral_anomaly"
