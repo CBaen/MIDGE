@@ -65,6 +65,8 @@ from mae_core.market.sensing_fetchers import (
     fetch_massive_snapshot,
     fetch_social_text,
     fetch_yahoo_rss,
+    fetch_usda,
+    fetch_fred_yields,
 )
 from mae_core.market.sensing_lifecycle import (
     enrich_signal,
@@ -139,9 +141,13 @@ TIER_ROUTING = {
     "social_text": "thematic",
     # Yahoo Finance RSS — per-ticker headline velocity
     "yahoo_rss": "tactical",
+    # Real-economy: Agriculture (USDA WASDE/PSD)
+    "usda_agriculture": "strategic",
+    # Forex-critical FRED yields / DXY
+    "fred_yields": "thematic",
 }
 
-# Source names for rotation — 30 sources, 8 concurrent per cadence tick
+# Source names for rotation — 34 sources, 12 concurrent per cadence tick
 SOURCE_ROTATION = [
     "sec_form4",
     "sec_form8k",
@@ -185,6 +191,10 @@ SOURCE_ROTATION = [
     "social_text",
     # Yahoo Finance RSS — per-ticker headline velocity (free, no key)
     "yahoo_rss",
+    # Real-economy: Agriculture (USDA WASDE/PSD)
+    "usda_agriculture",
+    # Forex-critical FRED yields / DXY
+    "fred_yields",
 ]
 
 # Map rotation source names → Thompson distribution keys for guided selection.
@@ -222,6 +232,8 @@ _ROTATION_TO_THOMPSON = {
     "congress_legislation": "congress_legislation",
     "social_text": "social_text",
     "yahoo_rss": "yahoo_rss",
+    "usda_agriculture": "usda_agriculture",
+    "fred_yields": "fred_macro",
 }
 
 # Map absence source names back to convergence domains
@@ -242,6 +254,8 @@ _ABSENCE_SOURCE_DOMAINS = {
     "eia_energy": "energy",
     "congress_legislation": "government",
     "yahoo_rss": "events",
+    "usda_agriculture": "macro",
+    "fred_yields": "macro",
 }
 
 
@@ -342,6 +356,7 @@ class MarketSensingHook:
         congress_gov_client: Any = None,
         social_text_analyzer: Any = None,
         yahoo_rss_client: Any = None,
+        usda_client: Any = None,
     ):
         # API clients (all optional — graceful degradation)
         self._sec_client = sec_client
@@ -382,6 +397,7 @@ class MarketSensingHook:
         self._congress_gov_client = congress_gov_client
         self._social_text_analyzer = social_text_analyzer
         self._yahoo_rss_client = yahoo_rss_client
+        self._usda_client = usda_client
 
         # EventBus (injected by bootstrap for signal bridge)
         self._bus = None
@@ -1179,6 +1195,14 @@ class MarketSensingHook:
         elif source_name == "yahoo_rss":
             from mae_core.market.signal_adapters.layer6 import from_yahoo_rss_signal
             signals = fetch_yahoo_rss(self._yahoo_rss_client, self._watchlist, from_yahoo_rss_signal)
+
+        elif source_name == "usda_agriculture":
+            from mae_core.market.signal_adapters.market_data import from_usda_indicator
+            signals = fetch_usda(self._usda_client, from_usda_indicator)
+
+        elif source_name == "fred_yields":
+            from mae_core.market.signal_adapters.market_data import from_fred_yield
+            signals = fetch_fred_yields(self._fred, from_fred_yield)
 
         # Enrich in background thread (velocity, filing-time, Ollama sentiment)
         # Moved from _collect_results() so Ollama's 15s timeout doesn't block

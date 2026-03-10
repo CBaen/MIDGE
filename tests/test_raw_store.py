@@ -668,3 +668,85 @@ class TestSAMOpportunitiesStorage:
 
     def test_store_sam_opportunities_empty(self, store):
         assert store.store_sam_opportunities([]) == 0
+
+
+class TestUSDAStorage:
+    def _make_record(self, market_year="2025", attribute_id=20, value=780.0, country_code="0000"):
+        return {
+            "marketYear": market_year,
+            "attributeId": attribute_id,
+            "value": value,
+            "countryCode": country_code,
+            "unitDescription": "1000 MT",
+        }
+
+    def test_store_usda_data(self, store):
+        records = [
+            self._make_record(market_year="2025", attribute_id=20, value=780.0),
+            self._make_record(market_year="2025", attribute_id=176, value=800.0),
+            self._make_record(market_year="2025", attribute_id=125, value=160.0),
+        ]
+        count = store.store_usda_data("wheat", records)
+        assert count == 3
+
+        conn = store._get_conn("usda")
+        cursor = conn.execute("SELECT COUNT(*) FROM usda_psd WHERE commodity_key='wheat'")
+        assert cursor.fetchone()[0] == 3
+
+    def test_usda_upsert_dedup(self, store):
+        # Same (commodity_key, market_year, attribute_id, country_code) — should upsert, not duplicate
+        record_v1 = [self._make_record(market_year="2025", attribute_id=20, value=780.0)]
+        record_v2 = [self._make_record(market_year="2025", attribute_id=20, value=795.0)]
+
+        store.store_usda_data("wheat", record_v1)
+        store.store_usda_data("wheat", record_v2)
+
+        conn = store._get_conn("usda")
+        cursor = conn.execute(
+            "SELECT value FROM usda_psd "
+            "WHERE commodity_key='wheat' AND market_year='2025' AND attribute_id=20"
+        )
+        assert cursor.fetchone()[0] == 795.0  # Updated, not duplicated
+
+        cursor = conn.execute("SELECT COUNT(*) FROM usda_psd WHERE commodity_key='wheat'")
+        assert cursor.fetchone()[0] == 1
+
+    def test_usda_empty_input(self, store):
+        assert store.store_usda_data("wheat", []) == 0
+
+    def test_usda_skips_records_missing_market_year(self, store):
+        records = [
+            {"attributeId": 20, "value": 780.0, "unitDescription": "1000 MT"},  # no marketYear
+            self._make_record(market_year="2025", attribute_id=20, value=780.0),
+        ]
+        count = store.store_usda_data("wheat", records)
+        assert count == 1
+
+    def test_usda_skips_records_missing_attribute_id(self, store):
+        records = [
+            {"marketYear": "2025", "value": 780.0, "unitDescription": "1000 MT"},  # no attributeId
+            self._make_record(market_year="2025", attribute_id=20, value=780.0),
+        ]
+        count = store.store_usda_data("wheat", records)
+        assert count == 1
+
+    def test_usda_skips_records_missing_value(self, store):
+        records = [
+            {"marketYear": "2025", "attributeId": 20, "unitDescription": "1000 MT"},  # no value
+            self._make_record(market_year="2025", attribute_id=20, value=780.0),
+        ]
+        count = store.store_usda_data("wheat", records)
+        assert count == 1
+
+    def test_usda_multiple_commodities_isolated(self, store):
+        store.store_usda_data("wheat", [self._make_record(market_year="2025", attribute_id=20, value=780.0)])
+        store.store_usda_data("corn", [self._make_record(market_year="2025", attribute_id=20, value=1200.0)])
+
+        conn = store._get_conn("usda")
+        cursor = conn.execute("SELECT COUNT(*) FROM usda_psd")
+        assert cursor.fetchone()[0] == 2
+
+        row = conn.execute(
+            "SELECT value FROM usda_psd WHERE commodity_key='corn' AND attribute_id=20"
+        ).fetchone()
+        assert row[0] == 1200.0

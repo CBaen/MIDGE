@@ -150,6 +150,7 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         ("eia_client", "mae_core.market.apis.eia_client", "EIAClient", {"provider": provider, "raw_store": raw_store}),
         ("congress_gov_client", "mae_core.market.apis.congress_gov_client", "CongressGovClient", {"provider": provider, "raw_store": raw_store}),
         ("yahoo_rss_client", "mae_core.market.apis.yahoo_rss_client", "YahooRSSClient", {"raw_store": raw_store}),
+        ("usda_client", "mae_core.market.apis.usda_client", "USDAClient", {"provider": provider, "raw_store": raw_store}),
     ]:
         try:
             setattr(ctx, _attr, getattr(_imp.import_module(_mod), _cls)(**_kw))
