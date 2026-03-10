@@ -27,7 +27,6 @@ function implementations.
 
 from __future__ import annotations
 
-import json
 import logging
 import math
 from dataclasses import dataclass
@@ -344,54 +343,12 @@ class PatternLibrary:
                 self._persist_templates()
 
     def _persist_fingerprints_dict(self, fingerprints: dict[str, MoveFingerprint]) -> None:
-        """Rewrite fingerprints file atomically from a provided dict."""
-        if not fingerprints:
-            return  # Never overwrite with empty
-        try:
-            tmp = self._path.with_suffix(".tmp")
-            with open(tmp, "w") as f:
-                for fp in fingerprints.values():
-                    f.write(fp.to_json() + "\n")
-            try:
-                tmp.replace(self._path)
-            except OSError:
-                with open(self._path, "w") as f:
-                    with open(tmp, "r") as src:
-                        f.write(src.read())
-                try:
-                    tmp.unlink()
-                except OSError:
-                    pass
-        except OSError as e:
-            logger.warning("Could not persist fingerprints: %s", e)
+        """Rewrite fingerprints file atomically. Delegates to pattern_library_io."""
+        persist_fingerprints_dict(self._path, fingerprints)
 
     def _persist_templates(self) -> None:
-        """Rewrite templates file atomically (write .tmp then rename).
-
-        On Windows, rename can fail if another process holds the target file.
-        Falls back to direct overwrite (still safe — we have the empty guard).
-        """
-        if not self._templates:
-            return  # Never overwrite with empty — protects against crash-induced data loss
-        try:
-            self._templates_path.parent.mkdir(parents=True, exist_ok=True)
-            tmp = self._templates_path.with_suffix(".tmp")
-            with open(tmp, "w") as f:
-                for t in self._templates.values():
-                    f.write(t.to_json() + "\n")
-            try:
-                tmp.replace(self._templates_path)
-            except OSError:
-                # Windows: target file locked by another process — direct write fallback
-                with open(self._templates_path, "w") as f:
-                    with open(tmp, "r") as src:
-                        f.write(src.read())
-                try:
-                    tmp.unlink()
-                except OSError:
-                    pass
-        except OSError as e:
-            logger.warning("Could not persist templates: %s", e)
+        """Rewrite templates file atomically. Delegates to pattern_library_io."""
+        persist_templates(self._templates_path, self._templates)
 
     def rebuild_templates(self) -> int:
         """Rebuild all templates from fingerprints.
