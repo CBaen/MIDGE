@@ -335,20 +335,20 @@ See `midge-queue.md` for comprehensive task list (70+ items, 4 priority tiers).
 
 ### Immediate
 1. **Activate biological systems** — Pheromones=trail-leaving, Quorum=collective confidence, Immune=deception patrol, Curiosity=intrinsic exploration, Circadian=market cycle awareness. These 33 systems are running but market-disconnected.
-2. **Agent-level situation claiming** — SEC_WATCHER claims insider situations, MARKET_ANALYST claims highest-convergence.
-3. **DevelopingSituation → full investigation** — Octopus arms query archaeology, prediction markets, targeted re-fetch.
+2. ~~**Agent-level situation claiming** — SEC_WATCHER claims insider situations, MARKET_ANALYST claims highest-convergence.~~ **DONE**
+3. ~~**DevelopingSituation → full investigation** — Octopus arms query archaeology, prediction markets, targeted re-fetch.~~ **DONE**
 
 ### Priority 1: Ecosystem Deepening (from Evolution Blueprint Phase 2)
 - ~~Focused attention: when partial convergence starts, increase polling priority for missing domains~~ **DONE**
-- Agent-level situation claiming (SEC_WATCHER claims insider situations)
+- ~~Agent-level situation claiming (SEC_WATCHER claims insider situations)~~ **DONE**
 - ~~DevelopingSituation → full investigation pipeline~~ **DONE**
 - ~~Signal-triggered convergence (fire on signal arrival, not step tick)~~ **DONE**
 
 ### Priority 2: Shed Weight + Speed Up (Evolution Blueprint Phase 1)
 - Wall-clock cadences (replace step-based)
 - ~~Signal-triggered convergence (fire on signal arrival, not step tick)~~ **DONE**
-- ADTS (regime-aware Thompson forgetting, 50 lines)
-- Unload 223K fingerprints from RAM
+- ~~ADTS (regime-aware Thompson forgetting, 50 lines)~~ **DONE**
+- ~~Unload 223K fingerprints from RAM~~ **DONE**
 
 ### Priority 3: Execution + Risk (Evolution Blueprint Phases 4-5)
 - Kalshi SDK verification + MarketSelector prototype
