@@ -7,11 +7,11 @@
 
 ## Priority 1: Execution Bridges
 
-### Alpaca Equities (KEYS IN .env — READY TO WIRE)
+### Alpaca Equities — WIRED
 - [x] Get ALPACA_SECRET_KEY from Guiding Light — DONE (in .env)
 - [x] Signal translator built — ConvergenceAlert → ExecutableSignal (36 tests)
 - [x] DrawdownMonitor circuit breaker — halts paper trades at 40% DD
-- [ ] **Wire Alpaca client to convergence alerts (~10 lines)** — ctx.alpaca_client exists, ExecutableSignal exists, just need submit_market_order() call
+- [x] Wire Alpaca client to convergence alerts — `_submit_to_alpaca()` in market_hooks.py
 - [ ] Post-catalyst timing strategy for entry (legal protection)
 - [ ] Build public confirmation timestamp logging (compliance trail)
 
@@ -83,8 +83,9 @@
 
 ## Housekeeping
 
-- [ ] Write tests for USDA client (mae_core/market/apis/usda_client.py)
-- [ ] Write tests for FRED yield curve additions
+- [x] Write tests for USDA client — 44 tests in test_usda_client.py + 7 in test_raw_store.py
+- [x] Write tests for FRED client — 59 tests in test_fred_client.py
+- [x] Wire USDA + FRED yields into sensing pipeline (rotation, dispatcher, bootstrap)
 - [ ] Clean Thompson test artifacts from distributions file (combo:a+b+c, concurrent_test, test_signal entries)
 - [ ] market_hooks.py size audit — may need decomposition (approaching 500-line cap)
 - [ ] Broker-side bracket orders (survive MIDGE process failure)
@@ -103,8 +104,8 @@
 - Thompson feedback loop fix (4 bugs, replay_from_history, 24 tests)
 - Signal translator (ConvergenceAlert → ExecutableSignal, 36 tests)
 - Watchlist expansion (forex/futures/commodity tickers)
-- USDA WASDE client built (needs tests)
-- FRED yield curve series added (DGS2, DGS10, T10Y3M, DFF)
+- USDA WASDE client built + tests (44+7) + sensing pipeline wired
+- FRED client tests (59) + yield curve sensing pipeline wired (DGS2, DGS10, T10Y3M, DTWEXBGS)
 - Bio-market activation (29/30 systems wired, ResourceGovernor)
 - SystemHealthMonitor error wiring (8 blocks)
 - DrawdownMonitor daemon persistence flush

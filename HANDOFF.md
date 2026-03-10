@@ -7,7 +7,7 @@
 
 ## What Is MIDGE
 
-MIDGE is Mae differentiated for financial markets. She's an inevitability surfacer — a living organism that observes patterns across 32 data sources, finds where converging forces make outcomes structurally inevitable, and trades on them.
+MIDGE is Mae differentiated for financial markets. She's an inevitability surfacer — a living organism that observes patterns across 34 data sources, finds where converging forces make outcomes structurally inevitable, and trades on them.
 
 Guiding Light's vision: MIDGE as personal autonomous trader across ALL markets — stocks (Alpaca), futures/forex (FTMO), crypto (exchanges), prediction markets (Kalshi). Not one venue — all of them.
 
