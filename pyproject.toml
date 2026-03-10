@@ -58,3 +58,6 @@ strict = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "slow: marks tests as slow (full organism bootstrap — deselect with -m 'not slow')",
+]

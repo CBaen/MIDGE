@@ -4,9 +4,13 @@ The autouse fixture below prevents ALL tests from touching production
 data files.  Every test that instantiates ThompsonSampler(), LearningConfig,
 or HypothesisGenerator without explicit paths will use throw-away temp
 directories instead of data/market/.
+
+The HistoricalDataFetcher guard prevents tests from loading the 130 MB
+production signal archive (911+ JSONL files in data/midge/signals/).
 """
 
 import copy
+import gc
 import pytest
 from pathlib import Path
 
@@ -36,6 +40,14 @@ def _isolate_market_state(tmp_path, monkeypatch):
     except (ImportError, AttributeError):
         pass
 
+    # Prevent tests from loading the 130 MB production signal archive.
+    # Tests that need HistoricalDataFetcher get an empty temp directory.
+    try:
+        import mae_core.market.archaeology.historical_fetcher as hf_mod
+        monkeypatch.setattr(hf_mod, "SIGNAL_ARCHIVE_DIR", tmp_path / "signals")
+    except (ImportError, AttributeError):
+        pass
+
     # Isolate LEARNING_CONFIG: snapshot before test, restore after.
     # create_mae() and meta-learning mutate this module-level dict in place,
     # which pollutes subsequent tests (e.g. min_correlation 0.6 → 0.85).
@@ -49,3 +61,7 @@ def _isolate_market_state(tmp_path, monkeypatch):
         lc_mod.LEARNING_CONFIG.update(original_config)
     except (ImportError, AttributeError):
         yield
+
+    # Force garbage collection after each test to break circular references
+    # in large objects (ConvergenceAlerter, MarketSensingHook, etc.)
+    gc.collect()
