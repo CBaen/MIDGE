@@ -1,7 +1,9 @@
 {
   "tickers": [
     "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META",
-    "LMT", "RTX", "NOC", "GD", "BA"
+    "LMT", "RTX", "NOC", "GD", "BA",
+    "EURUSD=X", "GBPUSD=X", "USDJPY=X",
+    "GC=F", "CL=F", "NQ=F", "ES=F"
   ],
   "keywords": [
     "cybersecurity",

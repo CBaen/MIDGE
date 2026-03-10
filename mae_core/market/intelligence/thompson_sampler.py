@@ -142,8 +142,18 @@ class ThompsonSampler:
         """Load distributions from disk."""
         if self.persistence_path.exists():
             try:
-                self.distributions = json.loads(self.persistence_path.read_text())
+                data = json.loads(self.persistence_path.read_text())
+                if isinstance(data, dict):
+                    self.distributions = data
+                else:
+                    logger.warning(
+                        "Thompson distributions file has unexpected format — treating as empty"
+                    )
+                    self.distributions = {}
             except (json.JSONDecodeError, OSError):
+                logger.warning(
+                    "Thompson distributions file is corrupt or unreadable — treating as empty"
+                )
                 self.distributions = {}
 
     def _save_distributions_locked(self) -> None:
