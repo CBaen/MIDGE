@@ -411,6 +411,91 @@ class RawStore:
         logger.debug("RawStore: stored %d FRED observations for %s", len(data), series_id)
         return len(data)
 
+    # --- USDA Agricultural Data ---
+
+    def store_usda_data(self, commodity_key: str, records: List[Dict[str, Any]]) -> int:
+        """Store USDA PSD commodity supply/demand records.
+
+        Args:
+            commodity_key: e.g. "wheat", "corn", "soybeans", "cotton"
+            records: Raw record list from USDA PSD API response.
+
+        Returns:
+            Number of rows upserted.
+        """
+        if not records:
+            return 0
+
+        conn = self._get_conn("usda")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS usda_psd (
+                commodity_key TEXT,
+                market_year TEXT,
+                attribute_id INTEGER,
+                value REAL,
+                unit_description TEXT,
+                country_code TEXT,
+                ingested_at TEXT,
+                PRIMARY KEY (commodity_key, market_year, attribute_id, country_code)
+            )
+        """)
+
+        now = datetime.now(timezone.utc).isoformat()
+        data = []
+        for rec in records:
+            market_year = str(rec.get("marketYear", ""))
+            attr_id = rec.get("attributeId")
+            raw_val = rec.get("value")
+            if not market_year or attr_id is None or raw_val is None:
+                continue
+            try:
+                value = float(raw_val)
+            except (TypeError, ValueError):
+                continue
+            data.append((
+                commodity_key,
+                market_year,
+                int(attr_id),
+                value,
+                rec.get("unitDescription", ""),
+                str(rec.get("countryCode", "0000")),
+                now,
+            ))
+
+        if data:
+            conn.executemany(
+                "INSERT OR REPLACE INTO usda_psd "
+                "(commodity_key, market_year, attribute_id, value, unit_description, country_code, ingested_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                data,
+            )
+            conn.commit()
+
+        logger.debug("RawStore: stored %d USDA PSD records for %s", len(data), commodity_key)
+        return len(data)
+
+    # --- FRED Yield Curve / Dollar Index ---
+
+    def store_fred_yields(self, series_id: str, observations: List[Dict[str, Any]]) -> int:
+        """Store FRED treasury yield / dollar index observations.
+
+        Separate from store_fred_observations to allow distinct querying of
+        forex-critical rate series (DGS2, DGS10, T10Y3M, DTWEXBGS) vs general
+        macro observations.
+
+        Internally reuses the same fred_observations table with series_id as
+        discriminator — no schema duplication.
+
+        Args:
+            series_id: FRED series ID (e.g. "DGS2", "DTWEXBGS").
+            observations: Raw observations list from FRED API response.
+
+        Returns:
+            Number of rows upserted.
+        """
+        # Delegate to the existing store_fred_observations — same table, same schema
+        return self.store_fred_observations(series_id, observations)
+
     # --- StockTwits Messages ---
 
     def store_stocktwits_messages(self, ticker: str, messages: List[Dict[str, Any]]) -> int:

@@ -461,6 +461,29 @@ class FREDClient:
 
         return results
 
+    def get_yield_curves_and_dollar(self) -> List[MacroIndicator]:
+        """Fetch forex-critical rate and dollar series.
+
+        Returns the four series most directly relevant to forex movements:
+        - DGS2: 2-year treasury yield (rate differential driver)
+        - DGS10: 10-year treasury yield (global capital flow anchor)
+        - T10Y3M: 10Y-3M spread (most reliable recession indicator)
+        - DTWEXBGS: Broad dollar index (DXY proxy, commodity/EM multiplier)
+
+        The 2Y yield is the best proxy for Fed expectations and the primary
+        driver of USD/EUR, USD/JPY, USD/GBP movements. Rising 2Y = stronger
+        dollar = bearish for gold, EM, commodities.
+        """
+        forex_series = ["DGS2", "DGS10", "T10Y3M", "DTWEXBGS"]
+        results = []
+        for series_id in forex_series:
+            indicator = self.get_series(series_id)
+            if indicator is not None:
+                results.append(indicator)
+            else:
+                logger.warning("get_yield_curves_and_dollar: failed to fetch %s", series_id)
+        return results
+
     def get_yield_curve_status(self) -> Optional[MacroIndicator]:
         """
         Convenience method: fetch just the yield curve spread (T10Y2Y).
