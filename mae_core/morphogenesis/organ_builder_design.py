@@ -13,7 +13,7 @@ import logging
 import uuid
 from typing import Any, Optional
 
-from mae_core.morphogenesis.organ_builder import (
+from mae_core.morphogenesis.organ_builder_models import (
     CoordinationProtocol,
     OrganBlueprint,
     OrganTopology,

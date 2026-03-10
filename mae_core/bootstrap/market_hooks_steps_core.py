@@ -2,9 +2,9 @@
 
 Extracted from market_hooks.py — purely structural split.
 Contains: _register_market_step_hooks (with all nested closures).
-Heavy sub-blocks extracted to module-level helpers to stay under 500 lines:
-  - _run_octopus_dispatch(colony, step)
-  - _run_slow_cadence_ops(ctx, step, _shm, _timer)
+Heavy sub-blocks live in market_hooks_steps.py:
+  - _run_octopus_dispatch
+  - _run_slow_cadence_ops
 """
 
 from __future__ import annotations
@@ -16,204 +16,6 @@ from types import SimpleNamespace
 logger = logging.getLogger("midge.bootstrap")
 
 
-def _run_octopus_dispatch(colony, step: int) -> None:  # noqa: C901 (intentionally dense)
-    """Coordinate OctopusColony and dispatch investigation tasks.
-
-    Called every 20 steps from _market_sense_hook.
-    Runs coordination cycles + submits investigate_partial / situation_check tasks.
-    """
-    try:
-        for oct_id, oct in list(colony.octopuses.items()):
-            oct.cognition.run_coordination_cycle()
-    except Exception:
-        logger.debug("OctopusColony coordination failed", exc_info=True)
-
-    try:
-        lock = getattr(colony, "_situations_lock", None)
-        situations_snapshot = {}
-        if lock is not None:
-            with lock:
-                situations_snapshot = dict(colony._developing_situations)
-        else:
-            situations_snapshot = dict(
-                getattr(colony, "_developing_situations", {})
-            )
-
-        task_budget = 5
-        for key, sit in situations_snapshot.items():
-            if task_budget <= 0:
-                break
-            check_count = sit.get("check_count", 0)
-            if check_count >= 20:
-                continue  # Will be evicted by situation_check
-
-            preferred_role = None
-            try:
-                from mae_core.network.market_task_handlers import select_preferred_role
-                preferred_role = select_preferred_role(
-                    domains_seen=sit.get("domains_seen", []),
-                    missing_domains=sit.get("missing_domains", []),
-                    causal_predictions=sit.get("causal_predictions", []),
-                )
-            except Exception:
-                pass  # Non-critical — fall back to workload routing
-
-            task_data_inv: dict = {
-                "ticker": sit["ticker"],
-                "direction": sit["direction"],
-                "domains_seen": sit.get("domains_seen", []),
-                "missing_domains": sit.get("missing_domains", []),
-            }
-            if preferred_role is not None:
-                task_data_inv["preferred_role"] = preferred_role
-
-            colony.submit_task(task_data_inv, "investigate_partial")
-            task_budget -= 1
-
-            if check_count > 0 and check_count % 5 == 0:
-                if task_budget > 0:
-                    colony.submit_task(
-                        {"ticker": sit["ticker"], "direction": sit["direction"]},
-                        "situation_check",
-                    )
-                    task_budget -= 1
-    except Exception:
-        logger.debug("Investigation dispatcher failed", exc_info=True)
-
-
-def _run_slow_cadence_ops(ctx: SimpleNamespace, step: int, _shm, _timer) -> None:
-    """Run every-500-step analysis: lag-correlation, Granger causality, post-mortem.
-
-    Also handles every-1000-step Thompson calibration and
-    every-5000-step backtest scheduler + excavation daemon.
-    """
-    # Every 500 steps: lag-correlation analysis
-    if step % 500 == 0:
-        lag = getattr(ctx, "lag_correlation_analyzer", None)
-        if lag is not None:
-            try:
-                if _timer is not None:
-                    with _timer.track("lag_correlation"):
-                        findings = lag.analyze(lookback_days=90)
-                else:
-                    findings = lag.analyze(lookback_days=90)
-                if findings and hasattr(ctx, "bus"):
-                    ctx.bus.publish("market.intel.lag_finding", {
-                        "count": len(findings),
-                        "top": [
-                            {"a": f.source_a, "b": f.source_b,
-                             "lag": f.lag_days, "r": f.correlation}
-                            for f in findings[:3]
-                        ],
-                    })
-                if findings:
-                    _ca = getattr(ctx, "convergence_alerter", None)
-                    if _ca is not None and hasattr(_ca, "set_lag_findings"):
-                        try:
-                            _ca.set_lag_findings(findings)
-                        except Exception:
-                            logger.debug("set_lag_findings failed", exc_info=True)
-            except Exception:
-                logger.debug("Lag correlation step failed", exc_info=True)
-
-        granger = getattr(ctx, "granger_analyzer", None)
-        if granger is not None:
-            try:
-                if _timer is not None:
-                    with _timer.track("granger_causality"):
-                        g_findings = granger.analyze(lookback_days=180)
-                else:
-                    g_findings = granger.analyze(lookback_days=180)
-                if g_findings and hasattr(ctx, "bus"):
-                    ctx.bus.publish("market.intel.granger_finding", {
-                        "count": len(g_findings),
-                        "top": [
-                            {"cause": f.cause_source, "effect": f.effect_source,
-                             "lag": f.best_lag, "p": f.p_value}
-                            for f in g_findings[:3]
-                        ],
-                    })
-            except Exception:
-                logger.debug("Granger causality step failed", exc_info=True)
-
-        post_mortem = getattr(ctx, "post_mortem_reviewer", None)
-        if post_mortem is not None:
-            try:
-                if _timer is not None:
-                    with _timer.track("post_mortem"):
-                        pm_summary = post_mortem.review()
-                else:
-                    pm_summary = post_mortem.review()
-                if pm_summary.get("outcomes_reviewed", 0) > 0:
-                    logger.info(
-                        "PostMortem: reviewed %d outcomes (%d combos, %d sequences)",
-                        pm_summary.get("outcomes_reviewed", 0),
-                        pm_summary.get("combos_analyzed", 0),
-                        pm_summary.get("sequences_analyzed", 0),
-                    )
-                if _shm:
-                    _shm.record_success("post_mortem")
-            except Exception as exc:
-                logger.debug("Post-mortem review step failed", exc_info=True)
-                if _shm:
-                    _shm.record_error("post_mortem", exc)
-
-    # Every 1000 steps: Thompson calibration diagnostic
-    if step % 1000 == 0:
-        calibrator = getattr(ctx, "thompson_calibrator", None)
-        if calibrator is not None:
-            try:
-                if _timer is not None:
-                    with _timer.track("thompson_calibration"):
-                        calibrator.calibrate()
-                else:
-                    calibrator.calibrate()
-            except Exception:
-                logger.debug("Thompson calibration step failed", exc_info=True)
-
-    # Every 5000 steps: backtest scheduler staleness check + excavation
-    if step % 5000 == 0:
-        scheduler = getattr(ctx, "backtest_scheduler", None)
-        if scheduler is not None:
-            try:
-                scheduler.check_and_schedule()
-            except Exception:
-                logger.debug("Backtest scheduler check failed", exc_info=True)
-
-        daemon = getattr(ctx, "excavation_daemon", None)
-        if daemon is not None:
-            sensing_hook = getattr(ctx, "_market_sensing_hook", None)
-            executor = getattr(sensing_hook, "_executor", None) if sensing_hook is not None else None
-            if executor is not None:
-                def _run_excavation(d=daemon):
-                    try:
-                        summary = d.step()
-                        if summary.get("fingerprints_found", 0) > 0:
-                            logger.info(
-                                "Excavation: %d fingerprints, %d new templates (%d/%d symbols done)",
-                                summary.get("fingerprints_found", 0),
-                                summary.get("new_templates", 0),
-                                summary.get("symbols_done", 0),
-                                summary.get("symbols_done", 0) + summary.get("symbols_remaining", 0),
-                            )
-                    except Exception:
-                        logger.debug("Excavation daemon step failed", exc_info=True)
-                executor.submit(_run_excavation)
-            else:
-                try:
-                    summary = daemon.step()
-                    if summary.get("fingerprints_found", 0) > 0:
-                        logger.info(
-                            "Excavation: %d fingerprints, %d new templates (%d/%d symbols done)",
-                            summary.get("fingerprints_found", 0),
-                            summary.get("new_templates", 0),
-                            summary.get("symbols_done", 0),
-                            summary.get("symbols_done", 0) + summary.get("symbols_remaining", 0),
-                        )
-                except Exception:
-                    logger.debug("Excavation daemon step failed", exc_info=True)
-
-
 def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
     """Register step hooks with cadence and deduplication."""
     from mae_core.market.channels import (
@@ -221,7 +23,10 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
     )
     from mae_core.bootstrap.market_hooks_trades import _check_sweep_bypass
     from mae_core.bootstrap.market_hooks_steps import (
-        _write_convergence_heartbeat, _run_drift_detector,
+        _write_convergence_heartbeat,
+        _run_drift_detector,
+        _run_octopus_dispatch,
+        _run_slow_cadence_ops,
     )
 
     _step_counter = [0]

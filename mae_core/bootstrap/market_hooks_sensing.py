@@ -4,7 +4,9 @@ Extracted from market_hooks.py — purely structural split.
 Contains: _wire_sensing_hook (with all nested closures).
 Heavy sub-blocks extracted to module-level helpers:
   - _run_sensing_archaeology(ctx, step, _shm_sensing)
+  - _run_active_tracker_check(ctx)
   - _run_synergy_detection(ctx)
+  - _run_paper_trading_gate(ctx, alerts, step)
 
 Critical constraint: ctx._cached_alerts must already exist when this runs.
 _register_market_step_hooks() MUST be called before _wire_sensing_hook().

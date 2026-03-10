@@ -313,23 +313,8 @@ class ClusterDetector:
         )
 
 
-# ── Backward-compatibility re-exports ─────────────────────────────────────────
-# RelationshipTracker, store_cluster_signal, scan_all_symbols live in
-# relationship_tracker.py — import them here for any code that imported from
-# cluster_detector directly.
-
-def _lazy_imports():
-    """Deferred to avoid circular import at module load time."""
-    from mae_core.market.edge.relationship_tracker import (  # noqa: F401
-        RelationshipTracker, store_cluster_signal, scan_all_symbols,
-    )
-    return RelationshipTracker, store_cluster_signal, scan_all_symbols
-
-
 if __name__ == "__main__":
     import sys
-
-    RelationshipTracker, store_cluster_signal, scan_all_symbols = _lazy_imports()
 
     test_symbols = ["LMT", "MSFT", "AAPL", "NVDA"]
 
