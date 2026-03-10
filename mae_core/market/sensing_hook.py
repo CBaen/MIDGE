@@ -14,65 +14,45 @@ Threading: One pending future at a time via ThreadPoolExecutor(1).
 Same pattern as ApiGateway (proven safe). No race conditions on
 convergence_alerter because collection happens in the main thread.
 
-Decomposed into three files:
-  sensing_hook.py      — this file: MarketSensingHook class + constants
-  sensing_fetchers.py  — 30 standalone fetch functions
-  sensing_lifecycle.py — enrich_signal, store_signals, load_watchlist
+Decomposed into seven files:
+  sensing_hook.py       — this file: MarketSensingHook class (thin orchestrator)
+  sensing_constants.py  — TIER_ROUTING, SOURCE_ROTATION, Thompson/domain maps
+  sensing_fetchers.py   — thin re-export hub for 31 standalone fetch functions
+  sensing_lifecycle.py  — enrich_signal, store_signals, load_watchlist
+  sensing_scheduler.py  — SensingSchedulerMixin: Thompson/round-robin scheduling
+  sensing_collector.py  — SensingCollectorMixin: result collection + signal pipeline
+  sensing_reactive.py   — SensingReactiveMixin: reactive convergence + fetch dispatch
+  sensing_step_ops.py   — SensingStepOpsMixin: periodic cadence-based step operations
 """
 
 from __future__ import annotations
 
 import logging
-import os
 import random
-import time
 from collections import deque
 from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from mae_core.market.sensing_fetchers import (
-    fetch_sec_form4,
-    fetch_sec_form8k,
-    fetch_congressional,
-    fetch_senate,
-    fetch_hiring,
-    fetch_usa_spending,
-    fetch_sam_gov,
-    fetch_social_sentiment,
-    fetch_finra_short,
-    fetch_sec_efts,
-    fetch_finnhub,
-    fetch_fred,
-    fetch_session_sweep,
-    fetch_ta_indicators,
-    fetch_cot,
-    fetch_stocktwits,
-    fetch_vix,
-    fetch_trends,
-    fetch_finnhub_extras,
-    fetch_order_flow,
-    fetch_fractal_resonance,
-    fetch_crypto_prices,
-    fetch_crypto_exchange,
-    fetch_openinsider,
-    fetch_13f_holdings,
-    fetch_finviz,
-    fetch_economic_calendar,
-    fetch_eia,
-    fetch_congress_legislation,
-    fetch_massive_snapshot,
-    fetch_social_text,
-    fetch_yahoo_rss,
-    fetch_usda,
-    fetch_fred_yields,
+from mae_core.market.sensing_constants import (
+    TIER_ROUTING,
+    SOURCE_ROTATION,
+    _ROTATION_TO_THOMPSON,
+    _ABSENCE_SOURCE_DOMAINS,
+    _DOMAIN_TO_SOURCES,
+    _absence_source_to_domain,
+    _build_domain_to_sources,
 )
 from mae_core.market.sensing_lifecycle import (
     enrich_signal,
     store_signals,
     load_watchlist,
 )
+from mae_core.market.sensing_scheduler import SensingSchedulerMixin
+from mae_core.market.sensing_collector import SensingCollectorMixin
+from mae_core.market.sensing_reactive import SensingReactiveMixin
+from mae_core.market.sensing_step_ops import SensingStepOpsMixin
 
 logger = logging.getLogger("midge.market.sensing")
 
@@ -80,227 +60,17 @@ logger = logging.getLogger("midge.market.sensing")
 DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "midge"
 SIGNALS_DIR = DATA_DIR / "signals"
 
-# Multi-timeframe convergence: route signals by source → tier
-TIER_ROUTING = {
-    "sec_form4": "tactical",
-    "sec_form8k": "tactical",
-    "sec_efts": "tactical",
-    "finnhub_news": "tactical",
-    "finnhub_earnings": "tactical",
-    "congressional": "strategic",
-    "senate": "strategic",
-    "contract": "strategic",
-    "insider_cluster": "strategic",
-    "correlation": "strategic",
-    "finra_short": "strategic",
-    "sam_gov": "thematic",
-    "hiring_tracker": "thematic",
-    "contract_prediction": "thematic",
-    "contract_award": "thematic",
-    "social_sentiment": "thematic",
-    "fred_macro": "thematic",
-    "session_sweep": "tactical",
-    "session_sweep_ifvg": "tactical",
-    "ta_rsi": "tactical",
-    "ta_macd": "tactical",
-    "ta_bollinger": "tactical",
-    "ta_structure": "tactical",
-    "ta_candle": "tactical",
-    # Ten Gifts: Wave 1
-    "order_flow": "tactical",
-    # Ten Gifts: Wave 2
-    "fractal_resonance": "strategic",
-    "archetype_match": "strategic",
-    # New sources (Layer 6)
-    "cot_positioning": "strategic",
-    "stocktwits_sentiment": "thematic",
-    "vix_term_structure": "strategic",
-    "google_trends": "thematic",
-    "finnhub_economic": "tactical",
-    "finnhub_analyst": "strategic",
-    "finnhub_earnings_calendar": "tactical",
-    # Wave 2: Real-Time + Crypto
-    "finnhub_realtime": "tactical",
-    "crypto_coingecko": "thematic",
-    "crypto_coincap": "thematic",
-    # Wave 3: Data Enrichment
-    "openinsider_purchase": "tactical",
-    "institutional_13f": "strategic",
-    "activist_13d": "strategic",
-    "finviz_unusual_volume": "tactical",
-    "finviz_short_squeeze": "strategic",
-    "finviz_insider": "tactical",
-    "economic_calendar": "thematic",
-    # Massive/Polygon.io
-    "massive_snapshot": "tactical",
-    # Real-economy: Energy
-    "eia_energy": "strategic",
-    # Real-economy: Legislative
-    "congress_legislation": "strategic",
-    # Social text analysis
-    "social_text": "thematic",
-    # Yahoo Finance RSS — per-ticker headline velocity
-    "yahoo_rss": "tactical",
-    # Real-economy: Agriculture (USDA WASDE/PSD)
-    "usda_agriculture": "strategic",
-    # Forex-critical FRED yields / DXY
-    "fred_yields": "thematic",
-}
 
-# Source names for rotation — 34 sources, 12 concurrent per cadence tick
-SOURCE_ROTATION = [
-    "sec_form4",
-    "sec_form8k",
-    "congressional",
-    "senate",
-    "hiring",
-    "usa_spending",
-    "sam_gov_and_prices",
-    "social_sentiment",
-    "finra_short",
-    "sec_efts",
-    "finnhub",
-    "fred_macro",
-    "session_sweep",
-    "ta_indicators",
-    # Ten Gifts: Wave 1
-    "order_flow",
-    # Ten Gifts: Wave 2
-    "fractal_resonance",
-    # New sources (Layer 6)
-    "cot_positioning",
-    "stocktwits",
-    "vix_structure",
-    "google_trends",
-    "finnhub_extras",
-    # Wave 2: Real-Time + Crypto (Always-On)
-    "crypto_prices",
-    "crypto_exchange",
-    # Wave 3: Data Enrichment
-    "openinsider",
-    "institutional_13f",
-    "finviz",
-    "economic_calendar",
-    # Massive/Polygon.io
-    "massive_snapshot",
-    # Real-economy: Energy
-    "eia_energy",
-    # Real-economy: Legislative
-    "congress_legislation",
-    # Social text analysis (local — no API, just reads SQLite)
-    "social_text",
-    # Yahoo Finance RSS — per-ticker headline velocity (free, no key)
-    "yahoo_rss",
-    # Real-economy: Agriculture (USDA WASDE/PSD)
-    "usda_agriculture",
-    # Forex-critical FRED yields / DXY
-    "fred_yields",
-]
-
-# Map rotation source names → Thompson distribution keys for guided selection.
-# Sources with multiple Thompson keys use their primary/dominant key.
-_ROTATION_TO_THOMPSON = {
-    "sec_form4": "sec_form4",
-    "sec_form8k": "sec_form8k",
-    "congressional": "congressional",
-    "senate": "senate",
-    "hiring": "hiring_tracker",
-    "usa_spending": "contract_award",
-    "sam_gov_and_prices": "sam_gov",
-    "social_sentiment": "social_sentiment",
-    "finra_short": "finra_short",
-    "sec_efts": "sec_efts",
-    "finnhub": "finnhub_news",
-    "fred_macro": "fred_macro",
-    "session_sweep": "session_sweep",
-    "ta_indicators": "ta_rsi",
-    "order_flow": "order_flow",
-    "fractal_resonance": "fractal_resonance",
-    "cot_positioning": "cot_positioning",
-    "stocktwits": "stocktwits_sentiment",
-    "vix_structure": "vix_term_structure",
-    "google_trends": "google_trends",
-    "finnhub_extras": "finnhub_economic",
-    "crypto_prices": "crypto_coingecko",
-    "crypto_exchange": "crypto_coincap",
-    "openinsider": "openinsider_purchase",
-    "institutional_13f": "institutional_13f",
-    "finviz": "finviz_unusual_volume",
-    "economic_calendar": "economic_calendar",
-    "massive_snapshot": "massive_snapshot",
-    "eia_energy": "eia_energy",
-    "congress_legislation": "congress_legislation",
-    "social_text": "social_text",
-    "yahoo_rss": "yahoo_rss",
-    "usda_agriculture": "usda_agriculture",
-    "fred_yields": "fred_macro",
-}
-
-# Map absence source names back to convergence domains
-_ABSENCE_SOURCE_DOMAINS = {
-    "sec_form4": "insider", "sec_form8k": "insider", "sec_efts": "insider",
-    "congressional": "government", "senate": "government",
-    "finra_short": "institutional", "cot_positioning": "positioning",
-    "fred_macro": "macro", "finnhub_earnings": "news",
-    "finnhub_news": "news", "hiring": "contracts",
-    "usa_spending": "contracts", "sam_gov": "contracts",
-    "crypto_coingecko": "crypto", "crypto_coincap": "crypto",
-    "openinsider_purchase": "insider", "institutional_13f": "institutional",
-    "activist_13d": "institutional",
-    "finviz_unusual_volume": "technical", "finviz_short_squeeze": "institutional",
-    "finviz_insider": "insider",
-    "massive_snapshot": "technical",
-    "social_text": "sentiment",
-    "eia_energy": "energy",
-    "congress_legislation": "government",
-    "yahoo_rss": "events",
-    "usda_agriculture": "macro",
-    "fred_yields": "macro",
-}
-
-
-def _absence_source_to_domain(source: str) -> str:
-    """Map an absence source name to a convergence domain."""
-    return _ABSENCE_SOURCE_DOMAINS.get(source, "unknown")
-
-
-def _build_domain_to_sources() -> Dict[str, List[str]]:
-    """Build reverse mapping: domain → list of SOURCE_ROTATION names that serve it.
-
-    Approach:
-    1. For each SOURCE_ROTATION name, look up its Thompson key via _ROTATION_TO_THOMPSON.
-    2. Look up that Thompson key in _ABSENCE_SOURCE_DOMAINS to find the domain.
-    3. Also check if the rotation name itself is in _ABSENCE_SOURCE_DOMAINS directly.
-    4. Group rotation names by domain.
-
-    This is a heuristic — a few sources serve multiple domains (e.g., "finviz"
-    produces signals across technical + institutional + insider).  We assign
-    each rotation source to its PRIMARY domain (via its primary Thompson key).
-    """
-    result: Dict[str, List[str]] = {}
-    for rotation_name in SOURCE_ROTATION:
-        # Prefer direct match (rotation_name == absence source key)
-        domain = _ABSENCE_SOURCE_DOMAINS.get(rotation_name)
-        if domain is None:
-            # Try via Thompson key mapping
-            thompson_key = _ROTATION_TO_THOMPSON.get(rotation_name)
-            if thompson_key:
-                domain = _ABSENCE_SOURCE_DOMAINS.get(thompson_key)
-        if domain is not None:
-            result.setdefault(domain, []).append(rotation_name)
-    return result
-
-
-# Pre-built reverse map: domain → SOURCE_ROTATION names that cover it.
-# Used by _launch_thompson_guided() to boost priority-requested sources.
-_DOMAIN_TO_SOURCES: Dict[str, List[str]] = _build_domain_to_sources()
-
-
-class MarketSensingHook:
+class MarketSensingHook(SensingSchedulerMixin, SensingCollectorMixin, SensingReactiveMixin, SensingStepOpsMixin):
     """Async market data fetcher that runs as a step hook.
 
     Instantiated in bootstrap/market.py and registered via
     ctx.model.add_step_hook(hook.step).
+
+    Decomposed via mixins:
+      SensingSchedulerMixin — Thompson-guided + round-robin scheduling
+      SensingCollectorMixin — result collection + signal pipeline
+      SensingReactiveMixin  — reactive convergence + source dispatch table
     """
 
     def __init__(
@@ -356,7 +126,6 @@ class MarketSensingHook:
         congress_gov_client: Any = None,
         social_text_analyzer: Any = None,
         yahoo_rss_client: Any = None,
-        usda_client: Any = None,
     ):
         # API clients (all optional — graceful degradation)
         self._sec_client = sec_client
@@ -397,7 +166,6 @@ class MarketSensingHook:
         self._congress_gov_client = congress_gov_client
         self._social_text_analyzer = social_text_analyzer
         self._yahoo_rss_client = yahoo_rss_client
-        self._usda_client = usda_client
 
         # EventBus (injected by bootstrap for signal bridge)
         self._bus = None
@@ -498,24 +266,8 @@ class MarketSensingHook:
             self._evaluate_outcomes()
 
         # Portfolio tracker: mark-to-market + exit signal check (cadence 50)
-        if self._step_counter % 50 == 0 and self._portfolio_tracker is not None:
-            try:
-                self._portfolio_tracker.update_prices()
-                exits = self._portfolio_tracker.check_exits()
-                if exits and self._convergence_alerter is not None:
-                    for exit_sig in exits:
-                        try:
-                            self._convergence_alerter.record_signal(
-                                signal_id=f"exit:{exit_sig.ticker}:{exit_sig.reason}",
-                                strength=exit_sig.strength,
-                                domain="portfolio",
-                                direction=exit_sig.direction,
-                                source="portfolio_exit",
-                            )
-                        except Exception:
-                            logger.debug("Portfolio exit signal feed failed", exc_info=True)
-            except Exception:
-                logger.debug("Portfolio tracker step failed", exc_info=True)
+        if self._step_counter % 50 == 0:
+            self._run_step_portfolio()
 
         # Catalyst calendar: refresh upcoming events (cadence 200)
         if self._step_counter % 200 == 0 and self._catalyst_calendar is not None:
@@ -524,95 +276,29 @@ class MarketSensingHook:
             except Exception:
                 logger.debug("Catalyst calendar refresh failed", exc_info=True)
 
-        # Absence detection on cadence 100 — check for unexpectedly silent sources
-        if self._step_counter % 100 == 0 and self._absence_monitor is not None:
-            try:
-                absences = self._absence_monitor.check_absences()
-                if absences:
-                    logger.info(
-                        "AbsenceMonitor: %d sources unexpectedly silent",
-                        len(absences),
-                    )
-                    # Feed absence signals to convergence alerter
-                    if self._convergence_alerter is not None:
-                        for absence in absences:
-                            try:
-                                from mae_core.market.intelligence.convergence_alerter import Signal as CASignal
-                                absence_signal = CASignal(
-                                    signal_id=f"absence:{absence.source}",
-                                    strength=min(1.0, 0.3 + 0.1 * (absence.silence_ratio - self._absence_monitor._absence_threshold)),
-                                    domain=_absence_source_to_domain(absence.source),
-                                    direction=absence.direction,
-                                    timestamp=datetime.now(),
-                                    confidence=0.5,
-                                )
-                                self._convergence_alerter.record_signal(
-                                    absence_signal.signal_id,
-                                    absence_signal.strength,
-                                    absence_signal.domain,
-                                    direction=absence_signal.direction,
-                                    source=f"absence_{absence.source}",
-                                )
-                            except Exception:
-                                logger.debug("Absence signal feed failed", exc_info=True)
-            except Exception:
-                logger.debug("AbsenceMonitor check failed", exc_info=True)
+        # Absence detection on cadence 100
+        if self._step_counter % 100 == 0:
+            self._run_step_absence()
 
         # Cross-source correlation anomaly scan on cadence 200
-        if self._step_counter % 200 == 0 and self._correlation_tracker is not None:
-            try:
-                anomalies = self._correlation_tracker.detect_cross_domain_anomalies()
-                if anomalies:
-                    logger.info(
-                        "CorrelationTracker: %d cross-domain anomalies detected",
-                        len(anomalies),
-                    )
-            except Exception:
-                logger.debug("CorrelationTracker anomaly scan failed", exc_info=True)
+        if self._step_counter % 200 == 0:
+            self._run_step_correlation()
 
         # Consolidation engine: memory pruning (cadence 5000)
-        if self._step_counter % 5000 == 0 and self._consolidation_engine is not None:
-            try:
-                if self._consolidation_engine.should_consolidate(self._step_counter):
-                    self._consolidation_engine.consolidate()
-            except Exception:
-                logger.debug("Consolidation engine step failed", exc_info=True)
+        if self._step_counter % 5000 == 0:
+            self._run_step_consolidation()
 
         # Somatic anticipation: pre-conscious pattern response (cadence 25)
-        if self._step_counter % 25 == 0 and self._somatic_anticipation is not None:
-            try:
-                events = self._somatic_anticipation.check_anticipation()
-                if events:
-                    logger.info(
-                        "Somatic anticipation: %d tickers building pre-convergence",
-                        len(events),
-                    )
-            except Exception:
-                logger.debug("Somatic anticipation check failed", exc_info=True)
+        if self._step_counter % 25 == 0:
+            self._run_step_somatic()
 
         # Pattern archetype scanning: check watchlist tickers (cadence 100)
-        if self._step_counter % 100 == 0 and self._pattern_archetype_engine is not None:
-            try:
-                for ticker in list(self._watchlist.get("tickers", []))[:5]:
-                    self._pattern_archetype_engine.scan_for_archetypes(
-                        ticker, signal_domains=list(self._recent_domains.get(ticker, [])),
-                    )
-            except Exception:
-                logger.debug("Pattern archetype scan failed", exc_info=True)
+        if self._step_counter % 100 == 0:
+            self._run_step_archetypes()
 
-        # Pattern completion: review partial archetype matches for active hunts (cadence 100)
-        if self._step_counter % 100 == 0 and self._pattern_completion_engine is not None:
-            try:
-                new_hunts = self._pattern_completion_engine.review_partial_matches()
-                if new_hunts:
-                    logger.info(
-                        "Pattern completion: %d new hunts created",
-                        len(new_hunts),
-                    )
-                # Prune expired hunts
-                self._pattern_completion_engine._prune_expired()
-            except Exception:
-                logger.debug("Pattern completion review failed", exc_info=True)
+        # Pattern completion: review partial archetype matches (cadence 100)
+        if self._step_counter % 100 == 0:
+            self._run_step_pattern_completion()
 
     def _process_realtime_signals(self, signals: list):
         """Process real-time WebSocket signals — same pipeline as rotation signals."""
@@ -668,549 +354,6 @@ class MarketSensingHook:
 
         # Store
         store_signals(signals, self._memory)
-
-    # ------------------------------------------------------------------
-    # Async fetch lifecycle
-    # ------------------------------------------------------------------
-
-    def _launch_next_fetch(self):
-        """Fill up to 8 concurrent fetch slots using Thompson-guided selection.
-
-        When a Thompson sampler is available, sources are selected
-        probabilistically: each source draws from its Beta distribution,
-        then the highest-scoring source is picked. This naturally
-        balances exploration (new sources with wide posteriors) and
-        exploitation (proven sources with high means). Falls back to
-        round-robin when no sampler is available.
-        """
-        # Clean up expired priority requests so stale entries don't accumulate.
-        try:
-            now = time.time()
-            expired = [t for t, entry in self._priority_requests.items()
-                       if now > entry.get("expires", 0)]
-            for ticker in expired:
-                del self._priority_requests[ticker]
-        except Exception:
-            logger.debug("Priority request cleanup failed", exc_info=True)
-
-        # Collect any completed futures first
-        self._collect_results()
-
-        # Fill available slots (8 max concurrent)
-        slots = 8 - len(self._pending_futures)
-        if slots <= 0:
-            return
-
-        # Identify eligible sources (not already in-flight)
-        # Filter by market clock availability (if available)
-        if self._market_clock is not None:
-            available = set(self._market_clock.get_available_sources())
-            eligible = [s for s in SOURCE_ROTATION if s not in self._pending_futures and s in available]
-            if not eligible:
-                # Fall back to always-available sources if nothing matches
-                eligible = [s for s in SOURCE_ROTATION if s not in self._pending_futures]
-        else:
-            eligible = [s for s in SOURCE_ROTATION if s not in self._pending_futures]
-        if not eligible:
-            return
-
-        if self._thompson_sampler is not None:
-            self._launch_thompson_guided(eligible, slots)
-        else:
-            self._launch_round_robin(slots)
-
-    def _launch_thompson_guided(self, eligible: list, slots: int):
-        """Select sources via Thompson sampling draws.
-
-        Priority polling: if _priority_requests is non-empty (and within the
-        50-entry cap), sources that serve the needed domains receive a 2x boost
-        on their sampled score (capped at 1.0).  This steers sensing toward
-        the missing evidence for a developing convergence without blocking any
-        other source entirely — it is a soft, probabilistic nudge.
-        """
-        # Build a set of boosted source names from active priority requests.
-        # Only apply boost when the queue is within the 50-entry cap.
-        boosted_sources: set = set()
-        try:
-            if 0 < len(self._priority_requests) <= 50:
-                for entry in self._priority_requests.values():
-                    for domain in entry.get("domains_needed", []):
-                        for src in _DOMAIN_TO_SOURCES.get(domain, []):
-                            boosted_sources.add(src)
-        except Exception:
-            logger.debug("Priority boost computation failed", exc_info=True)
-
-        # Draw from each source's Beta distribution
-        scored = []
-        for source in eligible:
-            thompson_key = _ROTATION_TO_THOMPSON.get(source)
-            if thompson_key is None:
-                # Unknown source — use uniform prior (maximally uncertain)
-                score = random.betavariate(1.0, 1.0)
-            else:
-                try:
-                    dist = self._thompson_sampler.get_distribution(thompson_key)
-                    if dist is not None and hasattr(dist, "alpha") and hasattr(dist, "beta"):
-                        score = random.betavariate(
-                            max(dist.alpha, 0.01), max(dist.beta, 0.01)
-                        )
-                    else:
-                        # No distribution yet — use wide prior (encourages exploration)
-                        score = random.betavariate(1.0, 1.0)
-                except Exception:
-                    score = random.betavariate(1.0, 1.0)
-
-            # Apply priority boost: multiply by 2, cap at 1.0
-            if source in boosted_sources:
-                score = min(1.0, score * 2.0)
-
-            scored.append((score, source))
-
-        # Sort descending by score, pick top N
-        scored.sort(reverse=True)
-        for _, source in scored[:slots]:
-            self._total_fetches += 1
-            logger.info(
-                "Market sensing: Thompson-guided fetch [%s] (cycle %d)",
-                source, self._total_fetches,
-            )
-            self._pending_futures[source] = self._executor.submit(
-                self._fetch_source, source
-            )
-
-    def _launch_round_robin(self, slots: int):
-        """Fallback: simple round-robin selection."""
-        attempts = 0
-        launched = 0
-        while launched < slots and attempts < len(SOURCE_ROTATION):
-            source = self._fetch_queue[0]
-            self._fetch_queue.rotate(-1)
-            attempts += 1
-
-            if source in self._pending_futures:
-                continue
-
-            self._total_fetches += 1
-            logger.info(
-                "Market sensing: launching async fetch [%s] (cycle %d)",
-                source, self._total_fetches,
-            )
-            self._pending_futures[source] = self._executor.submit(
-                self._fetch_source, source
-            )
-            launched += 1
-
-    def _collect_results(self):
-        """Check for completed futures and process their signals."""
-        done = [k for k, f in self._pending_futures.items() if f.done()]
-        for source_name in done:
-            self._collect_one(source_name)
-
-    def _collect_one(self, source_name: str):
-        """Process signals from a single completed fetch."""
-        future = self._pending_futures.pop(source_name, None)
-        if future is None:
-            return
-
-        try:
-            signals = future.result()
-        except Exception:
-            logger.warning("Market sensing: fetch [%s] failed", source_name, exc_info=True)
-            signals = []
-
-        if not signals:
-            return
-
-        self._last_fetch_source = source_name
-
-        # Signals arrive pre-enriched from background thread (_fetch_source)
-
-        # Feed into convergence engine (global + tiered)
-        for sig in signals:
-            sig_kwargs = dict(
-                signal_id=sig.signal_id,
-                strength=sig.strength,
-                domain=sig.domain,
-                direction=sig.direction,
-                confidence=sig.confidence,
-                velocity=sig.velocity,
-                timestamp=sig.timestamp,
-                metadata={**sig.metadata, "symbol": sig.symbol},
-                source=sig.source,
-            )
-            # Global alerter
-            if self._convergence_alerter is not None:
-                try:
-                    self._convergence_alerter.record_signal(**sig_kwargs)
-                except Exception:
-                    logger.debug("Failed to feed signal to global alerter", exc_info=True)
-
-            # Route to tier
-            tier = TIER_ROUTING.get(sig.source, "strategic")
-            tier_alerter = self._tiered_alerters.get(tier)
-            if tier_alerter is not None:
-                try:
-                    tier_alerter.record_signal(**sig_kwargs)
-                except Exception:
-                    logger.debug("Failed to feed signal to %s alerter", tier, exc_info=True)
-
-        # Track per-ticker signal domains for archetype scanning (Gift 8)
-        for sig in signals:
-            sym = getattr(sig, "symbol", "") or sig.metadata.get("symbol", "")
-            if sym:
-                if sym not in self._recent_domains:
-                    self._recent_domains[sym] = set()
-                self._recent_domains[sym].add(sig.domain)
-
-        # Feed deception detector (Gift 5) — track signal patterns for manipulation detection
-        if self._deception_detector is not None:
-            for sig in signals:
-                try:
-                    sym = getattr(sig, "symbol", "") or sig.metadata.get("symbol", "")
-                    if sym:
-                        self._deception_detector.record_signal(
-                            ticker=sym,
-                            domain=sig.domain,
-                            direction=sig.direction,
-                            strength=sig.strength,
-                            timestamp=sig.timestamp,
-                        )
-                except Exception:
-                    logger.debug("Deception detector record failed", exc_info=True)
-
-        # Feed somatic anticipation (Gift 9) — accumulate per-ticker signal state
-        if self._somatic_anticipation is not None:
-            for sig in signals:
-                try:
-                    sym = getattr(sig, "symbol", "") or sig.metadata.get("symbol", "")
-                    if sym:
-                        self._somatic_anticipation.record_signal(
-                            ticker=sym,
-                            domain=sig.domain,
-                            direction=sig.direction,
-                            strength=sig.strength,
-                            timestamp=sig.timestamp,
-                        )
-                except Exception:
-                    logger.debug("Somatic anticipation record failed", exc_info=True)
-
-        # Check pattern completions (Gift 10) — match signals against active hunts
-        if self._pattern_completion_engine is not None:
-            try:
-                completion_events = self._pattern_completion_engine.check_completions(signals)
-                if completion_events:
-                    logger.info(
-                        "Pattern completion: %d hunts matched by incoming signals",
-                        len(completion_events),
-                    )
-            except Exception:
-                logger.debug("Pattern completion check failed", exc_info=True)
-
-        self._total_signals_fed += len(signals)
-        logger.info(
-            "Market sensing: fed %d signals from [%s] (total: %d)",
-            len(signals), source_name, self._total_signals_fed,
-        )
-
-        # Record signal arrival for AbsenceMonitor cadence tracking
-        if self._absence_monitor is not None and signals:
-            try:
-                self._absence_monitor.record_arrival(source_name, datetime.now())
-            except Exception:
-                logger.debug("AbsenceMonitor record_arrival failed", exc_info=True)
-
-        # Feed CorrelationTracker (cross-source anomaly detection)
-        if self._correlation_tracker is not None and signals:
-            try:
-                max_strength = max(sig.strength for sig in signals)
-                domain = signals[0].domain if hasattr(signals[0], "domain") else None
-                self._correlation_tracker.record(
-                    signal_id=source_name,
-                    value=max_strength,
-                    timestamp=datetime.now(),
-                    domain=domain,
-                )
-            except Exception:
-                logger.debug("CorrelationTracker record failed", exc_info=True)
-
-        # Publish each signal to EventBus (hypothesis engine subscribes here)
-        if self._bus is not None:
-            from mae_core.market.channels import CH_SIGNAL_INGESTED
-            for sig in signals:
-                try:
-                    self._bus.publish(CH_SIGNAL_INGESTED, {
-                        "signal_id": sig.signal_id,
-                        "source": sig.source,
-                        "symbol": sig.symbol,
-                        "domain": sig.domain,
-                        "direction": sig.direction,
-                        "strength": sig.strength,
-                        "confidence": sig.confidence,
-                        "velocity": sig.velocity,
-                        "timestamp": sig.timestamp.isoformat(),
-                    })
-                except Exception:
-                    logger.debug("Failed to publish signal to EventBus", exc_info=True)
-
-        # Store to Qdrant + JSONL
-        store_signals(signals, self._memory)
-
-        # Register with outcome collector
-        if self._outcome_collector is not None:
-            try:
-                registered = self._outcome_collector.register_signals(signals)
-                if registered:
-                    logger.info("Market sensing: registered %d predictions for outcome tracking", registered)
-            except Exception:
-                logger.debug("Outcome registration failed", exc_info=True)
-
-        # --- Reactive convergence check ---
-        # Run convergence immediately after signals are ingested rather than
-        # waiting for the next step tick. The step-tick check in market_hooks.py
-        # remains as a safety net; alerter deduplication (cooldown window) prevents
-        # duplicate alerts from firing on both paths.
-        self._trigger_reactive_convergence(signals)
-
-    def _trigger_reactive_convergence(self, signals: list) -> None:
-        """Fire convergence checks immediately after signals are ingested.
-
-        Called from _collect_one() so that patterns are detected without
-        waiting for the next step-tick. Never blocks signal collection.
-
-        Three checks:
-        1. Global check_convergence() — same path as step-tick
-        2. Per-ticker check_ticker_convergence() for tickers in this batch
-        Both publish to CH_CONVERGENCE and cache to _cached_reactive_alerts.
-        """
-        if self._convergence_alerter is None or not signals:
-            return
-
-        from mae_core.market.channels import CH_CONVERGENCE
-
-        try:
-            # 1. Global convergence
-            alerts = self._convergence_alerter.check_convergence()
-            for alert in alerts:
-                alert_dict = alert.to_dict() if hasattr(alert, "to_dict") else {}
-                if self._bus is not None:
-                    try:
-                        self._bus.publish(CH_CONVERGENCE, alert_dict)
-                    except Exception:
-                        logger.debug("Reactive convergence: failed to publish global alert", exc_info=True)
-                self._cached_reactive_alerts.append(alert)
-            if alerts:
-                logger.info(
-                    "Reactive convergence: %d global alert(s) after [%s] ingestion",
-                    len(alerts), self._last_fetch_source,
-                )
-        except Exception:
-            logger.debug("Reactive convergence: global check_convergence failed", exc_info=True)
-
-        try:
-            # 2. Per-ticker convergence for tickers that received signals
-            tickers = {
-                sig.metadata.get("symbol") or getattr(sig, "symbol", "")
-                for sig in signals
-            }
-            tickers.discard("")
-            if tickers:
-                ticker_alerts = self._convergence_alerter.check_ticker_convergence()
-                # Filter to only tickers from this batch
-                relevant = [
-                    a for a in ticker_alerts
-                    if any(
-                        s.metadata.get("symbol", "") in tickers
-                        for s in getattr(a, "signals", [])
-                    )
-                ]
-                for alert in relevant:
-                    alert_dict = alert.to_dict() if hasattr(alert, "to_dict") else {}
-                    if self._bus is not None:
-                        try:
-                            self._bus.publish(CH_CONVERGENCE, alert_dict)
-                        except Exception:
-                            logger.debug("Reactive convergence: failed to publish ticker alert", exc_info=True)
-                    self._cached_reactive_alerts.append(alert)
-                if relevant:
-                    logger.info(
-                        "Reactive convergence: %d ticker alert(s) for %s",
-                        len(relevant), sorted(tickers),
-                    )
-        except Exception:
-            logger.debug("Reactive convergence: ticker check_ticker_convergence failed", exc_info=True)
-
-    # ------------------------------------------------------------------
-    # Fetch sources (runs in background thread)
-    # ------------------------------------------------------------------
-
-    def _fetch_source(self, source_name: str) -> list:
-        """Fetch from a single source. Runs in ThreadPoolExecutor.
-
-        Returns list of MarketSignal objects.
-        """
-        from mae_core.market.signal import (
-            from_insider_trade,
-            from_form8k_event,
-            from_congressional_trade,
-            from_senate_trade,
-            from_hiring_signal,
-            from_government_contract,
-            from_contract_opportunity,
-            from_social_sentiment,
-            from_short_interest,
-            from_filing_keyword,
-            from_news_sentiment,
-            from_earnings_event,
-            from_macro_indicator,
-            from_session_sweep,
-            from_ta_signal,
-            from_cot_positioning,
-            from_stocktwits_sentiment,
-            from_vix_structure,
-            from_trends_signal,
-            from_economic_event,
-            from_analyst_recommendation,
-            from_order_flow,
-            from_fractal_resonance,
-            from_crypto_signal,
-            from_openinsider,
-            from_13f_holding,
-            from_activist_filing,
-            from_finviz_unusual_volume,
-            from_finviz_short_squeeze,
-            from_suppression_event,
-        )
-        from mae_core.market.signal_adapters.wave2_3 import from_finviz_insider
-        from mae_core.market.signal_adapters.layer6 import from_social_text_signal
-
-        signals = []
-
-        if source_name == "sec_form4":
-            signals = fetch_sec_form4(self._sec_client, self._watchlist, from_insider_trade)
-
-        elif source_name == "sec_form8k":
-            signals = fetch_sec_form8k(self._sec_client, self._watchlist, from_form8k_event)
-
-        elif source_name == "congressional":
-            signals = fetch_congressional(self._congress_client, from_congressional_trade)
-
-        elif source_name == "senate":
-            signals = fetch_senate(self._senate_client, from_senate_trade)
-
-        elif source_name == "hiring":
-            signals = fetch_hiring(self._job_tracker, self._watchlist, from_hiring_signal)
-
-        elif source_name == "usa_spending":
-            signals = fetch_usa_spending(self._usa_spending, self._watchlist, from_government_contract)
-
-        elif source_name == "sam_gov_and_prices":
-            signals = fetch_sam_gov(self._sam_gov, self._watchlist, from_contract_opportunity)
-
-        elif source_name == "social_sentiment":
-            signals = fetch_social_sentiment(self._apewisdom, self._watchlist, from_social_sentiment)
-
-        elif source_name == "finra_short":
-            signals = fetch_finra_short(self._finra_client, self._watchlist, from_short_interest)
-
-        elif source_name == "sec_efts":
-            signals = fetch_sec_efts(self._sec_efts, from_filing_keyword)
-
-        elif source_name == "finnhub":
-            signals = fetch_finnhub(self._finnhub, self._watchlist, from_news_sentiment, from_earnings_event)
-
-        elif source_name == "fred_macro":
-            signals = fetch_fred(self._fred, from_macro_indicator)
-
-        elif source_name == "session_sweep":
-            signals = fetch_session_sweep(self._session_sweep_detector, from_session_sweep)
-
-        elif source_name == "ta_indicators":
-            signals = fetch_ta_indicators(self._ta_indicators, self._price_fetcher, self._watchlist, from_ta_signal)
-
-        elif source_name == "cot_positioning":
-            signals = fetch_cot(self._cot_client, self._watchlist, from_cot_positioning)
-
-        elif source_name == "stocktwits":
-            signals = fetch_stocktwits(self._stocktwits_client, self._watchlist, from_stocktwits_sentiment)
-
-        elif source_name == "vix_structure":
-            signals = fetch_vix(self._vix_client, from_vix_structure)
-
-        elif source_name == "google_trends":
-            signals = fetch_trends(self._trends_client, self._watchlist, from_trends_signal)
-
-        elif source_name == "finnhub_extras":
-            signals = fetch_finnhub_extras(
-                self._finnhub, self._watchlist, from_economic_event, from_analyst_recommendation
-            )
-
-        elif source_name == "order_flow":
-            signals = fetch_order_flow(self._order_flow_detector, self._watchlist, from_order_flow)
-
-        elif source_name == "fractal_resonance":
-            signals = fetch_fractal_resonance(
-                self._fractal_resonance_detector, self._watchlist, from_fractal_resonance
-            )
-
-        elif source_name == "crypto_prices":
-            signals = fetch_crypto_prices(self._coingecko_client, from_crypto_signal)
-
-        elif source_name == "crypto_exchange":
-            signals = fetch_crypto_exchange(self._coincap_client, from_crypto_signal)
-
-        elif source_name == "openinsider":
-            signals = fetch_openinsider(self._openinsider_client, from_openinsider)
-
-        elif source_name == "institutional_13f":
-            signals = fetch_13f_holdings(self._edgar_enhanced_client, from_13f_holding, from_activist_filing)
-
-        elif source_name == "finviz":
-            signals = fetch_finviz(
-                self._finviz_client,
-                from_finviz_unusual_volume,
-                from_finviz_short_squeeze,
-                from_finviz_insider,
-            )
-
-        elif source_name == "economic_calendar":
-            signals = fetch_economic_calendar(self._economic_calendar_client, from_suppression_event)
-
-        elif source_name == "massive_snapshot":
-            from mae_core.market.signal_adapters.wave2_3 import from_massive_snapshot
-            signals = fetch_massive_snapshot(self._massive_client, self._watchlist, from_massive_snapshot)
-
-        elif source_name == "eia_energy":
-            from mae_core.market.signal_adapters.market_data import from_energy_indicator
-            signals = fetch_eia(self._eia_client, from_energy_indicator)
-
-        elif source_name == "congress_legislation":
-            from mae_core.market.signal_adapters.market_data import from_legislative_indicator
-            signals = fetch_congress_legislation(self._congress_gov_client, from_legislative_indicator)
-
-        elif source_name == "social_text":
-            signals = fetch_social_text(
-                self._social_text_analyzer, self._watchlist, from_social_text_signal
-            )
-
-        elif source_name == "yahoo_rss":
-            from mae_core.market.signal_adapters.layer6 import from_yahoo_rss_signal
-            signals = fetch_yahoo_rss(self._yahoo_rss_client, self._watchlist, from_yahoo_rss_signal)
-
-        elif source_name == "usda_agriculture":
-            from mae_core.market.signal_adapters.market_data import from_usda_indicator
-            signals = fetch_usda(self._usda_client, from_usda_indicator)
-
-        elif source_name == "fred_yields":
-            from mae_core.market.signal_adapters.market_data import from_fred_yield
-            signals = fetch_fred_yields(self._fred, from_fred_yield)
-
-        # Enrich in background thread (velocity, filing-time, Ollama sentiment)
-        # Moved from _collect_results() so Ollama's 15s timeout doesn't block
-        # the main step loop. Thread-safe: only mutates signal objects.
-        for sig in signals:
-            enrich_signal(sig, self._velocity_detector, self._filing_analyzer, self._form8k_sentiment)
-
-        return signals
 
     # ------------------------------------------------------------------
     # Outcome tracking
