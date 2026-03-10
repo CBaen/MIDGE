@@ -375,8 +375,10 @@ See `midge-queue.md` for comprehensive task list (70+ items, 4 priority tiers).
 
 ### Priority 3: Execution + Risk (Evolution Blueprint Phases 4-5)
 - Kalshi SDK verification + MarketSelector prototype
-- DrawdownMonitor, SystemHealthMonitor, SelfMonitor
+- ~~DrawdownMonitor, SystemHealthMonitor, SelfMonitor~~ **DONE** (pending: independent review, SystemHealthMonitor error wiring, daemon persistence flush)
 - Broker-side bracket orders (survive MIDGE process failure)
+- **FTMO execution engine integration** — port sibling's backtester, build signal translator, validate with historical convergence data. Guiding Light wants research backing first.
+- FTMO free trial signup (Guiding Light action: ftmo.com + Alpaca API keys)
 
 ## Verification
 
