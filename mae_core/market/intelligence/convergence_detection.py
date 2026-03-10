@@ -291,6 +291,92 @@ class ConvergenceDetectionMixin(ConvergenceTickerMixin):
 
         return alert
 
+    def _apply_confidence_modifiers(
+        self,
+        confidence: float,
+        direction: str,
+        domains_seen: set,
+        primary_ticker: str,
+        primary_domain: str,
+        combo_key: str,
+    ) -> float:
+        """Apply external-system confidence modifiers (catalyst, cross-asset, deception,
+        economic calendar, archetype, combo Thompson).
+
+        Each modifier is applied independently; failures are silently ignored
+        so a broken optional component never blocks alert generation.
+
+        Returns:
+            Final confidence clamped to [0.05, 0.95].
+        """
+        # Gift 3: Catalyst Calendar modifier
+        if primary_ticker and self._catalyst_calendar is not None:
+            try:
+                modifier = self._catalyst_calendar.compute_catalyst_modifier(
+                    primary_ticker, signal_domain=primary_domain or "",
+                )
+                confidence = max(0.05, min(0.95, confidence * modifier))
+            except Exception:
+                pass
+
+        # Gift 4: Cross-Asset Confirmation
+        if primary_ticker and self._cross_asset_confirmer is not None:
+            try:
+                result = self._cross_asset_confirmer.check_confirmation(
+                    primary_ticker, direction,
+                )
+                if result is not None:
+                    score = getattr(result, "confirmation_score", 0.0)
+                    confidence = max(0.05, min(0.95, confidence * (0.8 + 0.4 * score)))
+            except Exception:
+                pass
+
+        # Gift 5: Deception detection
+        if primary_ticker and self._deception_detector is not None:
+            try:
+                assessment = self._deception_detector.assess_signal_authenticity(primary_ticker)
+                if assessment is not None and assessment.deception_probability > 0.5:
+                    confidence = max(0.05, confidence * (1.0 - assessment.deception_probability))
+            except Exception:
+                pass
+
+        # Economic calendar suppression
+        if self._economic_calendar is not None:
+            try:
+                if self._economic_calendar.is_in_suppression_window():
+                    confidence = max(0.05, confidence * 0.5)
+                    logger.info(
+                        "Convergence: suppression window active — confidence reduced to %.2f",
+                        confidence,
+                    )
+            except Exception:
+                pass
+
+        # Gift 8: Pattern Archetype context
+        if primary_ticker and self._pattern_archetype_engine is not None:
+            try:
+                matches = self._pattern_archetype_engine.scan_for_archetypes(
+                    primary_ticker, signal_domains=list(domains_seen),
+                )
+                if matches:
+                    best = max(matches, key=lambda m: m.match_score)
+                    if best.match_score > 0.7:
+                        confidence = min(0.95, confidence + 0.10)
+            except Exception:
+                pass
+
+        # Combo Thompson
+        if self._thompson is not None:
+            try:
+                regime = self._get_regime()
+                combo_dist = self._thompson.get_distribution(combo_key, regime)
+                if combo_dist.samples >= 5:
+                    confidence = max(0.05, min(0.95, confidence * (0.5 + combo_dist.mean)))
+            except Exception:
+                pass
+
+        return confidence
+
     def get_domain_status(self) -> Dict[str, Dict]:
         """Get current status by domain.
 
