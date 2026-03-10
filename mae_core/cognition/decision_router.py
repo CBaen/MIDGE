@@ -33,6 +33,9 @@ from mae_core.cognition.decision_reflexes import (
     check_reflex as _check_reflex_fn,
     check_habit as _check_habit_fn,
     track_for_habit_formation as _track_for_habit_formation_fn,
+    invoke_prefrontal as _invoke_prefrontal_fn,
+    force_tier as _force_tier_fn,
+    create_decision as _create_decision_fn,
 )
 
 logger = logging.getLogger(__name__)
