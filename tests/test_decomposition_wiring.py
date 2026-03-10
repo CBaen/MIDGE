@@ -366,15 +366,6 @@ class TestNoMonoliths:
                 violations.append(f"{path}: {lines} lines")
         assert not violations, "Bootstrap sub-modules exceed 500 lines:\n" + "\n".join(violations)
 
-    @pytest.mark.xfail(
-        reason=(
-            "market_hooks.py is 551 lines. Forge's decomposition of bootstrap/market.py "
-            "produced sub-modules but market_hooks.py absorbed the sensing hook wiring, "
-            "EventBus callbacks, and step hooks, pushing it 51 lines over the cap. "
-            "Remove xfail once market_hooks.py is trimmed under 500 lines."
-        ),
-        strict=True,
-    )
     def test_market_hooks_under_500(self):
         path = "mae_core/bootstrap/market_hooks.py"
         lines = self._count_lines(path)
