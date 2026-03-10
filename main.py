@@ -988,6 +988,14 @@ def _daemon_persistence_flush(systems: dict) -> None:
         except Exception:
             logger.warning("Daemon flush: deception state save failed", exc_info=True)
 
+    # DrawdownMonitor equity state
+    drawdown_monitor = systems.get("drawdown_monitor")
+    if drawdown_monitor is not None and hasattr(drawdown_monitor, "save_state"):
+        try:
+            drawdown_monitor.save_state()
+        except Exception:
+            logger.warning("Daemon flush: drawdown monitor save failed", exc_info=True)
+
 
 def _write_alerts() -> None:
     """Read convergence_state.json and append high-confidence alerts to alerts.jsonl.
