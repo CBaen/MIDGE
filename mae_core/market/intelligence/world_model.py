@@ -29,6 +29,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+from mae_core.market.intelligence.world_model_chains import _get_curated_chains  # noqa: F401
+
 try:
     import networkx as nx
     HAS_NETWORKX = True

@@ -1,0 +1,148 @@
+"""Step hook helpers for MIDGE market hooks.
+
+Extracted from market_hooks.py — purely structural split.
+Contains: _write_convergence_heartbeat, _run_drift_detector.
+"""
+
+from __future__ import annotations
+
+import logging
+from pathlib import Path
+from types import SimpleNamespace
+
+logger = logging.getLogger("midge.bootstrap")
+
+
+def _write_convergence_heartbeat(ctx: SimpleNamespace, step: int) -> None:
+    """Overwrite data/midge/convergence_state.json with current snapshot.
+
+    Called every 100 steps. Single JSON file (not append) — always
+    current, cheap to read for monitoring. Never blocks step loop.
+    """
+    import json as _json
+    from datetime import datetime as _dt
+
+    try:
+        heartbeat: dict = {"step": step, "ts": _dt.now().isoformat(timespec="seconds")}
+
+        # Regime
+        rc = getattr(ctx, "regime_classifier", None)
+        heartbeat["regime"] = rc.classify() if rc is not None else "unknown"
+
+        # Global convergence
+        adv = getattr(ctx, "_market_advisory", None)
+        if adv is not None:
+            alert = adv.get("alert")
+            if alert is not None and isinstance(alert, dict):
+                heartbeat["global"] = {
+                    "direction": alert.get("direction", "neutral"),
+                    "strength": alert.get("strength", 0.0),
+                    "domains": len(alert.get("domains", [])),
+                }
+            else:
+                heartbeat["global"] = None
+
+            heartbeat["tactical"] = adv.get("tactical")
+            heartbeat["strategic"] = adv.get("strategic")
+        else:
+            heartbeat["global"] = None
+
+        # Per-ticker alerts
+        ticker_alerts = getattr(ctx, "_ticker_alerts", [])
+        heartbeat["ticker_alerts"] = {}
+        for ta in ticker_alerts:
+            if hasattr(ta, "to_dict"):
+                td = ta.to_dict()
+                # Try to extract symbol from signals
+                symbols = set()
+                for sig in getattr(ta, "signals", []):
+                    sym = getattr(sig, "metadata", {}).get("symbol", "")
+                    if sym:
+                        symbols.add(sym)
+                for sym in symbols:
+                    heartbeat["ticker_alerts"][sym] = td.get("direction", "neutral")
+
+        # Hypothesis stats
+        hyp_engine = getattr(ctx, "hypothesis_engine", None)
+        if hyp_engine is not None:
+            try:
+                hyp_stats = hyp_engine.get_statistics()
+                heartbeat["hypotheses"] = {
+                    "active": hyp_stats.get("active_count", 0),
+                    "probation": hyp_stats.get("probation_count", 0),
+                    "generated": hyp_stats.get("hypotheses_generated", 0),
+                    "promoted": hyp_stats.get("hypotheses_promoted", 0),
+                }
+            except Exception:
+                heartbeat["hypotheses"] = None
+        else:
+            heartbeat["hypotheses"] = None
+
+        # Kelly
+        heartbeat["kelly"] = getattr(ctx, "_latest_kelly", {})
+
+        # Write
+        out_dir = Path("data/midge")
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out_path = out_dir / "convergence_state.json"
+        with open(out_path, "w", encoding="utf-8") as f:
+            _json.dump(heartbeat, f, indent=2, default=str)
+
+    except Exception:
+        logger.debug("Convergence heartbeat write failed", exc_info=True)
+
+
+def _run_drift_detector(dd, ctx: SimpleNamespace) -> None:
+    """Feed current market signal values into DriftDetector.
+
+    Pulls regime-relevant scalars from live system state:
+      - price_returns: SPY daily return (from regime classifier prices if available)
+      - vix: VIX level (from vix_client state if available)
+      - sentiment: mean sentiment from cached convergence signals
+      - volume: placeholder (uses convergence signal count as proxy)
+
+    When drift is detected in any stream, publishes market.intel.drift_detected
+    on the bus so downstream systems can react (e.g. RegimeClassifier re-run).
+    """
+    try:
+        # Price returns: read from regime classifier's reference symbol history
+        rc = getattr(ctx, "regime_classifier", None)
+        if rc is not None:
+            try:
+                prices = rc._get_recent_prices()
+                if prices and len(prices) >= 2:
+                    ret = (prices[-1] - prices[-2]) / max(prices[-2], 1e-9)
+                    drift, old_m, new_m = dd.update("price_returns", ret)
+                    if drift and hasattr(ctx, "bus"):
+                        ctx.bus.publish("market.intel.drift_detected", {
+                            "stream": "price_returns",
+                            "old_mean": round(old_m, 6),
+                            "new_mean": round(new_m, 6),
+                        })
+            except Exception:
+                pass
+
+        # VIX: read from vix_client if available
+        vix_c = getattr(ctx, "vix_client", None)
+        if vix_c is not None:
+            vix_val = getattr(vix_c, "_last_vix", None) or getattr(vix_c, "last_vix_level", None)
+            if vix_val is not None:
+                drift, old_m, new_m = dd.update("vix", float(vix_val))
+                if drift and hasattr(ctx, "bus"):
+                    ctx.bus.publish("market.intel.drift_detected", {
+                        "stream": "vix",
+                        "old_mean": round(old_m, 4),
+                        "new_mean": round(new_m, 4),
+                    })
+
+        # Convergence signal count as volume proxy
+        cached = getattr(ctx, "_cached_alerts", [None])
+        alerts = cached[0] if cached else None
+        if alerts is not None:
+            n_signals = sum(
+                len(getattr(a, "signals", [])) for a in alerts
+            ) if isinstance(alerts, list) else 0
+            dd.update("signal_volume", float(n_signals))
+
+    except Exception:
+        logger.debug("_run_drift_detector failed", exc_info=True)
