@@ -26,6 +26,9 @@ EventBus channels:
 - substrate.health_report: Periodic health metrics
 - substrate.starvation_alert: Node below resource threshold
 - substrate.isolation_detected: Disconnected node found
+
+Sub-modules:
+  mycelial_topology.py — topology factory, node allocation, grow/prune, isolate/restore
 """
 
 from __future__ import annotations
@@ -36,7 +39,16 @@ from typing import Any, Optional
 
 from mae_core.backbone.event_bus import EventBus
 from mae_core.substrate.nutrient_flow import FlowConfig, NutrientFlowEngine
-from mae_core.substrate.topology import SubstrateNode, SubstrateTopology, TopologyType
+from mae_core.substrate.topology import SubstrateTopology, TopologyType
+from mae_core.substrate.mycelial_topology import (
+    build_topology,
+    find_or_create_node,
+    auto_connect,
+    grow_node as _grow_node,
+    prune_node as _prune_node,
+    isolate_region as _isolate_region,
+    restore_region as _restore_region,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +85,7 @@ class MycelialSubstrate:
 
         # Build initial topology
         topo_params = topology_params or {}
-        self.topology = self._build_topology(topology_type, initial_nodes, topo_params)
+        self.topology = build_topology(topology_type, initial_nodes, topo_params)
 
         # Initialize nutrient flow
         self.nutrient_flow = NutrientFlowEngine(self.topology, flow_config)
@@ -121,7 +133,7 @@ class MycelialSubstrate:
             return existing
 
         # Try to reuse an empty node near requested position
-        node_id = self._find_or_create_node(agent_id, position)
+        node_id = find_or_create_node(self.topology, agent_id, position)
         self.topology.assign_agent(agent_id, node_id)
 
         # Connect to specified peers
@@ -133,7 +145,7 @@ class MycelialSubstrate:
 
         # If no explicit connections, connect to nearest occupied nodes
         if not connect_to:
-            self._auto_connect(node_id, max_connections=3)
+            auto_connect(self.topology, node_id, max_connections=3)
 
         self.event_bus.publish(
             CH_AGENT_REGISTERED,
@@ -418,58 +430,19 @@ class MycelialSubstrate:
             pass
 
     # =========================================================================
-    # Region Isolation (for AutoHealing)
+    # Region Isolation (for AutoHealing) — delegated to mycelial_topology
     # =========================================================================
 
     def isolate_region(self, node_ids: list[str]) -> dict[str, list[str]]:
-        """Isolate a set of nodes from the rest of the network.
-
-        Used by AutoHealing to contain failures. Removes edges between
-        the isolated region and the rest of the network. Returns the
-        removed edges so they can be restored after recovery.
-
-        Returns:
-            Dict of node_id -> list of removed neighbor_ids.
-        """
-        removed_edges: dict[str, list[str]] = {}
-        region_set = set(node_ids)
-
-        for node_id in node_ids:
-            removed = []
-            for neighbor_id in list(self.topology.get_neighbors(node_id)):
-                if neighbor_id not in region_set:
-                    self.topology.remove_edge(node_id, neighbor_id)
-                    removed.append(neighbor_id)
-            if removed:
-                removed_edges[node_id] = removed
-
-        if removed_edges:
-            self.event_bus.publish(
-                CH_TOPOLOGY_CHANGED,
-                {
-                    "action": "isolate_region",
-                    "nodes": node_ids,
-                    "edges_removed": sum(len(v) for v in removed_edges.values()),
-                },
-            )
-        return removed_edges
+        """Isolate a set of nodes from the rest of the network."""
+        return _isolate_region(self.topology, self.event_bus, node_ids)
 
     def restore_region(self, removed_edges: dict[str, list[str]]) -> None:
         """Restore previously isolated edges."""
-        for node_id, neighbors in removed_edges.items():
-            for neighbor_id in neighbors:
-                self.topology.add_edge(node_id, neighbor_id)
-
-        self.event_bus.publish(
-            CH_TOPOLOGY_CHANGED,
-            {
-                "action": "restore_region",
-                "edges_restored": sum(len(v) for v in removed_edges.values()),
-            },
-        )
+        _restore_region(self.topology, self.event_bus, removed_edges)
 
     # =========================================================================
-    # Dynamic Topology Growth
+    # Dynamic Topology Growth — delegated to mycelial_topology
     # =========================================================================
 
     def grow_node(
@@ -477,47 +450,15 @@ class MycelialSubstrate:
         position: Optional[tuple[float, float]] = None,
         connect_to_nearest: int = 3,
     ) -> str:
-        """Add a new empty node to the substrate.
-
-        Used by Morphogenesis to prepare positions for new agents.
-        """
-        node_id = f"node_{self.topology.node_count}"
-        # Ensure unique ID
-        while node_id in self.topology:
-            import random
-
-            node_id = f"node_{random.randint(1000, 99999)}"
-
-        self.topology.add_node(node_id, position=position)
-
-        # Connect to nearest nodes
-        if connect_to_nearest > 0:
-            self._auto_connect(node_id, max_connections=connect_to_nearest)
-
-        self.event_bus.publish(
-            CH_TOPOLOGY_CHANGED,
-            {"action": "grow_node", "node_id": node_id},
-        )
-        return node_id
+        """Add a new empty node to the substrate."""
+        return _grow_node(self.topology, self.event_bus, position, connect_to_nearest)
 
     def prune_node(self, node_id: str) -> bool:
-        """Remove an empty node from the substrate.
-
-        Only removes if no agent is assigned. Used for cleanup.
-        """
-        node = self.topology.get_node(node_id)
-        if node is None or node.agent_id is not None:
-            return False
-
-        self.topology.remove_node(node_id)
-        self.event_bus.publish(
-            CH_TOPOLOGY_CHANGED,
-            {"action": "prune_node", "node_id": node_id},
-        )
-        return True
+        """Remove an empty node from the substrate."""
+        return _prune_node(self.topology, self.event_bus, node_id)
 
     # =========================================================================
-    # Internal
+    # Internal — delegated to mycelial_topology
     # =========================================================================
 
     def _build_topology(
@@ -526,93 +467,15 @@ class MycelialSubstrate:
         initial_nodes: int,
         params: dict[str, Any],
     ) -> SubstrateTopology:
-        """Build initial topology from type string and parameters."""
-        if topology_type == "ring":
-            return SubstrateTopology.ring(initial_nodes)
-        elif topology_type == "scale_free":
-            m = params.get("m", 3)
-            return SubstrateTopology.scale_free(initial_nodes, m=m)
-        elif topology_type == "small_world":
-            k = params.get("k", 4)
-            p = params.get("p", 0.3)
-            return SubstrateTopology.small_world(initial_nodes, k=k, p=p)
-        elif topology_type == "mesh":
-            return SubstrateTopology.mesh(initial_nodes)
-        else:
-            # Custom: empty topology, nodes added dynamically
-            return SubstrateTopology(TopologyType.CUSTOM)
+        """Build initial topology (delegates to mycelial_topology.build_topology)."""
+        return build_topology(topology_type, initial_nodes, params)
 
     def _find_or_create_node(
         self, agent_id: int, position: Optional[tuple[float, float]]
     ) -> str:
-        """Find an empty node near the position, or create a new one."""
-        empty_nodes = self.topology.get_empty_nodes()
-
-        if empty_nodes and position:
-            # Find closest empty node
-            best_id = None
-            best_dist = float("inf")
-            for nid in empty_nodes:
-                node = self.topology.get_node(nid)
-                if node:
-                    dx = node.position[0] - position[0]
-                    dy = node.position[1] - position[1]
-                    dist = (dx * dx + dy * dy) ** 0.5
-                    if dist < best_dist:
-                        best_dist = dist
-                        best_id = nid
-            if best_id and best_dist < 1.0:  # Close enough to reuse
-                return best_id
-
-        elif empty_nodes and not position:
-            # Reuse any empty node
-            return empty_nodes[0]
-
-        # Create new node
-        node_id = f"agent_{agent_id}"
-        self.topology.add_node(node_id, agent_id=agent_id, position=position)
-        return node_id
+        """Find or create node (delegates to mycelial_topology.find_or_create_node)."""
+        return find_or_create_node(self.topology, agent_id, position)
 
     def _auto_connect(self, node_id: str, max_connections: int = 3) -> None:
-        """Auto-connect a node to nearest occupied nodes.
-
-        Uses position-based proximity. Respects Rule of 3 convention
-        (default max_connections=3).
-        """
-        node = self.topology.get_node(node_id)
-        if node is None:
-            return
-
-        occupied = self.topology.get_occupied_nodes()
-        if not occupied:
-            # Connect to any nearby nodes
-            candidates = [
-                nid
-                for nid in self.topology.get_nodes()
-                if nid != node_id and nid not in self.topology.get_neighbors(node_id)
-            ]
-        else:
-            candidates = [nid for nid in occupied if nid != node_id]
-
-        if not candidates:
-            return
-
-        # Sort by distance
-        scored = []
-        for cid in candidates:
-            candidate = self.topology.get_node(cid)
-            if candidate:
-                dx = node.position[0] - candidate.position[0]
-                dy = node.position[1] - candidate.position[1]
-                dist = (dx * dx + dy * dy) ** 0.5
-                scored.append((cid, dist))
-
-        scored.sort(key=lambda x: x[1])
-
-        # Connect to nearest, up to max_connections
-        existing = len(self.topology.get_neighbors(node_id))
-        for cid, _ in scored:
-            if existing >= max_connections:
-                break
-            if self.topology.add_edge(node_id, cid):
-                existing += 1
+        """Auto-connect node (delegates to mycelial_topology.auto_connect)."""
+        auto_connect(self.topology, node_id, max_connections)
