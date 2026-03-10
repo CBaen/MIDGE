@@ -23,7 +23,52 @@
 
 **FTMO Execution Engine (from sibling instance):** Complete handoff document at `FTMO-EXECUTION-ENGINE.md`. Sibling built backtester at `C:\Users\baenb\projects\project _cameron\trading\` — 75% pass rate with simple indicators. Integration path defined. Guiding Light wants internal + external research backing before proceeding.
 
-**Pending:** Independent review of risk monitors (reviewer agents not yet dispatched — context limit reached). SystemHealthMonitor not yet wired into try/except blocks (record_error calls). DrawdownMonitor persistence flush not yet in daemon hook.
+**Completed since initial build:** SystemHealthMonitor wired into 8 try/except blocks (4 core + 4 non-core subsystems). DrawdownMonitor persistence flush added to `_daemon_persistence_flush()` in main.py.
+
+### FTMO Viability Expedition + Global Expansion (2026-03-09)
+
+**Full expedition:** 4 research teams + 3 validators investigated FTMO prop trading viability. Research at `research/expedition-ftmo-viability/`.
+
+**Key finding: "FTMO is the right destination but the wrong next step."**
+- MIDGE's convergence architecture academically validated (4 independent papers)
+- 97% of signals fire on US equities — FTMO trades forex/indices/commodities
+- Confidence engine doesn't discriminate winners from losers (0.560 vs 0.565)
+- 81/83 Thompson distributions at uniform priors — learning loop broken (4 compounding bugs found)
+- Challenge fee is actually ~$165, not $22 as sibling reported
+
+**Guiding Light's expanded vision:** MIDGE as personal trader across ALL markets — stocks, crypto, futures, forex, prediction markets. FTMO is one execution venue among many.
+
+**Thompson Feedback Loop Fixed (4 bugs):**
+1. OutcomeCollector now verified to receive same ThompsonSampler instance (bootstrap ordering)
+2. Seeding guard prevents re-seeding when file exists (protects learned state)
+3. Forgetting gated on `has_recent_outcomes` — no longer outpaces learning
+4. Old-format predictions (`prediction_id`/`predicted_at`) now aliased to current schema
+5. `replay_from_history()` method rebuilds distributions from 13,190 historical updates
+- 24 tests in `test_thompson_feedback_fix.py`
+
+**Signal Translator Built:**
+- `mae_core/market/execution/signal_translator.py` — ConvergenceAlert → ExecutableSignal
+- `compute_atr()` added to ta_indicators.py
+- ExecutableSignal: ticker, direction, entry_price, stop_loss (1.5x ATR), take_profit (3x ATR), position_size_pct
+- Wired into market_hooks.py after risk gates
+- Logs to `data/midge/executable_signals.jsonl`
+- 36 tests in `test_signal_translator.py`
+
+**USDA Agriculture Client Built:**
+- `mae_core/market/apis/usda_client.py` (~15KB) — WASDE crop supply/demand
+- FRED yield curve series added (DGS2, DGS10, T10Y3M, DFF)
+- raw_store + sensing_fetchers wiring added
+- Tests still needed
+
+**Watchlist Expanded:**
+- Added EURUSD=X, GBPUSD=X, USDJPY=X, GC=F, CL=F, NQ=F, ES=F to `data/midge/watchlist.json`
+- Activates 8+ existing sources on forex/futures/commodity instruments with zero code change
+
+**Pending:**
+- USDA client tests
+- FRED yield curve tests
+- Run Thompson replay_from_history() to rebuild learned state
+- Verify all unstaged changes clean (market_hooks.py syntax error fixed)
 
 ### Agent Claiming + ADTS + Fingerprint Offload (2026-03-09)
 
