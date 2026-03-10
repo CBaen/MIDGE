@@ -469,6 +469,26 @@ class ThompsonSampler:
 
         return count
 
+    def regime_aware_forget(self, regime: str) -> int:
+        """Apply Bayesian forgetting with a regime-appropriate decay rate.
+
+        Looks up the decay rate for the given regime from REGIME_DECAY_RATES
+        and delegates to apply_forgetting().  Falls back to the "default" rate
+        if the regime string is unrecognised.
+
+        Args:
+            regime: Current market regime ("bull", "bear", "volatile",
+                    "sideways", or "default").
+
+        Returns:
+            Number of distributions decayed (from apply_forgetting).
+        """
+        decay = REGIME_DECAY_RATES.get(regime, REGIME_DECAY_RATES["default"])
+        logger.debug(
+            "Regime-aware forgetting: regime=%s decay=%.2f", regime, decay
+        )
+        return self.apply_forgetting(decay_factor=decay)
+
 
 def main():
     """Demo and test the Thompson Sampler."""

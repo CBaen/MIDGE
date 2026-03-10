@@ -321,6 +321,31 @@ class OctopusColony:
                 logger.debug("Stigmergy gradient routing failed, falling back", exc_info=True)
                 chosen = None
 
+        # --- Role-affinity routing: prefer octopus whose genome role matches ---
+        # task_data may carry a "preferred_role" hint set by the investigation
+        # dispatcher.  We scan octopuses for one whose _genome_role attribute
+        # matches, picking the least-loaded among candidates.  Falls through to
+        # workload routing when no matching octopus exists (soft preference).
+        if chosen is None and isinstance(task_data, dict):
+            preferred_role = task_data.get("preferred_role")
+            if preferred_role:
+                try:
+                    role_candidates = [
+                        o for o in self.octopuses.values()
+                        if getattr(o, "_genome_role", None) == preferred_role
+                    ]
+                    if role_candidates:
+                        chosen = min(role_candidates, key=lambda o: o.workload)
+                        logger.debug(
+                            "Role routing: preferred_role=%s -> %s (workload=%.2f)",
+                            preferred_role,
+                            chosen.octopus_id,
+                            chosen.workload,
+                        )
+                except Exception:
+                    logger.debug("Role routing failed, falling back", exc_info=True)
+                    chosen = None
+
         # --- Fallback: pure workload routing ---
         if chosen is None:
             chosen = min(self.octopuses.values(), key=lambda o: o.workload)

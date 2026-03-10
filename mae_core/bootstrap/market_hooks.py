@@ -941,7 +941,9 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
             sampler = getattr(ctx, "thompson_sampler", None)
             if sampler is not None:
                 try:
-                    sampler.apply_forgetting(decay_factor=0.99)
+                    regime_clf = getattr(ctx, "regime_classifier", None)
+                    regime = regime_clf.classify() if regime_clf is not None else "default"
+                    sampler.regime_aware_forget(regime)
                 except Exception:
                     logger.debug("Thompson forgetting step failed", exc_info=True)
 
@@ -981,13 +983,32 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                         if check_count >= 20:
                             continue  # Will be evicted by situation_check
 
+                        # Compute role affinity so the colony can route to a
+                        # specialist octopus when one exists (soft preference).
+                        preferred_role = None
+                        try:
+                            from mae_core.network.market_task_handlers import (
+                                select_preferred_role,
+                            )
+                            preferred_role = select_preferred_role(
+                                domains_seen=sit.get("domains_seen", []),
+                                missing_domains=sit.get("missing_domains", []),
+                                causal_predictions=sit.get("causal_predictions", []),
+                            )
+                        except Exception:
+                            pass  # Non-critical — fall back to workload routing
+
+                        task_data_inv: dict = {
+                            "ticker": sit["ticker"],
+                            "direction": sit["direction"],
+                            "domains_seen": sit.get("domains_seen", []),
+                            "missing_domains": sit.get("missing_domains", []),
+                        }
+                        if preferred_role is not None:
+                            task_data_inv["preferred_role"] = preferred_role
+
                         colony.submit_task(
-                            {
-                                "ticker": sit["ticker"],
-                                "direction": sit["direction"],
-                                "domains_seen": sit.get("domains_seen", []),
-                                "missing_domains": sit.get("missing_domains", []),
-                            },
+                            task_data_inv,
                             "investigate_partial",
                         )
                         task_budget -= 1

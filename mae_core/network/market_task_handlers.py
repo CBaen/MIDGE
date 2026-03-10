@@ -33,6 +33,94 @@ logger = logging.getLogger(__name__)
 # Using the string directly here to avoid import-time dependency on that change.
 CH_OCTOPUS_INVESTIGATION = "market.intel.octopus_investigation"
 
+# ---------------------------------------------------------------------------
+# Role-to-domain affinity map (Law 5: specialization via configuration)
+#
+# Each market stem cell role has an affinity for certain signal domains.
+# When a developing situation's domains_seen overlaps with a role's affinity
+# set, that role is the preferred investigator.
+#
+# Used by: select_preferred_role() and OctopusColony.submit_task() role routing.
+# ---------------------------------------------------------------------------
+
+ROLE_DOMAIN_AFFINITY: dict[str, frozenset] = {
+    # SEC_WATCHER specializes in insider trading signals
+    "SEC_WATCHER": frozenset({"insider", "institutional"}),
+    # CONTRACT_TRACKER specializes in government spending and contracting signals
+    "CONTRACT_TRACKER": frozenset({"contracts", "government"}),
+    # MARKET_ANALYST takes high-complexity situations (3+ domains) or top convergence
+    "MARKET_ANALYST": frozenset({"macro", "technical", "fundamental", "positioning",
+                                  "sentiment", "energy", "crypto"}),
+    # HYPOTHESIS_EXPLORER follows causal prediction threads
+    "HYPOTHESIS_EXPLORER": frozenset({"causal"}),  # matched via causal_predictions presence
+    # HYPOTHESIS_VALIDATOR checks situations with known historical templates
+    "HYPOTHESIS_VALIDATOR": frozenset({"events", "macro", "technical"}),
+}
+
+# Minimum domain overlap score to assign a preferred role.
+# Below this threshold we fall back to workload-only routing.
+_ROLE_AFFINITY_MIN_OVERLAP = 1
+
+
+def select_preferred_role(
+    domains_seen: list[str],
+    missing_domains: list[str] | None = None,
+    causal_predictions: list | None = None,
+    historical_win_rate: float = 0.0,
+) -> str | None:
+    """Choose the stem cell role with the highest affinity for this situation.
+
+    Scoring rules (applied in priority order):
+    1. HYPOTHESIS_EXPLORER wins if causal_predictions is non-empty.
+    2. HYPOTHESIS_VALIDATOR wins if historical_win_rate > 0.6.
+    3. SEC_WATCHER / CONTRACT_TRACKER win on exact domain match (insider / government).
+    4. MARKET_ANALYST wins if 3+ domains are seen (high complexity).
+    5. Highest domain-overlap count otherwise.
+    6. None (no preference) if no role clears _ROLE_AFFINITY_MIN_OVERLAP.
+
+    Args:
+        domains_seen: Domain strings already seen for this situation.
+        missing_domains: Domain strings still missing (unused, reserved for future).
+        causal_predictions: Causal prediction entries from ConvergenceAlerter.
+        historical_win_rate: Best win rate from PatternLibrary for this situation.
+
+    Returns:
+        Role name string or None.
+    """
+    if causal_predictions:
+        return "HYPOTHESIS_EXPLORER"
+
+    if historical_win_rate > 0.6:
+        return "HYPOTHESIS_VALIDATOR"
+
+    domains_set = set(domains_seen)
+
+    # Priority check: insider domain → SEC_WATCHER
+    if domains_set & ROLE_DOMAIN_AFFINITY["SEC_WATCHER"]:
+        return "SEC_WATCHER"
+
+    # Priority check: government/contracts domain → CONTRACT_TRACKER
+    if domains_set & ROLE_DOMAIN_AFFINITY["CONTRACT_TRACKER"]:
+        return "CONTRACT_TRACKER"
+
+    # High-complexity situations → MARKET_ANALYST
+    if len(domains_set) >= 3:
+        return "MARKET_ANALYST"
+
+    # General overlap scoring across remaining roles
+    best_role: str | None = None
+    best_overlap = 0
+    for role, affinity in ROLE_DOMAIN_AFFINITY.items():
+        overlap = len(domains_set & affinity)
+        if overlap > best_overlap:
+            best_overlap = overlap
+            best_role = role
+
+    if best_overlap >= _ROLE_AFFINITY_MIN_OVERLAP:
+        return best_role
+
+    return None
+
 # Maximum check_count before a developing situation is evicted.
 MAX_SITUATION_CHECKS = 20
 # Maximum age in step-increments before eviction (each check_count += 1 per step).

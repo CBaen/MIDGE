@@ -8,6 +8,14 @@ The PatternWatcher queries TEMPLATES, not fingerprints. Templates are the
 transferable truth — a pattern that works across 47 symbols is real.
 Fingerprints are the evidence that backs a template.
 
+Memory model (lazy fingerprints):
+  Templates (39 entries, ~100KB) — always in RAM. PatternWatcher needs them.
+  Fingerprints (223K entries, ~100MB) — NOT loaded at startup. Kept on disk.
+  A lightweight ID set (_fingerprint_ids) and count (_fingerprint_count) are
+  maintained so dedup and size queries work without loading the full dataset.
+  Fingerprints are loaded into RAM only when rebuild_templates() or
+  update_outcome(fingerprint_id=...) is called (both are infrequent operations).
+
 Stats tracking:
   - Win rate with Clopper-Pearson 95% CI
   - Cross-symbol validation count
@@ -57,6 +65,10 @@ class PatternLibrary:
 
     Fingerprints are the raw evidence. Templates are the generalized patterns.
     The PatternWatcher queries templates (symbol-agnostic matching).
+
+    Memory model: templates always in RAM; fingerprints kept on disk and
+    loaded lazily only when rebuild_templates() or update_outcome(fingerprint_id=...)
+    is called. A lightweight ID set + count are maintained for dedup and size.
     """
 
     def __init__(
@@ -68,14 +80,17 @@ class PatternLibrary:
         self._path = library_path or LIBRARY_PATH
         self._templates_path = templates_path or TEMPLATES_PATH
         self._match_threshold = match_threshold
-        self._fingerprints: dict[str, MoveFingerprint] = {}
+        # Lightweight fingerprint tracking — no full objects in RAM at startup.
+        self._fingerprint_ids: set[str] = set()
+        self._fingerprint_count: int = 0
+        # Templates stay in RAM — they are tiny (39 entries) and PatternWatcher needs them.
         self._templates: dict[str, PatternTemplate] = {}
         # Secondary index: "direction:domain_signature" -> template_id for O(1) lookup
         self._template_key_index: dict[str, str] = {}
         self._load()
 
     def _load(self) -> None:
-        """Load fingerprints and templates from disk."""
+        """Load templates from disk; scan fingerprint file for IDs and count only."""
         fp_count = 0
         if self._path.exists():
             try:
@@ -86,13 +101,15 @@ class PatternLibrary:
                             continue
                         try:
                             data = json.loads(line)
-                            fp = MoveFingerprint.from_dict(data)
-                            self._fingerprints[fp.fingerprint_id] = fp
+                            fid = data.get("fingerprint_id", "")
+                            if fid:
+                                self._fingerprint_ids.add(fid)
                             fp_count += 1
-                        except (json.JSONDecodeError, KeyError) as e:
+                        except json.JSONDecodeError as e:
                             logger.debug("Skipping malformed fingerprint: %s", e)
             except OSError as e:
                 logger.warning("Could not load pattern library: %s", e)
+        self._fingerprint_count = fp_count
 
         tmpl_count = 0
         if self._templates_path.exists():
@@ -115,19 +132,46 @@ class PatternLibrary:
 
         if fp_count or tmpl_count:
             logger.info(
-                "Pattern library loaded: %d fingerprints, %d templates",
+                "Pattern library loaded: %d fingerprints (lazy), %d templates",
                 fp_count, tmpl_count,
             )
+
+    def _load_fingerprints(self) -> dict[str, MoveFingerprint]:
+        """Load all fingerprints from disk into a temporary dict.
+
+        Called only by rebuild_templates() and update_outcome(fingerprint_id=...).
+        The caller is responsible for keeping or discarding the returned dict.
+        """
+        fingerprints: dict[str, MoveFingerprint] = {}
+        if not self._path.exists():
+            return fingerprints
+        try:
+            with open(self._path, "r") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        data = json.loads(line)
+                        fp = MoveFingerprint.from_dict(data)
+                        fingerprints[fp.fingerprint_id] = fp
+                    except (json.JSONDecodeError, KeyError) as e:
+                        logger.debug("Skipping malformed fingerprint on full load: %s", e)
+        except OSError as e:
+            logger.warning("Could not load fingerprints from disk: %s", e)
+        return fingerprints
 
     def store(self, fingerprint: MoveFingerprint) -> bool:
         """Store a single fingerprint. Returns False if duplicate.
 
         For bulk operations, use store_batch() which batches template persistence.
+        Fingerprints are appended to disk only — not kept in RAM.
         """
-        if fingerprint.fingerprint_id in self._fingerprints:
+        if fingerprint.fingerprint_id in self._fingerprint_ids:
             return False
 
-        self._fingerprints[fingerprint.fingerprint_id] = fingerprint
+        self._fingerprint_ids.add(fingerprint.fingerprint_id)
+        self._fingerprint_count += 1
 
         try:
             self._path.parent.mkdir(parents=True, exist_ok=True)
@@ -142,12 +186,16 @@ class PatternLibrary:
         return True
 
     def store_batch(self, fingerprints: list[MoveFingerprint]) -> int:
-        """Store multiple fingerprints. Persists templates ONCE at the end."""
+        """Store multiple fingerprints. Persists templates ONCE at the end.
+
+        Fingerprints are appended to disk only — not kept in RAM.
+        """
         stored = 0
         for fp in fingerprints:
-            if fp.fingerprint_id in self._fingerprints:
+            if fp.fingerprint_id in self._fingerprint_ids:
                 continue
-            self._fingerprints[fp.fingerprint_id] = fp
+            self._fingerprint_ids.add(fp.fingerprint_id)
+            self._fingerprint_count += 1
             try:
                 self._path.parent.mkdir(parents=True, exist_ok=True)
                 with open(self._path, "a") as f:
