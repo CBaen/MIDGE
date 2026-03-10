@@ -246,14 +246,38 @@ class PatternLibrary:
         self._template_key_index[key] = template.template_id
 
     def get(self, fingerprint_id: str) -> Optional[MoveFingerprint]:
-        return self._fingerprints.get(fingerprint_id)
+        """Fetch a single fingerprint by ID via targeted disk scan.
+
+        Called infrequently (outcome grading, tests). Scans the JSONL file
+        rather than keeping all 223K entries in RAM.
+        """
+        if fingerprint_id not in self._fingerprint_ids:
+            return None
+        if not self._path.exists():
+            return None
+        try:
+            with open(self._path, "r") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        data = json.loads(line)
+                        if data.get("fingerprint_id") == fingerprint_id:
+                            return MoveFingerprint.from_dict(data)
+                    except (json.JSONDecodeError, KeyError):
+                        continue
+        except OSError as e:
+            logger.warning("Could not scan fingerprint file: %s", e)
+        return None
 
     def get_template(self, template_id: str) -> Optional[PatternTemplate]:
         return self._templates.get(template_id)
 
     @property
     def size(self) -> int:
-        return len(self._fingerprints)
+        """Return fingerprint count without loading fingerprints into RAM."""
+        return self._fingerprint_count
 
     @property
     def template_count(self) -> int:
@@ -335,9 +359,15 @@ class PatternLibrary:
         won: bool = False,
         return_pct: float = 0.0,
     ) -> None:
-        """Update stats after an outcome is graded."""
+        """Update stats after an outcome is graded.
+
+        When fingerprint_id is provided, loads ALL fingerprints from disk,
+        updates the target entry, and rewrites the file. This is an infrequent
+        operation (outcome grading cadence), so the full-load cost is acceptable.
+        """
         if fingerprint_id:
-            fp = self._fingerprints.get(fingerprint_id)
+            fingerprints = self._load_fingerprints()
+            fp = fingerprints.get(fingerprint_id)
             if fp is not None:
                 fp.total_activations += 1
                 if won:
@@ -345,6 +375,7 @@ class PatternLibrary:
                 else:
                     fp.losses += 1
                 fp.last_activation = datetime.now().isoformat()
+                self._persist_fingerprints_dict(fingerprints)
 
         if template_id:
             t = self._templates.get(template_id)
@@ -355,17 +386,14 @@ class PatternLibrary:
                     t.losses += 1
                 self._persist_templates()
 
-        if fingerprint_id:
-            self._persist_fingerprints()
-
-    def _persist_fingerprints(self) -> None:
-        """Rewrite fingerprints file atomically (write .tmp then rename)."""
-        if not self._fingerprints:
+    def _persist_fingerprints_dict(self, fingerprints: dict[str, MoveFingerprint]) -> None:
+        """Rewrite fingerprints file atomically from a provided dict."""
+        if not fingerprints:
             return  # Never overwrite with empty
         try:
             tmp = self._path.with_suffix(".tmp")
             with open(tmp, "w") as f:
-                for fp in self._fingerprints.values():
+                for fp in fingerprints.values():
                     f.write(fp.to_json() + "\n")
             try:
                 tmp.replace(self._path)
@@ -415,16 +443,19 @@ class PatternLibrary:
         are intact. Groups fingerprints by direction+domain_signature,
         builds PatternTemplate objects, and persists.
 
+        Loads fingerprints from disk for this operation, then releases them.
+
         Returns:
             Number of templates rebuilt.
         """
+        fingerprints = self._load_fingerprints()
         self._templates.clear()
         self._template_key_index.clear()
-        for fp in self._fingerprints.values():
+        for fp in fingerprints.values():
             self._update_template(fp)
         self._persist_templates()
         logger.info("Rebuilt %d templates from %d fingerprints",
-                     len(self._templates), len(self._fingerprints))
+                     len(self._templates), len(fingerprints))
         return len(self._templates)
 
     def get_statistics(self) -> dict:
@@ -434,7 +465,7 @@ class PatternLibrary:
         with_outcomes = [t for t in templates if t.wins + t.losses > 0]
 
         return {
-            "total_fingerprints": len(self._fingerprints),
+            "total_fingerprints": self._fingerprint_count,
             "total_templates": len(templates),
             "cross_validated_templates": len(cross_validated),
             "templates_with_outcomes": len(with_outcomes),
@@ -457,7 +488,7 @@ class PatternLibrary:
             k = t.wins if t else 0
             n = (t.wins + t.losses) if t else 0
         elif fingerprint_id:
-            fp = self._fingerprints.get(fingerprint_id)
+            fp = self.get(fingerprint_id)
             k = fp.wins if fp else 0
             n = (fp.wins + fp.losses) if fp else 0
         else:
