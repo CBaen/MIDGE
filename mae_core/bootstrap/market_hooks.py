@@ -820,6 +820,8 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
         _step_counter[0] += 1
         step = _step_counter[0]
 
+        _shm = getattr(ctx, "system_health_monitor", None)
+
         # Every step: check convergence (lightweight, pure in-memory)
         alerter = getattr(ctx, "convergence_alerter", None)
         if alerter is not None:
@@ -830,6 +832,8 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                 else:
                     alerts = alerter.check_convergence()
                 ctx._cached_alerts[0] = alerts  # Cache for advisory bridge (avoid duplicate call)
+                if _shm:
+                    _shm.record_success("convergence_check")
                 for alert in alerts:
                     alert_dict = alert.to_dict() if hasattr(alert, "to_dict") else {}
                     last = _last_convergence_state[0]
