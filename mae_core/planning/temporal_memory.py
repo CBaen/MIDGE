@@ -119,7 +119,10 @@ class CausalChain:
             self.root_cause = self.events[0].event_id
 
 
-class TemporalMemory:
+from .temporal_causal import TemporalCausalMixin
+
+
+class TemporalMemory(TemporalCausalMixin):
     """4D Temporal Memory - spatiotemporal event timeline with causal reasoning.
 
     Stores events in a timeline, discovers causal chains, detects
