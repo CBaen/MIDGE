@@ -1,7 +1,37 @@
 # MIDGE Handoff
 
-**Last updated:** 2026-03-09
+**Last updated:** 2026-03-10
 **For session history:** `git log --oneline`
+
+---
+
+## URGENT: Monolith Decomposition In Progress
+
+**Status:** Wave 1 ~90% complete. Two salvage agents may have finished after this session.
+
+| Team | Domain | Status |
+|------|--------|--------|
+| 1 | Market Hooks (2,107→7 files) | **DONE** on main |
+| 2 | Intelligence Core (7 files) | **DONE** on main |
+| 3 | Raw Store (1,835→7 files) | **DONE** on main |
+| 4 | Sensing Pipeline (2 files) | Salvage agent copying from worktree `agent-a691f320` |
+| 5 | Backbone Infrastructure (7 files) | Salvage agent copying from worktree `agent-adf70466` |
+| 6 | Agent & Coordination (5 files) | **DONE** on main |
+| 7 | Edge Detectors (7 files) | **DONE** on main |
+| 8 | Emergent & Patterns (6 files) | **DONE** on main |
+| 9 | Bootstrap Orchestration (5 files) | **DONE** on main |
+| 10 | Remaining Files (17 files) | **DONE** on main |
+| 13 | Pytest Infrastructure | **DONE** on main |
+
+**What to do first:**
+1. Check if salvage agents finished: `git log --oneline -5` — look for sensing/backbone commits
+2. If Teams 4/5 NOT on main, worktrees have completed work at `.claude/worktrees/agent-a691f320/` and `.claude/worktrees/agent-adf70466/` — copy files to main
+3. After all teams landed: `python -m pytest tests/ -x -q` — gate check
+4. `connection_registry.py` still at 689 lines — needs further split
+5. Wave 2 (test file splits) not started — see `DECOMPOSITION-PLAN.md` Teams 11-12
+6. Clean up worktrees: `git worktree remove .claude/worktrees/agent-XXXXX` for each
+
+**Pre-existing test failure:** `test_causal_bridge.py::TestConfoundedGateTightening` — NOT caused by decomposition.
 
 ---
 
