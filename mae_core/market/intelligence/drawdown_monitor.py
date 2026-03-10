@@ -304,7 +304,9 @@ class DrawdownMonitor:
         drawdown = (self._peak_equity - self._current_equity) / self._peak_equity
         drawdown = max(0.0, drawdown)
 
-        warning_threshold = self._max_drawdown_pct * 0.80
+        # Round to 8 decimal places to avoid floating-point boundary surprises
+        # e.g. 0.40 * 0.80 = 0.32000000000000006 in IEEE 754
+        warning_threshold = round(self._max_drawdown_pct * 0.80, 8)
 
         payload_base = {
             "ticker": ticker,
