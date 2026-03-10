@@ -324,14 +324,6 @@ class TestNoMonoliths:
         lines = self._count_lines(path)
         assert lines <= 500, f"{path} is {lines} lines (max 500)"
 
-    @pytest.mark.xfail(
-        reason=(
-            "sensing_hook.py is 576 lines. Anvil created sensing_fetchers.py and "
-            "sensing_lifecycle.py but has not yet refactored sensing_hook.py to "
-            "delegate to them. Remove xfail once sensing_hook.py is under 500 lines."
-        ),
-        strict=True,
-    )
     def test_sensing_hook_under_500(self):
         path = "mae_core/market/sensing_hook.py"
         lines = self._count_lines(path)
