@@ -2,6 +2,29 @@
 
 ## What Happened
 
+### Risk Architecture — DrawdownMonitor + SystemHealthMonitor + SelfMonitor (2026-03-09)
+
+**Three monitors that gate live trading, built by parallel builder team (3 builders, 157 tests):**
+
+1. **DrawdownMonitor** (`mae_core/market/intelligence/drawdown_monitor.py`, 255 lines, 46 tests) — Tracks equity curve from realized P&L. High water mark, drawdown-from-peak calculation. Three-state circuit breaker: Healthy → Warning (80% of max) → Halted. Publishes CH_DRAWDOWN_WARNING, CH_TRADING_HALTED, CH_TRADING_RESUMED. Atomic JSONL persistence. Thread-safe (RLock). Default: 40% max drawdown on $50K. For FTMO: instantiate with max_drawdown_pct=0.10.
+
+2. **SystemHealthMonitor** (`mae_core/market/system_health_monitor.py`, ~200 lines, 60 tests) — Per-subsystem error tracking via rolling deque. Health tiers: Green/Yellow/Orange/Red. Core subsystems (convergence_check, thompson, sensing, outcome_evaluation) trigger Red on failure. Pulls latency data from StepTimer. Publishes CH_HEALTH_TIER_CHANGE.
+
+3. **SelfMonitor** (`mae_core/market/intelligence/self_monitor.py`, ~200 lines, 51 tests) — Behavioral anomaly detection. Four checks: runaway_rate (>10 alerts/window), direction_bias (>80% same direction), confidence_clustering (std dev < 0.02 = feedback loop), ticker_flooding (>50% single ticker). Auto-suppresses on runaway_rate and confidence_clustering. Publishes CH_BEHAVIORAL_ANOMALY.
+
+**Wiring complete:**
+- All 3 instantiated in market_systems.py, stored on ctx
+- DrawdownMonitor loaded from persisted state on bootstrap
+- Paper trade gate in market_hooks.py checks `drawdown_monitor.is_trading_halted()` AND `self_monitor.is_alerting_suppressed()` before writing trades
+- SelfMonitor receives every convergence alert via `record_alert()`
+- 5 channel constants added to channels.py
+
+**Octopus `_genome_role` fixed:** All octopuses now get roles assigned cyclically at spawn (SEC_WATCHER, CONTRACT_TRACKER, MARKET_ANALYST, HYPOTHESIS_EXPLORER, HYPOTHESIS_VALIDATOR). Role-affinity routing fully live.
+
+**FTMO Execution Engine (from sibling instance):** Complete handoff document at `FTMO-EXECUTION-ENGINE.md`. Sibling built backtester at `C:\Users\baenb\projects\project _cameron\trading\` — 75% pass rate with simple indicators. Integration path defined. Guiding Light wants internal + external research backing before proceeding.
+
+**Pending:** Independent review of risk monitors (reviewer agents not yet dispatched — context limit reached). SystemHealthMonitor not yet wired into try/except blocks (record_error calls). DrawdownMonitor persistence flush not yet in daemon hook.
+
 ### Agent Claiming + ADTS + Fingerprint Offload (2026-03-09)
 
 **Agent-level situation claiming:** `ROLE_DOMAIN_AFFINITY` maps stem cell roles to domain expertise. `select_preferred_role()` picks best role per situation. Octopus routing tries role-matched agents first, falls back to least-loaded. 27 tests. Note: octopuses need `_genome_role` assigned at spawn for live effect.

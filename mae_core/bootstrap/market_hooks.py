@@ -1510,7 +1510,25 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
                                 if _cd.samples >= 3 and _cd.mean < _pt_combo:
                                     _pass_combo = False
                         if _pass_combo:
-                            _write_paper_trade(alert, ctx)
+                            # Risk architecture gates
+                            _dm = getattr(ctx, "drawdown_monitor", None)
+                            if _dm and _dm.is_trading_halted():
+                                logger.info("Paper trade BLOCKED — drawdown circuit breaker active")
+                            else:
+                                _sm = getattr(ctx, "self_monitor", None)
+                                if _sm:
+                                    _sm.record_alert(
+                                        direction=getattr(alert, "direction", "unknown"),
+                                        confidence=getattr(alert, "confidence", 0.0),
+                                        ticker=getattr(alert, "ticker", ""),
+                                        step=step,
+                                    )
+                                    if _sm.is_alerting_suppressed():
+                                        logger.warning("Paper trade BLOCKED — behavioral anomaly detected: %s", _sm._anomaly_flags)
+                                    else:
+                                        _write_paper_trade(alert, ctx)
+                                else:
+                                    _write_paper_trade(alert, ctx)
             except Exception:
                 logger.debug("Paper trading gate failed", exc_info=True)
 
