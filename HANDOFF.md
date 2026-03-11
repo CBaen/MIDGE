@@ -23,11 +23,14 @@
 | 10 | Remaining Files (17 files) | **DONE** on main |
 | 13 | Pytest Infrastructure | **DONE** on main |
 
+**Peer review (2026-03-11):** 4-pass review (security/simplicity/architecture/performance) completed. 11 fixes committed: RawStore test isolation, UTF-8 encoding fix, daemon memory leak cap, connection_registry split (689→498 lines + 2 new files), stale doc fixes, dead code removal. Deferred: API client thread-safety audit, Ollama timeout enforcement, `connection_registrations_bio.py` preemptive split (499 lines).
+
 **What's left:**
-1. `connection_registry.py` still at 689 lines — needs further split
-2. Wave 2 (test file splits) not started — see `DECOMPOSITION-PLAN.md` Teams 11-12
-3. Clean up worktrees: `git worktree remove .claude/worktrees/agent-XXXXX` for each (6 remaining)
-4. 13 xdist-mode failures to investigate (likely pre-existing parallel-safety issues, not from decomposition)
+1. Wave 2 (test file splits) not started — see `DECOMPOSITION-PLAN.md` Teams 11-12
+2. Clean up worktrees: `git worktree remove .claude/worktrees/agent-XXXXX` for each (6 remaining)
+3. 13 xdist-mode failures to investigate (likely pre-existing parallel-safety issues, not from decomposition)
+4. `connection_registrations_bio.py` at 499 lines — needs preemptive split before next addition
+5. Thread-safety audit for API clients used in 12-worker ThreadPoolExecutor
 
 **Pre-existing test failures:**
 - `test_causal_bridge.py::TestConfoundedGateTightening` — NOT caused by decomposition
@@ -107,6 +110,7 @@ See `midge-queue.md` for the full prioritized list. Top items:
 **Backbone sub-modules** (split during decomposition):
 - `fractal_act.py` → re-export hub: `fractal_act_subsystem.py`, `fractal_act_organ.py`, `fractal_act_organism.py`
 - `holon_protocol.py` → re-export hub: `holon_registry.py`, `holon_proxy.py`, `holon_mixin.py`, `awareness_pulse.py`
+- `connection_registry.py` → 498 lines + `connection_registry_topology.py` (Euler), `connection_registry_verification.py` (verify/step mixin)
 - `connection_registrations.py` → dispatcher: 5 sub-modules (`_bio`, `_metabolic`, `_agent`, `_patterns`, `_advanced`)
 - `integration_meter.py` → `integration_meter_phi.py`, `integration_meter_blanket.py`, `integration_meter_models.py`
 - `triad_enforcer.py` → `triad_enforcer_models.py`
