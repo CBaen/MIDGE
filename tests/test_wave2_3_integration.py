@@ -786,9 +786,9 @@ class TestFetchFunctions:
 class TestSensingHookIntegration:
     """Tests for SOURCE_ROTATION, TIER_ROUTING, _ROTATION_TO_THOMPSON constants."""
 
-    def test_source_rotation_has_34_entries(self):
+    def test_source_rotation_has_35_entries(self):
         from mae_core.market.sensing_hook import SOURCE_ROTATION
-        assert len(SOURCE_ROTATION) == 34
+        assert len(SOURCE_ROTATION) == 35
 
     def test_crypto_prices_in_source_rotation(self):
         from mae_core.market.sensing_hook import SOURCE_ROTATION

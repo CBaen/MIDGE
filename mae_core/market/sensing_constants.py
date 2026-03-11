@@ -2,7 +2,7 @@
 
 Centralizes all module-level constants used across the sensing subsystem:
   TIER_ROUTING          — source name → tactical/strategic/thematic tier
-  SOURCE_ROTATION       — ordered list of 34 rotation source names
+  SOURCE_ROTATION       — ordered list of 35 rotation source names
   _ROTATION_TO_THOMPSON — rotation name → Thompson distribution key
   _ABSENCE_SOURCE_DOMAINS — absence source name → convergence domain
   _DOMAIN_TO_SOURCES    — pre-built reverse map: domain → rotation names
