@@ -81,6 +81,14 @@ def _isolate_market_state(tmp_path, monkeypatch):
     except (ImportError, AttributeError):
         pass
 
+    # Isolate RawStore SQLite databases — prevent tests from writing to
+    # production data/market/raw/ (24 wired clients could contaminate).
+    try:
+        import mae_core.market.raw_store_base as rsb_mod
+        monkeypatch.setattr(rsb_mod, "RAW_DATA_DIR", tmp_path / "raw")
+    except (ImportError, AttributeError):
+        pass
+
     # Isolate LEARNING_CONFIG: snapshot before test, restore after.
     # create_mae() and meta-learning mutate this module-level dict in place,
     # which pollutes subsequent tests (e.g. min_correlation 0.6 → 0.85).
