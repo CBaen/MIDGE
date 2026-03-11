@@ -556,3 +556,274 @@ class TestBackwardDiscoveryIntegration:
         # Some triggers (like crude_price_spike) don't contain "energy" literally,
         # so we accept macro as well — just verify the field exists and is a string
         assert all(isinstance(d, str) for d in domains)
+
+
+# ─────────────────────────────────────────────────────────────
+# Stage-gating: sequential chain ordering enforcement
+# ─────────────────────────────────────────────────────────────
+
+class TestStageAssignment:
+    """Links should be grouped into stages by predicted lag proximity."""
+
+    def test_single_link_gets_stage_0(self):
+        ct = CascadeTracker()
+        ripples = [{"ticker": "XLE", "direction": "bullish", "strength": 0.8, "lag_days": 5}]
+        ct.register_cascade("A1", "crude_price_spike", ripples, "bullish")
+        link = ct._active_chains["A1"]["links"][0]
+        assert link["stage"] == 0
+
+    def test_similar_lags_same_stage(self):
+        """Links within 2-day tolerance should share a stage."""
+        ct = CascadeTracker(stage_tolerance_days=2.0)
+        ripples = [
+            {"ticker": "XLE", "direction": "bullish", "strength": 0.8, "lag_days": 1},
+            {"ticker": "CVX", "direction": "bullish", "strength": 0.7, "lag_days": 2},
+            {"ticker": "XOM", "direction": "bullish", "strength": 0.6, "lag_days": 3},
+        ]
+        ct.register_cascade("A1", "crude_price_spike", ripples, "bullish")
+        links = ct._active_chains["A1"]["links"]
+        # All within 2 days of each other — same stage
+        assert all(l["stage"] == 0 for l in links)
+
+    def test_distant_lags_different_stages(self):
+        """Links with large lag gaps should be in different stages."""
+        ct = CascadeTracker(stage_tolerance_days=2.0)
+        ripples = [
+            {"ticker": "XLE", "direction": "bullish", "strength": 0.8, "lag_days": 1},
+            {"ticker": "DAL", "direction": "bearish", "strength": 0.6, "lag_days": 7},
+            {"ticker": "AAL", "direction": "bearish", "strength": 0.5, "lag_days": 14},
+        ]
+        ct.register_cascade("A1", "crude_price_spike", ripples, "bullish")
+        links = ct._active_chains["A1"]["links"]
+        assert links[0]["stage"] == 0  # XLE at 1d
+        assert links[1]["stage"] == 1  # DAL at 7d
+        assert links[2]["stage"] == 2  # AAL at 14d
+
+    def test_links_sorted_by_lag(self):
+        """Links should be sorted by predicted_lag_days regardless of input order."""
+        ct = CascadeTracker()
+        ripples = [
+            {"ticker": "AAL", "direction": "bearish", "strength": 0.5, "lag_days": 14},
+            {"ticker": "XLE", "direction": "bullish", "strength": 0.8, "lag_days": 1},
+            {"ticker": "DAL", "direction": "bearish", "strength": 0.6, "lag_days": 7},
+        ]
+        ct.register_cascade("A1", "crude_price_spike", ripples, "bullish")
+        links = ct._active_chains["A1"]["links"]
+        lags = [l["predicted_lag_days"] for l in links]
+        assert lags == sorted(lags)
+
+    def test_three_stages_with_mixed_grouping(self):
+        """Some links share stages, others don't."""
+        ct = CascadeTracker(stage_tolerance_days=2.0)
+        ripples = [
+            {"ticker": "A", "direction": "bullish", "strength": 0.8, "lag_days": 1},
+            {"ticker": "B", "direction": "bullish", "strength": 0.7, "lag_days": 2},
+            {"ticker": "C", "direction": "bearish", "strength": 0.6, "lag_days": 7},
+            {"ticker": "D", "direction": "bearish", "strength": 0.5, "lag_days": 8},
+            {"ticker": "E", "direction": "bearish", "strength": 0.4, "lag_days": 15},
+        ]
+        ct.register_cascade("A1", "trigger", ripples, "bullish")
+        links = ct._active_chains["A1"]["links"]
+        stages = [l["stage"] for l in links]
+        assert stages == [0, 0, 1, 1, 2]
+
+    def test_custom_tolerance(self):
+        """stage_tolerance_days=0 means every distinct lag gets its own stage."""
+        ct = CascadeTracker(stage_tolerance_days=0.0)
+        ripples = [
+            {"ticker": "A", "direction": "bullish", "strength": 0.8, "lag_days": 1},
+            {"ticker": "B", "direction": "bullish", "strength": 0.7, "lag_days": 2},
+            {"ticker": "C", "direction": "bullish", "strength": 0.6, "lag_days": 3},
+        ]
+        ct.register_cascade("A1", "trigger", ripples, "bullish")
+        links = ct._active_chains["A1"]["links"]
+        stages = [l["stage"] for l in links]
+        assert stages == [0, 1, 2]
+
+
+class TestStageGating:
+    """Stage-gating enforcement: energy can't skip dominoes."""
+
+    def _make_multistage_cascade(self, ct=None):
+        """Create a 3-stage cascade: XLE(1d) → DAL(7d) → SAVE(14d)."""
+        if ct is None:
+            ct = CascadeTracker(stage_tolerance_days=2.0)
+        ripples = [
+            {"ticker": "XLE", "direction": "bullish", "strength": 0.8, "lag_days": 1},
+            {"ticker": "DAL", "direction": "bearish", "strength": 0.6, "lag_days": 7},
+            {"ticker": "SAVE", "direction": "bearish", "strength": 0.4, "lag_days": 14},
+        ]
+        ct.register_cascade("A1", "crude_price_spike", ripples, "bullish")
+        return ct
+
+    def test_stage_0_always_watchable(self):
+        """Stage 0 should confirm without any prior confirmations."""
+        ct = self._make_multistage_cascade()
+        results = ct.check_signal("XLE", "bullish")
+        assert len(results) == 1
+        assert results[0]["confirmed_ticker"] == "XLE"
+
+    def test_stage_1_blocked_before_stage_0_confirmed(self):
+        """Stage 1 link should NOT confirm when stage 0 is unconfirmed."""
+        ct = self._make_multistage_cascade()
+        results = ct.check_signal("DAL", "bearish")
+        assert len(results) == 0  # Gated — stage 0 not yet confirmed
+
+    def test_stage_1_opens_after_stage_0_confirmed(self):
+        """After stage 0 confirms, stage 1 links become watchable."""
+        ct = self._make_multistage_cascade()
+        ct.check_signal("XLE", "bullish")  # Stage 0 confirmed
+        results = ct.check_signal("DAL", "bearish")
+        assert len(results) == 1
+        assert results[0]["confirmed_ticker"] == "DAL"
+
+    def test_stage_2_blocked_before_stage_1_confirmed(self):
+        """Stage 2 requires stage 1 confirmation, not just stage 0."""
+        ct = self._make_multistage_cascade()
+        ct.check_signal("XLE", "bullish")  # Stage 0 confirmed
+        results = ct.check_signal("SAVE", "bearish")  # Try stage 2 directly
+        assert len(results) == 0  # Gated — stage 1 not yet confirmed
+
+    def test_full_chain_confirmation(self):
+        """All 3 stages can confirm in sequence."""
+        ct = self._make_multistage_cascade()
+        r0 = ct.check_signal("XLE", "bullish")
+        r1 = ct.check_signal("DAL", "bearish")
+        r2 = ct.check_signal("SAVE", "bearish")
+        assert len(r0) == 1
+        assert len(r1) == 1
+        assert len(r2) == 1
+
+    def test_wrong_direction_never_confirms(self):
+        """Matching ticker with wrong direction is ignored regardless of stage."""
+        ct = self._make_multistage_cascade()
+        results = ct.check_signal("XLE", "bearish")  # Wrong direction
+        assert len(results) == 0
+
+    def test_parallel_links_in_same_stage(self):
+        """Multiple links in the same stage can confirm independently."""
+        ct = CascadeTracker(stage_tolerance_days=2.0)
+        ripples = [
+            {"ticker": "XOM", "direction": "bullish", "strength": 0.8, "lag_days": 1},
+            {"ticker": "CVX", "direction": "bullish", "strength": 0.7, "lag_days": 2},
+            {"ticker": "DAL", "direction": "bearish", "strength": 0.6, "lag_days": 7},
+        ]
+        ct.register_cascade("A1", "crude_price_spike", ripples, "bullish")
+        # Both stage-0 links should be confirmable
+        r1 = ct.check_signal("CVX", "bullish")
+        r2 = ct.check_signal("XOM", "bullish")
+        assert len(r1) == 1
+        assert len(r2) == 1
+
+    def test_one_parallel_confirmation_opens_next_stage(self):
+        """Only one confirmation in a stage is needed to open the next."""
+        ct = CascadeTracker(stage_tolerance_days=2.0)
+        ripples = [
+            {"ticker": "XOM", "direction": "bullish", "strength": 0.8, "lag_days": 1},
+            {"ticker": "CVX", "direction": "bullish", "strength": 0.7, "lag_days": 2},
+            {"ticker": "DAL", "direction": "bearish", "strength": 0.6, "lag_days": 7},
+        ]
+        ct.register_cascade("A1", "crude_price_spike", ripples, "bullish")
+        ct.check_signal("XOM", "bullish")  # Just one stage-0 confirmation
+        results = ct.check_signal("DAL", "bearish")  # Stage 1 should be open
+        assert len(results) == 1
+
+    def test_confirmation_payload_has_stage_fields(self):
+        """Confirmation events should include stage-gating metadata."""
+        ct = self._make_multistage_cascade()
+        results = ct.check_signal("XLE", "bullish")
+        r = results[0]
+        assert "confirmed_stage" in r
+        assert "watchable_stage" in r
+        assert "unlocked_next_stage" in r
+        assert r["confirmed_stage"] == 0
+
+    def test_unlocked_next_stage_true_when_stage_opens(self):
+        """unlocked_next_stage should be True when a confirmation opens a new stage."""
+        ct = self._make_multistage_cascade()
+        results = ct.check_signal("XLE", "bullish")
+        assert results[0]["unlocked_next_stage"] is True  # Stage 1 now open
+
+    def test_unlocked_next_stage_false_for_parallel(self):
+        """Second confirmation in same stage shouldn't report unlocking."""
+        ct = CascadeTracker(stage_tolerance_days=2.0)
+        ripples = [
+            {"ticker": "XOM", "direction": "bullish", "strength": 0.8, "lag_days": 1},
+            {"ticker": "CVX", "direction": "bullish", "strength": 0.7, "lag_days": 2},
+            {"ticker": "DAL", "direction": "bearish", "strength": 0.6, "lag_days": 7},
+        ]
+        ct.register_cascade("A1", "crude_price_spike", ripples, "bullish")
+        ct.check_signal("XOM", "bullish")  # First — opens stage 1
+        results = ct.check_signal("CVX", "bullish")  # Second in same stage
+        assert results[0]["unlocked_next_stage"] is False  # Already unlocked
+
+    def test_remaining_shows_watchable_status(self):
+        """Each remaining link should show whether it's currently watchable."""
+        ct = self._make_multistage_cascade()
+        results = ct.check_signal("XLE", "bullish")
+        remaining = results[0]["remaining"]
+        # DAL (stage 1) should now be watchable, SAVE (stage 2) should not
+        dal = next(r for r in remaining if r["ticker"] == "DAL")
+        save = next(r for r in remaining if r["ticker"] == "SAVE")
+        assert dal["watchable"] is True
+        assert save["watchable"] is False
+
+    def test_statistics_includes_gated_count(self):
+        """Statistics should report how many links are stage-gated."""
+        ct = self._make_multistage_cascade()
+        stats = ct.get_statistics()
+        assert "gated_links" in stats
+        # Before any confirmation: stage 1 + stage 2 links are gated
+        assert stats["gated_links"] == 2
+        assert stats["pending_links"] == 3
+
+    def test_gated_count_decreases_after_confirmation(self):
+        """Confirming stage 0 should reduce gated count."""
+        ct = self._make_multistage_cascade()
+        ct.check_signal("XLE", "bullish")  # Stage 0 confirmed
+        stats = ct.get_statistics()
+        # SAVE (stage 2) is still gated, DAL (stage 1) is now watchable
+        assert stats["gated_links"] == 1
+
+    def test_all_confirmed_zero_gated(self):
+        """Full chain confirmation should result in zero gated links."""
+        ct = self._make_multistage_cascade()
+        ct.check_signal("XLE", "bullish")
+        ct.check_signal("DAL", "bearish")
+        ct.check_signal("SAVE", "bearish")
+        stats = ct.get_statistics()
+        assert stats["gated_links"] == 0
+        assert stats["pending_links"] == 0
+        assert stats["confirmed_links"] == 3
+
+    def test_worldmodel_feedback_only_for_watchable(self):
+        """WorldModel.record_outcome should only be called for watchable links."""
+        wm = MagicMock()
+        ct = CascadeTracker(world_model=wm, stage_tolerance_days=2.0)
+        ripples = [
+            {"ticker": "XLE", "direction": "bullish", "strength": 0.8, "lag_days": 1},
+            {"ticker": "DAL", "direction": "bearish", "strength": 0.6, "lag_days": 7},
+        ]
+        ct.register_cascade("A1", "crude_price_spike", ripples, "bullish")
+
+        # Try to confirm DAL (stage 1) before XLE (stage 0)
+        ct.check_signal("DAL", "bearish")
+        # WorldModel should NOT have been called — DAL is gated
+        wm.record_outcome.assert_not_called()
+
+        # Now confirm XLE (stage 0)
+        ct.check_signal("XLE", "bullish")
+        wm.record_outcome.assert_called_once_with(
+            "crude_price_spike", "XLE", was_correct=True
+        )
+
+    def test_backward_compat_existing_helper(self):
+        """The existing _ripples() helper should still work (all same stage)."""
+        ct = CascadeTracker(stage_tolerance_days=2.0)
+        ripples = _ripples()
+        ct.register_cascade("A1", "crude_price_spike", ripples, "bullish")
+        links = ct._active_chains["A1"]["links"]
+        # XLE at 1d, DAL+AAL at 5d — two stages with 2d tolerance
+        assert links[0]["stage"] == 0  # XLE at 1d
+        assert links[1]["stage"] == 1  # DAL at 5d
+        assert links[2]["stage"] == 1  # AAL at 5d
