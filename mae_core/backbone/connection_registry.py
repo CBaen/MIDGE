@@ -1,43 +1,16 @@
-"""Connection Registry - Triadic witnessing for every connection in Mae.
+"""Connection Registry - Triadic witnessing for every connection in Mae (Law 1).
 
-Biological analogy: The lymphatic system. Every blood vessel (connection)
-has lymph nodes (witnesses) that monitor what flows through. A bare
-blood vessel with no immune surveillance is a vulnerability. The lymphatic
-system doesn't block flow - it watches, verifies, and reports.
-
-Mae's fractal blueprint says "no bare dyads" - every connection A-B must
-have a witness C. This module registers every system-to-system connection
-as a ConnectionTriad and periodically verifies they're alive and witnessed.
-
-The Connection Law:
-  - Primary pathway: A -> B (direct signal)
-  - Verification pathway: A -> C -> B (witness checks primary)
-  - Balance pathway: B -> C -> A (feedback loop)
-
-This creates: non-repudiation, tamper detection, fault isolation,
-consensus, systemic memory.
-
-Enforcement modes:
-  - PERMISSIVE: Bootstrap phase. No checks. Everything passes.
-  - ADVISORY: Log + event on violations. Nothing blocked. (default)
-  - BLOCKING: Reject bare dyads at registration. Disable unhealthy
-    connections. Query API returns False for violations.
-
-Connection points:
-- Created in main.py Layer 18 (after SomaticMap registration)
-- Uses SomaticMap topology for intelligent witness assignment
-- TriadWatchdog queries for bare dyad detection
-- Publishes connection events on EventBus
-- seal() called after bootstrap to activate enforcement
-
-Data models live in connection_registry_models.py.
+Registers system-to-system connections as ConnectionTriads with witnesses.
+Enforcement: PERMISSIVE (bootstrap) -> ADVISORY (default) -> BLOCKING.
+Verification: ConnectionVerificationMixin (connection_registry_verification.py).
+Topology: Euler invariants in connection_registry_topology.py.
+Data models: connection_registry_models.py.
 """
 
 from __future__ import annotations
 
 import logging
 import threading
-import time
 from typing import Any, Optional
 
 from mae_core.backbone.connection_registry_models import (  # noqa: F401
@@ -426,92 +399,7 @@ class ConnectionRegistry(ConnectionVerificationMixin):
 
             return True
 
-    # =========================================================================
-    # Verification
-    # =========================================================================
-
-    def verify_all(self) -> dict[str, Any]:
-        """Verify all registered connections are healthy.
-
-        Checks that source, target, and witness systems are all
-        known to SomaticMap (i.e., alive and registered).
-        """
-        results = {"total": 0, "healthy": 0, "unhealthy": 0, "bare_dyads": 0}
-
-        with self._lock:
-            for conn_id, triad in self._connections.items():
-                results["total"] += 1
-                healthy = True
-
-                if self._somatic_map:
-                    # Check source and target exist in SomaticMap
-                    for system_id in (triad.source, triad.target):
-                        node = self._somatic_map.get_system_info(system_id)
-                        if node is None:
-                            healthy = False
-
-                    # Check all witnesses exist
-                    if triad.witnesses:
-                        for w in triad.witnesses:
-                            witness_node = self._somatic_map.get_system_info(w)
-                            if witness_node is None:
-                                healthy = False
-                    else:
-                        results["bare_dyads"] += 1
-
-                triad.healthy = healthy
-                triad.last_verified = time.time()
-
-                if healthy:
-                    results["healthy"] += 1
-                else:
-                    results["unhealthy"] += 1
-                    if self._active_mode == EnforcementMode.BLOCKING and self._bus:
-                        self._bus.publish(CH_CONNECTION_BLOCKED, {
-                            "connection_id": conn_id,
-                            "reason": "unhealthy",
-                            "source": triad.source,
-                            "target": triad.target,
-                        })
-
-            self._total_verifications += 1
-
-        # Topological invariant (advisory — never blocks)
-        results["euler"] = self.get_euler_statistics()
-
-        # Operational witnessing stats (if WitnessNotifier is active)
-        if self._witness_notifier is not None:
-            try:
-                results["witnessing"] = self._witness_notifier.get_statistics()
-            except Exception:
-                pass  # Advisory — never break verification
-
-        if self._bus:
-            self._bus.publish(CH_CONNECTION_VERIFIED, results)
-
-        return results
-
-    def step(self) -> None:
-        """Step hook for periodic verification."""
-        self._step_counter += 1
-        if self._step_counter % self._verify_interval == 0:
-            results = self.verify_all()
-            bare = self.get_bare_dyads()
-            if bare:
-                if self._active_mode == EnforcementMode.BLOCKING:
-                    logger.error(
-                        "BLOCKING: %d bare dyads detected", len(bare),
-                    )
-                else:
-                    logger.warning(
-                        "ConnectionRegistry: %d bare dyads detected", len(bare),
-                    )
-                if self._bus:
-                    self._bus.publish(CH_CONNECTION_BARE_DYAD, {
-                        "count": len(bare),
-                        "connections": [b.connection_id for b in bare],
-                        "enforcement": self._active_mode.value,
-                    })
+    # verify_all() and step() provided by ConnectionVerificationMixin
 
     # =========================================================================
     # Queries
