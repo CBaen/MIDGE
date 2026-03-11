@@ -1,7 +1,7 @@
 # MIDGE Queue
 
 **Purpose:** Active tasks only. Git history preserves completed work.
-**Last updated:** 2026-03-09
+**Last updated:** 2026-03-11
 
 ---
 
@@ -40,13 +40,6 @@
 ### Causal Reasoning
 - [ ] Sequential chain stage-gating — require link N to confirm before watching link N+1 (CascadeTracker has chain tracking but no ordering enforcement)
 
-### LLM Integration
-- [ ] Run nvidia-smi to determine GPU VRAM
-- [ ] Qwen3-14B via Ollama for causal narratives
-- [ ] OllamaProvider + OllamaReasoningSubscriber (~300 lines)
-- [ ] WHY section in plain_language.py alerts
-- [ ] Three-stage bull/bear/synthesis prompt
-
 ### Processing Performance
 - [x] aiohttp async for PolygonBulkFetcher — DONE (get_daily_history_batch with 20 concurrent requests, ExcavationDaemon auto-detects batch support)
 - [ ] Wall-clock cadences (replace step-based)
@@ -79,6 +72,7 @@
 - Options flow via Unusual Whales ($35/mo — after self-funding validates)
 - Coinbase AgentKit for crypto self-funding loop (Stage 2, after Kalshi validates)
 - PRAW Reddit integration (API access now requires manual review application)
+- LLM causal narratives via Ollama (nice-to-have — plain_language.py already works without it)
 
 ---
 
@@ -120,6 +114,9 @@
 - OctopusColony bootstrapped + pipeline bridge
 - Per-domain temporal ordering in convergence alerts
 - market_infrastructure.py extraction (market_systems.py 584→444)
+- Binance funding rate wired (47 tests, "positioning" domain)
+- Thompson test artifacts cleaned (6 removed, 92 remain)
+- PolygonBulkFetcher async batch mode (aiohttp, 20 concurrent)
 
 ---
 

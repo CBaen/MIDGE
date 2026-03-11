@@ -39,10 +39,10 @@
 - 62 FRED tests, 283 sensing/wiring tests, 47 Binance tests pass
 
 **What's left:**
-1. ~~Wire Binance funding client~~ — **DONE** (adapter + constants + fetcher + bootstrap, 47 tests, "positioning" domain)
-2. Wave 2 (test file splits) not started — see `DECOMPOSITION-PLAN.md` Teams 11-12
-3. 13 xdist-mode failures to investigate (pre-existing parallel-safety issues)
-4. Thread-safety audit for API clients used in 12-worker ThreadPoolExecutor
+1. Wave 2 (test file splits) not started — see `DECOMPOSITION-PLAN.md` Teams 11-12
+2. 13 xdist-mode failures to investigate (pre-existing parallel-safety issues)
+3. Thread-safety audit for API clients used in 12-worker ThreadPoolExecutor
+4. See `midge-queue.md` for full prioritized list
 
 **Pre-existing test failures:**
 - `test_causal_bridge.py::TestConfoundedGateTightening` — NOT caused by decomposition
@@ -99,7 +99,7 @@ See `midge-queue.md` for the full prioritized list. Top items:
 1. **Start the daemon** — `python main.py --daemon --agents 12 --steps 500 --pace 2.0` — MIDGE will sense, converge, and paper-trade on Alpaca automatically
 2. **Kalshi integration** — verify SDK, review ToS, prototype MarketSelector
 3. **FTMO validation** — run historical convergence alerts through ftmo_engine.py
-4. **Wire Binance funding client** — adapter + constants + fetcher + bootstrap (client built, needs pipeline)
+4. **Kalshi integration** — verify SDK, review ToS, prototype MarketSelector
 5. **New data sources** — crypto order book depth, central bank speeches, edgartools SEC upgrade
 
 ---
@@ -187,7 +187,7 @@ python main.py --agents 3 --steps 30           # Smoke test
 
 ## Stats
 
-- **149 systems** (92 core + 57 market), **4,536+ tests**, **157 holons**, **428 connections**
+- **149 systems** (92 core + 57 market), **4,583+ tests**, **157 holons**, **428 connections**
 - **123 market files** (34 API + 12 edge + 36 intelligence + 8 signal_adapters + 10 archaeology + 6 execution + 17 root)
 - **36 sources**, **12 domains**, **12 concurrent fetches**, **25-step cadence**
 - **33-layer bootstrap**, **14 mixins** on MycelialAgent
