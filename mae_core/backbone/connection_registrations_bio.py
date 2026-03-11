@@ -1,15 +1,15 @@
-"""Connection Registrations — Infrastructure + Groups 2-3.
+"""Connection Registrations — Infrastructure wiring.
 
 Covers:
   - EventBus pub/sub connections (Layer 15 cross-wiring)
   - Direct reference injections (constructor params)
   - Callback registrations (Layer 16)
   - Step hooks (Layers 2, 3, 14)
-  - Group 2: Backbone Self-Monitoring
-  - Group 3: Cognition Results
 
-Group 1 (Metabolic/Biological -> OrganismState) lives in
-connection_registrations_metabolic.py. Extracted for single-responsibility.
+Groups extracted for single-responsibility:
+  - Group 1 (Metabolic/Biological): connection_registrations_metabolic.py
+  - Group 2 (Backbone Self-Monitoring): connection_registrations_backbone.py
+  - Group 3 (Cognition Results): connection_registrations_cognition.py
 """
 
 from __future__ import annotations
@@ -21,6 +21,12 @@ from mae_core.backbone.connection_registry import (
     ConnectionCriticality,
     ConnectionRegistry,
     ConnectionType,
+)
+from mae_core.backbone.connection_registrations_backbone import (
+    register_backbone_connections,
+)
+from mae_core.backbone.connection_registrations_cognition import (
+    register_cognition_connections,
 )
 from mae_core.backbone.connection_registrations_metabolic import (
     register_metabolic_connections,
@@ -295,205 +301,11 @@ def register_bio_connections(
          witnesses=["threat_detector", "auto_healer"],
          description="Pearl defense checks every step")
 
-    # Group 1: Metabolic/Biological -> OrganismState (see connection_registrations_metabolic.py)
+    # Group 1: Metabolic/Biological -> OrganismState
     register_metabolic_connections(registry, systems, _reg)
 
-    # =====================================================================
     # Group 2: Backbone Self-Monitoring
-    #
-    # Nervous system peers watch each other. This IS the domain where
-    # enforcer/watchdog/auditor are the correct witnesses -- they are
-    # each other's peers within the nervous system organ.
-    # =====================================================================
-    eb = ConnectionType.EVENTBUS_PUBSUB
+    register_backbone_connections(registry, systems, _reg)
 
-    # Connection registry -> auditor (peers: watchdog + enforcer)
-    _reg("connection_registry", "auditor", eb,
-         channel="connection.registered",
-         witnesses=["watchdog", "enforcer"],
-         description="New connections -- nervous system peers witness")
-    _reg("connection_registry", "auditor", eb,
-         channel="connection.verified",
-         witnesses=["watchdog", "enforcer"],
-         description="Verification results -- nervous system peers")
-    _reg("connection_registry", "auditor", eb,
-         channel="connection.bare_dyad",
-         witnesses=["enforcer", "watchdog"],
-         criticality=ConnectionCriticality.IMPORTANT,
-         description="Bare dyad detection -- Law 1 violation alert")
-    _reg("connection_registry", "auditor", eb,
-         channel="connection.health",
-         witnesses=["watchdog", "enforcer"],
-         description="Connection health -- nervous system peers witness")
-    _reg("connection_registry", "auditor", eb,
-         channel="connection.blocked",
-         witnesses=["enforcer", "watchdog"],
-         criticality=ConnectionCriticality.IMPORTANT,
-         description="Blocked connection -- enforcement peers witness")
-    _reg("connection_registry", "auditor", eb,
-         channel="connection.sealed",
-         witnesses=["enforcer", "watchdog"],
-         criticality=ConnectionCriticality.CRITICAL,
-         description="Registry sealed -- enforcement activated")
-
-    # Enforcer -> auditor (peers: watchdog + connection_registry)
-    _reg("enforcer", "auditor", eb,
-         channel="triad.process_registered",
-         witnesses=["watchdog", "connection_registry"],
-         description="New process triad -- enforcement peers witness")
-    _reg("enforcer", "auditor", eb,
-         channel="triad.vote_complete",
-         witnesses=["watchdog", "connection_registry"],
-         description="Validator vote -- enforcement peers witness")
-    _reg("enforcer", "auditor", eb,
-         channel="triad.health_report",
-         witnesses=["watchdog", "connection_registry"],
-         description="Enforcer health -- enforcement peers witness")
-
-    # Watchdog -> auditor (peers: enforcer + connection_registry)
-    _reg("watchdog", "auditor", eb,
-         channel="watchdog.silent_validator",
-         witnesses=["enforcer", "connection_registry"],
-         criticality=ConnectionCriticality.IMPORTANT,
-         description="Silent validator -- enforcement peers witness")
-    _reg("watchdog", "auditor", eb,
-         channel="watchdog.health_report",
-         witnesses=["enforcer", "connection_registry"],
-         description="Watchdog health -- enforcement peers witness")
-
-    # Auditor -> somatic_map (peers: enforcer + watchdog cross-witness)
-    _reg("auditor", "somatic_map", eb,
-         channel="audit.finding",
-         witnesses=["enforcer", "watchdog"],
-         criticality=ConnectionCriticality.IMPORTANT,
-         description="Audit finding -- enforcement triad witnesses")
-    _reg("auditor", "somatic_map", eb,
-         channel="audit.health_report",
-         witnesses=["enforcer", "watchdog"],
-         description="Auditor health -- enforcement triad witnesses")
-
-    # Holon + fractal (structural peers witness)
-    _reg("holon_registry", "somatic_map", eb,
-         channel="holon.awareness_pulse",
-         witnesses=["fractal_generator", "connection_registry"],
-         description="Holon pulse -- structural peers witness")
-    _reg("holon_registry", "auto_healer", eb,
-         channel="holon.anomaly_detected",
-         witnesses=["fractal_generator", "somatic_map"],
-         criticality=ConnectionCriticality.IMPORTANT,
-         description="Holon anomaly -- structural peers witness")
-    _reg("fractal_generator", "somatic_map", eb,
-         channel="fractal.organized",
-         witnesses=["holon_registry", "connection_registry"],
-         description="Fractal organization -- structural peers witness")
-    _reg("triadic_verifier", "auto_healer", eb,
-         channel="triadic.verification",
-         witnesses=["connection_registry", "enforcer"],
-         criticality=ConnectionCriticality.IMPORTANT,
-         description="Low triadic compliance triggers healing assessment")
-
-    # =====================================================================
     # Group 3: Cognition Results
-    #
-    # Cognitive systems are each other's peers. Metacognition witnesses
-    # reasoning peers; causal_engine witnesses prediction peers;
-    # theory_of_mind witnesses social cognition peers.
-    # =====================================================================
-
-    _reg("goal_manager", "event_bus", eb,
-         channel="cognition.goal_update",
-         witnesses=["metacognition", "decision_router"],
-         description="Goal state -- cognitive peers witness")
-    _reg("goal_manager", "event_bus", eb,
-         channel="cognition.impasse_detected",
-         witnesses=["metacognition", "shared_causal_engine"],
-         criticality=ConnectionCriticality.IMPORTANT,
-         description="Goal impasse -- reasoning peers witness")
-    _reg("metacognition", "event_bus", eb,
-         channel="cognition.metacognition_update",
-         witnesses=["theory_of_mind", "goal_manager"],
-         description="Metacognition state -- cognitive peers witness")
-    _reg("metacognition", "event_bus", eb,
-         channel="cognition.metacognition_alert",
-         witnesses=["goal_manager", "auto_healer"],
-         criticality=ConnectionCriticality.IMPORTANT,
-         description="Metacognition alert -- quality degraded")
-    _reg("theory_of_mind", "event_bus", eb,
-         channel="cognition.tom_update",
-         witnesses=["metacognition", "emotional_system"],
-         description="Theory of mind -- social cognition peers witness")
-    _reg("shared_world_model", "event_bus", eb,
-         channel="cognition.prediction_made",
-         witnesses=["shared_causal_engine", "temporal_memory"],
-         description="Prediction event -- reasoning peers witness")
-    _reg("shared_world_model", "event_bus", eb,
-         channel="cognition.model_trained",
-         witnesses=["shared_causal_engine", "metacognition"],
-         description="Model trained -- reasoning peers witness")
-    _reg("validated_imagination", "event_bus", eb,
-         channel="cognition.imagination_validated",
-         witnesses=["shared_world_model", "metacognition"],
-         description="Imagination validated -- modeling peers witness")
-    _reg("collective_dream", "event_bus", eb,
-         channel="cognition.collective_dream_complete",
-         witnesses=["shared_world_model", "metacognition"],
-         description="Dream complete -- imagination peers witness")
-    _reg("shared_causal_engine", "event_bus", eb,
-         channel="cognition.causal_query_result",
-         witnesses=["temporal_memory", "shared_world_model"],
-         description="Causal result -- reasoning peers witness")
-    _reg("decision_router", "event_bus", eb,
-         channel="cognition.decision_routed",
-         witnesses=["metacognition", "goal_manager"],
-         description="Decision routed -- executive peers witness")
-
-    # Memory consolidation (memory -> knowledge pipeline)
-    _reg("memory", "event_bus", eb,
-         channel="memory.consolidation_complete",
-         witnesses=["energy_reserve", "knowledge_base"],
-         description="Consolidation complete -- energy cost + knowledge storage verify")
-
-    # Planning (planning peers witness)
-    _reg("temporal_memory", "event_bus", eb,
-         channel="temporal.event_recorded",
-         witnesses=["worldline_planner", "shared_causal_engine"],
-         description="Event recorded -- planning peers witness")
-    _reg("temporal_memory", "event_bus", eb,
-         channel="temporal.pattern_detected",
-         witnesses=["worldline_planner", "shared_causal_engine"],
-         description="Pattern detected -- planning peers witness")
-    _reg("worldline_planner", "event_bus", eb,
-         channel="planning.worldline_validated",
-         witnesses=["temporal_memory", "shared_causal_engine"],
-         description="Worldline validated -- planning peers witness")
-
-    # Learning (learning peers witness)
-    _reg("haven", "event_bus", eb,
-         channel="haven.intervention",
-         witnesses=["threat_detector", "auto_healer"],
-         criticality=ConnectionCriticality.IMPORTANT,
-         description="HAVEN intervention -- defense + healing verify safety action")
-    _reg("frl", "event_bus", eb,
-         channel="frl.peer_discovery",
-         witnesses=["imitation", "haven"],
-         description="Peer discovered -- imitation learns from peers, haven safety-checks")
-
-    # Organism action outcome (cross-organ: coordination + cognition)
-    _reg("organism_state", "event_bus", eb,
-         channel="organism.action_outcome",
-         witnesses=["metacognition", "endocrine"],
-         description="Action outcome -- cognition + coordination witness")
-
-    # Somatic map modifications (structural peers witness)
-    _reg("somatic_map", "event_bus", eb,
-         channel="somatic.modification_approved",
-         witnesses=["holon_registry", "fractal_generator"],
-         description="Modification approved -- structural peers witness")
-    _reg("somatic_map", "event_bus", eb,
-         channel="somatic.modification_rejected",
-         witnesses=["holon_registry", "fractal_generator"],
-         description="Modification rejected -- structural peers witness")
-    _reg("somatic_map", "event_bus", eb,
-         channel="somatic.modification_rolled_back",
-         witnesses=["holon_registry", "fractal_generator"],
-         description="Modification rolled back -- structural peers witness")
+    register_cognition_connections(registry, systems, _reg)
