@@ -718,7 +718,9 @@ class TestFetchFunctions:
 
         volume_converter = MagicMock(return_value=MagicMock())
         squeeze_converter = MagicMock(return_value=MagicMock())
-        result = fetch_finviz(client, volume_converter, squeeze_converter)
+        insider_converter = MagicMock(return_value=MagicMock())
+        client.get_insider_trades.return_value = []
+        result = fetch_finviz(client, volume_converter, squeeze_converter, insider_converter)
         assert len(result) == 1
         client.get_unusual_volume.assert_called_once()
         client.get_high_short_float.assert_called_once_with(min_pct=20)
@@ -729,7 +731,8 @@ class TestFetchFunctions:
         client.get_unusual_volume.side_effect = RuntimeError("FinViz down")
         client.get_high_short_float.return_value = []
         # Should not propagate exception; squeeze path still runs
-        result = fetch_finviz(client, MagicMock(), MagicMock())
+        client.get_insider_trades.return_value = []
+        result = fetch_finviz(client, MagicMock(), MagicMock(), MagicMock())
         assert isinstance(result, list)
         client.get_high_short_float.assert_called_once()
 
@@ -783,9 +786,9 @@ class TestFetchFunctions:
 class TestSensingHookIntegration:
     """Tests for SOURCE_ROTATION, TIER_ROUTING, _ROTATION_TO_THOMPSON constants."""
 
-    def test_source_rotation_has_30_entries(self):
+    def test_source_rotation_has_34_entries(self):
         from mae_core.market.sensing_hook import SOURCE_ROTATION
-        assert len(SOURCE_ROTATION) == 30
+        assert len(SOURCE_ROTATION) == 34
 
     def test_crypto_prices_in_source_rotation(self):
         from mae_core.market.sensing_hook import SOURCE_ROTATION
