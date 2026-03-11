@@ -40,14 +40,8 @@ NERVOUS_SYSTEM = ("enforcer", "watchdog", "auditor", "somatic_map")
 class ConnectionRegistry(ConnectionVerificationMixin):
     """Registry of all system-to-system connections with triadic witnessing.
 
-    Every connection between Mae's systems is registered here.
-    Each gets an automatically assigned witness based on SomaticMap
-    topology. Periodic verification checks that connections and
-    witnesses are alive.
-
-    Think of it as a building inspection registry: every room
-    (connection) has an assigned inspector (witness), and periodic
-    walk-throughs verify everything is in order.
+    Each connection gets auto-assigned witnesses via SomaticMap topology.
+    Periodic verification checks connections and witnesses are alive.
     """
 
     def __init__(
