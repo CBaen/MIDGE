@@ -48,7 +48,7 @@
 - [ ] Three-stage bull/bear/synthesis prompt
 
 ### Processing Performance
-- [ ] aiohttp async for PolygonBulkFetcher (85s→3-10s)
+- [x] aiohttp async for PolygonBulkFetcher — DONE (get_daily_history_batch with 20 concurrent requests, ExcavationDaemon auto-detects batch support)
 - [ ] Wall-clock cadences (replace step-based)
 
 ---

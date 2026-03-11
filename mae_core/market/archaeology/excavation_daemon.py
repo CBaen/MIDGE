@@ -101,9 +101,14 @@ class ExcavationDaemon:
         batch_fingerprints = 0
         batch_templates_new = 0
 
+        # Batch fetch price history if fetcher supports it (aiohttp, 20x faster)
+        batch_history = self._fetch_batch_history(batch)
+
         for symbol in batch:
             try:
-                fps, new_templates = self._excavate_symbol(symbol)
+                fps, new_templates = self._excavate_symbol(
+                    symbol, prefetched_history=batch_history.get(symbol),
+                )
                 batch_fingerprints += len(fps)
                 batch_templates_new += new_templates
                 self._symbols_done.add(symbol)
@@ -143,23 +148,52 @@ class ExcavationDaemon:
 
         return summary
 
-    def _excavate_symbol(self, symbol: str) -> tuple[list[MoveFingerprint], int]:
+    def _fetch_batch_history(self, symbols: list[str]) -> dict:
+        """Fetch price history for all symbols in batch concurrently if possible.
+
+        Falls back to empty dict (per-symbol fetch) if batch mode unavailable.
+        """
+        if self._price_fetcher is None:
+            return {}
+        if not hasattr(self._price_fetcher, "get_daily_history_batch"):
+            return {}
+        try:
+            return self._price_fetcher.get_daily_history_batch(
+                symbols, days=self._price_history_days,
+            )
+        except Exception:
+            logger.debug("Batch history fetch failed, falling back to per-symbol", exc_info=True)
+            return {}
+
+    def _excavate_symbol(
+        self,
+        symbol: str,
+        prefetched_history: list = None,
+    ) -> tuple[list[MoveFingerprint], int]:
         """Excavate all dig sites for a single symbol.
+
+        Args:
+            symbol: Ticker to excavate.
+            prefetched_history: Pre-fetched price data from batch mode. If None,
+                fetches individually (fallback for non-batch fetchers).
 
         Returns:
             Tuple of (fingerprints produced, number of new templates stored).
         """
-        if self._price_fetcher is None:
+        if self._price_fetcher is None and prefetched_history is None:
             return ([], 0)
 
-        # Fetch price history
-        try:
-            history = self._price_fetcher.get_daily_history(
-                symbol, days=self._price_history_days,
-            )
-        except Exception:
-            logger.debug("Price history fetch failed for %s", symbol, exc_info=True)
-            return ([], 0)
+        # Use prefetched data if available, otherwise fetch individually
+        if prefetched_history is not None:
+            history = prefetched_history
+        else:
+            try:
+                history = self._price_fetcher.get_daily_history(
+                    symbol, days=self._price_history_days,
+                )
+            except Exception:
+                logger.debug("Price history fetch failed for %s", symbol, exc_info=True)
+                return ([], 0)
 
         if len(history) < 30:
             return ([], 0)

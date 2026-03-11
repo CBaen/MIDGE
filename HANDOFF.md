@@ -29,9 +29,14 @@
 - `connection_registrations_bio.py` split DONE (500→311 + backbone 118 + cognition 131)
 - FRED Freight TSI (TSIFRGHT) added — logistics demand sense via existing pipeline
 - International economic calendar activated — ECB/BoJ/BoE/PBoC/BoC/RBA high-impact events (was US-only)
-- Binance funding rate client BUILT (not yet wired to sensing pipeline)
-- 4 stale test assertions fixed (rotation count 30→34, finviz 4-arg signature)
-- 62 FRED tests, 294 sensing tests pass
+- Binance funding rate client BUILT and WIRED into sensing pipeline (adapter + constants + fetcher + bootstrap, 47 tests)
+  - Domain: "positioning" (same as COT — derivatives positioning, NOT "crypto" — maximizes convergence diversity)
+  - 35 rotation slots, 36 data sources total
+- Thompson distributions cleaned — 6 test artifacts removed (combo:a+b+c, concurrent_test, test_signal etc.), 92 legitimate distributions remain
+- market_hooks.py size audit — already decomposed into 7 files, largest 457 lines, all under 500
+- PolygonBulkFetcher async batch mode — `get_daily_history_batch()` using aiohttp with 20 concurrent requests. ExcavationDaemon auto-detects batch support. Sequential→concurrent excavation.
+- 4 stale test assertions fixed (rotation count 34→35, finviz 4-arg signature)
+- 62 FRED tests, 283 sensing/wiring tests, 47 Binance tests pass
 
 **What's left:**
 1. ~~Wire Binance funding client~~ — **DONE** (adapter + constants + fetcher + bootstrap, 47 tests, "positioning" domain)
