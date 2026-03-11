@@ -9,6 +9,11 @@ This is the core of MIDGE's inevitability tracking. Not just predicting
 cascades, but watching them unfold and strengthening confidence as each
 domino confirms the chain.
 
+Stage-gating: links are grouped into temporal stages by predicted lag.
+Stage 0 (shortest lag) is always watchable. Stage N only opens when
+stage N-1 has at least one confirmed link. This enforces causal ordering —
+energy can't skip dominoes.
+
 Biological analogy: predictive coding. The brain generates predictions
 about what sensory input should arrive. When it does arrive, the model
 is reinforced. When it doesn't, error signals update the model.
