@@ -230,7 +230,7 @@ def from_economic_event(event) -> MarketSignal:
 
     event_dt = _ensure_datetime(event.date)
 
-    signal_id = f"econ:{event.event}:{event.date}"
+    signal_id = f"econ:{event.country}:{event.event}:{event.date}"
 
     return MarketSignal(
         signal_id=signal_id,

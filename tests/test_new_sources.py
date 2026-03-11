@@ -703,8 +703,8 @@ class TestAnalystRecDataclass:
 # ===========================================================================
 
 class TestFinnhubClientEconomicCalendar:
-    def test_returns_us_events_only(self):
-        """Non-US events are filtered out."""
+    def test_returns_major_economy_events(self):
+        """US all impacts + major economies high-impact only."""
         payload = {
             "economicCalendar": [
                 {"country": "US", "event": "CPI", "date": "2026-03-01",
@@ -713,14 +713,26 @@ class TestFinnhubClientEconomicCalendar:
                 {"country": "EU", "event": "ECB Rate Decision", "date": "2026-03-02",
                  "time": "12:00", "impact": "high", "actual": None,
                  "estimate": None, "prev": None, "unit": ""},
+                {"country": "JP", "event": "BoJ Rate Decision", "date": "2026-03-03",
+                 "time": "03:00", "impact": "high", "actual": None,
+                 "estimate": None, "prev": None, "unit": "%"},
+                {"country": "EU", "event": "EU Consumer Confidence", "date": "2026-03-03",
+                 "time": "10:00", "impact": "medium", "actual": None,
+                 "estimate": -14.0, "prev": -14.5, "unit": ""},
+                {"country": "BR", "event": "Brazil CPI", "date": "2026-03-04",
+                 "time": "09:00", "impact": "high", "actual": None,
+                 "estimate": 5.0, "prev": 4.8, "unit": "%"},
             ]
         }
         client = FinnhubClient(api_key="test_key")
         with patch.object(client, "_get", return_value=payload):
             events = client.get_economic_calendar(days=14)
 
-        assert len(events) == 1
-        assert events[0].event == "CPI"
+        # US CPI (any impact) + ECB high + BoJ high = 3
+        # EU medium filtered, Brazil not in MAJOR_ECONOMIES
+        assert len(events) == 3
+        countries = {e.country for e in events}
+        assert countries == {"US", "EU", "JP"}
 
     def test_empty_response_returns_empty_list(self):
         client = FinnhubClient(api_key="test_key")

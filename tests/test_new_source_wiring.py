@@ -97,6 +97,12 @@ EXPECTED_ROTATION = [
     "eia_energy",
     # Real-economy: Legislative
     "congress_legislation",
+    # Social + RSS
+    "social_text",
+    "yahoo_rss",
+    # Real-economy: Agriculture + FRED yields
+    "usda_agriculture",
+    "fred_yields",
 ]
 
 VALID_TIERS = {"tactical", "strategic", "thematic"}
