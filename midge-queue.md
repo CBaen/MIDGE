@@ -89,7 +89,7 @@
 - [x] Wire USDA + FRED yields into sensing pipeline (rotation, dispatcher, bootstrap)
 - [x] Clean Thompson test artifacts from distributions file — DONE (6 artifacts removed, 92 legitimate distributions remain)
 - [x] connection_registrations_bio.py split — DONE (500→311 + backbone 118 + cognition 131)
-- [ ] market_hooks.py size audit — may need decomposition (approaching 500-line cap)
+- [x] market_hooks.py size audit — DONE (already split into 7 files, largest is 457 lines, all under 500)
 - [ ] Broker-side bracket orders (survive MIDGE process failure)
 
 ---
