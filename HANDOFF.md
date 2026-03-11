@@ -34,7 +34,7 @@
 - 62 FRED tests, 294 sensing tests pass
 
 **What's left:**
-1. Wire Binance funding client into sensing pipeline (adapter + constants + fetcher + bootstrap)
+1. ~~Wire Binance funding client~~ — **DONE** (adapter + constants + fetcher + bootstrap, 47 tests, "positioning" domain)
 2. Wave 2 (test file splits) not started — see `DECOMPOSITION-PLAN.md` Teams 11-12
 3. 13 xdist-mode failures to investigate (pre-existing parallel-safety issues)
 4. Thread-safety audit for API clients used in 12-worker ThreadPoolExecutor
@@ -62,7 +62,7 @@ Guiding Light's vision: MIDGE as personal autonomous trader across ALL markets �
 ## What Works Right Now
 
 ### The Brain
-- **35 data sources** feeding signals through 12 concurrent workers, 25-step rotation cadence (34 + FRED Freight TSI; Binance funding built but unwired)
+- **36 data sources** feeding signals through 12 concurrent workers, 25-step rotation cadence (35 rotation slots; Binance funding rate wired as "positioning" domain)
 - **Convergence engine** (crown jewel) — fires when 3+ independent domains agree on direction
 - **Thompson Bayesian learning** — 35/37 distributions rebuilt from 13,190 historical updates. Brain is learning.
 - **Signal translator** — ConvergenceAlert → ExecutableSignal with ATR-based stop-loss/take-profit
@@ -184,5 +184,5 @@ python main.py --agents 3 --steps 30           # Smoke test
 
 - **149 systems** (92 core + 57 market), **4,536+ tests**, **157 holons**, **428 connections**
 - **123 market files** (34 API + 12 edge + 36 intelligence + 8 signal_adapters + 10 archaeology + 6 execution + 17 root)
-- **35 sources**, **12 domains**, **12 concurrent fetches**, **25-step cadence**
+- **36 sources**, **12 domains**, **12 concurrent fetches**, **25-step cadence**
 - **33-layer bootstrap**, **14 mixins** on MycelialAgent

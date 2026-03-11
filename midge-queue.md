@@ -57,7 +57,7 @@
 
 - [ ] edgartools as SEC upgrade (proper 13F/13D parsing, 1800 stars)
 - [x] BDI logistics via FRED proxy — DONE as FRED Freight TSI (TSIFRGHT), piggybacks fred_yields
-- [ ] Wire Binance funding rate client into sensing pipeline (client built, needs adapter+constants+fetcher+bootstrap)
+- [x] Wire Binance funding rate client into sensing pipeline — DONE (adapter+constants+fetcher+bootstrap, 47 tests, "positioning" domain)
 - [ ] AIS maritime (AISHub — verify free tier terms)
 - [ ] Web scraping crawler agent (httpx/selectolax/trafilatura installed, unused)
 - [x] Central bank events (ECB/BoJ/BoE/PBoC/BoC/RBA) — DONE, Finnhub international high-impact events activated
@@ -87,7 +87,7 @@
 - [x] Write tests for USDA client — 44 tests in test_usda_client.py + 7 in test_raw_store.py
 - [x] Write tests for FRED client — 59 tests in test_fred_client.py
 - [x] Wire USDA + FRED yields into sensing pipeline (rotation, dispatcher, bootstrap)
-- [ ] Clean Thompson test artifacts from distributions file (combo:a+b+c, concurrent_test, test_signal entries)
+- [x] Clean Thompson test artifacts from distributions file — DONE (6 artifacts removed, 92 legitimate distributions remain)
 - [x] connection_registrations_bio.py split — DONE (500→311 + backbone 118 + cognition 131)
 - [ ] market_hooks.py size audit — may need decomposition (approaching 500-line cap)
 - [ ] Broker-side bracket orders (survive MIDGE process failure)

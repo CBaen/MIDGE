@@ -185,16 +185,21 @@ class TestFetchBinanceFunding:
         signals = fetch_binance_funding(client, from_binance_funding)
         assert signals == []
 
-    def test_skips_bad_items(self):
+    def test_skips_failing_converter(self):
         client = MagicMock()
         client.get_funding_rates.return_value = [
-            "not_a_rate",  # Will fail conversion
-            FundingRate("SOLUSDT", 0.0002, datetime.now()),
+            FundingRate("BTCUSDT", 0.001, datetime.now()),
+            FundingRate("ETHUSDT", 0.0002, datetime.now()),
         ]
-        # from_binance_funding will fail on the string, skip it
-        signals = fetch_binance_funding(client, from_binance_funding)
+
+        def bad_converter(rate):
+            if rate.symbol == "BTCUSDT":
+                raise ValueError("bad")
+            return from_binance_funding(rate)
+
+        signals = fetch_binance_funding(client, bad_converter)
         assert len(signals) == 1
-        assert signals[0].symbol == "SOL"
+        assert signals[0].symbol == "ETH"
 
 
 # ---------------------------------------------------------------------------

@@ -17,7 +17,7 @@ convergence_alerter because collection happens in the main thread.
 Decomposed into seven files:
   sensing_hook.py       — this file: MarketSensingHook class (thin orchestrator)
   sensing_constants.py  — TIER_ROUTING, SOURCE_ROTATION, Thompson/domain maps
-  sensing_fetchers.py   — thin re-export hub for 34 standalone fetch functions
+  sensing_fetchers.py   — thin re-export hub for 35 standalone fetch functions
   sensing_lifecycle.py  — enrich_signal, store_signals, load_watchlist
   sensing_scheduler.py  — SensingSchedulerMixin: Thompson/round-robin scheduling
   sensing_collector.py  — SensingCollectorMixin: result collection + signal pipeline
