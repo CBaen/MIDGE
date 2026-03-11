@@ -38,10 +38,17 @@ class CascadeTracker:
        - Unconfirmed links: world_model.record_outcome(False)
     """
 
-    def __init__(self, world_model=None, event_bus=None, max_chains: int = 50):
+    def __init__(
+        self,
+        world_model=None,
+        event_bus=None,
+        max_chains: int = 50,
+        stage_tolerance_days: float = 2.0,
+    ):
         self._world_model = world_model
         self._bus = event_bus
         self._max_chains = max_chains
+        self._stage_tolerance_days = stage_tolerance_days
         self._active_chains: Dict[str, dict] = {}
 
     def register_cascade(
@@ -65,19 +72,30 @@ class CascadeTracker:
         if not ripple_effects or alert_id in self._active_chains:
             return False
 
+        # Build links sorted by predicted lag (temporal ordering)
+        raw_links = [{
+            "ticker": r.get("ticker", ""),
+            "predicted_direction": r.get("direction", "neutral"),
+            "predicted_lag_days": r.get("lag_days", 0),
+            "strength": r.get("strength", 0),
+            "status": "pending",
+            "confirmed_at": None,
+            "stage": 0,  # assigned below
+        } for r in ripple_effects if r.get("ticker")]
+
+        if not raw_links:
+            return False
+
+        # Sort by predicted lag and assign stages
+        raw_links.sort(key=lambda l: l["predicted_lag_days"])
+        self._assign_stages(raw_links)
+
         self._active_chains[alert_id] = {
             "alert_id": alert_id,
             "trigger": trigger,
             "direction": direction,
             "registered_at": time.time(),
-            "links": [{
-                "ticker": r.get("ticker", ""),
-                "predicted_direction": r.get("direction", "neutral"),
-                "predicted_lag_days": r.get("lag_days", 0),
-                "strength": r.get("strength", 0),
-                "status": "pending",
-                "confirmed_at": None,
-            } for r in ripple_effects if r.get("ticker")],
+            "links": raw_links,
         }
 
         # Evict oldest if over capacity
@@ -94,11 +112,65 @@ class CascadeTracker:
         )
         return True
 
+    def _assign_stages(self, links: list) -> None:
+        """Assign stage numbers to sorted links based on lag proximity.
+
+        Links within stage_tolerance_days of each other share a stage.
+        This groups parallel effects (e.g., crude → XOM and CVX at similar
+        lags) while separating sequential ones (crude → XOM at 1d vs
+        airline stocks at 7d).
+        """
+        if not links:
+            return
+
+        stage = 0
+        stage_anchor = links[0]["predicted_lag_days"]
+        links[0]["stage"] = 0
+
+        for i in range(1, len(links)):
+            lag = links[i]["predicted_lag_days"]
+            if lag - stage_anchor > self._stage_tolerance_days:
+                stage += 1
+                stage_anchor = lag
+            links[i]["stage"] = stage
+
+    def _get_watchable_stage(self, chain: dict) -> int:
+        """Return the highest stage currently watchable for a chain.
+
+        Stage 0 is always watchable. Stage N opens when stage N-1 has
+        at least one confirmed link. Returns the max stage where all
+        prior stages have confirmations.
+        """
+        if not chain["links"]:
+            return 0
+
+        max_stage = max(l["stage"] for l in chain["links"])
+        watchable = 0
+
+        for stage in range(max_stage + 1):
+            if stage == 0:
+                watchable = 0
+                continue
+            # Stage N watchable only if stage N-1 has a confirmation
+            prev_confirmed = any(
+                l["status"] == "confirmed"
+                for l in chain["links"]
+                if l["stage"] == stage - 1
+            )
+            if prev_confirmed:
+                watchable = stage
+            else:
+                break
+
+        return watchable
+
     def check_signal(self, ticker: str, direction: str) -> List[dict]:
         """Check if a signal confirms any active cascade link.
 
         Called on every signal ingestion. When a ticker+direction matches
-        a predicted ripple, that domino is confirmed.
+        a predicted ripple in a watchable stage, that domino is confirmed.
+        Links in future stages (where prior stages lack confirmations) are
+        skipped — energy can't jump ahead in the causal chain.
 
         Returns:
             List of confirmation events (one per chain that matched).
@@ -106,8 +178,11 @@ class CascadeTracker:
         confirmations = []
 
         for chain_id, chain in self._active_chains.items():
+            watchable = self._get_watchable_stage(chain)
+
             for link in chain["links"]:
                 if (link["status"] == "pending"
+                        and link["stage"] <= watchable
                         and link["ticker"] == ticker
                         and link["predicted_direction"] == direction):
                     # DOMINO CONFIRMED
@@ -138,6 +213,12 @@ class CascadeTracker:
                         l for l in chain["links"] if l["status"] == "pending"
                     ]
 
+                    # Recompute watchable stage after this confirmation
+                    new_watchable = self._get_watchable_stage(chain)
+                    unlocked_stage = (
+                        new_watchable > watchable
+                    )
+
                     confirmation = {
                         "chain_id": chain_id,
                         "trigger": chain["trigger"],
@@ -147,11 +228,16 @@ class CascadeTracker:
                         "total_links": total,
                         "energy_ratio": link["energy_ratio"],
                         "actual_lag_days": round(actual_lag_days, 4),
+                        "confirmed_stage": link["stage"],
+                        "watchable_stage": new_watchable,
+                        "unlocked_next_stage": unlocked_stage,
                         "remaining": [{
                             "ticker": l["ticker"],
                             "direction": l["predicted_direction"],
                             "lag_days": l["predicted_lag_days"],
                             "strength": l["strength"],
+                            "stage": l["stage"],
+                            "watchable": l["stage"] <= new_watchable,
                         } for l in remaining],
                     }
                     confirmations.append(confirmation)
@@ -226,9 +312,11 @@ class CascadeTracker:
         total_links = 0
         confirmed = 0
         pending = 0
+        gated = 0
         energy_ratios = []
 
         for chain in self._active_chains.values():
+            watchable = self._get_watchable_stage(chain)
             for link in chain["links"]:
                 total_links += 1
                 if link["status"] == "confirmed":
@@ -237,6 +325,8 @@ class CascadeTracker:
                         energy_ratios.append(link["energy_ratio"])
                 elif link["status"] == "pending":
                     pending += 1
+                    if link["stage"] > watchable:
+                        gated += 1
 
         mean_energy_ratio = (
             round(sum(energy_ratios) / len(energy_ratios), 4)
@@ -248,6 +338,7 @@ class CascadeTracker:
             "total_links": total_links,
             "confirmed_links": confirmed,
             "pending_links": pending,
+            "gated_links": gated,
             "confirmation_rate": round(confirmed / max(total_links, 1), 3),
             "mean_energy_ratio": mean_energy_ratio,
         }
