@@ -108,14 +108,21 @@ def parse_economic_calendar(data: dict) -> List[EconomicEvent]:
     Expected structure: {"economicCalendar": [...]}
     Each entry has: country, event, date, time, impact, actual, estimate, prev, unit
     """
+    # Major economies whose central bank / macro events move forex & commodities
+    MAJOR_ECONOMIES = {"US", "EU", "JP", "GB", "CN", "CA", "AU"}
+
     events: List[EconomicEvent] = []
     calendar = data.get("economicCalendar") or []
 
     for entry in calendar:
         try:
             country = (entry.get("country") or "").upper()
-            # Focus on US events only
-            if country != "US":
+            impact = (entry.get("impact") or "low").lower()
+
+            # US: all impact levels. Others: high-impact only (rate decisions, CPI, GDP)
+            if country not in MAJOR_ECONOMIES:
+                continue
+            if country != "US" and impact != "high":
                 continue
 
             event_name = entry.get("event") or ""
@@ -124,7 +131,6 @@ def parse_economic_calendar(data: dict) -> List[EconomicEvent]:
 
             date = entry.get("date") or ""
             event_time = entry.get("time") or ""
-            impact = (entry.get("impact") or "low").lower()
 
             actual = entry.get("actual")
             estimate = entry.get("estimate")

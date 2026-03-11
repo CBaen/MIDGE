@@ -61,15 +61,15 @@ class TestDirectionLogic:
         assert _determine_direction("CPIAUCSL", 300.0) == "neutral"
         assert _determine_direction("CPIAUCSL", 100.0) == "neutral"
 
-    # DBDI (Baltic Dry Index — shipping demand)
-    def test_bdi_high_is_bullish(self):
-        assert _determine_direction("DBDI", 2500) == "bullish"
+    # TSIFRGHT (Freight Transportation Services Index — logistics demand)
+    def test_freight_tsi_high_is_bullish(self):
+        assert _determine_direction("TSIFRGHT", 118) == "bullish"
 
-    def test_bdi_low_is_bearish(self):
-        assert _determine_direction("DBDI", 600) == "bearish"
+    def test_freight_tsi_low_is_bearish(self):
+        assert _determine_direction("TSIFRGHT", 95) == "bearish"
 
-    def test_bdi_mid_is_neutral(self):
-        assert _determine_direction("DBDI", 1200) == "neutral"
+    def test_freight_tsi_mid_is_neutral(self):
+        assert _determine_direction("TSIFRGHT", 108) == "neutral"
 
     # Unknown series
     def test_unknown_series_returns_neutral(self):
@@ -252,7 +252,7 @@ class TestGetYieldCurvesAndDollar:
             "DGS10": self._make_indicator("DGS10"),
             "T10Y3M": self._make_indicator("T10Y3M"),
             "DTWEXBGS": self._make_indicator("DTWEXBGS"),
-            "DBDI": self._make_indicator("DBDI"),
+            "TSIFRGHT": self._make_indicator("TSIFRGHT"),
         }
         client.get_series = MagicMock(side_effect=lambda sid: indicators.get(sid))
 
@@ -260,7 +260,7 @@ class TestGetYieldCurvesAndDollar:
 
         assert client.get_series.call_count == 5
         called_ids = {call.args[0] for call in client.get_series.call_args_list}
-        assert called_ids == {"DGS2", "DGS10", "T10Y3M", "DTWEXBGS", "DBDI"}
+        assert called_ids == {"DGS2", "DGS10", "T10Y3M", "DTWEXBGS", "TSIFRGHT"}
 
     def test_returns_list_of_macro_indicators(self):
         client = FREDClient(api_key="test_key")
