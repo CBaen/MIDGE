@@ -698,7 +698,7 @@ class TestFetchFunctions:
 
     def test_finviz_none_client_returns_empty(self):
         from mae_core.market.sensing_fetchers import fetch_finviz
-        result = fetch_finviz(None, MagicMock(), MagicMock())
+        result = fetch_finviz(None, MagicMock(), MagicMock(), MagicMock())
         assert result == []
 
     def test_finviz_calls_get_unusual_volume_and_short_float(self):
