@@ -126,6 +126,7 @@ class MarketSensingHook(SensingSchedulerMixin, SensingCollectorMixin, SensingRea
         social_text_analyzer: Any = None,
         yahoo_rss_client: Any = None,
         usda_client: Any = None,
+        binance_funding_client: Any = None,
     ):
         # API clients (all optional — graceful degradation)
         self._sec_client = sec_client
@@ -167,6 +168,7 @@ class MarketSensingHook(SensingSchedulerMixin, SensingCollectorMixin, SensingRea
         self._social_text_analyzer = social_text_analyzer
         self._yahoo_rss_client = yahoo_rss_client
         self._usda_client = usda_client
+        self._binance_funding_client = binance_funding_client
 
         # EventBus (injected by bootstrap for signal bridge)
         self._bus = None

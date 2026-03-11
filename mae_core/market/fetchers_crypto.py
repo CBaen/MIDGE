@@ -67,6 +67,23 @@ def fetch_finra_short(finra_client: Any, watchlist: dict, converter: Callable) -
     return signals
 
 
+def fetch_binance_funding(binance_funding_client: Any, converter: Callable) -> list:
+    """Fetch perpetual futures funding rates from Binance."""
+    if binance_funding_client is None:
+        return []
+    signals = []
+    try:
+        rates = binance_funding_client.get_funding_rates()
+        for rate in rates:
+            try:
+                signals.append(converter(rate))
+            except Exception:
+                pass
+    except Exception as e:
+        logger.debug("Binance funding fetch failed: %s", e)
+    return signals
+
+
 def fetch_economic_calendar(calendar_client: Any, converter: Callable) -> list:
     """Fetch upcoming high-impact economic events as suppression signals."""
     if calendar_client is None:

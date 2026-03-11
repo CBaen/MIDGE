@@ -137,6 +137,7 @@ class SensingReactiveMixin:
             fetch_openinsider, fetch_13f_holdings, fetch_finviz, fetch_economic_calendar,
             fetch_eia, fetch_congress_legislation, fetch_massive_snapshot,
             fetch_social_text, fetch_yahoo_rss, fetch_usda, fetch_fred_yields,
+            fetch_binance_funding,
         )
         from mae_core.market.sensing_lifecycle import enrich_signal
 
@@ -214,6 +215,10 @@ class SensingReactiveMixin:
 
         elif source_name == "crypto_exchange":
             signals = fetch_crypto_exchange(self._coincap_client, from_crypto_signal)
+
+        elif source_name == "binance_funding":
+            from mae_core.market.signal_adapters.wave2_3_technical import from_binance_funding
+            signals = fetch_binance_funding(self._binance_funding_client, from_binance_funding)
 
         elif source_name == "openinsider":
             signals = fetch_openinsider(self._openinsider_client, from_openinsider)

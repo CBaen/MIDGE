@@ -71,6 +71,7 @@ from mae_core.market.signal_adapters.wave2_3 import (
     from_finviz_short_squeeze,
     from_finnhub_realtime,
     from_suppression_event,
+    from_binance_funding,
 )
 
 __all__ = [
@@ -119,4 +120,5 @@ __all__ = [
     "from_finviz_short_squeeze",
     "from_finnhub_realtime",
     "from_suppression_event",
+    "from_binance_funding",
 ]

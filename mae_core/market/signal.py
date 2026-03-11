@@ -137,6 +137,7 @@ from mae_core.market.signal_adapters import (  # noqa: E402
     from_finviz_short_squeeze,
     from_finnhub_realtime,
     from_suppression_event,
+    from_binance_funding,
     from_energy_indicator,
     from_legislative_indicator,
 )
@@ -190,6 +191,7 @@ __all__ = [
     "from_finviz_short_squeeze",
     "from_finnhub_realtime",
     "from_suppression_event",
+    "from_binance_funding",
     # energy + legislation (2)
     "from_energy_indicator",
     "from_legislative_indicator",

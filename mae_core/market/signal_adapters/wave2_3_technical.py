@@ -209,6 +209,54 @@ def from_suppression_event(event) -> MarketSignal:
     )
 
 
+def from_binance_funding(rate) -> MarketSignal:
+    """Convert a BinanceFundingClient FundingRate to a MarketSignal.
+
+    Funding rate is the cost of holding perpetual futures long vs short.
+    Positive = longs pay shorts (overleveraged long, contrarian bearish).
+    Negative = shorts pay longs (overleveraged short, contrarian bullish).
+    Uses FundingRate's built-in direction/strength properties.
+    """
+    symbol = getattr(rate, "symbol", "") or ""
+    funding_rate = getattr(rate, "rate", 0.0) or 0.0
+    ts = getattr(rate, "timestamp", None)
+    mark_price = getattr(rate, "mark_price", None)
+
+    direction = getattr(rate, "direction", "neutral")
+    strength = getattr(rate, "strength", 0.1)
+
+    event_dt = ts if isinstance(ts, datetime) else datetime.now()
+
+    # Strip USDT suffix for clean ticker
+    clean_symbol = symbol.replace("USDT", "").replace("BUSD", "").replace("PERP", "")
+    signal_id = f"binance_funding:{symbol}:{event_dt.strftime('%Y%m%dT%H%M')}"
+
+    return MarketSignal(
+        signal_id=signal_id,
+        source="binance_funding",
+        symbol=clean_symbol,
+        asset_class="crypto",
+        domain="positioning",
+        direction=direction,
+        strength=strength,
+        confidence=0.55,
+        decay_rate=0.70,
+        timestamp=event_dt,
+        received_at=datetime.now(),
+        outcome_symbol=clean_symbol + "-USD",
+        outcome_window_days=3,
+        raw_id=symbol,
+        raw_type="FundingRate",
+        metadata={
+            "symbol": symbol,
+            "funding_rate": funding_rate,
+            "funding_rate_pct": funding_rate * 100,
+            "annualized_rate": funding_rate * 3 * 365 * 100,
+            "mark_price": mark_price,
+        },
+    )
+
+
 def from_massive_snapshot(snapshot) -> MarketSignal:
     """Convert a TickerSnapshot (Massive/Polygon) to a MarketSignal.
 

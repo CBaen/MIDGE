@@ -81,7 +81,7 @@ TIER_ROUTING: Dict[str, str] = {
     "binance_funding": "tactical",
 }
 
-# Source names for rotation — 34 sources, 8 concurrent per cadence tick
+# Source names for rotation — 35 sources, 8 concurrent per cadence tick
 SOURCE_ROTATION: List[str] = [
     "sec_form4",
     "sec_form8k",
@@ -129,6 +129,8 @@ SOURCE_ROTATION: List[str] = [
     "usda_agriculture",
     # Forex-critical FRED yields / DXY
     "fred_yields",
+    # Crypto derivatives positioning (Binance perpetual futures funding rates)
+    "binance_funding",
 ]
 
 # Map rotation source names → Thompson distribution keys for guided selection.
@@ -168,6 +170,7 @@ _ROTATION_TO_THOMPSON: Dict[str, str] = {
     "yahoo_rss": "yahoo_rss",
     "usda_agriculture": "usda_agriculture",
     "fred_yields": "fred_macro",
+    "binance_funding": "binance_funding",
 }
 
 # Map absence source names back to convergence domains
@@ -190,6 +193,7 @@ _ABSENCE_SOURCE_DOMAINS: Dict[str, str] = {
     "yahoo_rss": "events",
     "usda_agriculture": "macro",
     "fred_yields": "macro",
+    "binance_funding": "positioning",
 }
 
 

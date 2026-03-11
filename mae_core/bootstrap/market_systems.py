@@ -20,7 +20,7 @@ def _instantiate_wave2_3_clients(ctx: SimpleNamespace) -> None:
     _with_raw_store = {
         "coingecko_client", "coincap_client", "openinsider_client",
         "edgar_enhanced_client", "finviz_client", "finnhub_websocket",
-        "massive_client",
+        "massive_client", "binance_funding_client",
     }
 
     for attr, mod_path, cls in [
@@ -32,6 +32,7 @@ def _instantiate_wave2_3_clients(ctx: SimpleNamespace) -> None:
         ("economic_calendar_client", "mae_core.market.apis.economic_calendar_client", "EconomicCalendarClient"),
         ("finnhub_websocket", "mae_core.market.apis.finnhub_websocket", "FinnhubWebSocket"),
         ("massive_client", "mae_core.market.apis.massive_client", "MassiveClient"),
+        ("binance_funding_client", "mae_core.market.apis.binance_funding_client", "BinanceFundingClient"),
     ]:
         try:
             klass = getattr(importlib.import_module(mod_path), cls)
@@ -63,6 +64,7 @@ _MARKET_SOURCE_TRUST = [
     ("finviz", 0.65), ("economic_calendar", 0.80), ("massive_snapshot", 0.90),
     ("eia_energy", 0.95), ("congress_legislation", 0.90),
     ("social_text", 0.40), ("finviz_insider", 0.55),
+    ("binance_funding", 0.70),
 ]
 
 
