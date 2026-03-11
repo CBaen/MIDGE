@@ -77,6 +77,8 @@ TIER_ROUTING: Dict[str, str] = {
     "usda_agriculture": "strategic",
     # Forex-critical FRED yields / DXY
     "fred_yields": "thematic",
+    # Crypto derivatives positioning (Binance perpetual futures funding rates)
+    "binance_funding": "tactical",
 }
 
 # Source names for rotation — 34 sources, 8 concurrent per cadence tick

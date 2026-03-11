@@ -94,8 +94,8 @@ See `midge-queue.md` for the full prioritized list. Top items:
 1. **Start the daemon** — `python main.py --daemon --agents 12 --steps 500 --pace 2.0` — MIDGE will sense, converge, and paper-trade on Alpaca automatically
 2. **Kalshi integration** — verify SDK, review ToS, prototype MarketSelector
 3. **FTMO validation** — run historical convergence alerts through ftmo_engine.py
-4. **Write missing tests** — USDA client, FRED yield curves
-5. **New data sources** — BDI logistics, central bank speeches, crypto depth
+4. **Wire Binance funding client** — adapter + constants + fetcher + bootstrap (client built, needs pipeline)
+5. **New data sources** — crypto order book depth, central bank speeches, edgartools SEC upgrade
 
 ---
 
@@ -144,7 +144,7 @@ See `midge-queue.md` for the full prioritized list. Top items:
 5. `_translate_and_log_executable_signal()` — ATR-based SL/TP → `data/midge/executable_signals.jsonl`
 6. `_submit_to_alpaca()` — bracket order to Alpaca (US equities only)
 
-**500-line cap enforced** on all files. Only exception: `connection_registry.py` at 689 lines (flagged for split).
+**500-line cap enforced** on all files. `connection_registry.py` split to 498 lines + 2 sub-modules. `connection_registrations_bio.py` split to 311 lines + backbone (118) + cognition (131).
 
 **Pre-existing flaky test:** `test_congress_gov_client::test_request_fails_without_key` — passes in isolation, fails in full suite due to env var pollution from another test. Not a real bug.
 
@@ -183,6 +183,6 @@ python main.py --agents 3 --steps 30           # Smoke test
 ## Stats
 
 - **149 systems** (92 core + 57 market), **4,536+ tests**, **157 holons**, **428 connections**
-- **122 market files** (33 API + 12 edge + 36 intelligence + 8 signal_adapters + 10 archaeology + 6 execution + 17 root)
-- **34 sources**, **12 domains**, **12 concurrent fetches**, **25-step cadence**
+- **123 market files** (34 API + 12 edge + 36 intelligence + 8 signal_adapters + 10 archaeology + 6 execution + 17 root)
+- **35 sources**, **12 domains**, **12 concurrent fetches**, **25-step cadence**
 - **33-layer bootstrap**, **14 mixins** on MycelialAgent

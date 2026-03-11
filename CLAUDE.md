@@ -135,7 +135,7 @@ After any structural change, grep for stale references:
 # Key numbers to check (update these values as they change):
 # Systems: 149 (92 core + 57 market) | Tests: 4536 | Bootstrap layers: 33 | Mixins: 14
 # Connections: 428 | Holons: 157 | Fractal depth: 4
-# Market modules: 119 files (33 API + 12 edge + 36 intelligence + 17 root + 8 signal_adapters + 10 archaeology + 3 translators)
+# Market modules: 123 files (34 API + 12 edge + 36 intelligence + 17 root + 8 signal_adapters + 10 archaeology + 6 execution)
 
 grep -rn "PREVIOUS_COUNT" --include="*.md" --include="*.py"
 ```
@@ -161,7 +161,7 @@ grep -rn "PREVIOUS_COUNT" --include="*.md" --include="*.py"
 - **Mesa 3.4** foundation, pure Python infrastructure
 - **33-layer bootstrap** in `mae_core/bootstrap/` (orchestrated by `main.py`)
 - **149 systems** (92 core + 57 market), **4,536 tests**, **157 holons**, **428 connections**
-- **119 market intelligence files** in `mae_core/market/` (bootstrapped as Layer 33, decomposed into sub-modules)
+- **123 market intelligence files** in `mae_core/market/` (bootstrapped as Layer 33, decomposed into sub-modules)
 - **14 mixins** on MycelialAgent (10 capability + 4 lifecycle, HolonMixin is 10th capability)
 - **Fractal architecture:** All 5 steps complete (Holon Protocol, Triadic Connections, Bidirectional Awareness, Fractal Generator, Stem Cell)
 - **Advisory enforcement:** Triads and connections observe/report, never block
