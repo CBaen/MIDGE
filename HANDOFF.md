@@ -53,7 +53,7 @@
 
 ## What Is MIDGE
 
-MIDGE is Mae differentiated for financial markets. She's an inevitability surfacer — a living organism that observes patterns across 34 data sources, finds where converging forces make outcomes structurally inevitable, and trades on them.
+MIDGE is Mae differentiated for financial markets. She's an inevitability surfacer — a living organism that observes patterns across 35 data sources, finds where converging forces make outcomes structurally inevitable, and trades on them.
 
 Guiding Light's vision: MIDGE as personal autonomous trader across ALL markets — stocks (Alpaca), futures/forex (FTMO), crypto (exchanges), prediction markets (Kalshi). Not one venue — all of them.
 
@@ -62,7 +62,7 @@ Guiding Light's vision: MIDGE as personal autonomous trader across ALL markets �
 ## What Works Right Now
 
 ### The Brain
-- **34 data sources** feeding signals through 12 concurrent workers, 25-step rotation cadence
+- **35 data sources** feeding signals through 12 concurrent workers, 25-step rotation cadence (34 + FRED Freight TSI; Binance funding built but unwired)
 - **Convergence engine** (crown jewel) — fires when 3+ independent domains agree on direction
 - **Thompson Bayesian learning** — 35/37 distributions rebuilt from 13,190 historical updates. Brain is learning.
 - **Signal translator** — ConvergenceAlert → ExecutableSignal with ATR-based stop-loss/take-profit
