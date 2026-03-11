@@ -24,7 +24,7 @@ FRED_SERIES: dict[str, tuple] = {
     "DGS10":        ("10-Year Treasury Constant Maturity Rate", "treasury_10y"),
     "T10Y3M":       ("10Y-3M Treasury Spread (Alt Recession Indicator)", "yield_curve_3m"),
     "DTWEXBGS":     ("US Dollar Index - Broad, Goods (DXY proxy)", "dollar_index"),
-    "DBDI":         ("Baltic Dry Index (Shipping Demand Proxy)", "logistics"),
+    "TSIFRGHT":     ("Freight Transportation Services Index (Logistics Demand)", "logistics"),
 }
 
 
