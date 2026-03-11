@@ -25,12 +25,19 @@
 
 **Peer review (2026-03-11):** 4-pass review (security/simplicity/architecture/performance) completed. 11 fixes committed: RawStore test isolation, UTF-8 encoding fix, daemon memory leak cap, connection_registry split (689→498 lines + 2 new files), stale doc fixes, dead code removal. Deferred: API client thread-safety audit, Ollama timeout enforcement, `connection_registrations_bio.py` preemptive split (499 lines).
 
+**Post-decomposition session (2026-03-11):**
+- `connection_registrations_bio.py` split DONE (500→311 + backbone 118 + cognition 131)
+- FRED Freight TSI (TSIFRGHT) added — logistics demand sense via existing pipeline
+- International economic calendar activated — ECB/BoJ/BoE/PBoC/BoC/RBA high-impact events (was US-only)
+- Binance funding rate client BUILT (not yet wired to sensing pipeline)
+- 4 stale test assertions fixed (rotation count 30→34, finviz 4-arg signature)
+- 62 FRED tests, 294 sensing tests pass
+
 **What's left:**
-1. Wave 2 (test file splits) not started — see `DECOMPOSITION-PLAN.md` Teams 11-12
-2. Clean up worktrees: `git worktree remove .claude/worktrees/agent-XXXXX` for each (6 remaining)
-3. 13 xdist-mode failures to investigate (likely pre-existing parallel-safety issues, not from decomposition)
-4. `connection_registrations_bio.py` at 499 lines — needs preemptive split before next addition
-5. Thread-safety audit for API clients used in 12-worker ThreadPoolExecutor
+1. Wire Binance funding client into sensing pipeline (adapter + constants + fetcher + bootstrap)
+2. Wave 2 (test file splits) not started — see `DECOMPOSITION-PLAN.md` Teams 11-12
+3. 13 xdist-mode failures to investigate (pre-existing parallel-safety issues)
+4. Thread-safety audit for API clients used in 12-worker ThreadPoolExecutor
 
 **Pre-existing test failures:**
 - `test_causal_bridge.py::TestConfoundedGateTightening` — NOT caused by decomposition
