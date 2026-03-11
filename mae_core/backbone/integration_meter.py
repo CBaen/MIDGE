@@ -108,6 +108,8 @@ class IntegrationMeter:
         self._state_buffers: dict[str, deque] = {}
         # Subsystem-level aggregate buffers
         self._subsystem_buffers: dict[str, deque] = {}
+        # Organ phi history for organism-level measurement
+        self._organ_phi_history: dict[str, deque] = {}
 
         # Latest report
         self._last_report: Optional[IntegrationReport] = None
@@ -251,9 +253,6 @@ class IntegrationMeter:
                     )
 
             # For organism, we need accumulated history over multiple measurements
-            # Store organ phi values persistently
-            if not hasattr(self, "_organ_phi_history"):
-                self._organ_phi_history: dict[str, deque] = {}
             for organ_id in organ_ids:
                 if organ_id not in self._organ_phi_history:
                     self._organ_phi_history[organ_id] = deque(maxlen=self._buffer_size)

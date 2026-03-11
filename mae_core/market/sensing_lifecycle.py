@@ -82,7 +82,7 @@ def store_signals(signals: list, memory: Any) -> None:
     today = datetime.now().strftime("%Y-%m-%d")
     jsonl_path = SIGNALS_DIR / f"{today}.jsonl"
     try:
-        with open(jsonl_path, "a") as f:
+        with open(jsonl_path, "a", encoding="utf-8") as f:
             for sig in signals:
                 record = {
                     "signal_id": sig.signal_id,

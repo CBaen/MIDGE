@@ -10,14 +10,14 @@ that runs inside MIDGE's 33-layer bootstrap. Each model step, the hook:
 2. Feeds signals into convergence_alerter + tiered alerters
 3. Launches the next async fetch (on cadence, rotating through sources)
 
-Threading: One pending future at a time via ThreadPoolExecutor(1).
+Threading: 12 concurrent workers via ThreadPoolExecutor(12).
 Same pattern as ApiGateway (proven safe). No race conditions on
 convergence_alerter because collection happens in the main thread.
 
 Decomposed into seven files:
   sensing_hook.py       — this file: MarketSensingHook class (thin orchestrator)
   sensing_constants.py  — TIER_ROUTING, SOURCE_ROTATION, Thompson/domain maps
-  sensing_fetchers.py   — thin re-export hub for 31 standalone fetch functions
+  sensing_fetchers.py   — thin re-export hub for 34 standalone fetch functions
   sensing_lifecycle.py  — enrich_signal, store_signals, load_watchlist
   sensing_scheduler.py  — SensingSchedulerMixin: Thompson/round-robin scheduling
   sensing_collector.py  — SensingCollectorMixin: result collection + signal pipeline
@@ -42,7 +42,6 @@ from mae_core.market.sensing_constants import (
     _ABSENCE_SOURCE_DOMAINS,
     _DOMAIN_TO_SOURCES,
     _absence_source_to_domain,
-    _build_domain_to_sources,
 )
 from mae_core.market.sensing_lifecycle import (
     enrich_signal,
@@ -191,7 +190,7 @@ class MarketSensingHook(SensingSchedulerMixin, SensingCollectorMixin, SensingRea
         # Watchlist
         self._watchlist = watchlist or load_watchlist()
 
-        # Async fetch state — 8 concurrent workers for parallel senses
+        # Async fetch state — 12 concurrent workers for parallel senses
         self._executor = ThreadPoolExecutor(max_workers=12, thread_name_prefix="mkt-sense")
         self._pending_futures: Dict[str, Future] = {}  # source_name -> future
         self._fetch_queue = deque(SOURCE_ROTATION)

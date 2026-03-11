@@ -9,10 +9,6 @@ from __future__ import annotations
 import logging
 import random
 import time
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    pass  # Avoid circular imports
 
 logger = logging.getLogger("midge.market.sensing")
 
@@ -49,9 +45,6 @@ class SensingSchedulerMixin:
                 del self._priority_requests[ticker]
         except Exception:
             logger.debug("Priority request cleanup failed", exc_info=True)
-
-        # Collect any completed futures first
-        self._collect_results()
 
         # Fill available slots (8 max concurrent)
         slots = 8 - len(self._pending_futures)

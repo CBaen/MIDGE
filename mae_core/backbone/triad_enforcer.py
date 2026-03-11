@@ -34,7 +34,7 @@ from __future__ import annotations
 import logging
 import threading
 import time
-from collections import defaultdict
+from collections import defaultdict, deque
 from typing import Any, Callable, Optional
 
 from mae_core.backbone.triad_enforcer_models import (  # noqa: F401
@@ -78,7 +78,7 @@ class TriadEnforcer:
         self._strict = strict_mode  # If True, reject registration of non-compliant processes
 
         self._processes: dict[str, ProcessTriad] = {}
-        self._violations: list[dict[str, Any]] = []
+        self._violations: deque[dict[str, Any]] = deque(maxlen=1000)
         self._lock = threading.RLock()
 
         logger.info("TriadEnforcer initialized (strict=%s)", strict_mode)
