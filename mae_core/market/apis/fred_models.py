@@ -96,6 +96,16 @@ def _determine_direction(series_id: str, value: float) -> str:
             return "bullish"   # Weak dollar = bullish commodities, EM, risk
         return "neutral"
 
+    elif series_id == "DBDI":
+        # Baltic Dry Index: shipping demand proxy for global trade
+        # Rising BDI = demand expanding = bullish for commodities/industrials
+        # Range: ~400 (trough) to ~11,000 (2008 peak). Modern range ~1000-3000.
+        if value > 2000:
+            return "bullish"
+        elif value < 800:
+            return "bearish"
+        return "neutral"
+
     elif series_id == "UNRATE":
         # Unemployment: high = economic weakness = bearish
         # Low = tight labor market = bullish

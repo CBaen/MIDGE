@@ -358,7 +358,7 @@ class FREDClient:
         driver of USD/EUR, USD/JPY, USD/GBP movements. Rising 2Y = stronger
         dollar = bearish for gold, EM, commodities.
         """
-        forex_series = ["DGS2", "DGS10", "T10Y3M", "DTWEXBGS"]
+        forex_series = ["DGS2", "DGS10", "T10Y3M", "DTWEXBGS", "DBDI"]
         results = []
         for series_id in forex_series:
             indicator = self.get_series(series_id)
