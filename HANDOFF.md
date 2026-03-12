@@ -48,6 +48,22 @@
   - Env vars needed: `KALSHI_API_KEY_ID`, `KALSHI_PRIVATE_KEY_PATH`
 - Stale adapter count assertions fixed (38→39 for Binance adapter from previous session)
 
+**Session 3 (2026-03-11):**
+- Kalshi sensing pipeline WIRED — full integration into rotation system:
+  - `sensing_constants.py`: TIER_ROUTING (strategic), SOURCE_ROTATION, _ROTATION_TO_THOMPSON, _ABSENCE_SOURCE_DOMAINS (prediction_market)
+  - `fetchers_crypto.py`: `fetch_kalshi_movers()` function
+  - `sensing_reactive.py`: dispatch branch for "kalshi_market"
+  - `sensing_hook.py`: `kalshi_client` constructor param
+  - `market_systems.py`: client instantiation in wave2_3 loop + trust table (0.70)
+  - `market_hooks_sensing_setup.py`: pass client to MarketSensingHook
+  - Re-export chain: wave2_3_technical.py → wave2_3.py → signal_adapters/__init__.py → signal.py
+  - 36 rotation slots, 37 data sources, 13 domains, 40 adapters
+- Kalshi client updated: supports both file-path (`KALSHI_PRIVATE_KEY_PATH`) and inline env var (`KALSHI_RSA_PRIVATE_KEY`) for RSA key. Also reads `KALSHI_API_KEY` (existing env var name).
+- RSA private key extracted from .env multi-line format to `kalshi_private_key.pem` (gitignored)
+- `*.pem` added to `.gitignore`
+- Adapter count tests updated 39→40, rotation count tests updated 35→36
+- 149 wiring+adapter+client tests pass, 204 total tests across all touched suites
+
 **What's left:**
 1. Wave 2 (test file splits) not started — see `DECOMPOSITION-PLAN.md` Teams 11-12
 2. 13 xdist-mode failures to investigate (pre-existing parallel-safety issues)
