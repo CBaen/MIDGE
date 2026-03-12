@@ -17,7 +17,7 @@ import math
 import os
 import tempfile
 from collections import defaultdict
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import List
 from unittest.mock import MagicMock, patch

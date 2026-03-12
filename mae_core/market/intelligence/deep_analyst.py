@@ -427,8 +427,7 @@ class DeepAnalyst:
             return 0.0
         weight_sum = 0.0
         for r in recs:
-            ts = r.timestamp.replace(tzinfo=timezone.utc) if r.timestamp.tzinfo is None else r.timestamp
-            age_days = max(0.0, (today - ts).total_seconds() / 86400.0)
+            age_days = max(0.0, (today - _ensure_utc(r.timestamp)).total_seconds() / 86400.0)
             decay = math.exp(-age_days * math.log(2) / _DECAY_HALF_LIFE)
             weight_sum += r.strength * decay
         # Normalize: 20+ weighted units = score of 1.0
