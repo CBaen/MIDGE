@@ -290,6 +290,28 @@ def _run_slow_cadence_ops(ctx: SimpleNamespace, step: int, _shm, _timer) -> None
                             _ca.set_lag_findings(findings)
                         except Exception:
                             logger.debug("set_lag_findings failed", exc_info=True)
+                    # Auto-discover WorldModel edges from strong lag correlations
+                    _wm = getattr(ctx, "world_model", None)
+                    if _wm is not None:
+                        _lag_added = 0
+                        for f in findings:
+                            if abs(f.correlation) >= 0.6:
+                                try:
+                                    _wm.add_discovered_edge(
+                                        cause=f.source_a,
+                                        effect=f.source_b,
+                                        strength=abs(f.correlation),
+                                        lag_days=float(f.lag_days),
+                                        evidence="lag_correlation",
+                                    )
+                                    _lag_added += 1
+                                except Exception:
+                                    pass
+                        if _lag_added:
+                            logger.info(
+                                "WorldModel: auto-discovered %d edges from lag correlations",
+                                _lag_added,
+                            )
             except Exception:
                 logger.debug("Lag correlation step failed", exc_info=True)
 
