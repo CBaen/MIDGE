@@ -39,6 +39,21 @@ class PriceData:
     low: float = 0.0
     volume: int = 0
     change_pct: float = 0.0
+    # Extended fundamental fields from yfinance ticker.info (80+ fields available)
+    # These are populated by _fetch_yfinance() and get_multiple_prices() when
+    # info dict is available. All Optional — not present for Alpha Vantage results.
+    short_ratio: Optional[float] = None           # Short interest / avg daily volume
+    held_pct_insiders: Optional[float] = None     # Insider ownership fraction (0-1)
+    held_pct_institutions: Optional[float] = None # Institutional ownership fraction (0-1)
+    beta: Optional[float] = None                  # 5-year monthly beta vs S&P 500
+    forward_pe: Optional[float] = None            # Forward price-to-earnings ratio
+    sector: Optional[str] = None                  # e.g. "Technology", "Healthcare"
+    industry: Optional[str] = None                # e.g. "Semiconductors"
+    fifty_two_week_high: Optional[float] = None   # 52-week high price
+    fifty_two_week_low: Optional[float] = None    # 52-week low price
+    shares_short: Optional[int] = None            # Current short interest (shares)
+    target_mean_price: Optional[float] = None     # Analyst consensus target price
+    recommendation_mean: Optional[float] = None   # Analyst rating (1=Strong Buy, 5=Sell)
 
 
 class PriceFetcher:
