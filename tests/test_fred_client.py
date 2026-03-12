@@ -1,9 +1,10 @@
 """Tests for FRED client, yield additions, and FRED signal adapters."""
 
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from mae_core.market.apis.fred_client import FREDClient, MacroIndicator, _determine_direction
+from mae_core.market.apis.fred_models import DELTA_SERIES, _determine_direction_from_delta
 from mae_core.market.signal_adapters.market_data import from_macro_indicator, from_fred_yield
 from mae_core.market.sensing_fetchers import fetch_fred, fetch_fred_yields
 
@@ -41,10 +42,23 @@ class TestDirectionLogic:
     def test_vix_mid_is_neutral(self):
         assert _determine_direction("VIXCLS", 20) == "neutral"
 
-    # DFF (federal funds rate) — always neutral per regime-context design
-    def test_dff_always_neutral(self):
-        assert _determine_direction("DFF", 0.0) == "neutral"
+    # DFF (federal funds rate) — delta-based: rising = bearish (tighter conditions)
+    def test_dff_without_delta_is_neutral(self):
+        # No prior value available → neutral (cannot determine direction from level alone)
         assert _determine_direction("DFF", 5.5) == "neutral"
+        assert _determine_direction("DFF", 0.0) == "neutral"
+
+    def test_dff_rising_is_bearish(self):
+        # Fed hikes by 25 bps = tighter conditions = bearish
+        assert _determine_direction("DFF", 5.5, change_pct=4.76) == "bearish"
+
+    def test_dff_falling_is_bullish(self):
+        # Fed cuts = loosening conditions = bullish
+        assert _determine_direction("DFF", 4.75, change_pct=-13.64) == "bullish"
+
+    def test_dff_flat_is_neutral(self):
+        # Change below neutral band (0.10%) = neutral
+        assert _determine_direction("DFF", 5.33, change_pct=0.05) == "neutral"
 
     # UNRATE (unemployment)
     def test_unrate_high_is_bearish(self):

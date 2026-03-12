@@ -313,14 +313,22 @@ class MacroIndicator:
 
     Macro signals decay slowly (~70 day half-life via decay_rate=0.01)
     because economic regimes persist for months, not days.
+
+    For level-based series (those in DELTA_SERIES), prior_value and
+    change_pct are populated from the second observation fetched by
+    get_series().  direction is derived from change_pct rather than the
+    raw level in those cases.
     """
 
     series_id: str          # e.g. "T10Y2Y"
     series_name: str        # e.g. "10Y-2Y Treasury Spread (Yield Curve)"
-    value: float            # Numeric observation value
+    value: float            # Numeric observation value (current)
     date: str               # YYYY-MM-DD of the observation
     signal_type: str        # "yield_curve", "credit_spread", "volatility", "rates", "employment", "inflation"
     direction: str          # "bullish", "bearish", or "neutral"
     signal_source: str = "fred_macro"
     decay_rate: float = 0.01    # Slow decay — macro regimes persist ~70 days
     confidence: float = 0.70    # Government data is reliable but lags reality
+    # Delta fields — populated for DELTA_SERIES only
+    prior_value: Optional[float] = None    # Previous observation value
+    change_pct: Optional[float] = None     # ((value - prior_value) / prior_value) * 100

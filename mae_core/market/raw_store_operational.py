@@ -507,6 +507,136 @@ class RawStoreOperationalMixin:
         ]
         return [dict(zip(keys, r)) for r in rows]
 
+    # --- USASpending.gov contract awards ---
+
+    def store_usaspending_contracts(self, contracts: List[Any]) -> int:
+        """Store USASpending.gov government contract award records.
+
+        Args:
+            contracts: List of GovernmentContract dataclass instances or dicts.
+
+        Returns:
+            Number of rows upserted.
+        """
+        if not contracts:
+            return 0
+
+        conn = self._get_conn("contracts")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS usaspending_contracts (
+                award_id TEXT PRIMARY KEY,
+                recipient_name TEXT,
+                recipient_duns TEXT,
+                recipient_location TEXT,
+                award_amount REAL,
+                award_date TEXT,
+                award_type TEXT,
+                description TEXT,
+                naics_code TEXT,
+                naics_description TEXT,
+                awarding_agency TEXT,
+                awarding_sub_agency TEXT,
+                funding_agency TEXT,
+                start_date TEXT,
+                end_date TEXT,
+                ingested_at TEXT
+            )
+        """)
+
+        now = datetime.now(timezone.utc).isoformat()
+        data = []
+        for c in contracts:
+            if hasattr(c, "award_id"):
+                data.append((
+                    getattr(c, "award_id", "") or "",
+                    getattr(c, "recipient_name", "")[:500],
+                    getattr(c, "recipient_duns", ""),
+                    getattr(c, "recipient_location", ""),
+                    float(getattr(c, "award_amount", 0.0)),
+                    getattr(c, "award_date", ""),
+                    getattr(c, "award_type", ""),
+                    getattr(c, "description", "")[:1000],
+                    getattr(c, "naics_code", "") or "",
+                    getattr(c, "naics_description", "") or "",
+                    getattr(c, "awarding_agency", "") or "",
+                    getattr(c, "awarding_sub_agency", "") or "",
+                    getattr(c, "funding_agency", "") or "",
+                    getattr(c, "start_date", ""),
+                    getattr(c, "end_date", ""),
+                    now,
+                ))
+            elif isinstance(c, dict):
+                data.append((
+                    c.get("award_id", "") or "",
+                    str(c.get("recipient_name", ""))[:500],
+                    c.get("recipient_duns", ""),
+                    c.get("recipient_location", ""),
+                    float(c.get("award_amount", 0.0)),
+                    c.get("award_date", ""),
+                    c.get("award_type", ""),
+                    str(c.get("description", ""))[:1000],
+                    c.get("naics_code", "") or "",
+                    c.get("naics_description", "") or "",
+                    c.get("awarding_agency", "") or "",
+                    c.get("awarding_sub_agency", "") or "",
+                    c.get("funding_agency", "") or "",
+                    c.get("start_date", ""),
+                    c.get("end_date", ""),
+                    now,
+                ))
+
+        if data:
+            conn.executemany(
+                "INSERT OR REPLACE INTO usaspending_contracts "
+                "(award_id, recipient_name, recipient_duns, recipient_location, "
+                "award_amount, award_date, award_type, description, naics_code, "
+                "naics_description, awarding_agency, awarding_sub_agency, "
+                "funding_agency, start_date, end_date, ingested_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                data,
+            )
+            conn.commit()
+
+        logger.debug("RawStore: stored %d USASpending contracts", len(data))
+        return len(data)
+
+    def get_usaspending_contracts(self, lookback_days: int = 30) -> List[dict]:
+        """Retrieve USASpending contracts awarded within the last N days.
+
+        Args:
+            lookback_days: How many days of history to return (default 30).
+
+        Returns:
+            List of dicts with all contract fields, sorted newest-first by
+            award_date. Empty list if table doesn't exist or no data.
+        """
+        try:
+            conn = self._get_conn("contracts")
+            cursor = conn.execute(
+                """
+                SELECT award_id, recipient_name, recipient_duns, recipient_location,
+                       award_amount, award_date, award_type, description, naics_code,
+                       naics_description, awarding_agency, awarding_sub_agency,
+                       funding_agency, start_date, end_date, ingested_at
+                FROM usaspending_contracts
+                WHERE award_date >= date('now', ?)
+                ORDER BY award_date DESC
+                """,
+                (f"-{lookback_days} days",),
+            )
+            rows = cursor.fetchall()
+        except Exception as exc:
+            logger.debug("RawStore: get_usaspending_contracts failed: %s", exc)
+            return []
+
+        keys = [
+            "award_id", "recipient_name", "recipient_duns", "recipient_location",
+            "award_amount", "award_date", "award_type", "description", "naics_code",
+            "naics_description", "awarding_agency", "awarding_sub_agency",
+            "funding_agency", "start_date", "end_date", "ingested_at",
+        ]
+        return [dict(zip(keys, r)) for r in rows]
+
     # --- Binance Futures Funding Rates ---
 
     def store_binance_funding(self, symbol: str, raw_response: List[Any]) -> int:

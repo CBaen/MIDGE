@@ -118,7 +118,7 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         ("sec_edgar_client", "mae_core.market.apis.sec_edgar.client", "SECEdgarClient", {"provider": provider, "raw_store": raw_store}),
         ("house_stock_watcher", "mae_core.market.apis.house_stock_watcher", "HouseStockWatcherClient", {"provider": provider, "raw_store": raw_store}),
         ("job_tracker", "mae_core.market.apis.job_tracker", "JobTracker", {"provider": provider, "raw_store": raw_store}),
-        ("usa_spending_client", "mae_core.market.apis.usa_spending", "USASpendingClient", {"provider": provider}),
+        ("usa_spending_client", "mae_core.market.apis.usa_spending", "USASpendingClient", {"provider": provider, "raw_store": raw_store}),
         ("sam_gov_client", "mae_core.market.apis.sam_gov", "SAMGovClient", {"provider": provider, "raw_store": raw_store}),
     ]:
         try:

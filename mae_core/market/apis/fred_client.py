@@ -27,6 +27,7 @@ import requests
 
 from mae_core.market.apis.fred_models import (
     FRED_SERIES,
+    DELTA_SERIES,
     MacroIndicator,
     _determine_direction,
 )
@@ -158,9 +159,15 @@ class FREDClient:
         repeated calls within a session (e.g. get_macro_snapshot calling
         multiple series in sequence).
 
+        For level-based series (those in DELTA_SERIES), always fetches 2
+        observations regardless of the limit argument, so that a
+        month-over-month change can be computed and a directional signal
+        produced.  The raw_store receives all fetched observations.
+
         Args:
             series_id: FRED series ID (e.g. "T10Y2Y", "VIXCLS")
-            limit: Number of observations to fetch (1 = latest only)
+            limit: Number of observations to fetch (1 = latest only).
+                   Automatically raised to 2 for DELTA_SERIES.
 
         Returns:
             MacroIndicator for the most recent observation, or None on failure
@@ -172,6 +179,9 @@ class FREDClient:
                 logger.debug("FRED cache hit for %s", series_id)
                 return indicator
 
+        # Delta series need two observations to compute month-over-month change
+        effective_limit = max(limit, 2) if series_id in DELTA_SERIES else limit
+
         self._rate_limit()
 
         data = self._request(
@@ -179,7 +189,7 @@ class FREDClient:
             params={
                 "series_id": series_id,
                 "sort_order": "desc",
-                "limit": limit,
+                "limit": effective_limit,
             },
         )
 
@@ -221,10 +231,27 @@ class FREDClient:
             logger.warning("FRED non-numeric value for %s: %r", series_id, raw_value)
             return None
 
+        # --- Compute delta for level-based series ---
+        prior_value: Optional[float] = None
+        change_pct: Optional[float] = None
+
+        if series_id in DELTA_SERIES and len(observations) >= 2:
+            # Find the first valid prior observation (skip missing-value markers)
+            for prior_obs in observations[1:]:
+                prior_raw = prior_obs.get("value", "")
+                if prior_raw not in (".", ""):
+                    try:
+                        prior_value = float(prior_raw)
+                        if prior_value != 0:
+                            change_pct = (value - prior_value) / abs(prior_value) * 100.0
+                        break
+                    except ValueError:
+                        pass
+
         series_name, signal_type = FRED_SERIES.get(
             series_id, (series_id, "macro")
         )
-        direction = _determine_direction(series_id, value)
+        direction = _determine_direction(series_id, value, change_pct=change_pct)
 
         indicator = MacroIndicator(
             series_id=series_id,
@@ -233,12 +260,15 @@ class FREDClient:
             date=obs.get("date", ""),
             signal_type=signal_type,
             direction=direction,
+            prior_value=prior_value,
+            change_pct=change_pct,
         )
 
         self._cache[series_id] = (indicator, time.time())
         logger.debug(
-            "FRED %s = %.4f on %s [%s]",
-            series_id, value, indicator.date, direction
+            "FRED %s = %.4f on %s [%s]%s",
+            series_id, value, indicator.date, direction,
+            f" (chg={change_pct:+.3f}%)" if change_pct is not None else "",
         )
         return indicator
 

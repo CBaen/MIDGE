@@ -81,8 +81,9 @@ class USASpendingClient:
     API documentation: https://api.usaspending.gov/
     """
 
-    def __init__(self, provider=None):
+    def __init__(self, provider=None, raw_store=None):
         self._provider = provider
+        self._raw_store = raw_store
         self.session = requests.Session()
         self.session.headers.update({
             "Content-Type": "application/json"
@@ -95,6 +96,14 @@ class USASpendingClient:
         if elapsed < REQUEST_DELAY:
             time.sleep(REQUEST_DELAY - elapsed)
         self._last_request_time = time.time()
+
+    def _store_contracts(self, contracts: list) -> None:
+        """Persist contracts to raw_store if available."""
+        if self._raw_store is not None and contracts:
+            try:
+                self._raw_store.store_usaspending_contracts(contracts)
+            except Exception:
+                pass
 
     def _post(self, endpoint: str, data: dict) -> Optional[dict]:
         """Make rate-limited POST request."""
@@ -240,6 +249,7 @@ class USASpendingClient:
                 logger.warning(f"Error parsing contract: {e}")
                 continue
 
+        self._store_contracts(contracts)
         return contracts
 
     def get_recent_large_contracts(self,

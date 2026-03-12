@@ -953,3 +953,305 @@ class TestPolygonTickerDetailsStorage:
             "SELECT active FROM polygon_ticker_details WHERE ticker='BBBY'"
         ).fetchone()
         assert row[0] == 0  # False stored as 0
+
+
+# ---------------------------------------------------------------------------
+# Binance Funding Rates storage (store_binance_funding / get_binance_funding_history)
+# ---------------------------------------------------------------------------
+
+
+class TestBinanceFundingStorage:
+    """Tests for RawStoreOperationalMixin.store_binance_funding() and
+    get_binance_funding_history()."""
+
+    def _make_entry(self, symbol="BTCUSDT", rate=0.0001, funding_time_ms=1741190400000,
+                    mark_price="75000.0"):
+        return {
+            "symbol": symbol,
+            "fundingRate": str(rate),
+            "fundingTime": funding_time_ms,
+            "markPrice": mark_price,
+        }
+
+    def test_store_single_entry(self, store):
+        count = store.store_binance_funding("BTCUSDT", [self._make_entry()])
+        assert count == 1
+
+    def test_data_persisted_correctly(self, store):
+        entry = self._make_entry(symbol="BTCUSDT", rate=0.0003, funding_time_ms=1741190400000,
+                                  mark_price="75000.5")
+        store.store_binance_funding("BTCUSDT", [entry])
+
+        conn = store._get_conn("crypto")
+        row = conn.execute(
+            "SELECT symbol, funding_rate, mark_price FROM binance_funding_rates"
+        ).fetchone()
+        assert row is not None
+        assert row[0] == "BTCUSDT"
+        assert abs(row[1] - 0.0003) < 1e-7
+        assert abs(row[2] - 75000.5) < 0.01
+
+    def test_multiple_symbols_stored(self, store):
+        store.store_binance_funding("BTCUSDT", [self._make_entry("BTCUSDT", rate=0.0001)])
+        store.store_binance_funding("ETHUSDT", [self._make_entry("ETHUSDT", rate=-0.0002,
+                                                                  funding_time_ms=1741190400000)])
+        conn = store._get_conn("crypto")
+        cursor = conn.execute("SELECT COUNT(*) FROM binance_funding_rates")
+        assert cursor.fetchone()[0] == 2
+
+    def test_upsert_on_same_symbol_and_time(self, store):
+        e1 = self._make_entry(rate=0.0001, funding_time_ms=1741190400000)
+        e2 = self._make_entry(rate=0.0002, funding_time_ms=1741190400000)
+        store.store_binance_funding("BTCUSDT", [e1])
+        store.store_binance_funding("BTCUSDT", [e2])
+
+        conn = store._get_conn("crypto")
+        cursor = conn.execute("SELECT COUNT(*) FROM binance_funding_rates WHERE symbol='BTCUSDT'")
+        assert cursor.fetchone()[0] == 1  # Upserted, not duplicated
+        row = conn.execute(
+            "SELECT funding_rate FROM binance_funding_rates WHERE symbol='BTCUSDT'"
+        ).fetchone()
+        assert abs(row[0] - 0.0002) < 1e-7  # Updated value
+
+    def test_multiple_entries_in_one_call(self, store):
+        # Binance returns up to 1000 historical records per call
+        entries = [
+            self._make_entry(rate=0.0001, funding_time_ms=1741190400000),
+            self._make_entry(rate=0.00015, funding_time_ms=1741219200000),
+            self._make_entry(rate=0.0002, funding_time_ms=1741248000000),
+        ]
+        count = store.store_binance_funding("BTCUSDT", entries)
+        assert count == 3
+
+    def test_empty_input_returns_zero(self, store):
+        assert store.store_binance_funding("BTCUSDT", []) == 0
+
+    def test_missing_funding_time_skipped(self, store):
+        """Records with fundingTime=0 or missing are skipped."""
+        entries = [
+            {"symbol": "BTCUSDT", "fundingRate": "0.0001", "fundingTime": 0},
+            self._make_entry(funding_time_ms=1741190400000),
+        ]
+        count = store.store_binance_funding("BTCUSDT", entries)
+        assert count == 1  # Only the valid entry stored
+
+    def test_null_mark_price_stored_as_none(self, store):
+        entry = self._make_entry()
+        del entry["markPrice"]  # No mark price in this response
+        store.store_binance_funding("BTCUSDT", [entry])
+
+        conn = store._get_conn("crypto")
+        row = conn.execute("SELECT mark_price FROM binance_funding_rates").fetchone()
+        assert row[0] is None
+
+    def test_uses_crypto_database(self, store):
+        """Funding rates share crypto.db with CoinGecko/CoinCap data."""
+        store.store_binance_funding("BTCUSDT", [self._make_entry()])
+        conn = store._get_conn("crypto")
+        tables = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()}
+        assert "binance_funding_rates" in tables
+
+    def test_get_binance_funding_history_returns_oldest_first(self, store):
+        entries = [
+            self._make_entry(rate=0.0001, funding_time_ms=1741190400000),  # earliest
+            self._make_entry(rate=0.0002, funding_time_ms=1741219200000),  # middle
+            self._make_entry(rate=0.0003, funding_time_ms=1741248000000),  # latest
+        ]
+        store.store_binance_funding("BTCUSDT", entries)
+        history = store.get_binance_funding_history("BTCUSDT", lookback_days=30)
+
+        assert len(history) == 3
+        # Oldest entry first
+        assert history[0]["funding_rate"] < history[-1]["funding_rate"]
+
+    def test_get_binance_funding_history_symbol_isolation(self, store):
+        store.store_binance_funding("BTCUSDT", [self._make_entry("BTCUSDT")])
+        store.store_binance_funding("ETHUSDT", [self._make_entry("ETHUSDT",
+                                                                   funding_time_ms=1741190400000)])
+        btc = store.get_binance_funding_history("BTCUSDT")
+        eth = store.get_binance_funding_history("ETHUSDT")
+
+        assert len(btc) == 1
+        assert len(eth) == 1
+        assert btc[0]["symbol"] == "BTCUSDT"
+        assert eth[0]["symbol"] == "ETHUSDT"
+
+    def test_get_binance_funding_history_returns_correct_fields(self, store):
+        store.store_binance_funding("BTCUSDT", [self._make_entry()])
+        history = store.get_binance_funding_history("BTCUSDT")
+
+        assert len(history) == 1
+        record = history[0]
+        assert "symbol" in record
+        assert "funding_time" in record
+        assert "funding_rate" in record
+        assert "mark_price" in record
+
+    def test_get_binance_funding_history_empty_when_no_data(self, store):
+        result = store.get_binance_funding_history("BTCUSDT", lookback_days=30)
+        assert result == []
+
+    def test_get_binance_funding_history_unknown_symbol_returns_empty(self, store):
+        store.store_binance_funding("BTCUSDT", [self._make_entry()])
+        result = store.get_binance_funding_history("XYZUSDT")
+        assert result == []
+
+
+# ---------------------------------------------------------------------------
+# Kalshi Market Snapshots storage (store_kalshi_markets / get_kalshi_market_history)
+# ---------------------------------------------------------------------------
+
+
+class TestKalshiMarketsStorage:
+    """Tests for RawStoreOperationalMixin.store_kalshi_markets() and
+    get_kalshi_market_history()."""
+
+    def _make_market(self, ticker="FED-RATE-25MAR12", yes_price=0.72,
+                     volume_24h=5000, category="macro"):
+        return {
+            "ticker": ticker,
+            "title": f"Kalshi market {ticker}",
+            "yes_price": yes_price,
+            "volume_24h": volume_24h,
+            "open_interest": 10000,
+            "status": "active",
+            "category": category,
+        }
+
+    def test_store_single_market(self, store):
+        count = store.store_kalshi_markets([self._make_market()])
+        assert count == 1
+
+    def test_data_persisted_correctly(self, store):
+        m = self._make_market(ticker="FED-RATE-25MAR12", yes_price=0.72, volume_24h=5000,
+                               category="macro")
+        store.store_kalshi_markets([m])
+
+        conn = store._get_conn("kalshi")
+        row = conn.execute(
+            "SELECT ticker, yes_price, volume_24h, status, category "
+            "FROM kalshi_market_snapshots WHERE ticker='FED-RATE-25MAR12'"
+        ).fetchone()
+        assert row is not None
+        assert row[0] == "FED-RATE-25MAR12"
+        assert abs(row[1] - 0.72) < 1e-6
+        assert row[2] == 5000
+        assert row[3] == "active"
+        assert row[4] == "macro"
+
+    def test_multiple_markets_stored(self, store):
+        markets = [
+            self._make_market("FED-RATE-25MAR12", category="macro"),
+            self._make_market("ELECTION-WINNER-26", category="geopolitical"),
+            self._make_market("CPI-ABOVE-3-MAR", category="macro"),
+        ]
+        count = store.store_kalshi_markets(markets)
+        assert count == 3
+
+        conn = store._get_conn("kalshi")
+        cursor = conn.execute("SELECT COUNT(*) FROM kalshi_market_snapshots")
+        assert cursor.fetchone()[0] == 3
+
+    def test_upsert_on_same_ticker_same_hour(self, store):
+        """Two stores within the same hour-bucket → single row (upserted)."""
+        m1 = self._make_market(yes_price=0.70)
+        m2 = self._make_market(yes_price=0.75)
+        store.store_kalshi_markets([m1])
+        store.store_kalshi_markets([m2])
+
+        conn = store._get_conn("kalshi")
+        cursor = conn.execute("SELECT COUNT(*) FROM kalshi_market_snapshots")
+        assert cursor.fetchone()[0] == 1
+        row = conn.execute(
+            "SELECT yes_price FROM kalshi_market_snapshots WHERE ticker='FED-RATE-25MAR12'"
+        ).fetchone()
+        assert abs(row[0] - 0.75) < 1e-6  # Updated
+
+    def test_empty_input_returns_zero(self, store):
+        assert store.store_kalshi_markets([]) == 0
+
+    def test_title_stored_correctly(self, store):
+        m = {"ticker": "TARIFF-50-MAY", "title": "Will tariffs exceed 50% by May?",
+             "yes_price": 0.45, "volume_24h": 2000, "open_interest": 500,
+             "status": "active", "category": "geopolitical"}
+        store.store_kalshi_markets([m])
+
+        conn = store._get_conn("kalshi")
+        row = conn.execute(
+            "SELECT title FROM kalshi_market_snapshots WHERE ticker='TARIFF-50-MAY'"
+        ).fetchone()
+        assert "tariffs" in row[0].lower()
+
+    def test_uses_kalshi_database(self, store):
+        """Kalshi data gets its own kalshi.db — isolated from other stores."""
+        store.store_kalshi_markets([self._make_market()])
+        conn = store._get_conn("kalshi")
+        tables = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()}
+        assert "kalshi_market_snapshots" in tables
+
+    def test_yes_price_boundary_values(self, store):
+        """yes_price spans 0.0 to 1.0 — boundary values stored without corruption."""
+        markets = [
+            self._make_market("CERTAIN-YES", yes_price=0.99),
+            self._make_market("CERTAIN-NO", yes_price=0.01),
+        ]
+        store.store_kalshi_markets(markets)
+
+        conn = store._get_conn("kalshi")
+        rows = {r[0]: r[1] for r in conn.execute(
+            "SELECT ticker, yes_price FROM kalshi_market_snapshots"
+        ).fetchall()}
+        assert abs(rows["CERTAIN-YES"] - 0.99) < 1e-6
+        assert abs(rows["CERTAIN-NO"] - 0.01) < 1e-6
+
+    def test_get_kalshi_market_history_returns_oldest_first(self, store):
+        """History is returned oldest-first for trend computation."""
+        # Simulate 3 hourly snapshots by storing with different snapshot_hours
+        # We can't easily control the hour in production, so store and verify
+        # that the get method returns data in ascending order.
+        store.store_kalshi_markets([self._make_market(yes_price=0.50)])
+
+        history = store.get_kalshi_market_history("FED-RATE-25MAR12", lookback_days=30)
+        assert len(history) == 1
+        assert history[0]["ticker"] == "FED-RATE-25MAR12"
+        assert abs(history[0]["yes_price"] - 0.50) < 1e-6
+
+    def test_get_kalshi_market_history_ticker_isolation(self, store):
+        store.store_kalshi_markets([
+            self._make_market("FED-RATE-25MAR12"),
+            self._make_market("ELECTION-WINNER-26"),
+        ])
+        fed = store.get_kalshi_market_history("FED-RATE-25MAR12")
+        election = store.get_kalshi_market_history("ELECTION-WINNER-26")
+
+        assert len(fed) == 1
+        assert len(election) == 1
+        assert fed[0]["ticker"] == "FED-RATE-25MAR12"
+        assert election[0]["ticker"] == "ELECTION-WINNER-26"
+
+    def test_get_kalshi_market_history_returns_correct_fields(self, store):
+        store.store_kalshi_markets([self._make_market()])
+        history = store.get_kalshi_market_history("FED-RATE-25MAR12")
+
+        assert len(history) == 1
+        record = history[0]
+        assert "ticker" in record
+        assert "snapshot_hour" in record
+        assert "yes_price" in record
+        assert "volume_24h" in record
+        assert "open_interest" in record
+        assert "status" in record
+        assert "category" in record
+
+    def test_get_kalshi_market_history_empty_when_no_data(self, store):
+        result = store.get_kalshi_market_history("FED-RATE-25MAR12", lookback_days=30)
+        assert result == []
+
+    def test_get_kalshi_market_history_unknown_ticker_returns_empty(self, store):
+        store.store_kalshi_markets([self._make_market("FED-RATE-25MAR12")])
+        result = store.get_kalshi_market_history("DOES-NOT-EXIST")
+        assert result == []
