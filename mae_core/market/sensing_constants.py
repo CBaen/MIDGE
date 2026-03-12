@@ -133,6 +133,8 @@ SOURCE_ROTATION: List[str] = [
     "fred_yields",
     # Crypto derivatives positioning (Binance perpetual futures funding rates)
     "binance_funding",
+    # Prediction markets (Kalshi — crowd probability estimates)
+    "kalshi_market",
 ]
 
 # Map rotation source names → Thompson distribution keys for guided selection.
@@ -173,6 +175,7 @@ _ROTATION_TO_THOMPSON: Dict[str, str] = {
     "usda_agriculture": "usda_agriculture",
     "fred_yields": "fred_macro",
     "binance_funding": "binance_funding",
+    "kalshi_market": "kalshi_market",
 }
 
 # Map absence source names back to convergence domains
@@ -196,6 +199,7 @@ _ABSENCE_SOURCE_DOMAINS: Dict[str, str] = {
     "usda_agriculture": "macro",
     "fred_yields": "macro",
     "binance_funding": "positioning",
+    "kalshi_market": "prediction_market",
 }
 
 

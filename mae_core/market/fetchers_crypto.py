@@ -84,6 +84,23 @@ def fetch_binance_funding(binance_funding_client: Any, converter: Callable) -> l
     return signals
 
 
+def fetch_kalshi_movers(kalshi_client: Any, converter: Callable) -> list:
+    """Fetch significant probability shifts from Kalshi prediction markets."""
+    if kalshi_client is None:
+        return []
+    signals = []
+    try:
+        movers = kalshi_client.get_market_movers()
+        for mover in movers:
+            try:
+                signals.append(converter(mover))
+            except Exception:
+                pass
+    except Exception as e:
+        logger.debug("Kalshi movers fetch failed: %s", e)
+    return signals
+
+
 def fetch_economic_calendar(calendar_client: Any, converter: Callable) -> list:
     """Fetch upcoming high-impact economic events as suppression signals."""
     if calendar_client is None:

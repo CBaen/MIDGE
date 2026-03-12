@@ -56,6 +56,7 @@ from mae_core.market.fetchers_crypto import (
     fetch_crypto_prices,
     fetch_crypto_exchange,
     fetch_binance_funding,
+    fetch_kalshi_movers,
     fetch_finra_short,
     fetch_economic_calendar,
 )
@@ -94,6 +95,7 @@ __all__ = [
     "fetch_crypto_prices",
     "fetch_crypto_exchange",
     "fetch_binance_funding",
+    "fetch_kalshi_movers",
     "fetch_finra_short",
     "fetch_economic_calendar",
 ]

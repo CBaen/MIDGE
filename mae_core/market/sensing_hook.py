@@ -127,6 +127,7 @@ class MarketSensingHook(SensingSchedulerMixin, SensingCollectorMixin, SensingRea
         yahoo_rss_client: Any = None,
         usda_client: Any = None,
         binance_funding_client: Any = None,
+        kalshi_client: Any = None,
     ):
         # API clients (all optional — graceful degradation)
         self._sec_client = sec_client

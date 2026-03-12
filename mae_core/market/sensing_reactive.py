@@ -138,6 +138,7 @@ class SensingReactiveMixin:
             fetch_eia, fetch_congress_legislation, fetch_massive_snapshot,
             fetch_social_text, fetch_yahoo_rss, fetch_usda, fetch_fred_yields,
             fetch_binance_funding,
+            fetch_kalshi_movers,
         )
         from mae_core.market.sensing_lifecycle import enrich_signal
 
@@ -219,6 +220,10 @@ class SensingReactiveMixin:
         elif source_name == "binance_funding":
             from mae_core.market.signal_adapters.wave2_3_technical import from_binance_funding
             signals = fetch_binance_funding(self._binance_funding_client, from_binance_funding)
+
+        elif source_name == "kalshi_market":
+            from mae_core.market.signal_adapters.wave2_3_technical import from_kalshi_mover
+            signals = fetch_kalshi_movers(self._kalshi_client, from_kalshi_mover)
 
         elif source_name == "openinsider":
             signals = fetch_openinsider(self._openinsider_client, from_openinsider)
