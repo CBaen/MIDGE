@@ -5,6 +5,31 @@
 
 ---
 
+## Session 4 (2026-03-12): THREAD-SAFETY — LOCKING DOWN SHARED STATE
+
+**Research Council deliberated** whether MIDGE should evolve from Mesa's synchronous step-cadence to 50+ independent wall-clock threads. Council output: `research/council-architecture-evolution/`. Tension Analyst's key insight: fix the bugs as bugs, decide migration separately.
+
+**4 shared-state systems locked:**
+1. **ConvergenceAlerter** — `threading.Lock()` → `threading.RLock()` (re-entrant: `check_convergence()` → `_prune_old_signals()`). Lock wrapping on `check_convergence()`, `get_domain_status()`, `get_statistics()`, `check_ticker_convergence()` via extract-to-locked-method pattern.
+2. **CascadeTracker** — New `threading.Lock()` (`_chains_lock`). Wraps `register_cascade()`, `check_signal()`, `expire_stale()`, `get_active_chains()`, `get_statistics()`.
+3. **OutcomeCollector** — New `threading.Lock()` (`_registered_lock`). Wraps `register_signals()`, `register_convergence_alert()`, `register_pattern_stack()`, `collect_from_archives()`, `get_statistics()`.
+4. **ThompsonSampler** — `threading.Lock()` → `threading.RLock()` (re-entrant: `update()` → `get_distribution()`). Lock wrapping on `get_distribution()`, `sample()`, `get_rankings()`, `get_uncertain_signals()`.
+
+**Pattern used:** Extract body to `_method_locked()`, thin public method wraps in `with self._lock:`. Avoids massive indentation cascades.
+
+**Test results:** 375 pass, 15 pre-existing failures (SimulatedDateTime monkeypatch gaps, signal_persistence AttributeError, docstring assertion mismatch). Zero regressions from lock changes.
+
+**Migration decision:** Phases 1-2 (producer-consumer signal bus, InhabitantScheduler migration) NOT approved — kept separate per tension report recommendation. These are architectural choices, not bug fixes.
+
+**Research artifacts:**
+- `research/council-architecture-evolution/research-brief.md`
+- `research/council-architecture-evolution/codebase-analyst-findings.md`
+- `research/council-architecture-evolution/devils-advocate-findings.md`
+- `research/council-architecture-evolution/synthesis.md`
+- `research/council-architecture-evolution/tension-report.md`
+
+---
+
 ## Session 3 (2026-03-12): THE ANALYST — MIDGE CAN THINK
 
 **The core problem:** MIDGE had 287K signals, 43 templates, 56 correlations, a World Model — but NOTHING that synthesized them into "here's what's most likely to happen." Every instance built plumbing. Nobody built the brain that reads the filing cabinets.
