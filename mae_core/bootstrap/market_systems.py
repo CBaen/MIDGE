@@ -222,6 +222,15 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         ctx.social_text_analyzer = None
         failures += 1
 
+    # --- Raw Data Analyst (cross-domain insight engine — reads SQLite stores) ---
+    try:
+        from mae_core.market.intelligence.raw_data_analyst import RawDataAnalyst
+        ctx.raw_data_analyst = RawDataAnalyst(raw_store=raw_store) if raw_store is not None else None
+    except Exception:
+        logger.debug("Market: raw_data_analyst failed to construct", exc_info=True)
+        ctx.raw_data_analyst = None
+        failures += 1
+
     try:
         from mae_core.market.intelligence.convergence_alerter import ConvergenceAlerter
         ctx.convergence_alerter = ConvergenceAlerter(

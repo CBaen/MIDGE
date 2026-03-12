@@ -214,12 +214,57 @@ def _run_octopus_dispatch(colony, step: int) -> None:  # noqa: C901
         logger.debug("Investigation dispatcher failed", exc_info=True)
 
 
+def _run_raw_analyst(ctx: SimpleNamespace, step: int) -> None:
+    """Run RawDataAnalyst every 100 steps and inject enriched signals.
+
+    RawDataAnalyst reads across all SQLite raw stores, computes cross-domain
+    insights (insider price context, FRED macro regime, pre-convergence detection,
+    funding rate squeeze), and returns MarketSignal objects that are fed directly
+    into the convergence engine via record_signal().
+    """
+    analyst = getattr(ctx, "raw_data_analyst", None)
+    if analyst is None:
+        return
+    if step % 100 != 0:
+        return
+    try:
+        enriched_signals = analyst.analyze(step)
+        if not enriched_signals:
+            return
+        alerter = getattr(ctx, "convergence_alerter", None)
+        if alerter is None:
+            return
+        for sig in enriched_signals:
+            try:
+                alerter.record_signal(
+                    signal_id=sig.signal_id,
+                    strength=sig.strength,
+                    domain=sig.domain,
+                    direction=sig.direction,
+                    confidence=sig.confidence,
+                    timestamp=sig.timestamp,
+                    metadata={**sig.metadata, "symbol": sig.symbol,
+                               "asset_class": sig.asset_class},
+                    source=sig.source,
+                )
+            except Exception:
+                logger.debug(
+                    "RawDataAnalyst: failed to record signal %s", sig.signal_id,
+                    exc_info=True,
+                )
+    except Exception:
+        logger.debug("_run_raw_analyst failed", exc_info=True)
+
+
 def _run_slow_cadence_ops(ctx: SimpleNamespace, step: int, _shm, _timer) -> None:
     """Run every-500-step analysis: lag-correlation, Granger causality, post-mortem.
 
-    Also handles every-1000-step Thompson calibration and
-    every-5000-step backtest scheduler + excavation daemon.
+    Also handles every-100-step raw data analysis, every-1000-step Thompson
+    calibration, and every-5000-step backtest scheduler + excavation daemon.
     """
+    # --- Every 100 steps: raw data cross-domain analysis ---
+    _run_raw_analyst(ctx, step)
+
     if step % 500 == 0:
         lag = getattr(ctx, "lag_correlation_analyzer", None)
         if lag is not None:

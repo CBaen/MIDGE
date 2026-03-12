@@ -3,6 +3,7 @@
 Extracted from sec_edgar/client.py. Contains:
   - _parse_form4_html: Parse Form 4 from XSLT-rendered HTML format
   - _parse_transaction: Parse a single nonDerivativeTransaction XML element
+  - _parse_derivative_transaction: Parse a single derivativeTransaction XML element (Table II)
 """
 
 from __future__ import annotations
@@ -261,4 +262,102 @@ def _parse_transaction(
 
     except Exception as e:
         logger.error(f"Error parsing transaction: {e}")
+        return None
+
+
+def _parse_derivative_transaction(
+    dtrans_elem: ET.Element,
+    is_plan_sale: bool = False,
+) -> "Optional[DerivativeTransaction]":
+    """Parse a single derivativeTransaction element from Form 4 Table II (XML).
+
+    Covers options exercises (code M), warrant conversions (code C), RSU
+    vestings, and other derivative security transactions.
+
+    Options exercises near earnings where the insider HOLDS (doesn't sell on
+    the same day via a paired disposition) are a documented bullish signal.
+    """
+    from mae_core.market.apis.sec_edgar.models import DerivativeTransaction
+
+    try:
+        # Security title (e.g. "Employee Stock Option (right to buy)")
+        title_elem = dtrans_elem.find(".//securityTitle/value")
+        security_title = title_elem.text.strip() if title_elem is not None and title_elem.text else ""
+
+        # Transaction date
+        date_elem = dtrans_elem.find(".//transactionDate/value")
+        transaction_date = date_elem.text if date_elem is not None and date_elem.text else ""
+
+        # Transaction code (M=option exercise, C=conversion, S=sale, etc.)
+        coding = dtrans_elem.find("transactionCoding")
+        trans_code = ""
+        if coding is not None:
+            code_elem = coding.find("transactionCode")
+            if code_elem is not None and code_elem.text:
+                trans_code = code_elem.text.strip()
+
+        # Transaction amounts
+        amounts = dtrans_elem.find("transactionAmounts")
+        if amounts is None:
+            return None
+
+        shares_elem = amounts.find("transactionShares/value")
+        shares = float(shares_elem.text) if shares_elem is not None and shares_elem.text else 0.0
+
+        price_elem = amounts.find("transactionPricePerShare/value")
+        price_per_share = (
+            float(price_elem.text) if price_elem is not None and price_elem.text else 0.0
+        )
+
+        acq_disp_elem = amounts.find("transactionAcquiredDisposedCode/value")
+        trans_type = acq_disp_elem.text if acq_disp_elem is not None and acq_disp_elem.text else "A"
+
+        # Exercise price (column 3B in Form 4) — the option strike price
+        exercise_elem = dtrans_elem.find(".//conversionOrExercisePrice/value")
+        exercise_price = (
+            float(exercise_elem.text) if exercise_elem is not None and exercise_elem.text else 0.0
+        )
+
+        # Expiration date (column 3C)
+        expiry_elem = dtrans_elem.find(".//expirationDate/value")
+        expiration_date = (
+            expiry_elem.text.strip() if expiry_elem is not None and expiry_elem.text else ""
+        )
+
+        # Underlying security shares (for options, the number of common shares deliverable)
+        underlying_elem = dtrans_elem.find(".//underlyingSecurityShares/value")
+        underlying_shares = (
+            float(underlying_elem.text)
+            if underlying_elem is not None and underlying_elem.text
+            else 0.0
+        )
+
+        # Shares owned after (post-transaction holdings of the derivative security)
+        post_elem = dtrans_elem.find(".//sharesOwnedFollowingTransaction/value")
+        if post_elem is None:
+            post_elem = dtrans_elem.find(".//postTransactionAmounts/sharesOwnedFollowingTransaction/value")
+        shares_owned_after = (
+            float(post_elem.text) if post_elem is not None and post_elem.text else 0.0
+        )
+
+        # Require at least a transaction code or shares to consider this valid
+        if not trans_code and shares == 0.0:
+            return None
+
+        return DerivativeTransaction(
+            security_title=security_title,
+            transaction_date=transaction_date,
+            transaction_code=trans_code,
+            transaction_type=trans_type,
+            shares=shares,
+            price_per_share=price_per_share,
+            exercise_price=exercise_price,
+            expiration_date=expiration_date,
+            underlying_shares=underlying_shares,
+            shares_owned_after=shares_owned_after,
+            is_plan_sale=is_plan_sale,
+        )
+
+    except Exception as e:
+        logger.error(f"Error parsing derivative transaction: {e}")
         return None

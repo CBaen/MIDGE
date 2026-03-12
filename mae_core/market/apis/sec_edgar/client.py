@@ -328,6 +328,51 @@ class SECEdgarClient:
                     if trade:
                         trades.append(trade)
 
+            # Parse derivative table (Table II: options, warrants, RSUs)
+            # Options exercises near earnings with hold-not-sell behavior are a signal
+            deriv_table = root.find(".//derivativeTable") or root.find("derivativeTable")
+            if deriv_table is not None:
+                deriv_transactions = []
+                for dtrans in deriv_table.findall("derivativeTransaction"):
+                    dtrade = self._parse_derivative_transaction(
+                        dtrans, is_plan_sale=is_plan_sale
+                    )
+                    if dtrade:
+                        deriv_transactions.append(dtrade)
+                # Attach derivative transactions to the first non-derivative trade,
+                # or create a synthetic InsiderTrade record to carry them if no
+                # non-derivative transactions exist in this filing.
+                if deriv_transactions:
+                    if trades:
+                        # Attach to all non-derivative trades from this filing
+                        for trade in trades:
+                            trade.derivative_transactions = deriv_transactions
+                    else:
+                        # Options-only filing — synthetic carrier record
+                        primary = deriv_transactions[0]
+                        synth = InsiderTrade(
+                            filer_name=filer_name,
+                            filer_title=filer_title,
+                            filer_relationship=", ".join(filer_relationship) or "Other",
+                            company_name=company_name,
+                            company_cik=company_cik,
+                            ticker_symbol=ticker_symbol,
+                            transaction_date=primary.transaction_date,
+                            transaction_type=primary.transaction_type,
+                            transaction_code=primary.transaction_code,
+                            shares=primary.shares,
+                            price_per_share=primary.price_per_share,
+                            total_value=primary.shares * primary.price_per_share,
+                            shares_owned_after=primary.shares_owned_after,
+                            filing_date="",
+                            accession_number=accession_number,
+                            form_type="4",
+                            is_plan_sale=is_plan_sale,
+                            footnotes=footnotes_text,
+                            derivative_transactions=deriv_transactions,
+                        )
+                        trades.append(synth)
+
             return trades
 
         except ET.ParseError as e:
@@ -350,6 +395,13 @@ class SECEdgarClient:
         Delegates to sec_edgar_parsers._parse_transaction.
         """
         return _parse_transaction_fn(trans_elem, **metadata)
+
+    def _parse_derivative_transaction(self, dtrans_elem, **kwargs) -> Optional[DerivativeTransaction]:
+        """Parse a single derivativeTransaction element from Form 4 Table II.
+
+        Delegates to sec_edgar_parsers._parse_derivative_transaction.
+        """
+        return _parse_derivative_transaction_fn(dtrans_elem, **kwargs)
 
     def parse_form8k(self, cik: str, accession_number: str, filing_date: str,
                      company_name: str, ticker_symbol: str, document_url: str = None) -> List[Form8KEvent]:
