@@ -226,8 +226,8 @@ def _wire_collective_dream(ctx: SimpleNamespace, bus: Any) -> int:
     from mae_core.market.channels import CH_CONVERGENCE
 
     def _on_convergence(channel, data):
-        agents = getattr(dream, "_agents", {})
-        for _agent_id, dreamer in list(agents.items()):
+        agents = getattr(dream, "_agents", [])
+        for dreamer in agents:
             try:
                 dreamer.expertise = min(1.0, dreamer.expertise + 0.02)
             except Exception:
