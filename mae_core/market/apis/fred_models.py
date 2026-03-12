@@ -2,13 +2,16 @@
 
 Extracted from fred_client.py. Contains:
   - FRED_SERIES: series ID -> (name, signal_type) mapping
+  - DELTA_SERIES: series IDs that require two observations for directional signal
   - MacroIndicator: dataclass for a single FRED observation
   - _determine_direction: classify a macro value as bullish/bearish/neutral
+  - _determine_direction_from_delta: classify based on month-over-month change
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Optional
 
 
 # Series definitions: id -> (human_readable_name, signal_type)
