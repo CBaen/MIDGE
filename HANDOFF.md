@@ -71,16 +71,33 @@
   2. Pattern template feedback loop unblocked — dedup key includes date (was permanently blocking per symbol+direction for 90 days).
   3. SEC EDGAR raw store: silent `except: pass` → `logger.warning` with traceback.
   4. ActiveTracker `outcome_collector` bootstrap ordering — added `set_outcome_collector()` setter, wired after OutcomeCollector exists.
-- **CRITICAL PRIORITY: Start the daemon.** MIDGE has been starved of data for 4+ days. Architecture works but she's not running. Fix, feed, run, prove — no more building until she's learning.
+
+**Session 5 (2026-03-11):**
+- **ECOSYSTEM AUDIT** — 4 parallel agents traced every pipeline end-to-end (sensing→trading, Thompson learning, archaeology→feedback, causal cascade+risk). Result: all critical pipelines connected.
+- **Thompson brain NOT empty** — initial check was wrong (bad Python comparison). 101 distributions with learned values from 17,263 historical updates + 13,065 graded outcomes. Brain has real data.
+- **2 bugs fixed:**
+  1. CascadeTracker `expire_stale()` now fires every 500 steps in `market_hooks_steps.py` (was never called — chains accumulated forever, WorldModel never learned from failures).
+  2. Session sweep bypass now respects DrawdownMonitor + SelfMonitor risk gates in `market_hooks_trades.py` (was bypassing circuit breakers).
+- **5 data gaps closed (API data maximalism):**
+  1. **Economic surprise signal** — Finnhub calendar has actual/estimate/previous values but adapter only created suppression flags. New `from_economic_surprise()` adapter extracts beat/miss magnitude as macro signals. Highest-conviction macro signal was being thrown away.
+  2. **COT derived metrics** — Week-over-week change in positions + COT Index percentile (52-week rank) computed from raw_store history. `cot_client.py` now has `_compute_derived_metrics()`. Layer6 adapter includes WoW momentum + COT Index modifiers.
+  3. **FRED expansion** — 11 → 24 series. Added: PCE inflation, gold, WTI oil, credit spreads (BAA10Y, AAA10Y), housing starts, Michigan sentiment, ADP employment, jobless claims, industrial production, copper, dollar index, auto sales.
+  4. **13F institutional filings** — `get_recent_13f_filers()` was built but never called. New `from_13f_filer_activity()` adapter wired through sensing pipeline.
+  5. **FinViz short squeeze + Polygon ticker details** — raw_store wiring for `get_high_short_float()` + new `get_ticker_details()` on MassiveClient.
+- **Watchlist expanded** — 18 → 510 tickers (full S&P 500 + 7 forex/futures + 3 crypto proxies)
+- **Converter count** — 40 → 41 adapters (from_economic_surprise added)
+- **~164 new tests** across all agent work (test_cot_enhanced, test_fred_client expansion, test_wave2_3_integration, test_finviz_client, test_massive_client, test_raw_store)
+- **Pre-flight verification**: All API keys present, data dirs exist, Qdrant running, Ollama running, 250GB free disk. Daemon-ready.
+- **MIDGE has no self-model** — Guiding Light asked "what does MIDGE even know?" She has no introspectable self-knowledge, no goal document she references. Logic is in code, not in something MIDGE can explain. Future consideration.
 
 **What's left:**
 1. **START THE DAEMON** — `python main.py --daemon --agents 12 --steps 500 --pace 2.0` — and keep it running 24/7
-2. Expand watchlist from 18 tickers to S&P 500 (500 tickers)
-3. Historical backtesting at scale (not 1 month, not 5 tickers — everything)
-4. Wave 2 (test file splits) not started — see `DECOMPOSITION-PLAN.md` Teams 11-12
-5. 13 xdist-mode failures to investigate (pre-existing parallel-safety issues)
-3. Thread-safety audit for API clients used in 12-worker ThreadPoolExecutor
-4. See `midge-queue.md` for full prioritized list
+2. Historical backtesting at scale (not 1 month, not 5 tickers — everything)
+3. Wave 2 (test file splits) not started — see `DECOMPOSITION-PLAN.md` Teams 11-12
+4. 13 xdist-mode failures to investigate (pre-existing parallel-safety issues)
+5. Thread-safety audit for API clients used in 12-worker ThreadPoolExecutor
+6. Install `river` package for full ADWIN drift detection (currently pure-Python fallback)
+7. See `midge-queue.md` for full prioritized list
 
 **Pre-existing test failures:**
 - `test_causal_bridge.py::TestConfoundedGateTightening` — NOT caused by decomposition
