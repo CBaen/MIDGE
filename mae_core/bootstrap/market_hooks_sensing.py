@@ -355,6 +355,7 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
 
     hook._correlation_tracker = getattr(ctx, "correlation_tracker", None)
     hook._absence_monitor = getattr(ctx, "absence_monitor", None)
+    hook._pattern_watcher = getattr(ctx, "pattern_watcher", None)
 
     somatic = getattr(ctx, "somatic_anticipation", None)
     if somatic is not None:

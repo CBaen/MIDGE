@@ -199,3 +199,33 @@ class SensingCollectorMixin:
         # remains as a safety net; alerter deduplication (cooldown window) prevents
         # duplicate alerts from firing on both paths.
         self._trigger_reactive_convergence(signals)
+
+        # --- Reactive PatternWatcher check ---
+        # Run pattern watcher immediately after signals arrive instead of
+        # waiting for the 10-step cadence. Builds active signal map from
+        # convergence alerter buffer (same as _run_sensing_archaeology).
+        pw = getattr(self, "_pattern_watcher", None)
+        if pw is not None and self._convergence_alerter is not None:
+            try:
+                _active: dict = {}
+                for _domain, _sigs in self._convergence_alerter.signals.items():
+                    for _sig in _sigs:
+                        _sym = getattr(_sig, "metadata", {}).get("symbol", "")
+                        _dir = getattr(_sig, "direction", "")
+                        _src = getattr(_sig, "source", "")
+                        if not _sym or not _dir or not _src:
+                            continue
+                        if _sym not in _active:
+                            _active[_sym] = {}
+                        if _dir not in _active[_sym]:
+                            _active[_sym][_dir] = set()
+                        _active[_sym][_dir].add(_src)
+                if _active:
+                    _stacks = pw.check(_active)
+                    if _stacks:
+                        logger.info(
+                            "Reactive PatternWatcher: %d stacks after [%s]",
+                            len(_stacks), source_name,
+                        )
+            except Exception:
+                logger.debug("Reactive pattern watcher check failed", exc_info=True)
