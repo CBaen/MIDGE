@@ -310,32 +310,32 @@ class ConvergenceDetectionMixin(ConvergenceTickerMixin):
 
             status = {}
             for domain, signals in self.signals.items():
-            if not signals:
-                continue
+                if not signals:
+                    continue
 
-            bullish = [s for s in signals if s.direction == "bullish"]
-            bearish = [s for s in signals if s.direction == "bearish"]
+                bullish = [s for s in signals if s.direction == "bullish"]
+                bearish = [s for s in signals if s.direction == "bearish"]
 
-            if len(bullish) > len(bearish):
-                dominant = "bullish"
-                strength = sum(s.strength for s in bullish) / len(bullish) if bullish else 0
-            elif len(bearish) > len(bullish):
-                dominant = "bearish"
-                strength = sum(s.strength for s in bearish) / len(bearish) if bearish else 0
-            else:
-                dominant = "neutral"
-                strength = 0.5
+                if len(bullish) > len(bearish):
+                    dominant = "bullish"
+                    strength = sum(s.strength for s in bullish) / len(bullish) if bullish else 0
+                elif len(bearish) > len(bullish):
+                    dominant = "bearish"
+                    strength = sum(s.strength for s in bearish) / len(bearish) if bearish else 0
+                else:
+                    dominant = "neutral"
+                    strength = 0.5
 
-            status[domain] = {
-                "direction": dominant,
-                "strength": round(strength, 3),
-                "signal_count": len(signals),
-                "bullish_count": len(bullish),
-                "bearish_count": len(bearish),
-                "category": self.domain_categories.get(domain, "unknown")
-            }
+                status[domain] = {
+                    "direction": dominant,
+                    "strength": round(strength, 3),
+                    "signal_count": len(signals),
+                    "bullish_count": len(bullish),
+                    "bearish_count": len(bearish),
+                    "category": self.domain_categories.get(domain, "unknown")
+                }
 
-        return status
+            return status
 
     def _compute_missing_domains(self, domains_seen: set) -> list:
         """Return domains with current signals that haven't fired for this direction."""
@@ -446,11 +446,12 @@ class ConvergenceDetectionMixin(ConvergenceTickerMixin):
 
     def get_statistics(self) -> dict:
         """For HolonProxy.sense() delegation."""
-        return {
-            "domain_count": len(self.signals),
-            "alert_count": len(self.alerts),
-            "recent_alerts": [a.to_dict() for a in list(self.alerts)[-3:]],
-        }
+        with self._alert_lock:
+            return {
+                "domain_count": len(self.signals),
+                "alert_count": len(self.alerts),
+                "recent_alerts": [a.to_dict() for a in list(self.alerts)[-3:]],
+            }
 
     def step(self) -> None:
         """Step hook for HolonProxy.act() delegation."""

@@ -49,6 +49,11 @@ class ConvergenceTickerMixin:
         Returns:
             List of ConvergenceAlert objects, one per ticker with sufficient convergence
         """
+        with self._alert_lock:
+            return self._check_ticker_convergence_locked(min_domains)
+
+    def _check_ticker_convergence_locked(self, min_domains: int = 2) -> List[ConvergenceAlert]:
+        """Inner per-ticker convergence — caller must hold self._alert_lock."""
         self._prune_old_signals()
 
         # Group all signals by symbol
