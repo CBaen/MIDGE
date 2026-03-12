@@ -1,5 +1,6 @@
 __pycache__/
 *.pyc
+*.pem
 nul
 
 # Phase 4 raw data files (large, generated from mae_catalogue.db)
