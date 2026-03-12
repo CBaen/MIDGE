@@ -399,9 +399,16 @@ class RawStoreOperationalMixin:
                 active INTEGER,
                 contract_type TEXT,
                 url TEXT,
+                description TEXT,
                 ingested_at TEXT
             )
         """)
+        # Migrate existing databases that predate the description column.
+        try:
+            conn.execute("ALTER TABLE sam_opportunities ADD COLUMN description TEXT DEFAULT ''")
+            conn.commit()
+        except Exception:
+            pass  # Column already exists — safe to ignore
 
         now = datetime.now(timezone.utc).isoformat()
         data = []
@@ -425,6 +432,7 @@ class RawStoreOperationalMixin:
                     int(getattr(opp, "active", True)),
                     getattr(opp, "contract_type", ""),
                     getattr(opp, "url", ""),
+                    getattr(opp, "description", "")[:1000],
                     now,
                 ))
             elif isinstance(opp, dict):
@@ -441,6 +449,7 @@ class RawStoreOperationalMixin:
                     opp.get("response_deadline", ""),
                     int(opp.get("active", True)),
                     opp.get("contract_type", ""), opp.get("url", ""),
+                    str(opp.get("description", ""))[:1000],
                     now,
                 ))
 
@@ -450,11 +459,289 @@ class RawStoreOperationalMixin:
                 "(notice_id, title, solicitation_number, department, agency, office, "
                 "naics_code, set_aside, type_of_contract, place_of_performance, "
                 "estimated_value, award_date, posted_date, response_deadline, "
-                "active, contract_type, url, ingested_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "active, contract_type, url, description, ingested_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 data,
             )
             conn.commit()
 
         logger.debug("RawStore: stored %d SAM.gov opportunities", len(data))
         return len(data)
+
+    def get_sam_opportunities(self, lookback_days: int = 30) -> List[dict]:
+        """Retrieve SAM.gov opportunities posted within the last N days.
+
+        Args:
+            lookback_days: How many days of history to return (default 30).
+
+        Returns:
+            List of dicts with all opportunity fields, sorted newest-first by
+            posted_date. Empty list if table doesn't exist or no data.
+        """
+        try:
+            conn = self._get_conn("contracts")
+            cursor = conn.execute(
+                """
+                SELECT notice_id, title, solicitation_number, department, agency,
+                       office, naics_code, set_aside, type_of_contract,
+                       place_of_performance, estimated_value, award_date,
+                       posted_date, response_deadline, active, contract_type,
+                       url, description, ingested_at
+                FROM sam_opportunities
+                WHERE posted_date >= date('now', ?)
+                ORDER BY posted_date DESC
+                """,
+                (f"-{lookback_days} days",),
+            )
+            rows = cursor.fetchall()
+        except Exception as exc:
+            logger.debug("RawStore: get_sam_opportunities failed: %s", exc)
+            return []
+
+        keys = [
+            "notice_id", "title", "solicitation_number", "department", "agency",
+            "office", "naics_code", "set_aside", "type_of_contract",
+            "place_of_performance", "estimated_value", "award_date",
+            "posted_date", "response_deadline", "active", "contract_type",
+            "url", "description", "ingested_at",
+        ]
+        return [dict(zip(keys, r)) for r in rows]
+
+    # --- Binance Futures Funding Rates ---
+
+    def store_binance_funding(self, symbol: str, raw_response: List[Any]) -> int:
+        """Store Binance perpetual futures funding rate records.
+
+        Raw response is the JSON list returned by /fapi/v1/fundingRate.
+        Each entry contains fundingRate, fundingTime, and optionally markPrice.
+
+        Args:
+            symbol: Perpetual futures symbol, e.g. "BTCUSDT".
+            raw_response: List of dicts from Binance API (limit=1 typical,
+                          but may contain multiple historical records).
+
+        Returns:
+            Number of rows upserted.
+        """
+        if not raw_response:
+            return 0
+
+        conn = self._get_conn("crypto")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS binance_funding_rates (
+                symbol TEXT,
+                funding_time TEXT,
+                funding_rate REAL,
+                mark_price REAL,
+                ingested_at TEXT,
+                PRIMARY KEY (symbol, funding_time)
+            )
+        """)
+
+        now = datetime.now(timezone.utc).isoformat()
+        data = []
+        for entry in raw_response:
+            if not isinstance(entry, dict):
+                continue
+            try:
+                funding_time_ms = int(entry.get("fundingTime", 0))
+                funding_time = datetime.fromtimestamp(
+                    funding_time_ms / 1000, tz=timezone.utc
+                ).isoformat() if funding_time_ms else ""
+                if not funding_time:
+                    continue
+                funding_rate = float(entry.get("fundingRate", 0.0))
+                mark_price_raw = entry.get("markPrice", None)
+                mark_price = float(mark_price_raw) if mark_price_raw else None
+                data.append((symbol, funding_time, funding_rate, mark_price, now))
+            except (ValueError, TypeError):
+                continue
+
+        if data:
+            conn.executemany(
+                "INSERT OR REPLACE INTO binance_funding_rates "
+                "(symbol, funding_time, funding_rate, mark_price, ingested_at) "
+                "VALUES (?, ?, ?, ?, ?)",
+                data,
+            )
+            conn.commit()
+
+        logger.debug("RawStore: stored %d Binance funding rate rows for %s", len(data), symbol)
+        return len(data)
+
+    def get_binance_funding_history(
+        self, symbol: str, lookback_days: int = 30
+    ) -> List[dict]:
+        """Retrieve recent Binance funding rate history for a symbol.
+
+        Useful for computing funding rate trend and identifying sustained
+        long/short positioning pressure.
+
+        Args:
+            symbol: Perpetual futures symbol, e.g. "BTCUSDT".
+            lookback_days: How many days of history to return (default 30).
+                           Funding settles every 8h so 30 days = ~90 records.
+
+        Returns:
+            List of dicts with keys: symbol, funding_time, funding_rate, mark_price.
+            Sorted oldest-first so callers can compute trends directly.
+            Empty list if the table doesn't exist or no data found.
+        """
+        try:
+            conn = self._get_conn("crypto")
+            # Each day has 3 funding events (every 8h); add a safety margin
+            limit = lookback_days * 3 + 10
+            cursor = conn.execute(
+                """
+                SELECT symbol, funding_time, funding_rate, mark_price
+                FROM binance_funding_rates
+                WHERE symbol = ?
+                ORDER BY funding_time DESC
+                LIMIT ?
+                """,
+                (symbol, limit),
+            )
+            rows = cursor.fetchall()
+        except Exception as exc:
+            logger.debug("RawStore: get_binance_funding_history failed for %s: %s", symbol, exc)
+            return []
+
+        return [
+            {
+                "symbol": r[0],
+                "funding_time": r[1],
+                "funding_rate": r[2],
+                "mark_price": r[3],
+            }
+            for r in reversed(rows)  # oldest-first
+        ]
+
+    # --- Kalshi Prediction Markets ---
+
+    def store_kalshi_markets(self, markets: List[Any]) -> int:
+        """Store Kalshi prediction market snapshots.
+
+        Each record is a point-in-time snapshot of a market's probability.
+        The timestamp is truncated to the hour so repeated polling within
+        the same hour produces a single upserted row per ticker.
+
+        Args:
+            markets: List of dicts (or KalshiMarket-like objects) with keys:
+                     ticker, title, yes_price, volume_24h, category.
+                     Additional fields (open_interest, status) stored if present.
+
+        Returns:
+            Number of rows upserted.
+        """
+        if not markets:
+            return 0
+
+        conn = self._get_conn("kalshi")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS kalshi_market_snapshots (
+                ticker TEXT,
+                snapshot_hour TEXT,
+                title TEXT,
+                yes_price REAL,
+                volume_24h INTEGER,
+                open_interest INTEGER,
+                status TEXT,
+                category TEXT,
+                ingested_at TEXT,
+                PRIMARY KEY (ticker, snapshot_hour)
+            )
+        """)
+
+        now = datetime.now(timezone.utc).isoformat()
+        snapshot_hour = now[:13]  # "YYYY-MM-DDTHH" — one row per ticker per hour
+        data = []
+        for m in markets:
+            if hasattr(m, "ticker"):
+                data.append((
+                    getattr(m, "ticker", ""),
+                    snapshot_hour,
+                    getattr(m, "title", ""),
+                    float(getattr(m, "yes_price", 0.0)),
+                    int(getattr(m, "volume_24h", 0)),
+                    int(getattr(m, "open_interest", 0)),
+                    getattr(m, "status", ""),
+                    getattr(m, "category", ""),
+                    now,
+                ))
+            elif isinstance(m, dict):
+                data.append((
+                    m.get("ticker", ""),
+                    snapshot_hour,
+                    m.get("title", ""),
+                    float(m.get("yes_price", 0.0)),
+                    int(m.get("volume_24h", 0)),
+                    int(m.get("open_interest", 0)),
+                    m.get("status", ""),
+                    m.get("category", ""),
+                    now,
+                ))
+
+        if data:
+            conn.executemany(
+                "INSERT OR REPLACE INTO kalshi_market_snapshots "
+                "(ticker, snapshot_hour, title, yes_price, volume_24h, "
+                "open_interest, status, category, ingested_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                data,
+            )
+            conn.commit()
+
+        logger.debug("RawStore: stored %d Kalshi market snapshots", len(data))
+        return len(data)
+
+    def get_kalshi_market_history(
+        self, ticker: str, lookback_days: int = 30
+    ) -> List[dict]:
+        """Retrieve hourly Kalshi market probability history for a ticker.
+
+        Useful for detecting probability trend, acceleration, and regime shifts
+        (e.g. a market moving from 40% → 70% over 3 days signals strong crowd
+        consensus shift and is a powerful convergence signal).
+
+        Args:
+            ticker: Kalshi market ticker, e.g. "FED-RATE-25MAR12".
+            lookback_days: How many days of history to return (default 30).
+                           Each day has up to 24 hourly snapshots.
+
+        Returns:
+            List of dicts with keys: ticker, snapshot_hour, yes_price,
+            volume_24h, open_interest, status, category.
+            Sorted oldest-first for trend computation.
+            Empty list if the table doesn't exist or no data found.
+        """
+        try:
+            conn = self._get_conn("kalshi")
+            limit = lookback_days * 24 + 24  # hourly rows + buffer
+            cursor = conn.execute(
+                """
+                SELECT ticker, snapshot_hour, yes_price, volume_24h,
+                       open_interest, status, category
+                FROM kalshi_market_snapshots
+                WHERE ticker = ?
+                ORDER BY snapshot_hour DESC
+                LIMIT ?
+                """,
+                (ticker, limit),
+            )
+            rows = cursor.fetchall()
+        except Exception as exc:
+            logger.debug("RawStore: get_kalshi_market_history failed for %s: %s", ticker, exc)
+            return []
+
+        return [
+            {
+                "ticker": r[0],
+                "snapshot_hour": r[1],
+                "yes_price": r[2],
+                "volume_24h": r[3],
+                "open_interest": r[4],
+                "status": r[5],
+                "category": r[6],
+            }
+            for r in reversed(rows)  # oldest-first
+        ]

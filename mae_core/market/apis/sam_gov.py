@@ -76,6 +76,9 @@ class ContractOpportunity:
     # Links
     url: str = ""
 
+    # Full scope text (often contains dollar hints and technical requirements)
+    description: str = ""
+
     # Signal metadata
     signal_source: str = "sam_gov"
 
@@ -279,6 +282,7 @@ class SAMGovClient:
             active=data.get("active", "Yes") == "Yes",
             contract_type=data.get("type", ""),
             url=data.get("uiLink", ""),
+            description=description,
         )
 
     def get_defense_opportunities(

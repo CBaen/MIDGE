@@ -14,6 +14,73 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 
+# Series that report raw index LEVELS — direction is only meaningful as
+# month-over-month or year-over-year CHANGE.  get_series() fetches limit=2
+# for these so prior_value is always available for delta computation.
+#
+# Semantics per series:
+#   PCEPI / PCEPILFE / CPIAUCSL — inflation indices: rising = bearish (price pressure)
+#   RSXFS  — retail sales: rising = bullish (consumer spending growing)
+#   M2SL   — money supply: rising = bullish (liquidity expanding)
+#   DFF    — fed funds rate: rising = bearish (tighter conditions)
+#   DGS2 / DGS10 — treasury yields: rising = bearish for equities (tighter)
+DELTA_SERIES: set[str] = {
+    "PCEPI", "PCEPILFE", "CPIAUCSL",  # inflation price indices
+    "RSXFS",                            # retail sales level
+    "M2SL",                             # money supply level
+    "DFF",                              # federal funds rate level
+    "DGS2", "DGS10",                    # treasury yield levels
+}
+
+# For each delta series: True = rising is bullish, False = rising is bearish.
+# Thresholds (in %) below which the change is too small to signal.
+_DELTA_BULLISH_IF_RISING: dict[str, bool] = {
+    "PCEPI":    False,  # higher inflation = bearish
+    "PCEPILFE": False,  # higher core inflation = bearish
+    "CPIAUCSL": False,  # higher CPI = bearish
+    "RSXFS":    True,   # more retail spending = bullish
+    "M2SL":     True,   # more money supply = bullish liquidity
+    "DFF":      False,  # higher rate = tighter = bearish for risk
+    "DGS2":     False,  # higher 2Y yield = tighter = bearish for equities
+    "DGS10":    False,  # higher 10Y yield = tighter = bearish for equities
+}
+
+# Minimum absolute percent change (|change_pct|) to break out of neutral.
+# Avoids noise on near-flat months.
+_DELTA_NEUTRAL_BAND: dict[str, float] = {
+    "PCEPI":    0.05,   # 0.05% mom = meaningful price move
+    "PCEPILFE": 0.05,
+    "CPIAUCSL": 0.05,
+    "RSXFS":    0.20,   # retail sales need 0.2% mom to signal (volatile series)
+    "M2SL":     0.10,   # 0.1% mom M2 change = meaningful
+    "DFF":      0.10,   # 10 bps fed funds move = meaningful
+    "DGS2":     0.05,   # 5 bps 2Y yield move = meaningful
+    "DGS10":    0.05,   # 5 bps 10Y yield move = meaningful
+}
+
+
+def _determine_direction_from_delta(series_id: str, change_pct: float) -> str:
+    """Classify direction for level-based series using month-over-month change.
+
+    Args:
+        series_id: FRED series identifier (must be in DELTA_SERIES)
+        change_pct: Percent change from prior observation to current
+                    ((current - prior) / prior * 100)
+
+    Returns:
+        "bullish", "bearish", or "neutral"
+    """
+    neutral_band = _DELTA_NEUTRAL_BAND.get(series_id, 0.05)
+    if abs(change_pct) < neutral_band:
+        return "neutral"
+
+    rising_is_bullish = _DELTA_BULLISH_IF_RISING.get(series_id, True)
+    if change_pct > 0:
+        return "bullish" if rising_is_bullish else "bearish"
+    else:
+        return "bearish" if rising_is_bullish else "bullish"
+
+
 # Series definitions: id -> (human_readable_name, signal_type)
 FRED_SERIES: dict[str, tuple] = {
     "T10Y2Y":       ("10Y-2Y Treasury Spread (Yield Curve)", "yield_curve"),
@@ -52,19 +119,35 @@ FRED_SERIES: dict[str, tuple] = {
 }
 
 
-def _determine_direction(series_id: str, value: float) -> str:
+def _determine_direction(
+    series_id: str,
+    value: float,
+    change_pct: Optional[float] = None,
+) -> str:
     """Classify a macro value as bullish, bearish, or neutral.
+
+    For level-based series (those in DELTA_SERIES), direction is computed from
+    the month-over-month percent change rather than the raw level.  When
+    change_pct is None (only one observation available), these series fall back
+    to "neutral" rather than guessing from the level.
 
     Rules are based on historically significant thresholds — not precise
     predictions, but reliable regime signals.
 
     Args:
         series_id: FRED series identifier
-        value: Numeric value of the observation
+        value: Numeric value of the observation (used for threshold-based series)
+        change_pct: Percent change from prior observation, if available.
+                    Required for DELTA_SERIES to produce non-neutral direction.
 
     Returns:
         "bullish", "bearish", or "neutral"
     """
+    # --- Delta-based series: direction from change, not level ---
+    if series_id in DELTA_SERIES:
+        if change_pct is None:
+            return "neutral"
+        return _determine_direction_from_delta(series_id, change_pct)
     if series_id == "T10Y2Y":
         # Yield curve inversion (negative spread) = recession signal = bearish
         # Healthy spread above 0.5 = bullish
@@ -89,16 +172,6 @@ def _determine_direction(series_id: str, value: float) -> str:
             return "bearish"
         elif value < 15:
             return "bullish"
-        return "neutral"
-
-    elif series_id == "DFF":
-        # Rates: just reporting — direction is context-dependent
-        # High rates = tighter conditions but not directly bullish/bearish
-        return "neutral"
-
-    elif series_id in ("DGS2", "DGS10"):
-        # Raw treasury yields: rising = bearish for equities/bonds, bullish for USD
-        # Report neutral — used for spread computation context
         return "neutral"
 
     elif series_id == "T10Y3M":
@@ -139,28 +212,6 @@ def _determine_direction(series_id: str, value: float) -> str:
             return "bullish"
         return "neutral"
 
-    elif series_id == "CPIAUCSL":
-        # CPI level: raw level is not directly directional
-        # Month-over-month change would be more useful, but keep simple
-        return "neutral"
-
-    elif series_id == "PCEPI":
-        # PCE Price Index (index level, base ~100 in 2012 dollars)
-        # Raw level is not directional — used for month-over-month context
-        return "neutral"
-
-    elif series_id == "PCEPILFE":
-        # Core PCE: the Fed's primary policy target. YoY above 2.5% = hawkish risk.
-        # Raw index level: not directly actionable without delta, return neutral
-        return "neutral"
-
-    elif series_id == "RSXFS":
-        # Retail sales (millions of dollars, seasonally adjusted)
-        # High absolute level = strong consumer = bullish; low = contraction = bearish
-        # Historically ~400K-600K+ range (in millions). Threshold is regime-relative.
-        # Use percent-change context is ideal but level-based proxy here:
-        return "neutral"
-
     elif series_id == "UMCSENT":
         # University of Michigan Consumer Sentiment (index, 1966=100 baseline)
         # Historical range: ~55 (troughs: 2008, 2022) to ~100+ (expansions)
@@ -168,13 +219,6 @@ def _determine_direction(series_id: str, value: float) -> str:
             return "bullish"   # Strong sentiment = consumer spending confidence
         elif value <= 65:
             return "bearish"   # Weak sentiment = consumers pulling back
-        return "neutral"
-
-    elif series_id == "M2SL":
-        # M2 Money Supply (billions of dollars, seasonally adjusted)
-        # Rapid expansion = liquidity tailwind for risk assets
-        # Contraction (rare) = tightening conditions = bearish
-        # Level alone doesn't signal direction; growth rate matters more
         return "neutral"
 
     elif series_id == "T5YIE":
