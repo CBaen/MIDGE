@@ -195,8 +195,8 @@ class HypothesisValidator:
             )
 
         win_rate = wins / total
-        sharpe = compute_sharpe(returns)
-        dsr = compute_dsr(sharpe, total, self._dsr_trials_tracked)
+        sharpe = self._compute_sharpe(returns)
+        dsr = self._compute_dsr(sharpe, total)
 
         # Promotion/retirement decisions
         has_real_causal_story = (
