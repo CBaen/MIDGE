@@ -117,16 +117,17 @@ class ThompsonSampler(ThompsonPersistenceMixin):
         Returns:
             BetaDistribution with current parameters
         """
-        if signal_id not in self.distributions:
-            # Initialize with uninformative prior Beta(1, 1)
-            self.distributions[signal_id] = {}
+        with self._lock:
+            if signal_id not in self.distributions:
+                # Initialize with uninformative prior Beta(1, 1)
+                self.distributions[signal_id] = {}
 
-        if regime not in self.distributions[signal_id]:
-            # Initialize regime with uninformative prior
-            self.distributions[signal_id][regime] = {"alpha": 1.0, "beta": 1.0}
+            if regime not in self.distributions[signal_id]:
+                # Initialize regime with uninformative prior
+                self.distributions[signal_id][regime] = {"alpha": 1.0, "beta": 1.0}
 
-        params = self.distributions[signal_id][regime]
-        return BetaDistribution(alpha=params["alpha"], beta=params["beta"])
+            params = self.distributions[signal_id][regime]
+            return BetaDistribution(alpha=params["alpha"], beta=params["beta"])
 
     def sample(self, signal_id: str, regime: str = "default") -> float:
         """
@@ -139,8 +140,9 @@ class ThompsonSampler(ThompsonPersistenceMixin):
         Returns:
             Sampled value in [0, 1] representing estimated reliability
         """
-        dist = self.get_distribution(signal_id, regime)
-        return float(np.random.beta(dist.alpha, dist.beta))
+        with self._lock:
+            dist = self.get_distribution(signal_id, regime)
+            return float(np.random.beta(dist.alpha, dist.beta))
 
     def update(
         self,
@@ -239,14 +241,15 @@ class ThompsonSampler(ThompsonPersistenceMixin):
         Returns:
             List of (signal_id, mean) tuples, sorted by mean descending
         """
-        rankings = []
-        for signal_id in self.distributions:
-            if regime in self.distributions[signal_id]:
-                dist = self.get_distribution(signal_id, regime)
-                rankings.append((signal_id, dist.mean))
+        with self._lock:
+            rankings = []
+            for signal_id in self.distributions:
+                if regime in self.distributions[signal_id]:
+                    dist = self.get_distribution(signal_id, regime)
+                    rankings.append((signal_id, dist.mean))
 
-        rankings.sort(key=lambda x: x[1], reverse=True)
-        return rankings
+            rankings.sort(key=lambda x: x[1], reverse=True)
+            return rankings
 
     def get_uncertain_signals(
         self,
@@ -263,15 +266,16 @@ class ThompsonSampler(ThompsonPersistenceMixin):
         Returns:
             List of (signal_id, variance) tuples, sorted by variance descending
         """
-        uncertain = []
-        for signal_id in self.distributions:
-            if regime in self.distributions[signal_id]:
-                dist = self.get_distribution(signal_id, regime)
-                if dist.variance >= min_variance:
-                    uncertain.append((signal_id, dist.variance))
+        with self._lock:
+            uncertain = []
+            for signal_id in self.distributions:
+                if regime in self.distributions[signal_id]:
+                    dist = self.get_distribution(signal_id, regime)
+                    if dist.variance >= min_variance:
+                        uncertain.append((signal_id, dist.variance))
 
-        uncertain.sort(key=lambda x: x[1], reverse=True)
-        return uncertain
+            uncertain.sort(key=lambda x: x[1], reverse=True)
+            return uncertain
 
     def get_stats(self, regime: str = "default") -> Dict:
         """

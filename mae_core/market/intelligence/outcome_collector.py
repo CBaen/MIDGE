@@ -349,9 +349,11 @@ class OutcomeCollector:
 
     def get_statistics(self) -> dict:
         """Summary statistics for reporting."""
+        with self._registered_lock:
+            registered_count = len(self._registered)
         tracker_stats = self.tracker.get_statistics()
         return {
-            "registered_signals": len(self._registered),
+            "registered_signals": registered_count,
             "pending_predictions": tracker_stats["pending_predictions"],
             "total_evaluated": tracker_stats["total_evaluated"],
             "success_threshold_pct": SUCCESS_THRESHOLD_PCT,
