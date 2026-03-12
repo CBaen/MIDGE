@@ -93,6 +93,7 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                             except Exception:
                                 logger.debug("Combo registration failed", exc_info=True)
             except Exception as exc:
+                ctx._cached_alerts[0] = []  # Clear stale alerts on failure
                 logger.debug("Convergence alerter step failed", exc_info=True)
                 if _shm:
                     _shm.record_error("convergence_check", exc)
