@@ -45,7 +45,7 @@
   - Kalshi research complete: algo trading allowed, RSA key-pair auth (daemon-friendly), demo env at `demo-api.kalshi.co`
   - Domain: "prediction_market" (new domain — crowd probability estimates independent from macro indicators)
   - **WIRED** into sensing pipeline — client + adapter + fetcher + constants + bootstrap all connected
-  - Env vars needed: `KALSHI_API_KEY_ID`, `KALSHI_PRIVATE_KEY_PATH`
+  - Env vars: `KALSHI_API_KEY` + `KALSHI_PRIVATE_KEY_PATH` (both in .env, PEM extracted to file)
 - Stale adapter count assertions fixed (38→39 for Binance adapter from previous session)
 
 **Session 3 (2026-03-11):**
