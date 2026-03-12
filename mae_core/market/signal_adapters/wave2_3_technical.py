@@ -337,3 +337,60 @@ def from_massive_snapshot(snapshot) -> MarketSignal:
             "data_source": "massive_polygon",
         },
     )
+
+
+def from_kalshi_mover(mover) -> MarketSignal:
+    """Convert a KalshiMover (prediction market probability shift) to MarketSignal.
+
+    Kalshi prices ARE probabilities (1-99 cents = 1-99%). A 10% price move
+    means crowd consensus shifted by 10 percentage points. This is a powerful
+    independent signal — thousands of traders pricing real money on outcomes.
+
+    Domain: "prediction_market" — intentionally a NEW domain (not "macro") to
+    maximize convergence diversity.
+    """
+    market = getattr(mover, "market", None)
+    if market is None:
+        market = mover
+
+    ticker = getattr(market, "ticker", "") or ""
+    title = getattr(market, "title", "") or ""
+    event_ticker = getattr(market, "event_ticker", "") or ""
+    yes_price = getattr(market, "yes_price", 0.5) or 0.5
+    volume = getattr(market, "volume_24h", 0) or 0
+    category = getattr(market, "category", "other") or "other"
+
+    price_change = getattr(mover, "price_change", 0.0) or 0.0
+    direction = getattr(mover, "direction", "neutral") or "neutral"
+    strength = getattr(mover, "strength", 0.3) or 0.3
+
+    confidence = min(0.75, 0.45 + (volume / 50000) * 0.30)
+
+    signal_id = f"kalshi:{ticker}:{datetime.now().strftime('%Y%m%dT%H%M')}"
+
+    return MarketSignal(
+        signal_id=signal_id,
+        source="kalshi_market",
+        symbol=ticker,
+        asset_class="prediction_market",
+        domain="prediction_market",
+        direction=direction,
+        strength=strength,
+        confidence=round(confidence, 3),
+        decay_rate=0.15,
+        timestamp=datetime.now(),
+        received_at=datetime.now(),
+        outcome_symbol=ticker,
+        outcome_window_days=7,
+        raw_id=event_ticker,
+        raw_type="KalshiMover",
+        metadata={
+            "title": title,
+            "event_ticker": event_ticker,
+            "yes_price": yes_price,
+            "price_change_pct": round(price_change * 100, 2),
+            "volume_24h": volume,
+            "category": category,
+            "symbol": ticker,
+        },
+    )
