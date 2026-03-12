@@ -118,6 +118,16 @@ class PatternMemory:
             logger.debug("PatternMemory.remember_pattern_template failed: %s", e)
             return None
 
+    def remember_inevitability(self, inv) -> Optional[str]:
+        """Store an Inevitability in semantic memory. Returns point ID."""
+        if not self._available:
+            return None
+        try:
+            return self.embedder.embed_inevitability(inv)
+        except Exception as e:
+            logger.debug("PatternMemory.remember_inevitability failed: %s", e)
+            return None
+
     # ------------------------------------------------------------------
     # Read API
     # ------------------------------------------------------------------

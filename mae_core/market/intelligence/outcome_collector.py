@@ -280,6 +280,46 @@ class OutcomeCollector:
         )
         return True
 
+    def register_inevitability(self, inv) -> bool:
+        """Register a DeepAnalyst Inevitability as a prediction for outcome tracking."""
+        with self._registered_lock:
+            return self._register_inevitability_locked(inv)
+
+    def _register_inevitability_locked(self, inv) -> bool:
+        """Inner — caller must hold self._registered_lock."""
+        ticker = getattr(inv, "ticker", "")
+        direction = getattr(inv, "direction", "")
+        if not ticker or not direction:
+            return False
+
+        dedup_id = f"inv:{ticker}:{direction}"
+        if dedup_id in self._registered:
+            return False
+
+        source_key = f"inevitability:{ticker}:{direction}"
+        direction_mapped = {"bullish": "up", "bearish": "down"}.get(direction, "")
+        window = getattr(inv, "expected_window_days", None) or 14
+
+        self.tracker.record_prediction(
+            source=source_key,
+            symbol=ticker,
+            direction=direction_mapped,
+            outcome_window_days=window,
+            metadata={
+                "score": getattr(inv, "score", 0.0),
+                "domains": list(getattr(inv, "domains", [])),
+                "evidence_summary": getattr(inv, "evidence_summary", ""),
+            },
+            timestamp=datetime.now().isoformat(),
+        )
+        self._registered[dedup_id] = datetime.now()
+        self._save_registered()
+        logger.info(
+            "Registered inevitability prediction: %s %s (score=%.3f, window=%dd)",
+            ticker, direction, getattr(inv, "score", 0.0), window,
+        )
+        return True
+
     def evaluate(self) -> int:
         """
         Evaluate matured predictions — the actual feedback loop.

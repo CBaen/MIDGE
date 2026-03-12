@@ -70,6 +70,24 @@ def _instantiate_hypothesis_loop(ctx: SimpleNamespace) -> None:
 
     try:
         from mae_core.market.intelligence.hypothesis_engine import HypothesisEngine
+
+        class _ArchaeologicalAdapter:
+            def __init__(self, pattern_library):
+                self._lib = pattern_library
+
+            def analyze(self):
+                templates = self._lib.get_all_templates() if hasattr(self._lib, "get_all_templates") else {}
+                candidates = []
+                for tid, t in templates.items():
+                    wr = getattr(t, "win_rate", 0) or 0
+                    instances = getattr(t, "instance_count", 0) or len(getattr(t, "instances", []))
+                    if wr > 0.6 and instances >= 5:
+                        candidates.append(t)
+                return candidates
+
+        _pattern_library = getattr(ctx, "pattern_library", None)
+        _arch_adapter = _ArchaeologicalAdapter(_pattern_library) if _pattern_library is not None else None
+
         ctx.hypothesis_engine = (
             HypothesisEngine(
                 registry=ctx.hypothesis_registry,
@@ -79,6 +97,7 @@ def _instantiate_hypothesis_loop(ctx: SimpleNamespace) -> None:
                 regime_classifier=getattr(ctx, "regime_classifier", None),
                 thompson_sampler=getattr(ctx, "thompson_sampler", None),
                 backtest_analyzer=getattr(ctx, "backtest_analyzer", None),
+                archaeological_analyzer=_arch_adapter,
                 thompson_calibrator=getattr(ctx, "thompson_calibrator", None),
             )
             if (ctx.hypothesis_registry is not None

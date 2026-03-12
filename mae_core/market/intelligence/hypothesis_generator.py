@@ -325,19 +325,45 @@ class HypothesisGenerator:
         return False
 
     def _load_lag_findings(self) -> list:
-        """Load lag-correlation findings from disk."""
+        """Load lag-correlation findings from disk, merged with Granger causality findings."""
+        findings = []
+
         if not self._lag_data_path.exists():
             logger.debug("No lag correlations file at %s", self._lag_data_path)
-            return []
+        else:
+            try:
+                data = json.loads(self._lag_data_path.read_text())
+                if isinstance(data, list):
+                    findings.extend(data)
+            except (json.JSONDecodeError, Exception) as e:
+                logger.warning("Failed to load lag correlations: %s", e)
 
-        try:
-            data = json.loads(self._lag_data_path.read_text())
-            if isinstance(data, list):
-                return data
-            return []
-        except (json.JSONDecodeError, Exception) as e:
-            logger.warning("Failed to load lag correlations: %s", e)
-            return []
+        granger_path = DATA_DIR / "granger_causality.json"
+        if granger_path.exists():
+            try:
+                granger_data = json.loads(granger_path.read_text())
+                if isinstance(granger_data, list):
+                    for entry in granger_data:
+                        p_value = entry.get("p_value", 1.0)
+                        converted = {
+                            "source_a": entry.get("cause_source", ""),
+                            "source_b": entry.get("effect_source", ""),
+                            "lag_days": entry.get("best_lag", 0),
+                            "correlation": min(1.0, max(0.1, 1.0 - p_value)),
+                            "n_pairs": entry.get("n_observations", 0),
+                            "direction": entry.get("direction", ""),
+                            "evidence_type": "granger",
+                        }
+                        if converted["source_a"] and converted["source_b"]:
+                            findings.append(converted)
+                    logger.debug(
+                        "Merged %d Granger causality findings into lag findings",
+                        len(granger_data) if isinstance(granger_data, list) else 0,
+                    )
+            except (json.JSONDecodeError, Exception) as e:
+                logger.warning("Failed to load granger_causality.json: %s", e)
+
+        return findings
 
     def _finding_priority(self, finding: dict) -> float:
         """Compute sort priority for a lag finding. Higher = processed first.

@@ -351,21 +351,81 @@ def format_convergence_alert(
 ALERTS_PATH = Path("data/midge/alerts_human.jsonl")
 
 
-def write_plain_alert(message: str, ticker: str, direction: str,
+def format_inevitability(inv) -> dict:
+    """Format an Inevitability object as a plain-language alert dict."""
+    ticker = inv.ticker
+    direction = inv.direction
+    score = inv.score
+    evidence_summary = inv.evidence_summary
+    template_match = getattr(inv, "template_match", None) or 0.0
+    template_win_rate = getattr(inv, "template_win_rate", None) or 0.0
+    expected_window_days = getattr(inv, "expected_window_days", 14) or 14
+    world_model_chain = getattr(inv, "world_model_chain", None)
+
+    dir_plain = DIRECTION_PLAIN.get(direction, direction)
+    company = _describe_company(ticker)
+
+    sections = [
+        f"WHAT: {company} looks {dir_plain} — Inevitability Score: {score:.0%}",
+        f"WHY: {evidence_summary}",
+    ]
+
+    if template_match and template_win_rate:
+        sections.append(
+            f"HISTORY: Pattern match: {template_match:.0%} win rate from "
+            f"{template_win_rate:.0%} historical accuracy"
+        )
+
+    sections.append(f"TIMING: Expected window: {expected_window_days} days")
+
+    if world_model_chain:
+        sections.append(f"CAUSAL CHAIN: {world_model_chain}")
+
+    formatted_text = "\n\n".join(sections)
+
+    return {
+        "type": "inevitability",
+        "formatted_text": formatted_text,
+        "ticker": ticker,
+        "direction": direction,
+        "score": score,
+        "timestamp": datetime.now().isoformat(),
+    }
+
+
+def write_plain_alert(message_or_dict, ticker: str = "", direction: str = "",
                       source: str = "pattern_stack",
                       metadata: Optional[dict] = None) -> None:
-    """Append a plain-language alert to alerts_human.jsonl."""
+    """Append a plain-language alert to alerts_human.jsonl.
+
+    Accepts either:
+      - write_plain_alert(dict_from_format_inevitability)
+      - write_plain_alert(message_str, ticker, direction, source, metadata)
+    """
     try:
         ALERTS_PATH.parent.mkdir(parents=True, exist_ok=True)
-        record = {
-            "timestamp": datetime.now().isoformat(),
-            "ticker": ticker,
-            "direction": direction,
-            "source": source,
-            "message": message,
-        }
-        if metadata:
-            record["metadata"] = metadata
+        if isinstance(message_or_dict, dict):
+            d = message_or_dict
+            record = {
+                "timestamp": d.get("timestamp", datetime.now().isoformat()),
+                "ticker": d.get("ticker", ""),
+                "direction": d.get("direction", ""),
+                "source": d.get("type", "inevitability"),
+                "message": d.get("formatted_text", ""),
+            }
+            score = d.get("score")
+            if score is not None:
+                record["score"] = score
+        else:
+            record = {
+                "timestamp": datetime.now().isoformat(),
+                "ticker": ticker,
+                "direction": direction,
+                "source": source,
+                "message": message_or_dict,
+            }
+            if metadata:
+                record["metadata"] = metadata
         with open(ALERTS_PATH, "a", encoding="utf-8") as f:
             f.write(json.dumps(record) + "\n")
     except Exception:
