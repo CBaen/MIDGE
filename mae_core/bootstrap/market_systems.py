@@ -297,6 +297,27 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         except Exception:
             logger.debug("Market: convergence alerter signal buffer restore failed", exc_info=True)
 
+    # Archive warmup: fill convergence buffer from recent signal archive so MIDGE
+    # starts from knowledge, not zero. Runs after load_signal_buffer() so it
+    # deduplicates against whatever was already restored from the session file.
+    if getattr(ctx, "convergence_alerter", None) is not None:
+        try:
+            from pathlib import Path as _Path
+            from mae_core.market.intelligence.archive_scanner import scan_archive_state
+            from mae_core.market.intelligence.startup_warmup import warm_up_from_archive
+            _signals_dir = _Path(__file__).resolve().parents[2] / "data" / "midge" / "signals"
+            _archive_state = scan_archive_state(_signals_dir, days=30)
+            logger.info(
+                "Market archive state: %d signals, %d domains, %d tickers with 3+ domains",
+                _archive_state.total_signals,
+                len(_archive_state.domain_coverage),
+                len(_archive_state.tickers_with_multi_domain),
+            )
+            _warmed = warm_up_from_archive(ctx.convergence_alerter, _signals_dir, days=7)
+            logger.info("Market: archive warmup injected %d signals into convergence buffer", _warmed)
+        except Exception:
+            logger.debug("Market: archive warmup failed", exc_info=True)
+
     # --- Feedback loop (requires price_fetcher + thompson_sampler) ---
     try:
         from mae_core.market.outcome_tracker import OutcomeTracker
