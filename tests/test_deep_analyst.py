@@ -27,7 +27,6 @@ import pytest
 from mae_core.market.intelligence.deep_analyst import (
     DeepAnalyst,
     Inevitability,
-    _DECAY_HALF_LIFE,
     _MIN_DOMAINS,
     _WEIGHTS,
 )

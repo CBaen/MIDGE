@@ -17,8 +17,11 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from mae_core.market.archaeology.fingerprint import _SOURCE_DOMAIN_MAP
 from mae_core.market.archaeology.pattern_library import PatternLibrary
+
+# Source → domain mapping lives on PatternLibrary as a class attribute.
+# Alias here so the rest of the file can use it without repeating the class name.
+_SOURCE_DOMAIN_MAP = PatternLibrary._SOURCE_DOMAIN_MAP
 from mae_core.market.intelligence.signal_archive_reader import SignalArchiveReader
 from mae_core.market.intelligence.thompson_sampler import ThompsonSampler
 from mae_core.market.intelligence.world_model import WorldModel
@@ -124,7 +127,7 @@ class DeepAnalyst:
 
         # Step 4 — score each candidate
         inevitabilities = []
-        today = datetime.now()
+        today = datetime.now(tz=timezone.utc)
         for (ticker, direction), recs in candidates.items():
             domains = sorted({_SOURCE_DOMAIN_MAP.get(r.source, "unknown") for r in recs} - {"unknown"})
             if len(domains) < _MIN_DOMAINS:
