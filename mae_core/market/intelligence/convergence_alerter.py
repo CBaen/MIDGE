@@ -249,7 +249,7 @@ class ConvergenceAlerter(ConvergenceConfidenceMixin, ConvergenceDetectionMixin):
         # independently, preventing the cross-evasion bug where each direction
         # kept overwriting the other's suppression record.
         self._last_alert_times: Dict[str, datetime] = {}
-        self._alert_lock = threading.Lock()
+        self._alert_lock = threading.RLock()
         self._min_alert_interval_hours = 4.0
 
         # Lag findings for temporal ordering (Task 1 + Task 3).
