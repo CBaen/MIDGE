@@ -56,12 +56,12 @@ class TestSignalReexports:
         assert callable(getattr(sig, name))
 
     def test_total_converter_count(self):
-        """Exactly 39 from_* functions must be re-exported."""
+        """Exactly 40 from_* functions must be re-exported."""
         import mae_core.market.signal as sig
 
         exported = [n for n in dir(sig) if n.startswith("from_")]
-        assert len(exported) == 39, (
-            f"Expected 39 from_* converters, found {len(exported)}: {exported}"
+        assert len(exported) == 40, (
+            f"Expected 40 from_* converters, found {len(exported)}: {exported}"
         )
 
 
@@ -84,12 +84,12 @@ class TestSignalAdapters:
         assert m is not None
 
     def test_adapter_init_importable(self):
-        """The signal_adapters __init__ must re-export all 39 converters."""
+        """The signal_adapters __init__ must re-export all 40 converters."""
         import mae_core.market.signal_adapters as sa
 
         assert hasattr(sa, "__all__"), "signal_adapters __init__ must define __all__"
-        assert len(sa.__all__) == 39, (
-            f"Expected 39 entries in __all__, found {len(sa.__all__)}"
+        assert len(sa.__all__) == 40, (
+            f"Expected 40 entries in __all__, found {len(sa.__all__)}"
         )
 
     def test_regulatory_adapters(self):

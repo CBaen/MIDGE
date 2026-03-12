@@ -105,6 +105,8 @@ EXPECTED_ROTATION = [
     "fred_yields",
     # Crypto derivatives positioning
     "binance_funding",
+    # Prediction markets
+    "kalshi_market",
 ]
 
 VALID_TIERS = {"tactical", "strategic", "thematic"}
@@ -290,9 +292,9 @@ def _make_analyst_rec(
 class TestSourceRotation:
     """Verify SOURCE_ROTATION contains exactly the expected entries."""
 
-    def test_rotation_length_is_35(self):
-        assert len(SOURCE_ROTATION) == 35, (
-            f"Expected 35 sources in SOURCE_ROTATION, got {len(SOURCE_ROTATION)}"
+    def test_rotation_length_is_36(self):
+        assert len(SOURCE_ROTATION) == 36, (
+            f"Expected 36 sources in SOURCE_ROTATION, got {len(SOURCE_ROTATION)}"
         )
 
     def test_rotation_contains_all_expected_sources(self):
