@@ -384,6 +384,17 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         failures += 1
 
     try:
+        from mae_core.market.intelligence.deep_analyst import DeepAnalyst
+        ctx.deep_analyst = DeepAnalyst(
+            thompson_sampler=getattr(ctx, "thompson_sampler", None),
+            pattern_library=getattr(ctx, "pattern_library", None),
+            world_model=getattr(ctx, "world_model", None),
+        )
+    except Exception:
+        logger.debug("Market: deep_analyst failed to construct", exc_info=True)
+        ctx.deep_analyst = None
+
+    try:
         from mae_core.market.intelligence.cascade_tracker import CascadeTracker
         ctx.cascade_tracker = CascadeTracker(
             world_model=getattr(ctx, "world_model", None),
