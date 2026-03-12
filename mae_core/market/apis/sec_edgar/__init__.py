@@ -110,8 +110,9 @@ def get_recent_form4s(ticker: str, days: int = 30, raw_store=None) -> List[Insid
     if raw_store is not None and all_trades:
         try:
             raw_store.store_sec_form4(all_trades)
+            logger.debug("Stored %d Form 4 trades to raw store", len(all_trades))
         except Exception:
-            pass  # Never break signal pipeline
+            logger.warning("store_sec_form4 failed for %d trades", len(all_trades), exc_info=True)
 
     return all_trades
 

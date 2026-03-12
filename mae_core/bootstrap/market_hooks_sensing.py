@@ -286,6 +286,53 @@ from mae_core.bootstrap.market_hooks_sensing_setup import (  # noqa: E402
 )
 
 
+def _load_paper_trade_dedup() -> dict:
+    """Load paper trade dedup state from existing paper_trades.jsonl.
+
+    Reads the last 24h of trades and rebuilds the dedup dict so daemon
+    restarts don't re-write the same signals. Self-healing: no separate
+    persistence file needed.
+    """
+    import json
+    from datetime import datetime, timedelta
+    from pathlib import Path
+
+    dedup: dict = {}
+    path = Path("data/midge/paper_trades.jsonl")
+    if not path.exists():
+        return dedup
+    cutoff = datetime.now() - timedelta(hours=24)
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    rec = json.loads(line)
+                    gen_at = rec.get("generated_at", "")
+                    if not gen_at:
+                        continue
+                    ts = datetime.fromisoformat(gen_at)
+                    if ts < cutoff:
+                        continue
+                    direction = rec.get("direction", "")
+                    asset = rec.get("asset", "")
+                    if direction and asset:
+                        # Map trade direction back to alert direction
+                        alert_dir = {"buy": "bullish", "sell": "bearish"}.get(direction, direction)
+                        key = f"{alert_dir}:{asset}"
+                        if key not in dedup or ts > dedup[key]:
+                            dedup[key] = ts
+                except (json.JSONDecodeError, ValueError):
+                    continue
+    except Exception:
+        logger.debug("Failed to load paper trade dedup from disk", exc_info=True)
+    if dedup:
+        logger.info("Loaded %d paper trade dedup entries from disk (restart-safe)", len(dedup))
+    return dedup
+
+
 def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
     """Wire the MarketSensingHook into the step lifecycle.
 
@@ -325,7 +372,7 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
     }
     ctx._ticker_alerts = []
     ctx._latest_kelly = {}
-    ctx._paper_trade_dedup = {}
+    ctx._paper_trade_dedup = _load_paper_trade_dedup()
     ctx._bypass_dedup = {}
 
     _sensing_step_counter = [0]

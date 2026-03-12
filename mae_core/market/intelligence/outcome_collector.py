@@ -216,7 +216,8 @@ class OutcomeCollector:
             domains.update(act.template.domains)
             template_ids.append(act.template.template_id)
         stack_key = "pattern_stack:" + "+".join(sorted(domains))
-        dedup_id = f"pstack_{primary_symbol}_{stack.direction}_{len(stack.activations)}"
+        from datetime import date as _date_cls
+        dedup_id = f"pstack_{primary_symbol}_{stack.direction}_{len(stack.activations)}_{_date_cls.today().isoformat()}"
 
         if dedup_id in self._registered:
             return False
