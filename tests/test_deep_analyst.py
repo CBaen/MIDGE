@@ -44,7 +44,7 @@ def _make_record(
     domain="insider",
     days_ago=2,
 ) -> ArchiveRecord:
-    ts = datetime.now() - timedelta(days=days_ago)
+    ts = datetime.now(tz=timezone.utc) - timedelta(days=days_ago)
     d = {
         "signal_id": f"{source}:{symbol}:{ts.date()}",
         "source": source,
@@ -339,7 +339,7 @@ def test_lag_score_below_threshold():
 
 def test_density_score_fresh_signals():
     analyst = _make_analyst()
-    today = datetime.now()
+    today = datetime.now(tz=timezone.utc)
     recs = [_make_record(strength=1.0, days_ago=0)] * 5
     score = analyst._density_score(recs, today)
     assert score > 0.2  # 5 full-strength fresh signals
@@ -347,7 +347,7 @@ def test_density_score_fresh_signals():
 
 def test_density_score_old_signals_lower():
     analyst = _make_analyst()
-    today = datetime.now()
+    today = datetime.now(tz=timezone.utc)
     fresh = [_make_record(strength=1.0, days_ago=0)] * 3
     old = [_make_record(strength=1.0, days_ago=30)] * 3
     fresh_score = analyst._density_score(fresh, today)
@@ -362,7 +362,7 @@ def test_density_score_empty():
 
 def test_density_score_capped_at_one():
     analyst = _make_analyst()
-    today = datetime.now()
+    today = datetime.now(tz=timezone.utc)
     recs = [_make_record(strength=1.0, days_ago=0)] * 100
     score = analyst._density_score(recs, today)
     assert score == 1.0
@@ -457,7 +457,7 @@ def test_min_domains_filter():
         _make_record(source="sec_form4", domain="insider"),
         _make_record(source="ta_rsi", domain="technical"),
     ]
-    today = datetime.now()
+    today = datetime.now(tz=timezone.utc)
     domains = ["insider", "technical"]
     # Directly test the domain count gate inside analyze() logic
     assert len(domains) < _MIN_DOMAINS  # prove 2 < 3

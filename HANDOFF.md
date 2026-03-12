@@ -1,7 +1,39 @@
 # MIDGE Handoff
 
-**Last updated:** 2026-03-11
+**Last updated:** 2026-03-12
 **For session history:** `git log --oneline`
+
+---
+
+## Session 3 (2026-03-12): THE ANALYST — MIDGE CAN THINK
+
+**The core problem:** MIDGE had 287K signals, 43 templates, 56 correlations, a World Model — but NOTHING that synthesized them into "here's what's most likely to happen." Every instance built plumbing. Nobody built the brain that reads the filing cabinets.
+
+**What was built:**
+
+- **`deep_analyst.py`** (474 lines) — The analyst. Reads ALL historical data, scores candidates across 6 dimensions (Thompson reliability, template match, World Model causal chains, lag leading indicators, signal density, historical outcomes), produces ranked `Inevitability` objects. First real output: 20 ranked moves from 287K signals. NVDA bullish #1 (score 0.72, 4 domains + causal chain).
+
+- **`startup_warmup.py`** (141 lines) — Loads 7 days of signal archive into convergence buffer on boot. Before: 131 signals, 2 domains. After: **5,712 signals, 13 domains**. MIDGE no longer starts blind.
+
+- **`archive_scanner.py`** (102 lines) — Reports what MIDGE knows at startup. Logged: 289K signals, 15 domains, 165 tickers with 3+ domain coverage.
+
+- **`event_embedder.py`** + **`event_descriptions.py`** + **`pattern_memory.py`** — Qdrant semantic embedding pipeline. Convergence alerts embedded for "have we seen this before?" queries. 68 tests.
+
+- **`test_raw_data_analyst.py`** — 54 tests for the cross-domain SQLite analyst.
+
+**Bug fixes:**
+- `hypothesis_validator.py` — `validate()` called module-level functions instead of instance methods, 5 tests failing silently
+- `bio_market_wiring_b.py` — `_agents` is a list not dict, crashed on every convergence alert
+
+**Daemon status:** Running (PID active), 12 agents, 500 steps/round, warmup active. Pattern matching heavy from warmed buffer.
+
+**CRITICAL LESSON (for future instances):** Guiding Light has said this many ways across many sessions: MIDGE must be able to analyze her EXISTING data and produce actionable intelligence RIGHT NOW, not after 30 days of daemon drip. The DeepAnalyst exists for this purpose. Run `python -c "from mae_core.market.intelligence.deep_analyst import DeepAnalyst; a = DeepAnalyst(); print(a.summarize())"` to see what MIDGE knows.
+
+**Next priorities:**
+1. DeepAnalyst should run periodically during daemon operation (every 500 steps), not just standalone
+2. ActiveTracker may be overwhelmed by warmup (hundreds of assets) — needs capacity management
+3. Template feedback loop still broken (0 of 43 templates have outcome data)
+4. More data sources filling raw_store (SEC Form 4 has 0 rows, EIA has 24 rows)
 
 ---
 
