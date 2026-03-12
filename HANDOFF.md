@@ -31,7 +31,7 @@
 - International economic calendar activated — ECB/BoJ/BoE/PBoC/BoC/RBA high-impact events (was US-only)
 - Binance funding rate client BUILT and WIRED into sensing pipeline (adapter + constants + fetcher + bootstrap, 47 tests)
   - Domain: "positioning" (same as COT — derivatives positioning, NOT "crypto" — maximizes convergence diversity)
-  - 35 rotation slots, 36 data sources total
+  - 36 rotation slots, 37 data sources total
 - Thompson distributions cleaned — 6 test artifacts removed (combo:a+b+c, concurrent_test, test_signal etc.), 92 legitimate distributions remain
 - market_hooks.py size audit — already decomposed into 7 files, largest 457 lines, all under 500
 - PolygonBulkFetcher async batch mode — `get_daily_history_batch()` using aiohttp with 20 concurrent requests. ExcavationDaemon auto-detects batch support. Sequential→concurrent excavation.
@@ -44,7 +44,7 @@
   - `kalshi-python-sync 3.9.0` installed (replaces deprecated `kalshi-python 2.1.4`)
   - Kalshi research complete: algo trading allowed, RSA key-pair auth (daemon-friendly), demo env at `demo-api.kalshi.co`
   - Domain: "prediction_market" (new domain — crowd probability estimates independent from macro indicators)
-  - **NOT YET WIRED** into sensing pipeline — client + adapter done, pipeline wiring is next session
+  - **WIRED** into sensing pipeline — client + adapter + fetcher + constants + bootstrap all connected
   - Env vars needed: `KALSHI_API_KEY_ID`, `KALSHI_PRIVATE_KEY_PATH`
 - Stale adapter count assertions fixed (38→39 for Binance adapter from previous session)
 
@@ -77,7 +77,7 @@ Guiding Light's vision: MIDGE as personal autonomous trader across ALL markets �
 ## What Works Right Now
 
 ### The Brain
-- **36 data sources** feeding signals through 12 concurrent workers, 25-step rotation cadence (35 rotation slots; Binance funding rate wired as "positioning" domain)
+- **37 data sources** feeding signals through 12 concurrent workers, 25-step rotation cadence (36 rotation slots; Kalshi prediction market wired as "prediction_market" domain)
 - **Convergence engine** (crown jewel) — fires when 3+ independent domains agree on direction
 - **Thompson Bayesian learning** — 35/37 distributions rebuilt from 13,190 historical updates. Brain is learning.
 - **Signal translator** — ConvergenceAlert → ExecutableSignal with ATR-based stop-loss/take-profit
@@ -93,7 +93,7 @@ Guiding Light's vision: MIDGE as personal autonomous trader across ALL markets �
 ### Execution
 - **Alpaca paper trading: WIRED.** Keys in `.env`. Convergence alerts auto-submit bracket orders (entry + SL + TP) for US equities. DrawdownMonitor circuit breaker + SelfMonitor anomaly detection gate all trades. Forex/futures/crypto tickers filtered out (Alpaca = equities only).
 - **FTMO backtester: PORTED.** `ftmo_engine.py` + `ftmo_config.py` in `mae_core/market/execution/`. Simulates challenge constraints (daily loss, total DD, profit target). Not yet validated against MIDGE signals.
-- **Kalshi SDK installed.** Not yet verified or wired.
+- **Kalshi prediction market: WIRED.** `kalshi-python-sync 3.9.0`, RSA-PSS auth, demo mode default. Client reads market movers (probability shifts), adapter converts to "prediction_market" domain signals. 36 rotation slots, 37 data sources total. Keys needed: `KALSHI_API_KEY_ID`, `KALSHI_PRIVATE_KEY_PATH`.
 
 ### Risk
 - **DrawdownMonitor** — 40% max DD circuit breaker, halts all paper trades
@@ -199,5 +199,5 @@ python main.py --agents 3 --steps 30           # Smoke test
 
 - **149 systems** (92 core + 57 market), **4,583+ tests**, **157 holons**, **428 connections**
 - **123 market files** (34 API + 12 edge + 36 intelligence + 8 signal_adapters + 10 archaeology + 6 execution + 17 root)
-- **36 sources**, **12 domains**, **12 concurrent fetches**, **25-step cadence**
+- **37 sources**, **13 domains**, **12 concurrent fetches**, **25-step cadence**
 - **33-layer bootstrap**, **14 mixins** on MycelialAgent
