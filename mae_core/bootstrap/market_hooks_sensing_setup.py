@@ -134,6 +134,7 @@ def _build_sensing_infrastructure(ctx: SimpleNamespace):
             yahoo_rss_client=getattr(ctx, "yahoo_rss_client", None),
             usda_client=getattr(ctx, "usda_client", None),
             binance_funding_client=getattr(ctx, "binance_funding_client", None),
+            kalshi_client=getattr(ctx, "kalshi_client", None),
         )
     except Exception:
         logger.warning(

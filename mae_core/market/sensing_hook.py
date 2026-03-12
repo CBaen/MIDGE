@@ -170,6 +170,7 @@ class MarketSensingHook(SensingSchedulerMixin, SensingCollectorMixin, SensingRea
         self._yahoo_rss_client = yahoo_rss_client
         self._usda_client = usda_client
         self._binance_funding_client = binance_funding_client
+        self._kalshi_client = kalshi_client
 
         # EventBus (injected by bootstrap for signal bridge)
         self._bus = None

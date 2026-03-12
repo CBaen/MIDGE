@@ -8,7 +8,7 @@ Sub-modules:
                         from_finviz_insider
   wave2_3_technical.py — from_finviz_unusual_volume, from_finviz_short_squeeze,
                          from_finnhub_realtime, from_suppression_event,
-                         from_massive_snapshot
+                         from_massive_snapshot, from_kalshi_mover
 """
 
 from __future__ import annotations
@@ -32,6 +32,7 @@ from mae_core.market.signal_adapters.wave2_3_technical import (
     from_finnhub_realtime,
     from_suppression_event,
     from_binance_funding,
+    from_kalshi_mover,
     from_massive_snapshot,
 )
 
@@ -46,6 +47,7 @@ __all__ = [
     "from_finnhub_realtime",
     "from_suppression_event",
     "from_binance_funding",
+    "from_kalshi_mover",
     "from_massive_snapshot",
 ]
 
