@@ -16,12 +16,13 @@
 - [ ] Build public confirmation timestamp logging (compliance trail)
 
 ### Kalshi Integration
-- [ ] Verify kalshi-python SDK against current API + demo env
-- [ ] Review Kalshi ToS for algo trading restrictions
+- [x] Verify kalshi-python SDK against current API + demo env — DONE (2.1.4 deprecated, migrated to kalshi-python-sync 3.9.0)
+- [x] Review Kalshi ToS for algo trading restrictions — DONE (algo trading explicitly allowed, Basic tier = 20 read/10 write per sec)
+- [x] Kalshi REST API client with RSA key-pair auth (daemon-friendly) — DONE (kalshi_client.py + from_kalshi_mover adapter, 35 tests)
+- [ ] Wire Kalshi client into sensing pipeline (constants + fetcher + reactive + bootstrap)
+- [ ] Kalshi demo account signup + API key generation (Guiding Light action)
 - [ ] Prototype MarketSelector — map top 20 alerts to Kalshi contracts
 - [ ] Backtest MIDGE signals against historical Kalshi contracts
-- [ ] Kalshi REST API client with RSA key-pair auth (daemon-friendly)
-- [ ] Kalshi as signal source — new "prediction_market" domain (dual use)
 - [ ] Shadow mode stage — $1-10 real trades before scaling
 
 ### FTMO (after forex/commodity signal validation)
@@ -38,7 +39,7 @@
 - [ ] smart-money-concepts as new edge detector domain
 
 ### Causal Reasoning
-- [ ] Sequential chain stage-gating — require link N to confirm before watching link N+1 (CascadeTracker has chain tracking but no ordering enforcement)
+- [x] Sequential chain stage-gating — DONE (links grouped by lag into stages, stage N opens when N-1 confirmed, 23 tests)
 
 ### Processing Performance
 - [x] aiohttp async for PolygonBulkFetcher — DONE (get_daily_history_batch with 20 concurrent requests, ExcavationDaemon auto-detects batch support)
@@ -117,6 +118,9 @@
 - Binance funding rate wired (47 tests, "positioning" domain)
 - Thompson test artifacts cleaned (6 removed, 92 remain)
 - PolygonBulkFetcher async batch mode (aiohttp, 20 concurrent)
+- CascadeTracker stage-gating (temporal ordering enforcement, 23 tests)
+- Kalshi SDK verified + client built (kalshi-python-sync 3.9.0, 35 tests)
+- Kalshi ToS reviewed (algo trading allowed, no restrictions at Basic tier)
 
 ---
 

@@ -38,6 +38,16 @@
 - 4 stale test assertions fixed (rotation count 34→35, finviz 4-arg signature)
 - 62 FRED tests, 283 sensing/wiring tests, 47 Binance tests pass
 
+**Session 2 (2026-03-11):**
+- CascadeTracker sequential stage-gating — links grouped into temporal stages by predicted lag (2-day tolerance). Stage 0 always watchable, stage N opens only when stage N-1 has a confirmation. Chain boost respects gating (only boosts watchable links). 23 new tests (55 total cascade tests).
+- Kalshi prediction market client BUILT (`kalshi_client.py`) + signal adapter (`from_kalshi_mover`) + 35 tests
+  - `kalshi-python-sync 3.9.0` installed (replaces deprecated `kalshi-python 2.1.4`)
+  - Kalshi research complete: algo trading allowed, RSA key-pair auth (daemon-friendly), demo env at `demo-api.kalshi.co`
+  - Domain: "prediction_market" (new domain — crowd probability estimates independent from macro indicators)
+  - **NOT YET WIRED** into sensing pipeline — client + adapter done, pipeline wiring is next session
+  - Env vars needed: `KALSHI_API_KEY_ID`, `KALSHI_PRIVATE_KEY_PATH`
+- Stale adapter count assertions fixed (38→39 for Binance adapter from previous session)
+
 **What's left:**
 1. Wave 2 (test file splits) not started — see `DECOMPOSITION-PLAN.md` Teams 11-12
 2. 13 xdist-mode failures to investigate (pre-existing parallel-safety issues)
