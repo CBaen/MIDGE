@@ -75,6 +75,85 @@ class RawStoreOperationalMixin:
         logger.debug("RawStore: stored %d Massive daily bars", len(data))
         return len(data)
 
+    # --- Polygon.io ticker reference data ---
+
+    def store_polygon_ticker_details(self, details: List[Any]) -> int:
+        """Store Polygon.io /v3/reference/tickers/{ticker} reference metadata.
+
+        Args:
+            details: List of TickerDetails dataclass instances or dicts.
+
+        Returns:
+            Number of rows upserted.
+        """
+        if not details:
+            return 0
+
+        conn = self._get_conn("massive")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS polygon_ticker_details (
+                ticker TEXT PRIMARY KEY,
+                name TEXT,
+                market TEXT,
+                locale TEXT,
+                primary_exchange TEXT,
+                type TEXT,
+                active INTEGER,
+                currency_name TEXT,
+                market_cap REAL,
+                sic_code TEXT,
+                sic_description TEXT,
+                ingested_at TEXT
+            )
+        """)
+
+        now = datetime.now(timezone.utc).isoformat()
+        data = []
+        for d in details:
+            if hasattr(d, "ticker"):
+                data.append((
+                    getattr(d, "ticker", ""),
+                    getattr(d, "name", ""),
+                    getattr(d, "market", ""),
+                    getattr(d, "locale", ""),
+                    getattr(d, "primary_exchange", ""),
+                    getattr(d, "type", ""),
+                    int(getattr(d, "active", True)),
+                    getattr(d, "currency_name", ""),
+                    getattr(d, "market_cap", 0.0),
+                    getattr(d, "sic_code", ""),
+                    getattr(d, "sic_description", ""),
+                    now,
+                ))
+            elif isinstance(d, dict):
+                data.append((
+                    d.get("ticker", ""),
+                    d.get("name", ""),
+                    d.get("market", ""),
+                    d.get("locale", ""),
+                    d.get("primary_exchange", ""),
+                    d.get("type", ""),
+                    int(d.get("active", True)),
+                    d.get("currency_name", ""),
+                    d.get("market_cap", 0.0),
+                    d.get("sic_code", ""),
+                    d.get("sic_description", ""),
+                    now,
+                ))
+
+        if data:
+            conn.executemany(
+                "INSERT OR REPLACE INTO polygon_ticker_details "
+                "(ticker, name, market, locale, primary_exchange, type, active, "
+                "currency_name, market_cap, sic_code, sic_description, ingested_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                data,
+            )
+            conn.commit()
+
+        logger.debug("RawStore: stored %d Polygon ticker detail rows", len(data))
+        return len(data)
+
     # --- CoinGecko full market data ---
 
     def store_coingecko_prices(self, coins: List[Any]) -> int:

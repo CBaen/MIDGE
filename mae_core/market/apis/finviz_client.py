@@ -176,6 +176,11 @@ class FinVizClient:
                     ))
                 except (ValueError, TypeError):
                     continue
+            if self._raw_store is not None and results:
+                try:
+                    self._raw_store.store_finviz_short_squeeze(results)
+                except Exception:
+                    pass
             return results
         except Exception:
             logger.debug("FinViz high short float fetch failed", exc_info=True)

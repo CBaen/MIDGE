@@ -1,8 +1,8 @@
 """wave2_3_technical.py - Technical/market Wave 2+3 signal adapters.
 
 Extracted from wave2_3.py. Converts FinViz unusual volume, FinViz short
-squeeze, Massive/Polygon snapshots, economic suppression events, and
-Finnhub real-time WebSocket signals to MarketSignal objects.
+squeeze, Massive/Polygon snapshots, economic suppression events, economic
+surprise signals, and Finnhub real-time WebSocket signals to MarketSignal objects.
 """
 
 from __future__ import annotations
@@ -335,6 +335,98 @@ def from_massive_snapshot(snapshot) -> MarketSignal:
             "high": getattr(snapshot, "high", 0.0),
             "low": getattr(snapshot, "low", 0.0),
             "data_source": "massive_polygon",
+        },
+    )
+
+
+def from_economic_surprise(event) -> MarketSignal:
+    """Convert a Finnhub EconomicEvent with actual/estimate data to a surprise MarketSignal.
+
+    Economic surprise — actual minus consensus estimate — is one of the most
+    tradeable macro signals.  A positive surprise on growth indicators (NFP,
+    GDP, PMI, retail sales) is bullish; a positive surprise on inflation
+    indicators (CPI, PPI, PCE) is bearish because it raises rate-hike odds.
+
+    Direction logic:
+      - Growth indicators: actual > estimate → bullish, actual < estimate → bearish
+      - Inflation indicators: actual > estimate → bearish (higher rates), vice versa
+
+    Threshold: fires only when |surprise| > 0.5% to filter measurement noise.
+    Strength: scales linearly, full strength at 10% surprise.
+    Domain: "macro" — distinct from "events" used by from_economic_event so both
+    can contribute to convergence independently.
+    """
+    actual = getattr(event, "actual", None)
+    estimate = getattr(event, "estimate", None)
+    previous = getattr(event, "previous", None)
+    event_name = getattr(event, "event", "") or ""
+    country = getattr(event, "country", "") or ""
+    impact = getattr(event, "impact", "low") or "low"
+    unit = getattr(event, "unit", "") or ""
+    event_date = getattr(event, "date", None)
+
+    # Require both actual and estimate to compute surprise
+    if actual is None or estimate is None or estimate == 0:
+        return None  # type: ignore[return-value]
+
+    surprise = (actual - estimate) / abs(estimate)
+
+    # Filter noise — only fire when surprise magnitude exceeds 0.5%
+    if abs(surprise) < 0.005:
+        return None  # type: ignore[return-value]
+
+    # Classify as inflation or growth to determine direction polarity
+    _INFLATION_KEYWORDS = {"CPI", "PPI", "PCE", "Inflation", "Core", "HICP"}
+    is_inflation = any(kw.lower() in event_name.lower() for kw in _INFLATION_KEYWORDS)
+
+    if is_inflation:
+        # Inflation beats estimate → bearish (rate-hike pressure)
+        direction = "bearish" if surprise > 0 else "bullish"
+    else:
+        # Growth beats estimate → bullish
+        direction = "bullish" if surprise > 0 else "bearish"
+
+    # Strength: scales to 10% surprise = full strength
+    strength = min(1.0, abs(surprise) / 0.10)
+
+    # Confidence scales with impact level
+    if impact == "high":
+        confidence = 0.65
+    elif impact == "medium":
+        confidence = 0.55
+    else:
+        confidence = 0.45
+
+    event_dt = _ensure_datetime(str(event_date)) if event_date is not None else datetime.now()
+
+    signal_id = f"econ_surprise:{country}:{event_name}:{event_date}"
+
+    return MarketSignal(
+        signal_id=signal_id,
+        source="economic_surprise",
+        symbol="",
+        asset_class="macro",
+        domain="macro",
+        direction=direction,
+        strength=strength,
+        confidence=confidence,
+        decay_rate=0.50,  # Surprises price in fast — 1-2 day half-life
+        timestamp=event_dt,
+        received_at=datetime.now(),
+        outcome_symbol="SPY",
+        outcome_window_days=3,
+        raw_id="",
+        raw_type="EconomicEvent",
+        metadata={
+            "event": event_name,
+            "country": country,
+            "impact": impact,
+            "actual": actual,
+            "estimate": estimate,
+            "previous": previous,
+            "unit": unit,
+            "surprise_pct": round(surprise * 100, 3),
+            "is_inflation_indicator": is_inflation,
         },
     )
 

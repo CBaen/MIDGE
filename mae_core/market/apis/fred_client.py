@@ -320,18 +320,38 @@ class FREDClient:
         """
         Fetch the latest reading for all key macro series.
 
-        Returns all five primary trading-relevant series:
-        T10Y2Y, BAMLH0A0HYM2, VIXCLS, DFF, UNRATE.
-        (CPIAUCSL omitted from snapshot — raw level is not actionable
-        without month-over-month delta context.)
+        Returns all primary trading-relevant series across five domains:
+        - Rates/credit: T10Y2Y, BAMLH0A0HYM2, BAMLC0A0CM, DFF, TEDRATE
+        - Market conditions: VIXCLS, T5YIE
+        - Labor/consumer: UNRATE, ICSA, UMCSENT, RSXFS
+        - Inflation: PCEPI, PCEPILFE (CPIAUCSL omitted — raw level not actionable)
+        - Liquidity/money: M2SL
+        - Housing: HOUST, PERMIT
+        - Commodities: DCOILWTICO, GOLDAMGBD228NLBM
+        - Forex: DGS2, DGS10, T10Y3M, DTWEXBGS
 
         Returns:
             List of MacroIndicator objects, one per available series.
             Failures are skipped silently (logged at WARNING level).
         """
         snapshot_series = [
-            "T10Y2Y", "BAMLH0A0HYM2", "VIXCLS", "DFF", "UNRATE",
-            # Forex-critical additions
+            # Rates & credit stress
+            "T10Y2Y", "BAMLH0A0HYM2", "BAMLC0A0CM", "DFF", "TEDRATE",
+            # Market conditions & inflation expectations
+            "VIXCLS", "T5YIE",
+            # Labor market (monthly unemployment + weekly claims pulse)
+            "UNRATE", "ICSA",
+            # Consumer health
+            "UMCSENT", "RSXFS",
+            # Inflation (Fed's actual targets)
+            "PCEPI", "PCEPILFE",
+            # Liquidity
+            "M2SL",
+            # Housing (rate-sensitive leading indicator)
+            "HOUST", "PERMIT",
+            # Commodities (cross-asset convergence anchors)
+            "DCOILWTICO", "GOLDAMGBD228NLBM",
+            # Forex-critical: yield differentials and dollar strength
             "DGS2", "DGS10", "T10Y3M", "DTWEXBGS",
         ]
         results = []

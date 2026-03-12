@@ -28,6 +28,22 @@ _RATE_LIMIT = 5  # calls per minute (free tier)
 
 
 @dataclass
+class TickerDetails:
+    """Reference metadata for a single ticker from Polygon /v3/reference/tickers/{ticker}."""
+    ticker: str
+    name: str
+    market: str          # stocks, crypto, fx, otc, indices
+    locale: str          # us, global
+    primary_exchange: str
+    type: str            # CS (common stock), ETF, FUND, etc.
+    active: bool
+    currency_name: str
+    market_cap: float
+    sic_code: str
+    sic_description: str
+
+
+@dataclass
 class TickerBar:
     """Single day's OHLCV for a ticker."""
     ticker: str
@@ -186,6 +202,44 @@ class MassiveClient:
                 date=self._ts_to_date(r.get("t", 0)),
             ))
         return bars[-days:]  # trim to requested window
+
+    def get_ticker_details(self, ticker: str) -> Optional[TickerDetails]:
+        """Get reference metadata for a single ticker. ONE API call.
+
+        Uses Polygon /v3/reference/tickers/{ticker} (free tier, no daily bar
+        quota consumed). Returns sector/industry/SIC/market-cap context useful
+        for domain routing and excavation enrichment.
+
+        Does NOT participate in the rotation system — call on-demand during
+        excavation or when enriching a ticker for the first time.
+        """
+        data = self._get(f"/v3/reference/tickers/{ticker.upper()}")
+        result = data.get("results")
+        if not result:
+            return None
+        try:
+            details = TickerDetails(
+                ticker=result.get("ticker", ticker),
+                name=result.get("name", ""),
+                market=result.get("market", ""),
+                locale=result.get("locale", ""),
+                primary_exchange=result.get("primary_exchange", ""),
+                type=result.get("type", ""),
+                active=bool(result.get("active", True)),
+                currency_name=result.get("currency_name", ""),
+                market_cap=float(result.get("market_cap") or 0.0),
+                sic_code=str(result.get("sic_code") or ""),
+                sic_description=result.get("sic_description", ""),
+            )
+        except (TypeError, ValueError):
+            logger.debug("Massive: failed to parse ticker details for %s", ticker)
+            return None
+        if self._raw_store is not None:
+            try:
+                self._raw_store.store_polygon_ticker_details([details])
+            except Exception:
+                pass
+        return details
 
     def build_snapshots(
         self, tickers: List[str], bars_by_ticker: Dict[str, List[TickerBar]] = None,

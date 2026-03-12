@@ -297,6 +297,74 @@ class RawStoreInsiderMixin:
         logger.debug("RawStore: stored %d FinViz unusual volume rows", len(data))
         return len(data)
 
+    def store_finviz_short_squeeze(self, candidates: List[Any]) -> int:
+        """Store FinViz high short float / squeeze candidate records.
+
+        Args:
+            candidates: List of ShortSqueezeCandidate dataclass instances or dicts.
+
+        Returns:
+            Number of rows upserted.
+        """
+        if not candidates:
+            return 0
+
+        conn = self._get_conn("finviz")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS finviz_short_squeeze (
+                ticker TEXT,
+                timestamp TEXT,
+                company TEXT,
+                sector TEXT,
+                price REAL,
+                short_float_pct REAL,
+                short_ratio REAL,
+                float_shares INTEGER,
+                short_interest INTEGER,
+                ingested_at TEXT,
+                PRIMARY KEY (ticker, timestamp)
+            )
+        """)
+
+        now = datetime.now(timezone.utc).isoformat()
+        data = []
+        for c in candidates:
+            if hasattr(c, "ticker"):
+                data.append((
+                    getattr(c, "ticker", ""), now[:13],
+                    getattr(c, "company", ""), getattr(c, "sector", ""),
+                    getattr(c, "price", 0.0),
+                    getattr(c, "short_float_pct", 0.0),
+                    getattr(c, "short_ratio", 0.0),
+                    getattr(c, "float_shares", 0),
+                    getattr(c, "short_interest", 0),
+                    now,
+                ))
+            elif isinstance(c, dict):
+                data.append((
+                    c.get("ticker", ""), now[:13],
+                    c.get("company", ""), c.get("sector", ""),
+                    c.get("price", 0.0),
+                    c.get("short_float_pct", 0.0),
+                    c.get("short_ratio", 0.0),
+                    c.get("float_shares", 0),
+                    c.get("short_interest", 0),
+                    now,
+                ))
+
+        if data:
+            conn.executemany(
+                "INSERT OR REPLACE INTO finviz_short_squeeze "
+                "(ticker, timestamp, company, sector, price, short_float_pct, "
+                "short_ratio, float_shares, short_interest, ingested_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                data,
+            )
+            conn.commit()
+
+        logger.debug("RawStore: stored %d FinViz short squeeze candidates", len(data))
+        return len(data)
+
     # --- EDGAR Enhanced (13F/13D) ---
 
     def store_edgar_filings(self, filings: List[Any]) -> int:

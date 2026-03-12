@@ -57,18 +57,30 @@ class COTSignal:
     pct_commercial_long: float  # commercial_long / open_interest
     report_date: str            # YYYY-MM-DD
 
+    # Derived high-signal fields (None when history is unavailable)
+    change_commercial_net: Optional[int] = None   # week-over-week change
+    cot_index: Optional[float] = None             # percentile rank vs 52-week range [0.0–1.0]
+
     signal_source: str = "cot_positioning"
     decay_rate: float = 0.03    # ~23 day half-life (weekly data, slow signal)
     confidence: float = 0.55
 
     def to_plain_language(self) -> str:
         comm_stance = "long" if self.commercial_net > 0 else "short"
-        return (
+        parts = [
             f"{self.ticker} ({self.contract_name}): Commercials net {comm_stance} "
             f"{abs(self.commercial_net):,} contracts, "
             f"OI {self.open_interest:,}, "
-            f"report {self.report_date}"
-        )
+            f"report {self.report_date}",
+        ]
+        if self.change_commercial_net is not None:
+            direction = "+" if self.change_commercial_net >= 0 else ""
+            parts.append(
+                f"WoW change: {direction}{self.change_commercial_net:,}"
+            )
+        if self.cot_index is not None:
+            parts.append(f"COT Index: {self.cot_index:.0%}")
+        return ", ".join(parts)
 
 
 class COTClient:
@@ -265,6 +277,57 @@ class COTClient:
 
         return results
 
+    def _compute_derived_metrics(
+        self, contract_name: str, current_net: int
+    ) -> tuple:
+        """Compute week-over-week change and COT Index from raw_store history.
+
+        Both metrics require at least 2 weeks of stored history.  If the
+        raw_store is unavailable or has insufficient data, returns (None, None)
+        so downstream code degrades gracefully.
+
+        COT Index formula:
+            (current - 52w_min) / (52w_max - 52w_min)
+        Range [0.0, 1.0] where 1.0 = all-time-high net long for the period.
+
+        Returns:
+            (change_commercial_net, cot_index) — either or both may be None.
+        """
+        if self._raw_store is None:
+            return None, None
+
+        try:
+            history = self._raw_store.get_cot_history(contract_name, weeks=52)
+        except Exception as exc:
+            logger.debug("COT derived: raw_store query failed for %s: %s", contract_name, exc)
+            return None, None
+
+        if not history:
+            return None, None
+
+        # Week-over-week change: previous week's net vs current
+        nets = [r["commercial_long"] - r["commercial_short"] for r in history]
+        change = None
+        if len(nets) >= 1:
+            # history is oldest-first; the last element is the most recent
+            # *stored* week (which may be the same week as current_net or one
+            # week behind depending on fetch timing).  We always compare the
+            # stored most-recent net to the freshly-computed current_net.
+            change = current_net - nets[-1]
+
+        # COT Index: percentile rank of current_net within the 52-week window
+        # Include current_net in the window so the index reflects today's value.
+        all_nets = nets + [current_net]
+        min_net = min(all_nets)
+        max_net = max(all_nets)
+        cot_index = None
+        if max_net != min_net:
+            cot_index = round((current_net - min_net) / (max_net - min_net), 4)
+        elif len(all_nets) >= 1:
+            cot_index = 0.5  # flat history — sit at midpoint
+
+        return change, cot_index
+
     def _parse_dataframe(
         self, df, symbols: Optional[List[str]] = None
     ) -> List[COTSignal]:
@@ -335,6 +398,8 @@ class COTClient:
                 if hasattr(report_date, "strftime"):
                     report_date = report_date.strftime("%Y-%m-%d")
 
+                change_net, cot_index = self._compute_derived_metrics(cftc_name, comm_net)
+
                 results.append(COTSignal(
                     ticker=ticker,
                     contract_name=cftc_name,
@@ -348,6 +413,8 @@ class COTClient:
                     open_interest=oi,
                     pct_commercial_long=round(pct_comm, 4),
                     report_date=report_date[:10] if report_date else "",
+                    change_commercial_net=change_net,
+                    cot_index=cot_index,
                 ))
 
             except Exception as exc:
