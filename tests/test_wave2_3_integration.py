@@ -786,9 +786,9 @@ class TestFetchFunctions:
 class TestSensingHookIntegration:
     """Tests for SOURCE_ROTATION, TIER_ROUTING, _ROTATION_TO_THOMPSON constants."""
 
-    def test_source_rotation_has_35_entries(self):
+    def test_source_rotation_has_36_entries(self):
         from mae_core.market.sensing_hook import SOURCE_ROTATION
-        assert len(SOURCE_ROTATION) == 35
+        assert len(SOURCE_ROTATION) == 36
 
     def test_crypto_prices_in_source_rotation(self):
         from mae_core.market.sensing_hook import SOURCE_ROTATION
@@ -1366,3 +1366,161 @@ class TestFetchFinnhubExtrasWithSurprise:
 
         sources = [s.source for s in signals if s is not None]
         assert "economic_surprise" not in sources
+
+
+# ============================================================================
+# Fix 2: from_13f_filer_activity adapter tests
+# ============================================================================
+
+class TestFrom13fFilerActivity:
+    """Tests for from_13f_filer_activity — 13F filer metadata dict to MarketSignal."""
+
+    def _make_filer(self, filer_name="Vanguard Group", cik="102909",
+                    filing_date="2026-02-15", period="2025-12-31"):
+        return {
+            "filer_name": filer_name,
+            "cik": cik,
+            "filing_date": filing_date,
+            "form_type": "13F-HR",
+            "period_of_report": period,
+        }
+
+    def test_source_is_institutional_13f(self):
+        from mae_core.market.signal_adapters.wave2_3_insider import from_13f_filer_activity
+        sig = from_13f_filer_activity(self._make_filer())
+        assert sig.source == "institutional_13f"
+
+    def test_domain_is_institutional(self):
+        from mae_core.market.signal_adapters.wave2_3_insider import from_13f_filer_activity
+        sig = from_13f_filer_activity(self._make_filer())
+        assert sig.domain == "institutional"
+
+    def test_direction_is_bullish(self):
+        from mae_core.market.signal_adapters.wave2_3_insider import from_13f_filer_activity
+        sig = from_13f_filer_activity(self._make_filer())
+        assert sig.direction == "bullish"
+
+    def test_symbol_is_empty_no_ticker_data(self):
+        from mae_core.market.signal_adapters.wave2_3_insider import from_13f_filer_activity
+        sig = from_13f_filer_activity(self._make_filer())
+        assert sig.symbol == ""
+
+    def test_outcome_symbol_is_spy(self):
+        from mae_core.market.signal_adapters.wave2_3_insider import from_13f_filer_activity
+        sig = from_13f_filer_activity(self._make_filer())
+        assert sig.outcome_symbol == "SPY"
+
+    def test_strength_is_low_due_to_no_holdings(self):
+        from mae_core.market.signal_adapters.wave2_3_insider import from_13f_filer_activity
+        sig = from_13f_filer_activity(self._make_filer())
+        assert sig.strength == 0.30
+
+    def test_confidence_is_lower_than_13f_holding(self):
+        from mae_core.market.signal_adapters.wave2_3_insider import from_13f_filer_activity
+        sig = from_13f_filer_activity(self._make_filer())
+        assert sig.confidence == 0.40
+
+    def test_raw_type_is_filer_metadata(self):
+        from mae_core.market.signal_adapters.wave2_3_insider import from_13f_filer_activity
+        sig = from_13f_filer_activity(self._make_filer())
+        assert sig.raw_type == "13FFilerMetadata"
+
+    def test_signal_id_contains_cik_and_date(self):
+        from mae_core.market.signal_adapters.wave2_3_insider import from_13f_filer_activity
+        sig = from_13f_filer_activity(self._make_filer(cik="102909", filing_date="2026-02-15"))
+        assert "102909" in sig.signal_id
+        assert "2026-02-15" in sig.signal_id
+
+    def test_metadata_contains_filer_name(self):
+        from mae_core.market.signal_adapters.wave2_3_insider import from_13f_filer_activity
+        sig = from_13f_filer_activity(self._make_filer(filer_name="BlackRock"))
+        assert sig.metadata["filer_name"] == "BlackRock"
+
+    def test_metadata_contains_period_of_report(self):
+        from mae_core.market.signal_adapters.wave2_3_insider import from_13f_filer_activity
+        sig = from_13f_filer_activity(self._make_filer(period="2025-12-31"))
+        assert sig.metadata["period_of_report"] == "2025-12-31"
+
+    def test_empty_dict_does_not_raise(self):
+        from mae_core.market.signal_adapters.wave2_3_insider import from_13f_filer_activity
+        sig = from_13f_filer_activity({})
+        assert sig.source == "institutional_13f"
+
+    def test_raw_id_is_cik(self):
+        from mae_core.market.signal_adapters.wave2_3_insider import from_13f_filer_activity
+        sig = from_13f_filer_activity(self._make_filer(cik="999888"))
+        assert sig.raw_id == "999888"
+
+    def test_importable_from_wave2_3_module(self):
+        from mae_core.market.signal_adapters.wave2_3 import from_13f_filer_activity
+        assert callable(from_13f_filer_activity)
+
+    def test_importable_from_signal_adapters_init(self):
+        from mae_core.market.signal_adapters import from_13f_filer_activity
+        assert callable(from_13f_filer_activity)
+
+
+class TestFetch13fHoldingsWithFilerActivity:
+    """Tests for fetch_13f_holdings wiring — now calls both get_13d_filings and get_recent_13f_filers."""
+
+    def test_calls_get_recent_13f_filers_when_converter_provided(self):
+        from mae_core.market.fetchers_insider import fetch_13f_holdings
+        from unittest.mock import MagicMock
+
+        client = MagicMock()
+        client.get_13d_filings.return_value = []
+        client.get_recent_13f_filers.return_value = [
+            {"filer_name": "Vanguard", "cik": "102909", "filing_date": "2026-02-15",
+             "form_type": "13F-HR", "period_of_report": "2025-12-31"}
+        ]
+
+        activist_conv = MagicMock(return_value=MagicMock())
+        filer_conv = MagicMock(return_value=MagicMock())
+
+        fetch_13f_holdings(client, MagicMock(), activist_conv, filer_conv)
+        client.get_recent_13f_filers.assert_called_once()
+        filer_conv.assert_called_once()
+
+    def test_skips_13f_filer_call_when_no_converter(self):
+        from mae_core.market.fetchers_insider import fetch_13f_holdings
+        from unittest.mock import MagicMock
+
+        client = MagicMock()
+        client.get_13d_filings.return_value = []
+
+        fetch_13f_holdings(client, MagicMock(), MagicMock())
+        client.get_recent_13f_filers.assert_not_called()
+
+    def test_returns_signals_from_both_calls(self):
+        from mae_core.market.fetchers_insider import fetch_13f_holdings
+        from mae_core.market.signal_adapters.wave2_3_insider import from_13f_filer_activity, from_activist_filing
+        from unittest.mock import MagicMock, patch
+        from mae_core.market.apis.edgar_enhanced_client import ActivistFiling
+
+        activist = ActivistFiling(
+            filer_name="Test Fund", filer_cik="111", subject_company="ACME",
+            subject_ticker="ACME", filing_date="2026-02-01", form_type="SC 13D",
+            percent_owned=6.0, purpose="Test"
+        )
+        filer_dict = {"filer_name": "Vanguard", "cik": "102909",
+                      "filing_date": "2026-02-15", "form_type": "13F-HR",
+                      "period_of_report": "2025-12-31"}
+
+        client = MagicMock()
+        client.get_13d_filings.return_value = [activist]
+        client.get_recent_13f_filers.return_value = [filer_dict]
+
+        signals = fetch_13f_holdings(client, MagicMock(), from_activist_filing, from_13f_filer_activity)
+        assert len(signals) == 2
+
+    def test_13f_filer_error_does_not_propagate(self):
+        from mae_core.market.fetchers_insider import fetch_13f_holdings
+        from unittest.mock import MagicMock
+
+        client = MagicMock()
+        client.get_13d_filings.return_value = []
+        client.get_recent_13f_filers.side_effect = RuntimeError("network error")
+
+        filer_conv = MagicMock()
+        result = fetch_13f_holdings(client, MagicMock(), MagicMock(), filer_conv)
+        assert result == []  # Error swallowed, empty list returned
