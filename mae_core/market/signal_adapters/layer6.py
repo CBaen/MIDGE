@@ -14,11 +14,23 @@ from mae_core.market.signal import MarketSignal, _ensure_datetime
 def from_cot_positioning(cot) -> MarketSignal:
     """Convert a COTSignal to a MarketSignal.
 
-    Commercial net positioning is the signal. When commercials are heavily
-    long, it's bullish (they hedge their physical exposure). When heavily
-    short, they're hedging against expected declines.
+    Commercial net positioning is the primary signal. When commercials are
+    heavily long it's bullish; when heavily short, bearish.
+
+    Two enhanced metrics improve signal quality when history is available:
+
+    change_commercial_net — week-over-week momentum.  A large positive WoW
+    change while already net-long amplifies the bullish read; a reversal
+    (WoW negative while net-long) weakens it.  Threshold: ±5% of open
+    interest is considered a meaningful shift.
+
+    cot_index — percentile rank vs 52-week range.  Extremes (>0.85 or <0.15)
+    are the historically high-signal zones where commercial positioning is at
+    a structural extreme and mean reversion or trend continuation is most
+    likely.  A COT Index > 0.85 on a bullish net adds a confidence boost; an
+    extreme in the opposite direction of the net acts as a caution flag.
     """
-    # Direction from commercial net position
+    # --- Direction (unchanged logic) ---
     if cot.commercial_net > 0 and cot.pct_commercial_long > 0.55:
         direction = "bullish"
     elif cot.commercial_net < 0 and cot.pct_commercial_long < 0.45:
@@ -26,9 +38,37 @@ def from_cot_positioning(cot) -> MarketSignal:
     else:
         direction = "neutral"
 
-    # Strength from absolute net size relative to open interest
+    # --- Base strength from absolute net/OI ratio ---
     net_ratio = abs(cot.commercial_net) / max(1, cot.open_interest)
-    strength = min(1.0, net_ratio * 5)  # 20% net/OI = full strength
+    base_strength = min(1.0, net_ratio * 5)  # 20% net/OI = full strength
+
+    # --- WoW momentum modifier ---
+    # A large same-direction weekly change boosts strength; a reversal damps it.
+    wow_modifier = 0.0
+    change_net = getattr(cot, "change_commercial_net", None)
+    oi = max(1, cot.open_interest)
+    if change_net is not None:
+        change_ratio = change_net / oi  # signed, relative to OI
+        if direction == "bullish":
+            wow_modifier = min(0.15, change_ratio * 3)   # +15% max boost
+        elif direction == "bearish":
+            wow_modifier = min(0.15, -change_ratio * 3)  # bearish: negative change boosts
+
+    # --- COT Index modifier ---
+    # Extremes (>0.85 bullish, <0.15 bearish) add confidence at structural turning points.
+    index_modifier = 0.0
+    cot_idx = getattr(cot, "cot_index", None)
+    if cot_idx is not None:
+        if direction == "bullish" and cot_idx > 0.85:
+            index_modifier = 0.10
+        elif direction == "bearish" and cot_idx < 0.15:
+            index_modifier = 0.10
+        elif direction == "bullish" and cot_idx < 0.15:
+            index_modifier = -0.10  # net long but at 52-week low — contrarian caution
+        elif direction == "bearish" and cot_idx > 0.85:
+            index_modifier = -0.10  # net short but at 52-week high — contrarian caution
+
+    strength = min(1.0, max(0.0, base_strength + wow_modifier + index_modifier))
 
     event_dt = _ensure_datetime(cot.report_date)
 
@@ -57,6 +97,8 @@ def from_cot_positioning(cot) -> MarketSignal:
             "small_trader_net": cot.small_trader_net,
             "open_interest": cot.open_interest,
             "pct_commercial_long": cot.pct_commercial_long,
+            "change_commercial_net": change_net,
+            "cot_index": cot_idx,
         },
     )
 

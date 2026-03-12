@@ -402,3 +402,67 @@ class TestRateLimiter:
             sleep_duration = mock_sleep.call_args[0][0]
             # Should sleep for close to 5 seconds (minus the tiny elapsed time)
             assert 0 < sleep_duration <= _RATE_LIMIT_SECONDS
+
+
+# ---------------------------------------------------------------------------
+# raw_store wiring tests for get_high_short_float
+# ---------------------------------------------------------------------------
+
+class TestGetHighShortFloatRawStore:
+    """Verify get_high_short_float() stores results via raw_store."""
+
+    def test_stores_to_raw_store_when_provided(self):
+        mock_store = MagicMock()
+        client = FinVizClient(raw_store=mock_store)
+        mock_overview = MagicMock()
+        mock_overview.screener_view.return_value = _short_df()
+
+        with patch("mae_core.market.apis.finviz_client._HAS_FINVIZ", True), \
+             patch("mae_core.market.apis.finviz_client.Overview", return_value=mock_overview), \
+             patch.object(client, "_rate_limit"):
+            results = client.get_high_short_float()
+
+        assert len(results) == 1
+        mock_store.store_finviz_short_squeeze.assert_called_once_with(results)
+
+    def test_no_store_call_when_raw_store_is_none(self):
+        client = FinVizClient(raw_store=None)
+        mock_overview = MagicMock()
+        mock_overview.screener_view.return_value = _short_df()
+
+        with patch("mae_core.market.apis.finviz_client._HAS_FINVIZ", True), \
+             patch("mae_core.market.apis.finviz_client.Overview", return_value=mock_overview), \
+             patch.object(client, "_rate_limit"):
+            results = client.get_high_short_float()
+
+        # No exception, results still returned
+        assert len(results) == 1
+
+    def test_no_store_call_when_empty_results(self):
+        mock_store = MagicMock()
+        client = FinVizClient(raw_store=mock_store)
+        mock_overview = MagicMock()
+        mock_overview.screener_view.return_value = pd.DataFrame()
+
+        with patch("mae_core.market.apis.finviz_client._HAS_FINVIZ", True), \
+             patch("mae_core.market.apis.finviz_client.Overview", return_value=mock_overview), \
+             patch.object(client, "_rate_limit"):
+            results = client.get_high_short_float()
+
+        assert results == []
+        mock_store.store_finviz_short_squeeze.assert_not_called()
+
+    def test_store_exception_does_not_propagate(self):
+        mock_store = MagicMock()
+        mock_store.store_finviz_short_squeeze.side_effect = RuntimeError("db locked")
+        client = FinVizClient(raw_store=mock_store)
+        mock_overview = MagicMock()
+        mock_overview.screener_view.return_value = _short_df()
+
+        with patch("mae_core.market.apis.finviz_client._HAS_FINVIZ", True), \
+             patch("mae_core.market.apis.finviz_client.Overview", return_value=mock_overview), \
+             patch.object(client, "_rate_limit"):
+            # Should not raise — store failures are swallowed
+            results = client.get_high_short_float()
+
+        assert len(results) == 1
