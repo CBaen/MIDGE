@@ -84,12 +84,12 @@ class TestSignalAdapters:
         assert m is not None
 
     def test_adapter_init_importable(self):
-        """The signal_adapters __init__ must re-export all 38 converters."""
+        """The signal_adapters __init__ must re-export all 39 converters."""
         import mae_core.market.signal_adapters as sa
 
         assert hasattr(sa, "__all__"), "signal_adapters __init__ must define __all__"
-        assert len(sa.__all__) == 38, (
-            f"Expected 38 entries in __all__, found {len(sa.__all__)}"
+        assert len(sa.__all__) == 39, (
+            f"Expected 39 entries in __all__, found {len(sa.__all__)}"
         )
 
     def test_regulatory_adapters(self):
