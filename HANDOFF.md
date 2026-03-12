@@ -5,6 +5,43 @@
 
 ---
 
+## Session 5 (2026-03-12): WAKE UP INTELLIGENCE — 3 DISCONNECTED SYSTEMS WIRED
+
+**Guiding Light's directive:** "Anything asleep or disconnected needs to be woken and connected." MIDGE has 15 independent pattern-finding processes — 5 were disconnected or passive. This session wired 3 of them.
+
+**What was wired:**
+
+1. **DeepAnalyst → step loop** — Was built (Session 3) but never called during daemon operation. Now bootstrapped in `market_systems.py` with injected dependencies (ThompsonSampler, PatternLibrary, WorldModel) and runs every 500 steps via `_run_slow_cadence_ops()`. Synthesizes ranked inevitabilities from all data and publishes to EventBus (`market.intel.deep_analysis`).
+
+2. **PatternWatcher → reactive** — Was passive (only ran every 10 steps via `_run_sensing_archaeology`). Now also fires immediately when new signals arrive via `_collect_one()` in `sensing_collector.py`. Builds active signal map from convergence alerter buffer and checks for pattern stacks without waiting for the cadence tick. 10-step cadence remains as safety net.
+
+3. **WorldModel → auto-discovery** — Was mostly hand-curated (102 edges). Now automatically grows from:
+   - **Granger causality findings** (every 500 steps) — all significant findings become edges
+   - **Strong lag correlations** (|r| >= 0.6, every 500 steps) — directional relationships become edges
+   - Both use `add_discovered_edge()` which strengthens existing edges on re-discovery.
+
+**Also from previous sub-session:**
+- Thread-safety locks on 4 shared-state systems (ConvergenceAlerter, CascadeTracker, OutcomeCollector, ThompsonSampler)
+- Research Council on architecture evolution (outcome: fix bugs as bugs, decide migration separately)
+
+**Remaining disconnected (2 of 5):**
+- **HypothesisEngine** — has zero template feedback (templates exist but no outcomes flow back)
+- **OctopusColony** — bootstrapped but underused (investigation pipeline dispatches every 20 steps, role-matched routing works, but colony rarely has enough partial convergences to investigate)
+
+**Test results:** 1074 passed, 0 regressions. Pre-existing: `test_congress_gov_client` (env var), `test_adapter_init_importable` (count mismatch 41→42).
+
+**Daemon status:** PID 27748 alive at step 4094+, actively sensing. Will pick up new wiring on next restart.
+
+**Guiding Light's framing:** MIDGE as ecosystem/company with departments. Floor 3 (Intelligence) has 15 workers — they were uncoordinated. "Review by many, often" = Law 7 applied to intelligence analysis. Build review pipeline where convergence alerts pass through 3+ validators before paper trade.
+
+**Next priorities:**
+1. Restart daemon to activate all 3 new wirings
+2. Build review pipeline (Law 7 enforcement on convergence alerts → paper trades)
+3. Historical replay with all systems active (258K fingerprints + 913 days of signal archives)
+4. Wire remaining 2 disconnected systems (HypothesisEngine feedback, OctopusColony utilization)
+
+---
+
 ## Session 4 (2026-03-12): THREAD-SAFETY — LOCKING DOWN SHARED STATE
 
 **Research Council deliberated** whether MIDGE should evolve from Mesa's synchronous step-cadence to 50+ independent wall-clock threads. Council output: `research/council-architecture-evolution/`. Tension Analyst's key insight: fix the bugs as bugs, decide migration separately.
