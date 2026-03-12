@@ -99,14 +99,47 @@ class KalshiMarketClient:
         self._error_count = 0
         self._initialized = False
 
+    def _load_private_key(self) -> Optional[str]:
+        """Load RSA private key from file path or env var.
+
+        Supports three sources (checked in order):
+          1. File path via KALSHI_PRIVATE_KEY_PATH
+          2. Raw PEM content via KALSHI_RSA_PRIVATE_KEY
+          3. Constructor private_key_path argument (file or inline)
+        """
+        # Try file path first
+        key_path = self._private_key_path
+        if key_path and os.path.exists(key_path):
+            with open(key_path, "r") as f:
+                return f.read()
+
+        # Try raw key from env var
+        raw_key = os.environ.get("KALSHI_RSA_PRIVATE_KEY", "")
+        if raw_key:
+            # Wrap in PEM headers if missing
+            if "-----BEGIN" not in raw_key:
+                raw_key = (
+                    "-----BEGIN RSA PRIVATE KEY-----\n"
+                    + raw_key.strip()
+                    + "\n-----END RSA PRIVATE KEY-----\n"
+                )
+            return raw_key
+
+        return None
+
     def _ensure_client(self) -> bool:
         """Lazy-init the SDK client. Returns True if ready."""
         if self._initialized:
             return self._client is not None
         self._initialized = True
 
-        if not self._api_key_id or not self._private_key_path:
-            logger.debug("Kalshi client: no credentials configured")
+        if not self._api_key_id:
+            logger.debug("Kalshi client: no API key configured")
+            return False
+
+        pem = self._load_private_key()
+        if not pem:
+            logger.debug("Kalshi client: no private key found (checked file path + KALSHI_RSA_PRIVATE_KEY)")
             return False
 
         try:
@@ -115,15 +148,7 @@ class KalshiMarketClient:
             host = DEMO_HOST if self._demo else PROD_HOST
             config = Configuration(host=host)
             config.api_key_id = self._api_key_id
-
-            # Load private key
-            key_path = self._private_key_path
-            if os.path.exists(key_path):
-                with open(key_path, "r") as f:
-                    config.private_key_pem = f.read()
-            else:
-                logger.warning("Kalshi private key file not found: %s", key_path)
-                return False
+            config.private_key_pem = pem
 
             self._client = KalshiClient(config)
             mode = "DEMO" if self._demo else "PRODUCTION"
