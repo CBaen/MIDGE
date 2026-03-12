@@ -90,10 +90,36 @@
 - **Pre-flight verification**: All API keys present, data dirs exist, Qdrant running, Ollama running, 250GB free disk. Daemon-ready.
 - **MIDGE has no self-model** — Guiding Light asked "what does MIDGE even know?" She has no introspectable self-knowledge, no goal document she references. Logic is in code, not in something MIDGE can explain. Future consideration.
 
+**Session 6 (2026-03-11):**
+- **FULL API DATA AUDIT** — 3 parallel agents audited all 27 API clients for data waste. Devastating finding: raw_store is a write-only black hole. 24 of 25 SQLite databases never read back by anything. Data flows through once (API → adapter → signal → convergence) and dies.
+- **Silent failures fixed:**
+  1. `store_binance_funding()` — method didn't exist, silently failed every run. Now stores to `crypto.db` with `get_binance_funding_history()` read method.
+  2. `store_kalshi_markets()` — same. Now stores to `kalshi.db` with `get_kalshi_market_history()` read method.
+  3. SAM.gov `description` text was parsed then silently dropped before `ContractOpportunity()` constructor. Now stored.
+  4. USASpending had ZERO raw_store persistence — only client with no storage. Now has `store_usaspending_contracts()` + read method.
+- **API enrichment (agent work):**
+  - PriceData: added `short_ratio`, `held_pct_insiders`, `beta`, `forward_pe`, `sector`, `industry`, `fifty_two_week_high/low`, `shares_short`, `target_mean_price` from yfinance info dict
+  - SEC EDGAR: derivative table (options exercises) no longer silently dropped
+  - StockTwits raw_store: additional fields stored
+- **New systems built:**
+  - `event_embedder.py` + `event_descriptions.py` — converts market events to natural language, embeds via Ollama, stores vectors in Qdrant for semantic pattern matching
+  - `raw_data_analyst.py` — reads across SQLite stores, computes cross-domain insights, injects enriched signals into convergence pipeline (runs every 100 steps)
+  - Both wired into bootstrap via `market_systems.py`
+- **DATA ARCHITECTURE DECISION:**
+  - **SQLite** — keeps raw data ingest (write-heavy, already works)
+  - **DuckDB** — ADDED (`pip install duckdb`). Analytical queries across all domains. Reads existing SQLite files directly with zero migration. 3-10x faster than SQLite for analytics.
+  - **Neo4j Community** — ADDED (Docker: `midge-neo4j`, ports 7474/7687, auth `neo4j/midgepassword`). Persistent causal knowledge graph. Every confirmed cascade, signal→outcome relationship stored as graph edges with temporal properties. Cypher queries find causal chains.
+  - **Qdrant** — keeps semantic pattern similarity (already running)
+  - **Ollama** — keeps local embedding generation (already running)
+  - Obsidian rejected (note-taking app, no API). QuestDB deferred (not needed until sub-second tick feed). Parquet deferred (not needed until DBs hit ~1GB).
+- **62 new tests** (27 raw_store Binance/Kalshi, 35 SAM/USASpending)
+
 **What's left:**
 1. **START THE DAEMON** — `python main.py --daemon --agents 12 --steps 500 --pace 2.0` — and keep it running 24/7
-2. Historical backtesting at scale (not 1 month, not 5 tickers — everything)
-3. Wave 2 (test file splits) not started — see `DECOMPOSITION-PLAN.md` Teams 11-12
+2. **Wire Neo4j** — CascadeTracker writes confirmed links, OutcomeCollector writes graded outcomes, as graph relationships
+3. **Wire DuckDB** — RawDataAnalyst uses DuckDB for cross-domain queries instead of raw SQLite
+4. Historical backtesting at scale (not 1 month, not 5 tickers — everything)
+5. Wave 2 (test file splits) not started — see `DECOMPOSITION-PLAN.md` Teams 11-12
 4. 13 xdist-mode failures to investigate (pre-existing parallel-safety issues)
 5. Thread-safety audit for API clients used in 12-worker ThreadPoolExecutor
 6. Install `river` package for full ADWIN drift detection (currently pure-Python fallback)
