@@ -171,6 +171,13 @@ Guiding Light's vision: MIDGE as personal autonomous trader across ALL markets �
 - **SystemHealthMonitor** — 8 subsystems tracked, tier-based health (Green→Red)
 - **SelfMonitor** — behavioral anomaly detection (runaway rate, direction bias, ticker flooding)
 
+### Data Infrastructure
+- **SQLite** — 10 databases in `data/market/raw/` (raw data ingest)
+- **DuckDB** — in-process analytical queries across SQLite (zero migration)
+- **Neo4j Community** — Docker container `midge-neo4j` (causal knowledge graph, ports 7474/7687)
+- **Qdrant** — Docker container (semantic pattern similarity, port 6333/6335)
+- **Ollama** — local embedding generation (port 11434)
+
 ---
 
 ## What To Do Next

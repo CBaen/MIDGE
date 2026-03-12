@@ -283,6 +283,7 @@ class TestDescribeInsiderTrade:
     def test_ceo_conviction_note_present_for_ceo(self, sample_insider_trade):
         from mae_core.market.intelligence.event_descriptions import describe_insider_trade
         sample_insider_trade["relationship"] = "Chief Executive Officer"
+        sample_insider_trade["value"] = 2_000_000  # above $1M threshold for conviction note
         text = describe_insider_trade(sample_insider_trade)
         assert "C-suite" in text or "conviction" in text.lower()
 
