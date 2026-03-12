@@ -131,6 +131,11 @@ class OutcomeCollector:
 
         Returns count of newly registered predictions.
         """
+        with self._registered_lock:
+            return self._register_signals_locked(signals)
+
+    def _register_signals_locked(self, signals: "List[MarketSignal]") -> int:
+        """Inner — caller must hold self._registered_lock."""
         # Prune stale entries (older than 90 days) before processing
         now = datetime.now()
         self._registered = {
@@ -172,6 +177,11 @@ class OutcomeCollector:
         to Thompson Sampler — when the outcome resolves, Thompson learns which domain
         combinations actually predict price movement.
         """
+        with self._registered_lock:
+            return self._register_convergence_alert_locked(alert, primary_symbol)
+
+    def _register_convergence_alert_locked(self, alert, primary_symbol: str) -> bool:
+        """Inner — caller must hold self._registered_lock."""
         if not primary_symbol:
             return False
 
@@ -208,6 +218,11 @@ class OutcomeCollector:
         through OutcomeTracker to Thompson Sampler. Template IDs are stored
         in metadata so graded outcomes can update template win/loss stats.
         """
+        with self._registered_lock:
+            return self._register_pattern_stack_locked(stack, primary_symbol)
+
+    def _register_pattern_stack_locked(self, stack, primary_symbol: str) -> bool:
+        """Inner — caller must hold self._registered_lock."""
         if not primary_symbol:
             return False
 
@@ -284,6 +299,11 @@ class OutcomeCollector:
         signals that have a symbol. Use this once to bootstrap prediction tracking
         from existing signal history.
         """
+        with self._registered_lock:
+            return self._collect_from_archives_locked(signals_dir)
+
+    def _collect_from_archives_locked(self, signals_dir: Path) -> int:
+        """Inner — caller must hold self._registered_lock."""
         count = 0
         for jsonl_file in sorted(signals_dir.glob("*.jsonl")):
             try:
