@@ -750,3 +750,206 @@ class TestUSDAStorage:
             "SELECT value FROM usda_psd WHERE commodity_key='corn' AND attribute_id=20"
         ).fetchone()
         assert row[0] == 1200.0
+
+
+# ---------------------------------------------------------------------------
+# FinViz short squeeze storage (Fix 1)
+# ---------------------------------------------------------------------------
+
+from mae_core.market.apis.finviz_client import ShortSqueezeCandidate
+
+
+class TestFinVizShortSqueezeStorage:
+    """Tests for RawStoreInsiderMixin.store_finviz_short_squeeze()."""
+
+    def _make_candidate(self, ticker="BBBY", short_float_pct=87.5):
+        return ShortSqueezeCandidate(
+            ticker=ticker,
+            company="Bed Bath & Beyond",
+            sector="Consumer Cyclical",
+            price=3.25,
+            short_float_pct=short_float_pct,
+            short_ratio=4.2,
+            float_shares=115_500_000,
+            short_interest=101_100_000,
+        )
+
+    def test_store_returns_count(self, store):
+        candidates = [self._make_candidate("BBBY"), self._make_candidate("GME", 55.0)]
+        count = store.store_finviz_short_squeeze(candidates)
+        assert count == 2
+
+    def test_data_persisted_correctly(self, store):
+        candidate = self._make_candidate("BBBY", 87.5)
+        store.store_finviz_short_squeeze([candidate])
+
+        conn = store._get_conn("finviz")
+        row = conn.execute(
+            "SELECT ticker, company, short_float_pct, float_shares "
+            "FROM finviz_short_squeeze WHERE ticker='BBBY'"
+        ).fetchone()
+        assert row is not None
+        assert row[0] == "BBBY"
+        assert row[1] == "Bed Bath & Beyond"
+        assert abs(row[2] - 87.5) < 0.01
+        assert row[3] == 115_500_000
+
+    def test_upsert_replaces_on_same_ticker_timestamp(self, store):
+        c1 = self._make_candidate("BBBY", 87.5)
+        store.store_finviz_short_squeeze([c1])
+        c2 = self._make_candidate("BBBY", 90.0)
+        store.store_finviz_short_squeeze([c2])
+
+        conn = store._get_conn("finviz")
+        cursor = conn.execute("SELECT COUNT(*) FROM finviz_short_squeeze WHERE ticker='BBBY'")
+        # Same ticker + same hour-bucket timestamp → upsert, not duplicate
+        assert cursor.fetchone()[0] == 1
+
+    def test_empty_list_returns_zero(self, store):
+        assert store.store_finviz_short_squeeze([]) == 0
+
+    def test_dict_input_accepted(self, store):
+        record = {
+            "ticker": "AMC",
+            "company": "AMC Entertainment",
+            "sector": "Communication Services",
+            "price": 5.10,
+            "short_float_pct": 22.0,
+            "short_ratio": 1.5,
+            "float_shares": 500_000_000,
+            "short_interest": 110_000_000,
+        }
+        count = store.store_finviz_short_squeeze([record])
+        assert count == 1
+
+        conn = store._get_conn("finviz")
+        row = conn.execute(
+            "SELECT short_float_pct FROM finviz_short_squeeze WHERE ticker='AMC'"
+        ).fetchone()
+        assert row is not None
+        assert abs(row[0] - 22.0) < 0.01
+
+    def test_uses_finviz_database(self, store):
+        """Short squeeze data lives in the same finviz.db as other FinViz tables."""
+        store.store_finviz_short_squeeze([self._make_candidate()])
+        conn = store._get_conn("finviz")
+        tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+        assert "finviz_short_squeeze" in tables
+
+
+# ---------------------------------------------------------------------------
+# Polygon ticker reference data storage (Fix 2)
+# ---------------------------------------------------------------------------
+
+from mae_core.market.apis.massive_client import TickerDetails
+
+
+class TestPolygonTickerDetailsStorage:
+    """Tests for RawStoreOperationalMixin.store_polygon_ticker_details()."""
+
+    def _make_details(self, ticker="AAPL", market_cap=3e12, sic_code="3571"):
+        return TickerDetails(
+            ticker=ticker,
+            name="Apple Inc.",
+            market="stocks",
+            locale="us",
+            primary_exchange="XNAS",
+            type="CS",
+            active=True,
+            currency_name="usd",
+            market_cap=market_cap,
+            sic_code=sic_code,
+            sic_description="Electronic Computers",
+        )
+
+    def test_store_returns_count(self, store):
+        details = [self._make_details("AAPL"), self._make_details("MSFT", sic_code="7372")]
+        count = store.store_polygon_ticker_details(details)
+        assert count == 2
+
+    def test_data_persisted_correctly(self, store):
+        store.store_polygon_ticker_details([self._make_details("AAPL")])
+
+        conn = store._get_conn("massive")
+        row = conn.execute(
+            "SELECT ticker, name, market, primary_exchange, type, active, "
+            "market_cap, sic_code, sic_description "
+            "FROM polygon_ticker_details WHERE ticker='AAPL'"
+        ).fetchone()
+        assert row is not None
+        assert row[0] == "AAPL"
+        assert row[1] == "Apple Inc."
+        assert row[2] == "stocks"
+        assert row[3] == "XNAS"
+        assert row[4] == "CS"
+        assert row[5] == 1  # active stored as INTEGER
+        assert abs(row[6] - 3e12) < 1e6
+        assert row[7] == "3571"
+        assert row[8] == "Electronic Computers"
+
+    def test_upsert_updates_on_same_ticker(self, store):
+        store.store_polygon_ticker_details([self._make_details("AAPL", market_cap=3e12)])
+        store.store_polygon_ticker_details([self._make_details("AAPL", market_cap=3.1e12)])
+
+        conn = store._get_conn("massive")
+        cursor = conn.execute("SELECT COUNT(*), market_cap FROM polygon_ticker_details WHERE ticker='AAPL'")
+        row = cursor.fetchone()
+        assert row[0] == 1  # No duplicate
+        assert abs(row[1] - 3.1e12) < 1e6  # Updated value
+
+    def test_empty_list_returns_zero(self, store):
+        assert store.store_polygon_ticker_details([]) == 0
+
+    def test_dict_input_accepted(self, store):
+        record = {
+            "ticker": "SPY",
+            "name": "SPDR S&P 500 ETF Trust",
+            "market": "stocks",
+            "locale": "us",
+            "primary_exchange": "ARCX",
+            "type": "ETF",
+            "active": True,
+            "currency_name": "usd",
+            "market_cap": 0.0,
+            "sic_code": "",
+            "sic_description": "",
+        }
+        count = store.store_polygon_ticker_details([record])
+        assert count == 1
+
+        conn = store._get_conn("massive")
+        row = conn.execute(
+            "SELECT name, type FROM polygon_ticker_details WHERE ticker='SPY'"
+        ).fetchone()
+        assert row is not None
+        assert row[0] == "SPDR S&P 500 ETF Trust"
+        assert row[1] == "ETF"
+
+    def test_uses_massive_database(self, store):
+        """Ticker reference data shares massive.db with daily bars."""
+        store.store_polygon_ticker_details([self._make_details("AAPL")])
+        conn = store._get_conn("massive")
+        tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+        assert "polygon_ticker_details" in tables
+
+    def test_inactive_ticker_stored_correctly(self, store):
+        td = TickerDetails(
+            ticker="BBBY",
+            name="Bed Bath & Beyond Inc.",
+            market="stocks",
+            locale="us",
+            primary_exchange="XNAS",
+            type="CS",
+            active=False,
+            currency_name="usd",
+            market_cap=0.0,
+            sic_code="5719",
+            sic_description="Misc Home Furnishings Stores",
+        )
+        store.store_polygon_ticker_details([td])
+
+        conn = store._get_conn("massive")
+        row = conn.execute(
+            "SELECT active FROM polygon_ticker_details WHERE ticker='BBBY'"
+        ).fetchone()
+        assert row[0] == 0  # False stored as 0

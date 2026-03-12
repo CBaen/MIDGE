@@ -77,6 +77,387 @@ class TestDirectionLogic:
         assert _determine_direction("", 0.0) == "neutral"
 
 
+# --- New series direction logic (Wave 2 additions) ---
+
+class TestNewSeriesDirectionLogic:
+    # PCEPI — Fed's preferred inflation measure (raw index level = neutral)
+    def test_pcepi_always_neutral(self):
+        assert _determine_direction("PCEPI", 115.0) == "neutral"
+        assert _determine_direction("PCEPI", 80.0) == "neutral"
+
+    # PCEPILFE — Core PCE (Fed's policy anchor, raw level = neutral)
+    def test_pcepilfe_always_neutral(self):
+        assert _determine_direction("PCEPILFE", 120.0) == "neutral"
+        assert _determine_direction("PCEPILFE", 95.0) == "neutral"
+
+    # RSXFS — Retail Sales ex food services (level-based, neutral by design)
+    def test_rsxfs_always_neutral(self):
+        assert _determine_direction("RSXFS", 500000.0) == "neutral"
+        assert _determine_direction("RSXFS", 300000.0) == "neutral"
+
+    # UMCSENT — University of Michigan Consumer Sentiment
+    def test_umcsent_high_is_bullish(self):
+        assert _determine_direction("UMCSENT", 90.0) == "bullish"
+
+    def test_umcsent_low_is_bearish(self):
+        assert _determine_direction("UMCSENT", 60.0) == "bearish"
+
+    def test_umcsent_mid_is_neutral(self):
+        assert _determine_direction("UMCSENT", 75.0) == "neutral"
+
+    def test_umcsent_exactly_at_bullish_threshold(self):
+        assert _determine_direction("UMCSENT", 85.0) == "bullish"
+
+    def test_umcsent_exactly_at_bearish_threshold(self):
+        assert _determine_direction("UMCSENT", 65.0) == "bearish"
+
+    # M2SL — M2 Money Supply (level = neutral, growth rate matters more)
+    def test_m2sl_always_neutral(self):
+        assert _determine_direction("M2SL", 21000.0) == "neutral"
+        assert _determine_direction("M2SL", 15000.0) == "neutral"
+
+    # T5YIE — 5-Year Breakeven Inflation Rate
+    def test_t5yie_high_is_bearish(self):
+        assert _determine_direction("T5YIE", 3.5) == "bearish"
+
+    def test_t5yie_low_is_bullish(self):
+        assert _determine_direction("T5YIE", 1.8) == "bullish"
+
+    def test_t5yie_anchored_is_neutral(self):
+        assert _determine_direction("T5YIE", 2.4) == "neutral"
+
+    def test_t5yie_exactly_at_bearish_threshold_is_bearish(self):
+        # 3.0% exactly is dangerous — classified bearish (threshold is inclusive)
+        assert _determine_direction("T5YIE", 3.1) == "bearish"
+
+    def test_t5yie_exactly_at_bullish_threshold_is_bullish(self):
+        # Below 2.0% = anchored inflation = bullish
+        assert _determine_direction("T5YIE", 1.9) == "bullish"
+
+    def test_t5yie_boundary_at_3_is_bearish(self):
+        # The bearish threshold is >= 3.0 (inclusive), so exactly 3.0 is bearish
+        assert _determine_direction("T5YIE", 3.0) == "bearish"
+
+    def test_t5yie_boundary_at_2_is_neutral(self):
+        # The bullish threshold is < 2.0, so 2.0 itself is neutral
+        assert _determine_direction("T5YIE", 2.0) == "neutral"
+
+    # HOUST — Housing Starts
+    def test_houst_strong_is_bullish(self):
+        assert _determine_direction("HOUST", 1500.0) == "bullish"
+
+    def test_houst_weak_is_bearish(self):
+        assert _determine_direction("HOUST", 800.0) == "bearish"
+
+    def test_houst_mid_is_neutral(self):
+        assert _determine_direction("HOUST", 1200.0) == "neutral"
+
+    # PERMIT — Building Permits
+    def test_permit_strong_is_bullish(self):
+        assert _determine_direction("PERMIT", 1450.0) == "bullish"
+
+    def test_permit_weak_is_bearish(self):
+        assert _determine_direction("PERMIT", 850.0) == "bearish"
+
+    def test_permit_mid_is_neutral(self):
+        assert _determine_direction("PERMIT", 1150.0) == "neutral"
+
+    # DCOILWTICO — WTI Crude Oil Price
+    def test_dcoilwtico_very_high_is_bearish(self):
+        assert _determine_direction("DCOILWTICO", 95.0) == "bearish"
+
+    def test_dcoilwtico_low_is_bullish(self):
+        assert _determine_direction("DCOILWTICO", 45.0) == "bullish"
+
+    def test_dcoilwtico_mid_is_neutral(self):
+        assert _determine_direction("DCOILWTICO", 70.0) == "neutral"
+
+    # GOLDAMGBD228NLBM — Gold Price
+    def test_gold_very_high_is_bearish(self):
+        assert _determine_direction("GOLDAMGBD228NLBM", 2700.0) == "bearish"
+
+    def test_gold_low_is_bullish(self):
+        assert _determine_direction("GOLDAMGBD228NLBM", 1600.0) == "bullish"
+
+    def test_gold_mid_is_neutral(self):
+        assert _determine_direction("GOLDAMGBD228NLBM", 2000.0) == "neutral"
+
+    # BAMLC0A0CM — Investment Grade Corporate Bond Spread
+    def test_ig_spread_wide_is_bearish(self):
+        assert _determine_direction("BAMLC0A0CM", 2.5) == "bearish"
+
+    def test_ig_spread_tight_is_bullish(self):
+        assert _determine_direction("BAMLC0A0CM", 0.8) == "bullish"
+
+    def test_ig_spread_mid_is_neutral(self):
+        assert _determine_direction("BAMLC0A0CM", 1.5) == "neutral"
+
+    # TEDRATE — TED Spread (bank stress indicator)
+    def test_tedrate_high_is_bearish(self):
+        assert _determine_direction("TEDRATE", 1.5) == "bearish"
+
+    def test_tedrate_low_is_bullish(self):
+        assert _determine_direction("TEDRATE", 0.2) == "bullish"
+
+    def test_tedrate_mid_is_neutral(self):
+        assert _determine_direction("TEDRATE", 0.6) == "neutral"
+
+    # ICSA — Initial Jobless Claims
+    def test_icsa_very_low_is_bullish(self):
+        assert _determine_direction("ICSA", 200.0) == "bullish"
+
+    def test_icsa_high_is_bearish(self):
+        assert _determine_direction("ICSA", 400.0) == "bearish"
+
+    def test_icsa_mid_is_neutral(self):
+        assert _determine_direction("ICSA", 270.0) == "neutral"
+
+
+# --- New series are present in FRED_SERIES with correct metadata ---
+
+class TestNewSeriesInFredSeries:
+    from mae_core.market.apis.fred_models import FRED_SERIES
+
+    def test_pcepi_in_fred_series(self):
+        from mae_core.market.apis.fred_models import FRED_SERIES
+        assert "PCEPI" in FRED_SERIES
+        name, signal_type = FRED_SERIES["PCEPI"]
+        assert "PCE" in name
+        assert signal_type == "inflation_pce"
+
+    def test_pcepilfe_in_fred_series(self):
+        from mae_core.market.apis.fred_models import FRED_SERIES
+        assert "PCEPILFE" in FRED_SERIES
+        name, signal_type = FRED_SERIES["PCEPILFE"]
+        assert "Core PCE" in name
+        assert signal_type == "inflation_core_pce"
+
+    def test_rsxfs_in_fred_series(self):
+        from mae_core.market.apis.fred_models import FRED_SERIES
+        assert "RSXFS" in FRED_SERIES
+        name, signal_type = FRED_SERIES["RSXFS"]
+        assert "Retail" in name
+        assert signal_type == "consumer_spending"
+
+    def test_umcsent_in_fred_series(self):
+        from mae_core.market.apis.fred_models import FRED_SERIES
+        assert "UMCSENT" in FRED_SERIES
+        name, signal_type = FRED_SERIES["UMCSENT"]
+        assert "Michigan" in name or "Sentiment" in name
+        assert signal_type == "consumer_sentiment"
+
+    def test_m2sl_in_fred_series(self):
+        from mae_core.market.apis.fred_models import FRED_SERIES
+        assert "M2SL" in FRED_SERIES
+        name, signal_type = FRED_SERIES["M2SL"]
+        assert "M2" in name
+        assert signal_type == "money_supply"
+
+    def test_t5yie_in_fred_series(self):
+        from mae_core.market.apis.fred_models import FRED_SERIES
+        assert "T5YIE" in FRED_SERIES
+        name, signal_type = FRED_SERIES["T5YIE"]
+        assert "Breakeven" in name or "Inflation" in name
+        assert signal_type == "inflation_expectations"
+
+    def test_houst_in_fred_series(self):
+        from mae_core.market.apis.fred_models import FRED_SERIES
+        assert "HOUST" in FRED_SERIES
+        name, signal_type = FRED_SERIES["HOUST"]
+        assert "Housing Starts" in name
+        assert signal_type == "housing"
+
+    def test_permit_in_fred_series(self):
+        from mae_core.market.apis.fred_models import FRED_SERIES
+        assert "PERMIT" in FRED_SERIES
+        name, signal_type = FRED_SERIES["PERMIT"]
+        assert "Permit" in name or "permit" in name.lower()
+        assert signal_type == "housing_permits"
+
+    def test_dcoilwtico_in_fred_series(self):
+        from mae_core.market.apis.fred_models import FRED_SERIES
+        assert "DCOILWTICO" in FRED_SERIES
+        name, signal_type = FRED_SERIES["DCOILWTICO"]
+        assert "WTI" in name or "Crude" in name
+        assert signal_type == "energy_price"
+
+    def test_gold_in_fred_series(self):
+        from mae_core.market.apis.fred_models import FRED_SERIES
+        assert "GOLDAMGBD228NLBM" in FRED_SERIES
+        name, signal_type = FRED_SERIES["GOLDAMGBD228NLBM"]
+        assert "Gold" in name
+        assert signal_type == "gold_price"
+
+    def test_bamlc0a0cm_in_fred_series(self):
+        from mae_core.market.apis.fred_models import FRED_SERIES
+        assert "BAMLC0A0CM" in FRED_SERIES
+        name, signal_type = FRED_SERIES["BAMLC0A0CM"]
+        assert "Investment Grade" in name or "Corporate" in name
+        assert signal_type == "credit_spread_ig"
+
+    def test_tedrate_in_fred_series(self):
+        from mae_core.market.apis.fred_models import FRED_SERIES
+        assert "TEDRATE" in FRED_SERIES
+        name, signal_type = FRED_SERIES["TEDRATE"]
+        assert "TED" in name
+        assert signal_type == "bank_stress"
+
+    def test_icsa_in_fred_series(self):
+        from mae_core.market.apis.fred_models import FRED_SERIES
+        assert "ICSA" in FRED_SERIES
+        name, signal_type = FRED_SERIES["ICSA"]
+        assert "Jobless" in name or "Claims" in name
+        assert signal_type == "jobless_claims"
+
+    def test_all_new_series_have_non_empty_name(self):
+        from mae_core.market.apis.fred_models import FRED_SERIES
+        new_series = [
+            "PCEPI", "PCEPILFE", "RSXFS", "UMCSENT", "M2SL",
+            "T5YIE", "HOUST", "PERMIT", "DCOILWTICO",
+            "GOLDAMGBD228NLBM", "BAMLC0A0CM", "TEDRATE", "ICSA",
+        ]
+        for sid in new_series:
+            name, signal_type = FRED_SERIES[sid]
+            assert name, f"Empty name for {sid}"
+            assert signal_type, f"Empty signal_type for {sid}"
+
+    def test_total_series_count_is_at_least_25(self):
+        from mae_core.market.apis.fred_models import FRED_SERIES
+        # Original 11 + 14 new = 25 minimum (PERMIT is 14th, no NAPMPI — used proxy via MANEMP note)
+        assert len(FRED_SERIES) >= 25
+
+    def test_all_original_series_still_present(self):
+        from mae_core.market.apis.fred_models import FRED_SERIES
+        originals = [
+            "T10Y2Y", "BAMLH0A0HYM2", "VIXCLS", "DFF", "UNRATE",
+            "CPIAUCSL", "DGS2", "DGS10", "T10Y3M", "DTWEXBGS", "TSIFRGHT",
+        ]
+        for sid in originals:
+            assert sid in FRED_SERIES, f"Original series {sid} was removed"
+
+
+# --- get_macro_snapshot includes new series ---
+
+class TestMacroSnapshotIncludesNewSeries:
+    def _make_indicator(self, series_id):
+        from mae_core.market.apis.fred_models import FRED_SERIES
+        name, signal_type = FRED_SERIES.get(series_id, (series_id, "macro"))
+        return MacroIndicator(
+            series_id=series_id,
+            series_name=name,
+            value=1.0,
+            date="2026-03-11",
+            signal_type=signal_type,
+            direction="neutral",
+        )
+
+    def test_snapshot_requests_pcepi(self):
+        client = FREDClient(api_key="test_key")
+        client.get_series = MagicMock(side_effect=self._make_indicator)
+        client.get_macro_snapshot()
+        called_ids = {call.args[0] for call in client.get_series.call_args_list}
+        assert "PCEPI" in called_ids
+
+    def test_snapshot_requests_pcepilfe(self):
+        client = FREDClient(api_key="test_key")
+        client.get_series = MagicMock(side_effect=self._make_indicator)
+        client.get_macro_snapshot()
+        called_ids = {call.args[0] for call in client.get_series.call_args_list}
+        assert "PCEPILFE" in called_ids
+
+    def test_snapshot_requests_t5yie(self):
+        client = FREDClient(api_key="test_key")
+        client.get_series = MagicMock(side_effect=self._make_indicator)
+        client.get_macro_snapshot()
+        called_ids = {call.args[0] for call in client.get_series.call_args_list}
+        assert "T5YIE" in called_ids
+
+    def test_snapshot_requests_icsa(self):
+        client = FREDClient(api_key="test_key")
+        client.get_series = MagicMock(side_effect=self._make_indicator)
+        client.get_macro_snapshot()
+        called_ids = {call.args[0] for call in client.get_series.call_args_list}
+        assert "ICSA" in called_ids
+
+    def test_snapshot_requests_umcsent(self):
+        client = FREDClient(api_key="test_key")
+        client.get_series = MagicMock(side_effect=self._make_indicator)
+        client.get_macro_snapshot()
+        called_ids = {call.args[0] for call in client.get_series.call_args_list}
+        assert "UMCSENT" in called_ids
+
+    def test_snapshot_requests_m2sl(self):
+        client = FREDClient(api_key="test_key")
+        client.get_series = MagicMock(side_effect=self._make_indicator)
+        client.get_macro_snapshot()
+        called_ids = {call.args[0] for call in client.get_series.call_args_list}
+        assert "M2SL" in called_ids
+
+    def test_snapshot_requests_houst(self):
+        client = FREDClient(api_key="test_key")
+        client.get_series = MagicMock(side_effect=self._make_indicator)
+        client.get_macro_snapshot()
+        called_ids = {call.args[0] for call in client.get_series.call_args_list}
+        assert "HOUST" in called_ids
+
+    def test_snapshot_requests_permit(self):
+        client = FREDClient(api_key="test_key")
+        client.get_series = MagicMock(side_effect=self._make_indicator)
+        client.get_macro_snapshot()
+        called_ids = {call.args[0] for call in client.get_series.call_args_list}
+        assert "PERMIT" in called_ids
+
+    def test_snapshot_requests_dcoilwtico(self):
+        client = FREDClient(api_key="test_key")
+        client.get_series = MagicMock(side_effect=self._make_indicator)
+        client.get_macro_snapshot()
+        called_ids = {call.args[0] for call in client.get_series.call_args_list}
+        assert "DCOILWTICO" in called_ids
+
+    def test_snapshot_requests_gold(self):
+        client = FREDClient(api_key="test_key")
+        client.get_series = MagicMock(side_effect=self._make_indicator)
+        client.get_macro_snapshot()
+        called_ids = {call.args[0] for call in client.get_series.call_args_list}
+        assert "GOLDAMGBD228NLBM" in called_ids
+
+    def test_snapshot_requests_bamlc0a0cm(self):
+        client = FREDClient(api_key="test_key")
+        client.get_series = MagicMock(side_effect=self._make_indicator)
+        client.get_macro_snapshot()
+        called_ids = {call.args[0] for call in client.get_series.call_args_list}
+        assert "BAMLC0A0CM" in called_ids
+
+    def test_snapshot_requests_tedrate(self):
+        client = FREDClient(api_key="test_key")
+        client.get_series = MagicMock(side_effect=self._make_indicator)
+        client.get_macro_snapshot()
+        called_ids = {call.args[0] for call in client.get_series.call_args_list}
+        assert "TEDRATE" in called_ids
+
+    def test_snapshot_requests_rsxfs(self):
+        client = FREDClient(api_key="test_key")
+        client.get_series = MagicMock(side_effect=self._make_indicator)
+        client.get_macro_snapshot()
+        called_ids = {call.args[0] for call in client.get_series.call_args_list}
+        assert "RSXFS" in called_ids
+
+    def test_snapshot_still_includes_all_original_series(self):
+        client = FREDClient(api_key="test_key")
+        client.get_series = MagicMock(side_effect=self._make_indicator)
+        client.get_macro_snapshot()
+        called_ids = {call.args[0] for call in client.get_series.call_args_list}
+        originals = {"T10Y2Y", "BAMLH0A0HYM2", "VIXCLS", "DFF", "UNRATE", "DGS2", "DGS10", "T10Y3M", "DTWEXBGS"}
+        assert originals.issubset(called_ids), f"Missing originals: {originals - called_ids}"
+
+    def test_snapshot_requests_at_least_22_series(self):
+        client = FREDClient(api_key="test_key")
+        client.get_series = MagicMock(side_effect=self._make_indicator)
+        client.get_macro_snapshot()
+        # Original 9 (in snapshot) + 13 new = 22 minimum
+        assert client.get_series.call_count >= 22
+
+
 # --- MacroIndicator dataclass defaults ---
 
 class TestMacroIndicatorDataclass:

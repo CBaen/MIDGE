@@ -124,6 +124,7 @@ class SensingReactiveMixin:
             from_finviz_unusual_volume,
             from_finviz_short_squeeze,
             from_suppression_event,
+            from_economic_surprise,
         )
         from mae_core.market.signal_adapters.wave2_3 import from_finviz_insider
         from mae_core.market.signal_adapters.layer6 import from_social_text_signal
@@ -200,7 +201,8 @@ class SensingReactiveMixin:
 
         elif source_name == "finnhub_extras":
             signals = fetch_finnhub_extras(
-                self._finnhub, self._watchlist, from_economic_event, from_analyst_recommendation
+                self._finnhub, self._watchlist, from_economic_event, from_analyst_recommendation,
+                surprise_converter=from_economic_surprise,
             )
 
         elif source_name == "order_flow":
