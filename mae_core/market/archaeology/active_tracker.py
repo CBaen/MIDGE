@@ -88,6 +88,10 @@ class ActiveTracker:
         self._tracked: dict[str, TrackedAsset] = {}  # dedup_key -> TrackedAsset
         self._load()
 
+    def set_outcome_collector(self, outcome_collector) -> None:
+        """Wire outcome_collector after construction (bootstrap ordering fix)."""
+        self._outcome_collector = outcome_collector
+
     @property
     def count(self) -> int:
         return len(self._tracked)
