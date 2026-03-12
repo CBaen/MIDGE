@@ -42,9 +42,18 @@ class RawStoreSocialMixin:
                 user_name TEXT,
                 created_at TEXT,
                 likes INTEGER,
+                user_followers INTEGER,
                 ingested_at TEXT
             )
         """)
+        # Add user_followers column to pre-existing tables (idempotent migration)
+        try:
+            conn.execute(
+                "ALTER TABLE stocktwits_messages ADD COLUMN user_followers INTEGER DEFAULT 0"
+            )
+            conn.commit()
+        except Exception:
+            pass  # Column already exists
 
         now = datetime.now(timezone.utc).isoformat()
         data = []
@@ -55,20 +64,31 @@ class RawStoreSocialMixin:
             entities = msg.get("entities", {})
             sentiment_obj = entities.get("sentiment")
             sentiment = sentiment_obj.get("basic", "") if sentiment_obj else ""
+            likes_val = msg.get("likes", 0)
+            if isinstance(likes_val, dict):
+                likes = likes_val.get("total", 0) or 0
+            elif isinstance(likes_val, (int, float)):
+                likes = int(likes_val)
+            else:
+                likes = 0
+            user = msg.get("user", {}) or {}
+            user_followers = user.get("followers_count", 0) or 0
             data.append((
                 msg_id, ticker, sentiment,
                 msg.get("body", "")[:2000],
-                msg.get("user", {}).get("username", ""),
+                user.get("username", ""),
                 msg.get("created_at", ""),
-                msg.get("likes", {}).get("total", 0) if isinstance(msg.get("likes"), dict) else 0,
+                likes,
+                user_followers,
                 now,
             ))
 
         if data:
             conn.executemany(
                 "INSERT OR REPLACE INTO stocktwits_messages "
-                "(message_id, ticker, sentiment, body, user_name, created_at, likes, ingested_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                "(message_id, ticker, sentiment, body, user_name, created_at, likes, "
+                "user_followers, ingested_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 data,
             )
             conn.commit()
@@ -354,6 +374,90 @@ class RawStoreSocialMixin:
 
         logger.debug("RawStore: stored %d Yahoo RSS headlines for %s", len(data), ticker)
         return len(data)
+
+    def get_finnhub_earnings(
+        self, ticker: str = None, lookback_days: int = 30
+    ) -> List[Dict[str, Any]]:
+        """Retrieve Finnhub earnings calendar events.
+
+        Args:
+            ticker: Filter by symbol (None = all symbols).
+            lookback_days: How many days of history to return.
+
+        Returns:
+            List of dicts with keys: symbol, date, quarter, year, eps_estimate,
+            eps_actual, revenue_estimate, revenue_actual, hour.
+            Sorted newest-first. Empty list on error.
+        """
+        try:
+            conn = self._get_conn("finnhub")
+            params = [f"-{lookback_days} days"]
+            where = "WHERE date >= date('now', ?)"
+            if ticker:
+                where += " AND symbol = ?"
+                params.append(ticker)
+            cursor = conn.execute(
+                f"""
+                SELECT symbol, date, quarter, year, eps_estimate, eps_actual,
+                       revenue_estimate, revenue_actual, hour
+                FROM finnhub_earnings
+                {where}
+                ORDER BY date DESC
+                """,
+                params,
+            )
+            rows = cursor.fetchall()
+        except Exception as exc:
+            logger.debug("RawStore: get_finnhub_earnings failed: %s", exc)
+            return []
+
+        return [
+            {
+                "symbol": r[0], "date": r[1], "quarter": r[2], "year": r[3],
+                "eps_estimate": r[4], "eps_actual": r[5],
+                "revenue_estimate": r[6], "revenue_actual": r[7], "hour": r[8],
+            }
+            for r in rows
+        ]
+
+    def get_yahoo_headlines(
+        self, ticker: str = None, lookback_days: int = 3
+    ) -> List[Dict[str, Any]]:
+        """Retrieve Yahoo Finance RSS headlines.
+
+        Args:
+            ticker: Filter by symbol (None = all tickers).
+            lookback_days: How many days of history to return.
+
+        Returns:
+            List of dicts with keys: ticker, title, published_at, summary.
+            Sorted newest-first. Empty list on error.
+        """
+        try:
+            conn = self._get_conn("yahoo_rss")
+            params = [f"-{lookback_days} days"]
+            where = "WHERE ingested_at >= datetime('now', ?)"
+            if ticker:
+                where += " AND ticker = ?"
+                params.append(ticker.upper())
+            cursor = conn.execute(
+                f"""
+                SELECT ticker, title, published_at, summary
+                FROM yahoo_headlines
+                {where}
+                ORDER BY ingested_at DESC
+                """,
+                params,
+            )
+            rows = cursor.fetchall()
+        except Exception as exc:
+            logger.debug("RawStore: get_yahoo_headlines failed: %s", exc)
+            return []
+
+        return [
+            {"ticker": r[0], "title": r[1], "published_at": r[2], "summary": r[3]}
+            for r in rows
+        ]
 
     # --- ApeWisdom social sentiment ---
 

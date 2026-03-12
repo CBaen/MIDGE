@@ -367,6 +367,84 @@ class RawStoreInsiderMixin:
 
     # --- EDGAR Enhanced (13F/13D) ---
 
+    def get_insider_trades(
+        self, ticker: str = None, lookback_days: int = 30
+    ) -> List[dict]:
+        """Retrieve insider buy trades from SEC Form 4 + OpenInsider tables.
+
+        Merges both tables so callers get a unified view across sources.
+        Only returns non-derivative purchases (is_derivative=0, transaction_type P/Buy).
+
+        Args:
+            ticker: Filter by symbol (None = all tickers).
+            lookback_days: How many days of history to return.
+
+        Returns:
+            List of dicts with keys: ticker, insider_name, title, transaction_date,
+            transaction_type, shares, price_per_share, total_value, source.
+            Sorted newest-first by transaction_date. Empty list on error.
+        """
+        results = []
+
+        # --- SEC Form 4 ---
+        try:
+            conn = self._get_conn("sec_edgar")
+            params_f4 = [f"-{lookback_days} days"]
+            filter_f4 = "AND is_derivative = 0 AND (transaction_type = 'P' OR LOWER(transaction_type) = 'buy')"
+            where_f4 = "WHERE transaction_date >= date('now', ?)"
+            if ticker:
+                where_f4 += " AND ticker = ?"
+                params_f4.append(ticker)
+            cursor = conn.execute(
+                f"""
+                SELECT ticker, insider_name, insider_title, transaction_date,
+                       transaction_type, shares, price_per_share, total_value
+                FROM form4_trades
+                {where_f4} {filter_f4}
+                ORDER BY transaction_date DESC
+                """,
+                params_f4,
+            )
+            for r in cursor.fetchall():
+                results.append({
+                    "ticker": r[0], "insider_name": r[1], "title": r[2],
+                    "transaction_date": r[3], "transaction_type": r[4],
+                    "shares": r[5], "price_per_share": r[6], "total_value": r[7],
+                    "source": "sec_form4",
+                })
+        except Exception as exc:
+            logger.debug("RawStore: get_insider_trades(sec_form4) failed: %s", exc)
+
+        # --- OpenInsider ---
+        try:
+            conn = self._get_conn("openinsider")
+            params_oi = [f"-{lookback_days} days"]
+            where_oi = "WHERE trade_date >= date('now', ?)"
+            if ticker:
+                where_oi += " AND ticker = ?"
+                params_oi.append(ticker)
+            cursor = conn.execute(
+                f"""
+                SELECT ticker, insider_name, title, trade_date,
+                       trade_type, quantity, price, value
+                FROM insider_purchases
+                {where_oi}
+                ORDER BY trade_date DESC
+                """,
+                params_oi,
+            )
+            for r in cursor.fetchall():
+                results.append({
+                    "ticker": r[0], "insider_name": r[1], "title": r[2],
+                    "transaction_date": r[3], "transaction_type": r[4],
+                    "shares": r[5], "price_per_share": r[6], "total_value": r[7],
+                    "source": "openinsider",
+                })
+        except Exception as exc:
+            logger.debug("RawStore: get_insider_trades(openinsider) failed: %s", exc)
+
+        return results
+
     def store_edgar_filings(self, filings: List[Any]) -> int:
         """Store SEC 13D/13F filing metadata.
 

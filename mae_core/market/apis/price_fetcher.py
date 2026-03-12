@@ -369,7 +369,19 @@ class PriceFetcher:
                                 high=info.get("dayHigh", 0),
                                 low=info.get("dayLow", 0),
                                 volume=info.get("volume", 0),
-                                change_pct=info.get("regularMarketChangePercent", 0)
+                                change_pct=info.get("regularMarketChangePercent", 0),
+                                short_ratio=info.get("shortRatio"),
+                                held_pct_insiders=info.get("heldPercentInsiders"),
+                                held_pct_institutions=info.get("heldPercentInstitutions"),
+                                beta=info.get("beta"),
+                                forward_pe=info.get("forwardPE"),
+                                sector=info.get("sector"),
+                                industry=info.get("industry"),
+                                fifty_two_week_high=info.get("fiftyTwoWeekHigh"),
+                                fifty_two_week_low=info.get("fiftyTwoWeekLow"),
+                                shares_short=info.get("sharesShort"),
+                                target_mean_price=info.get("targetMeanPrice"),
+                                recommendation_mean=info.get("recommendationMean"),
                             )
                     except:
                         results[symbol] = None
@@ -414,7 +426,19 @@ class PriceFetcher:
                     high=info.get("dayHigh", 0) or 0,
                     low=info.get("dayLow", 0) or 0,
                     volume=info.get("volume", 0) or 0,
-                    change_pct=info.get("regularMarketChangePercent", 0) or 0
+                    change_pct=info.get("regularMarketChangePercent", 0) or 0,
+                    short_ratio=info.get("shortRatio"),
+                    held_pct_insiders=info.get("heldPercentInsiders"),
+                    held_pct_institutions=info.get("heldPercentInstitutions"),
+                    beta=info.get("beta"),
+                    forward_pe=info.get("forwardPE"),
+                    sector=info.get("sector"),
+                    industry=info.get("industry"),
+                    fifty_two_week_high=info.get("fiftyTwoWeekHigh"),
+                    fifty_two_week_low=info.get("fiftyTwoWeekLow"),
+                    shares_short=info.get("sharesShort"),
+                    target_mean_price=info.get("targetMeanPrice"),
+                    recommendation_mean=info.get("recommendationMean"),
                 )
 
         except Exception as e:

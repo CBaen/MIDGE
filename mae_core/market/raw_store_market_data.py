@@ -428,6 +428,191 @@ class RawStoreMarketDataMixin:
         logger.debug("RawStore: stored %d FRED observations for %s", len(data), series_id)
         return len(data)
 
+    def get_price_snapshots(
+        self, ticker: str = None, lookback_days: int = 7
+    ) -> List[Dict[str, Any]]:
+        """Retrieve yfinance price snapshot records (includes 52wk high/low).
+
+        Args:
+            ticker: Filter by symbol (None = all tickers).
+            lookback_days: How many days of history to return.
+
+        Returns:
+            List of dicts with keys: symbol, timestamp, price, market_cap,
+            short_ratio, fifty_two_week_high, fifty_two_week_low, info_json.
+            Sorted newest-first. Empty list on error.
+        """
+        try:
+            conn = self._get_conn("prices")
+            params = [f"-{lookback_days} days"]
+            where = "WHERE ingested_at >= datetime('now', ?)"
+            if ticker:
+                where += " AND symbol = ?"
+                params.append(ticker)
+            cursor = conn.execute(
+                f"""
+                SELECT symbol, timestamp, price, market_cap, short_ratio,
+                       fifty_two_week_high, fifty_two_week_low, info_json, ingested_at
+                FROM price_snapshots
+                {where}
+                ORDER BY ingested_at DESC
+                """,
+                params,
+            )
+            rows = cursor.fetchall()
+        except Exception as exc:
+            logger.debug("RawStore: get_price_snapshots failed: %s", exc)
+            return []
+
+        return [
+            {
+                "symbol": r[0], "timestamp": r[1], "price": r[2],
+                "market_cap": r[3], "short_ratio": r[4],
+                "fifty_two_week_high": r[5], "fifty_two_week_low": r[6],
+                "info_json": r[7], "ingested_at": r[8],
+            }
+            for r in rows
+        ]
+
+    def get_fred_observations(
+        self, series_id: str = None, lookback_days: int = 90
+    ) -> List[Dict[str, Any]]:
+        """Retrieve FRED macro series observations.
+
+        Args:
+            series_id: Filter by FRED series ID (None = all series).
+            lookback_days: How many days of history to return.
+
+        Returns:
+            List of dicts with keys: series_id, date, value.
+            Sorted oldest-first for trend computation. Empty list on error.
+        """
+        try:
+            conn = self._get_conn("fred")
+            params = [f"-{lookback_days} days"]
+            where = "WHERE date >= date('now', ?)"
+            if series_id:
+                where += " AND series_id = ?"
+                params.append(series_id)
+            cursor = conn.execute(
+                f"""
+                SELECT series_id, date, value
+                FROM fred_observations
+                {where}
+                ORDER BY series_id, date ASC
+                """,
+                params,
+            )
+            rows = cursor.fetchall()
+        except Exception as exc:
+            logger.debug("RawStore: get_fred_observations failed: %s", exc)
+            return []
+
+        return [{"series_id": r[0], "date": r[1], "value": r[2]} for r in rows]
+
+    def get_eia_observations(
+        self, series_key: str = None, lookback_days: int = 90
+    ) -> List[Dict[str, Any]]:
+        """Retrieve EIA energy series observations.
+
+        Args:
+            series_key: Filter by series key (None = all series).
+            lookback_days: How many days of history to return.
+
+        Returns:
+            List of dicts with keys: series_key, period, value.
+            Sorted oldest-first for trend computation. Empty list on error.
+        """
+        try:
+            conn = self._get_conn("eia")
+            params = [f"-{lookback_days} days"]
+            where = "WHERE period >= date('now', ?)"
+            if series_key:
+                where += " AND series_key = ?"
+                params.append(series_key)
+            cursor = conn.execute(
+                f"""
+                SELECT series_key, period, value
+                FROM eia_observations
+                {where}
+                ORDER BY series_key, period ASC
+                """,
+                params,
+            )
+            rows = cursor.fetchall()
+        except Exception as exc:
+            logger.debug("RawStore: get_eia_observations failed: %s", exc)
+            return []
+
+        return [{"series_key": r[0], "period": r[1], "value": r[2]} for r in rows]
+
+    def get_vix_history(self, lookback_days: int = 30) -> List[Dict[str, Any]]:
+        """Retrieve VIX daily OHLC history.
+
+        Args:
+            lookback_days: How many days of history to return.
+
+        Returns:
+            List of dicts with keys: date, open, high, low, close.
+            Sorted oldest-first. Empty list on error.
+        """
+        try:
+            conn = self._get_conn("vix")
+            cursor = conn.execute(
+                """
+                SELECT date, open, high, low, close
+                FROM vix_daily
+                WHERE date >= date('now', ?)
+                ORDER BY date ASC
+                """,
+                (f"-{lookback_days} days",),
+            )
+            rows = cursor.fetchall()
+        except Exception as exc:
+            logger.debug("RawStore: get_vix_history failed: %s", exc)
+            return []
+
+        return [
+            {"date": r[0], "open": r[1], "high": r[2], "low": r[3], "close": r[4]}
+            for r in rows
+        ]
+
+    def get_trends_history(
+        self, keyword: str = None, lookback_days: int = 7
+    ) -> List[Dict[str, Any]]:
+        """Retrieve Google Trends interest data.
+
+        Args:
+            keyword: Filter by keyword (None = all keywords).
+            lookback_days: How many days of history to return.
+
+        Returns:
+            List of dicts with keys: keyword, timestamp, interest.
+            Sorted oldest-first. Empty list on error.
+        """
+        try:
+            conn = self._get_conn("trends")
+            params = [f"-{lookback_days} days"]
+            where = "WHERE timestamp >= datetime('now', ?)"
+            if keyword:
+                where += " AND keyword = ?"
+                params.append(keyword)
+            cursor = conn.execute(
+                f"""
+                SELECT keyword, timestamp, interest
+                FROM trends_hourly
+                {where}
+                ORDER BY keyword, timestamp ASC
+                """,
+                params,
+            )
+            rows = cursor.fetchall()
+        except Exception as exc:
+            logger.debug("RawStore: get_trends_history failed: %s", exc)
+            return []
+
+        return [{"keyword": r[0], "timestamp": r[1], "interest": r[2]} for r in rows]
+
     # --- FRED Yield Curve / Dollar Index ---
 
     def store_fred_yields(self, series_id: str, observations: List[Dict[str, Any]]) -> int:

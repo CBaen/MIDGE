@@ -38,6 +38,10 @@ class StockTwitsSentiment:
     bull_ratio: float       # bull / (bull + bear), 0.0-1.0
     total_messages: int
     trending: bool
+    # Engagement and influence metrics extracted from raw message list
+    avg_likes: float = 0.0          # Mean likes across all messages — virality signal
+    max_followers: int = 0          # Highest follower count among authors — influencer signal
+    message_count: int = 0          # Total raw messages returned (not just labeled)
 
     detected_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
     signal_source: str = "stocktwits_sentiment"
@@ -143,9 +147,11 @@ class StockTwitsClient:
                 except Exception:
                     pass
 
-            # Count bull/bear from labeled messages
+            # Count bull/bear from labeled messages and compute engagement metrics
             bull = 0
             bear = 0
+            total_likes = 0
+            max_followers = 0
             for msg in messages:
                 entities = msg.get("entities", {})
                 sentiment = entities.get("sentiment")
@@ -155,12 +161,24 @@ class StockTwitsClient:
                         bull += 1
                     elif basic == "Bearish":
                         bear += 1
+                # Likes: API returns either {"total": N} dict or a plain int
+                likes_val = msg.get("likes", 0)
+                if isinstance(likes_val, dict):
+                    total_likes += likes_val.get("total", 0) or 0
+                elif isinstance(likes_val, (int, float)):
+                    total_likes += int(likes_val)
+                # Follower count from user object — influencer detection
+                user = msg.get("user", {}) or {}
+                followers = user.get("followers_count", 0) or 0
+                if followers > max_followers:
+                    max_followers = followers
 
             total = bull + bear
             if total == 0:
                 return None
 
             bull_ratio = bull / total
+            avg_likes = round(total_likes / len(messages), 2) if messages else 0.0
 
             # Check if trending
             symbol_data = data.get("symbol", {})
@@ -173,6 +191,9 @@ class StockTwitsClient:
                 bull_ratio=round(bull_ratio, 4),
                 total_messages=len(messages),
                 trending=trending,
+                avg_likes=avg_likes,
+                max_followers=max_followers,
+                message_count=len(messages),
                 detected_at=datetime.utcnow().isoformat(),
             )
 

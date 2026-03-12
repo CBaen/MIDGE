@@ -222,6 +222,51 @@ class RawStoreOperationalMixin:
         logger.debug("RawStore: stored %d CoinGecko price rows", len(data))
         return len(data)
 
+    def get_coingecko_history(
+        self, symbol: str = None, lookback_days: int = 7
+    ) -> List[dict]:
+        """Retrieve CoinGecko price history.
+
+        Args:
+            symbol: Filter by coin symbol e.g. "BTC" (None = all coins).
+            lookback_days: How many days of history to return.
+
+        Returns:
+            List of dicts with keys: coin_id, symbol, price_usd, volume_24h,
+            change_24h_pct, change_7d_pct, market_cap, timestamp.
+            Sorted oldest-first. Empty list on error.
+        """
+        try:
+            conn = self._get_conn("crypto")
+            params: list = [f"-{lookback_days} days"]
+            where = "WHERE ingested_at >= datetime('now', ?)"
+            if symbol:
+                where += " AND LOWER(symbol) = ?"
+                params.append(symbol.lower())
+            cursor = conn.execute(
+                f"""
+                SELECT coin_id, symbol, price_usd, volume_24h, change_24h_pct,
+                       change_7d_pct, market_cap, timestamp
+                FROM coingecko_prices
+                {where}
+                ORDER BY timestamp ASC
+                """,
+                params,
+            )
+            rows = cursor.fetchall()
+        except Exception as exc:
+            logger.debug("RawStore: get_coingecko_history failed: %s", exc)
+            return []
+
+        return [
+            {
+                "coin_id": r[0], "symbol": r[1], "price_usd": r[2],
+                "volume_24h": r[3], "change_24h_pct": r[4],
+                "change_7d_pct": r[5], "market_cap": r[6], "timestamp": r[7],
+            }
+            for r in rows
+        ]
+
     # --- CoinCap asset data ---
 
     def store_coincap_assets(self, assets: List[Any]) -> int:

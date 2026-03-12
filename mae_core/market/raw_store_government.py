@@ -87,6 +87,52 @@ class RawStoreGovernmentMixin:
         logger.debug("RawStore: stored %d congressional trades", len(data))
         return len(data)
 
+    def get_congressional_trades(
+        self, ticker: str = None, lookback_days: int = 30
+    ) -> List[Dict[str, Any]]:
+        """Retrieve congressional trade records.
+
+        Args:
+            ticker: Filter by symbol (None = all tickers).
+            lookback_days: How many days of history to return.
+
+        Returns:
+            List of dicts with keys: representative, ticker, transaction_date,
+            transaction_type, amount_range, amount_low, amount_high, party, chamber.
+            Sorted newest-first. Empty list on error.
+        """
+        try:
+            conn = self._get_conn("congressional")
+            params = [f"-{lookback_days} days"]
+            where = "WHERE transaction_date >= date('now', ?)"
+            if ticker:
+                where += " AND ticker = ?"
+                params.append(ticker)
+            cursor = conn.execute(
+                f"""
+                SELECT representative, ticker, transaction_date, transaction_type,
+                       amount_range, amount_low, amount_high, party, chamber
+                FROM congressional_trades
+                {where}
+                ORDER BY transaction_date DESC
+                """,
+                params,
+            )
+            rows = cursor.fetchall()
+        except Exception as exc:
+            logger.debug("RawStore: get_congressional_trades failed: %s", exc)
+            return []
+
+        return [
+            {
+                "representative": r[0], "ticker": r[1], "transaction_date": r[2],
+                "transaction_type": r[3], "amount_range": r[4],
+                "amount_low": r[5], "amount_high": r[6],
+                "party": r[7], "chamber": r[8],
+            }
+            for r in rows
+        ]
+
     # --- Congress.gov Bills ---
 
     def store_congress_bills(self, bills: List[Dict[str, Any]]) -> int:
