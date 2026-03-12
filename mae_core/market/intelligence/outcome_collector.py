@@ -29,6 +29,7 @@ threshold barely exceeded random baseline at $50K+ trade sizes after costs).
 
 import json
 import logging
+import threading
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, TYPE_CHECKING
@@ -88,6 +89,7 @@ class OutcomeCollector:
 
         self._registered_path = self._data_dir / "registered_signals.json"
         self._registered: dict = self._load_registered()
+        self._registered_lock = threading.Lock()
         self._pattern_library = None  # Set via set_pattern_library() for feedback
         self.tracker.on_outcome = self._on_outcome_graded
 

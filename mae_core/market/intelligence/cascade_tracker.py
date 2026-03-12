@@ -188,6 +188,11 @@ class CascadeTracker:
         Returns:
             List of confirmation events (one per chain that matched).
         """
+        with self._chains_lock:
+            return self._check_signal_locked(ticker, direction)
+
+    def _check_signal_locked(self, ticker: str, direction: str) -> List[dict]:
+        """Inner — caller must hold self._chains_lock."""
         confirmations = []
 
         for chain_id, chain in self._active_chains.items():
@@ -282,6 +287,11 @@ class CascadeTracker:
         Returns:
             List of expired chain IDs.
         """
+        with self._chains_lock:
+            return self._expire_stale_locked(max_age_days)
+
+    def _expire_stale_locked(self, max_age_days: float = 30.0) -> List[str]:
+        """Inner — caller must hold self._chains_lock."""
         now = time.time()
         expired = []
 
@@ -313,7 +323,8 @@ class CascadeTracker:
 
     def get_active_chains(self) -> Dict[str, dict]:
         """Return all active cascade chains."""
-        return dict(self._active_chains)
+        with self._chains_lock:
+            return dict(self._active_chains)
 
     def get_statistics(self) -> dict:
         """Return tracker statistics.
@@ -322,6 +333,11 @@ class CascadeTracker:
         links in all active chains.  Values > 1.0 indicate that cascades are
         moving faster than the WorldModel predicted; < 1.0 means slower.
         """
+        with self._chains_lock:
+            return self._get_statistics_locked()
+
+    def _get_statistics_locked(self) -> dict:
+        """Inner — caller must hold self._chains_lock."""
         total_links = 0
         confirmed = 0
         pending = 0
