@@ -4,8 +4,8 @@ Converts Wave 2 (real-time + crypto) and Wave 3 (data enrichment) sources
 into normalized MarketSignal objects.
 
 Sub-modules:
-  wave2_3_insider.py  — from_openinsider, from_13f_holding, from_activist_filing,
-                        from_finviz_insider
+  wave2_3_insider.py  — from_openinsider, from_13f_holding, from_13f_filer_activity,
+                        from_activist_filing, from_finviz_insider
   wave2_3_technical.py — from_finviz_unusual_volume, from_finviz_short_squeeze,
                          from_finnhub_realtime, from_suppression_event,
                          from_economic_surprise, from_massive_snapshot, from_kalshi_mover
@@ -21,6 +21,7 @@ from mae_core.market.signal import MarketSignal, _ensure_datetime
 from mae_core.market.signal_adapters.wave2_3_insider import (
     from_openinsider,
     from_13f_holding,
+    from_13f_filer_activity,
     from_activist_filing,
     from_finviz_insider,
 )
@@ -41,6 +42,7 @@ __all__ = [
     "from_crypto_signal",
     "from_openinsider",
     "from_13f_holding",
+    "from_13f_filer_activity",
     "from_activist_filing",
     "from_finviz_insider",
     "from_finviz_unusual_volume",

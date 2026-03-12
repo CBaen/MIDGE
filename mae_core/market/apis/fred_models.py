@@ -176,10 +176,10 @@ def _determine_direction(series_id: str, value: float) -> str:
 
     elif series_id == "T5YIE":
         # 5-Year Breakeven Inflation Rate (market-implied, %)
-        # Above Fed 2% target and rising = hawkish pressure = bearish for bonds/growth stocks
-        # At or below 2% = inflation anchored = bullish for risk assets
-        if value > 3.0:
-            return "bearish"   # Inflation expectations dangerously unanchored
+        # At or above 3% = inflation expectations dangerously unanchored = hawkish risk = bearish
+        # Below 2% = inflation anchored, Fed not forced to hike = bullish for risk assets
+        if value >= 3.0:
+            return "bearish"   # Inflation expectations at or above danger threshold
         elif value < 2.0:
             return "bullish"   # Inflation under control, Fed not forced to hike
         return "neutral"

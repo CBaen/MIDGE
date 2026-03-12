@@ -382,3 +382,152 @@ class TestRateLimiting:
         elapsed = time.time() - start
         # Should complete quickly (no forced sleep since we didn't exceed 5)
         assert elapsed < 1.0
+
+
+# ---------------------------------------------------------------------------
+# get_ticker_details tests
+# ---------------------------------------------------------------------------
+
+from mae_core.market.apis.massive_client import TickerDetails
+
+
+class TestGetTickerDetails:
+    """Tests for MassiveClient.get_ticker_details() and TickerDetails dataclass."""
+
+    _SAMPLE_RESPONSE = {
+        "results": {
+            "ticker": "AAPL",
+            "name": "Apple Inc.",
+            "market": "stocks",
+            "locale": "us",
+            "primary_exchange": "XNAS",
+            "type": "CS",
+            "active": True,
+            "currency_name": "usd",
+            "market_cap": 3_000_000_000_000.0,
+            "sic_code": "3571",
+            "sic_description": "Electronic Computers",
+        }
+    }
+
+    def test_ticker_details_dataclass(self):
+        td = TickerDetails(
+            ticker="AAPL", name="Apple Inc.", market="stocks", locale="us",
+            primary_exchange="XNAS", type="CS", active=True,
+            currency_name="usd", market_cap=3e12,
+            sic_code="3571", sic_description="Electronic Computers",
+        )
+        assert td.ticker == "AAPL"
+        assert td.name == "Apple Inc."
+        assert td.market == "stocks"
+        assert td.primary_exchange == "XNAS"
+        assert td.type == "CS"
+        assert td.active is True
+        assert td.market_cap == pytest.approx(3e12)
+        assert td.sic_code == "3571"
+        assert td.sic_description == "Electronic Computers"
+
+    def test_get_ticker_details_success(self):
+        client = MassiveClient(api_key="test")
+        client._get = MagicMock(return_value=self._SAMPLE_RESPONSE)
+
+        details = client.get_ticker_details("AAPL")
+
+        assert details is not None
+        assert details.ticker == "AAPL"
+        assert details.name == "Apple Inc."
+        assert details.market == "stocks"
+        assert details.locale == "us"
+        assert details.primary_exchange == "XNAS"
+        assert details.type == "CS"
+        assert details.active is True
+        assert details.currency_name == "usd"
+        assert details.market_cap == pytest.approx(3e12)
+        assert details.sic_code == "3571"
+        assert details.sic_description == "Electronic Computers"
+
+    def test_get_ticker_details_correct_endpoint(self):
+        client = MassiveClient(api_key="test")
+        client._get = MagicMock(return_value=self._SAMPLE_RESPONSE)
+
+        client.get_ticker_details("AAPL")
+
+        client._get.assert_called_once_with("/v3/reference/tickers/AAPL")
+
+    def test_get_ticker_details_uppercases_ticker(self):
+        client = MassiveClient(api_key="test")
+        client._get = MagicMock(return_value=self._SAMPLE_RESPONSE)
+
+        client.get_ticker_details("aapl")
+
+        client._get.assert_called_once_with("/v3/reference/tickers/AAPL")
+
+    def test_get_ticker_details_no_results(self):
+        client = MassiveClient(api_key="test")
+        client._get = MagicMock(return_value={})
+
+        details = client.get_ticker_details("NONEXISTENT")
+
+        assert details is None
+
+    def test_get_ticker_details_empty_results_key(self):
+        client = MassiveClient(api_key="test")
+        client._get = MagicMock(return_value={"results": None})
+
+        details = client.get_ticker_details("AAPL")
+
+        assert details is None
+
+    def test_get_ticker_details_stores_to_raw_store(self):
+        mock_store = MagicMock()
+        client = MassiveClient(api_key="test", raw_store=mock_store)
+        client._get = MagicMock(return_value=self._SAMPLE_RESPONSE)
+
+        details = client.get_ticker_details("AAPL")
+
+        assert details is not None
+        mock_store.store_polygon_ticker_details.assert_called_once_with([details])
+
+    def test_get_ticker_details_no_store_when_raw_store_none(self):
+        client = MassiveClient(api_key="test", raw_store=None)
+        client._get = MagicMock(return_value=self._SAMPLE_RESPONSE)
+
+        details = client.get_ticker_details("AAPL")
+
+        assert details is not None
+        # No AttributeError — raw_store is None, branch simply skipped
+
+    def test_get_ticker_details_store_exception_swallowed(self):
+        mock_store = MagicMock()
+        mock_store.store_polygon_ticker_details.side_effect = RuntimeError("db locked")
+        client = MassiveClient(api_key="test", raw_store=mock_store)
+        client._get = MagicMock(return_value=self._SAMPLE_RESPONSE)
+
+        # Should not raise
+        details = client.get_ticker_details("AAPL")
+        assert details is not None
+
+    def test_get_ticker_details_handles_missing_optional_fields(self):
+        """Polygon may omit market_cap / sic_code for some tickers."""
+        sparse = {
+            "results": {
+                "ticker": "XYZ",
+                "name": "XYZ Corp",
+                "market": "stocks",
+                "locale": "us",
+                "primary_exchange": "ARCX",
+                "type": "ETF",
+                "active": True,
+                "currency_name": "usd",
+                # market_cap, sic_code, sic_description omitted
+            }
+        }
+        client = MassiveClient(api_key="test")
+        client._get = MagicMock(return_value=sparse)
+
+        details = client.get_ticker_details("XYZ")
+
+        assert details is not None
+        assert details.market_cap == 0.0
+        assert details.sic_code == ""
+        assert details.sic_description == ""

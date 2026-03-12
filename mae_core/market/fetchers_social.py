@@ -7,7 +7,7 @@ analyst recommendations, and headline velocity signals.
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 logger = logging.getLogger("midge.market.sensing")
 
@@ -200,14 +200,25 @@ def fetch_finnhub_extras(
     watchlist: dict,
     econ_converter: Callable,
     analyst_converter: Callable,
+    surprise_converter: Optional[Callable] = None,
 ) -> list:
-    """Fetch Finnhub economic calendar + analyst recommendations."""
+    """Fetch Finnhub economic calendar + analyst recommendations.
+
+    For each economic event, produces:
+      - A catalyst/suppression signal via econ_converter (from_economic_event,
+        domain="events", fires for all high-impact events)
+      - An economic surprise signal via surprise_converter (from_economic_surprise,
+        domain="macro", fires only when actual vs estimate exceeds 0.5% threshold)
+
+    The two signals use different domains so they contribute independently to
+    convergence scoring.
+    """
     if finnhub is None:
         return []
 
     signals = []
 
-    # Economic calendar
+    # Economic calendar — produce both event and surprise signals per entry
     try:
         events = finnhub.get_economic_calendar(days=7)
         for event in events:
@@ -215,6 +226,13 @@ def fetch_finnhub_extras(
                 signals.append(econ_converter(event))
             except Exception:
                 pass
+            if surprise_converter is not None:
+                try:
+                    surprise_sig = surprise_converter(event)
+                    if surprise_sig is not None:
+                        signals.append(surprise_sig)
+                except Exception:
+                    pass
     except Exception as e:
         logger.debug("Finnhub economic calendar failed: %s", e)
 

@@ -193,6 +193,7 @@ __all__ = [
     "from_finviz_short_squeeze",
     "from_finnhub_realtime",
     "from_suppression_event",
+    "from_economic_surprise",
     "from_binance_funding",
     "from_kalshi_mover",
     # energy + legislation (2)

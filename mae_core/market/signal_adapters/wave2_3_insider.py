@@ -152,6 +152,57 @@ def from_activist_filing(filing) -> MarketSignal:
     )
 
 
+def from_13f_filer_activity(filer: dict) -> MarketSignal:
+    """Convert a 13F filer metadata dict (from get_recent_13f_filers) to a MarketSignal.
+
+    get_recent_13f_filers() returns filing-level metadata only — no individual
+    ticker holdings. This adapter produces a market-wide institutional activity
+    signal: a recent 13F filing means a large institution just repositioned.
+
+    The signal has no specific ticker (symbol="") because the full holdings are
+    not available without downloading the individual filing XML. Use this signal
+    as a domain="institutional" contribution to convergence when multiple
+    institutional filings cluster in a short window (indicates broad repositioning).
+
+    Source reuses "institutional_13f" so it flows through the same Thompson
+    distribution and domain as from_13f_holding signals.
+    """
+    filer_name = filer.get("filer_name", "") or ""
+    cik = str(filer.get("cik", "")) or ""
+    filing_date = filer.get("filing_date", "") or ""
+    period_of_report = filer.get("period_of_report", "") or ""
+    form_type = filer.get("form_type", "13F-HR")
+
+    event_dt = _ensure_datetime(filing_date) if filing_date else datetime.now()
+
+    signal_id = f"13f_filer:{cik}:{filing_date}"
+
+    return MarketSignal(
+        signal_id=signal_id,
+        source="institutional_13f",
+        symbol="",          # Market-wide; no specific ticker from filer metadata
+        asset_class="stock",
+        domain="institutional",
+        direction="bullish",  # Institutional filing = repositioning = bullish activity
+        strength=0.30,        # Low strength — no holdings data, just filing metadata
+        confidence=0.40,      # 45-day lag + no holding detail = lower confidence
+        decay_rate=0.03,      # Slow decay — institutional positioning is durable
+        timestamp=event_dt,
+        received_at=datetime.now(),
+        outcome_symbol="SPY",  # Market-wide proxy
+        outcome_window_days=90,
+        raw_id=cik,
+        raw_type="13FFilerMetadata",
+        metadata={
+            "filer_name": filer_name,
+            "cik": cik,
+            "filing_date": filing_date,
+            "form_type": form_type,
+            "period_of_report": period_of_report,
+        },
+    )
+
+
 def from_finviz_insider(trade) -> MarketSignal:
     """Convert a FinVizInsiderTrade (Buy) to a MarketSignal.
 
