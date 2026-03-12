@@ -453,6 +453,19 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
 
     _register_trust_and_gateway(ctx)
 
+    # --- Semantic memory (EventEmbedder + PatternMemory) ---
+    # Non-blocking: if Qdrant/Ollama are down, ctx.pattern_memory is set but
+    # reports is_available=False. All calls degrade gracefully.
+    try:
+        from mae_core.market.intelligence.event_embedder import EventEmbedder
+        from mae_core.market.intelligence.pattern_memory import PatternMemory
+        ctx.event_embedder = EventEmbedder()
+        ctx.pattern_memory = PatternMemory(ctx.event_embedder)
+    except Exception:
+        logger.debug("Market: event_embedder / pattern_memory failed to construct", exc_info=True)
+        ctx.event_embedder = None
+        ctx.pattern_memory = None
+
     logger.info(
         "Layer 33a - Market systems: %d instantiated (%d failures)", 59 - failures, failures,
     )
