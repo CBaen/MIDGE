@@ -54,6 +54,14 @@ class ConvergenceDetectionMixin(ConvergenceTickerMixin):
         Returns:
             List of ConvergenceAlert objects
         """
+        with self._alert_lock:
+            return self._check_convergence_locked(direction_filter)
+
+    def _check_convergence_locked(
+        self,
+        direction_filter: str = None
+    ) -> List[ConvergenceAlert]:
+        """Inner convergence check — caller must hold self._alert_lock."""
         self._prune_old_signals()
 
         coherence_data = self._compute_coherence_score()
@@ -297,10 +305,11 @@ class ConvergenceDetectionMixin(ConvergenceTickerMixin):
         Returns:
             Dict mapping domain -> {direction, strength, signal_count}
         """
-        self._prune_old_signals()
+        with self._alert_lock:
+            self._prune_old_signals()
 
-        status = {}
-        for domain, signals in self.signals.items():
+            status = {}
+            for domain, signals in self.signals.items():
             if not signals:
                 continue
 

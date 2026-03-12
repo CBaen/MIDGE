@@ -50,39 +50,41 @@ class ConvergenceBufferMixin:
         """
         _DATA_DIR.mkdir(parents=True, exist_ok=True)
         now = datetime.now()
-        total_in_memory = sum(len(v) for v in self.signals.values())
-        logger.info(
-            "Signal buffer save starting: %d signals across %d domains in memory",
-            total_in_memory,
-            len(self.signals),
-        )
 
-        # Build serialisable buffer — only keep live (non-expired) signals.
-        buffer: Dict[str, list] = {}
-        for domain, sigs in list(self.signals.items()):
-            window = self._domain_windows.get(domain, self.convergence_window)
-            cutoff = now - window
-            live = []
-            for s in sigs:
-                try:
-                    if s.timestamp >= cutoff:
-                        live.append({
-                            "signal_id": s.signal_id,
-                            "strength": s.strength,
-                            "domain": s.domain,
-                            "direction": s.direction,
-                            "timestamp": s.timestamp.isoformat(),
-                            "metadata": s.metadata,
-                            "velocity": s.velocity,
-                            "confidence": s.confidence,
-                            "source": s.source,
-                        })
-                except Exception:
-                    logger.debug("Skipping non-serializable signal in %s", domain)
-            if live:
-                buffer[domain] = live
+        with self._alert_lock:
+            total_in_memory = sum(len(v) for v in self.signals.values())
+            logger.info(
+                "Signal buffer save starting: %d signals across %d domains in memory",
+                total_in_memory,
+                len(self.signals),
+            )
 
-        # Atomically write signal buffer.
+            # Build serialisable buffer — only keep live (non-expired) signals.
+            buffer: Dict[str, list] = {}
+            for domain, sigs in list(self.signals.items()):
+                window = self._domain_windows.get(domain, self.convergence_window)
+                cutoff = now - window
+                live = []
+                for s in sigs:
+                    try:
+                        if s.timestamp >= cutoff:
+                            live.append({
+                                "signal_id": s.signal_id,
+                                "strength": s.strength,
+                                "domain": s.domain,
+                                "direction": s.direction,
+                                "timestamp": s.timestamp.isoformat(),
+                                "metadata": s.metadata,
+                                "velocity": s.velocity,
+                                "confidence": s.confidence,
+                                "source": s.source,
+                            })
+                    except Exception:
+                        logger.debug("Skipping non-serializable signal in %s", domain)
+                if live:
+                    buffer[domain] = live
+
+        # Atomically write signal buffer (outside lock — file I/O doesn't need it).
         buf_path = _DATA_DIR / "signal_buffer.json"
         tmp_buf = buf_path.with_suffix(".tmp")
         try:
@@ -138,28 +140,29 @@ class ConvergenceBufferMixin:
             try:
                 raw: Dict[str, list] = json.loads(buf_path.read_text())
                 loaded = 0
-                for domain, entries in raw.items():
-                    window = self._domain_windows.get(domain, self.convergence_window)
-                    cutoff = now - window
-                    for entry in entries:
-                        ts = datetime.fromisoformat(entry["timestamp"])
-                        if ts < cutoff:
-                            continue  # expired — skip
-                        self.signals[domain].append(
-                            Signal(
-                                signal_id=entry["signal_id"],
-                                strength=entry["strength"],
-                                domain=entry["domain"],
-                                direction=entry["direction"],
-                                timestamp=ts,
-                                metadata=entry.get("metadata", {}),
-                                velocity=entry.get("velocity", 0.0),
-                                confidence=entry.get("confidence", 0.5),
-                                source=entry.get("source", ""),
+                with self._alert_lock:
+                    for domain, entries in raw.items():
+                        window = self._domain_windows.get(domain, self.convergence_window)
+                        cutoff = now - window
+                        for entry in entries:
+                            ts = datetime.fromisoformat(entry["timestamp"])
+                            if ts < cutoff:
+                                continue  # expired — skip
+                            self.signals[domain].append(
+                                Signal(
+                                    signal_id=entry["signal_id"],
+                                    strength=entry["strength"],
+                                    domain=entry["domain"],
+                                    direction=entry["direction"],
+                                    timestamp=ts,
+                                    metadata=entry.get("metadata", {}),
+                                    velocity=entry.get("velocity", 0.0),
+                                    confidence=entry.get("confidence", 0.5),
+                                    source=entry.get("source", ""),
+                                )
                             )
-                        )
-                        loaded += 1
-                domain_count = len(self.signals)
+                            loaded += 1
+                    domain_count = len(self.signals)
                 logger.info(
                     "Signal buffer loaded: %d signals across %d domains",
                     loaded,
@@ -239,8 +242,9 @@ class ConvergenceBufferMixin:
             source=source,
         )
 
-        self.signals[domain].append(signal)
-        self._prune_old_signals()
+        with self._alert_lock:
+            self.signals[domain].append(signal)
+            self._prune_old_signals()
 
     def _prune_old_signals(self):
         """Remove signals outside the convergence window.

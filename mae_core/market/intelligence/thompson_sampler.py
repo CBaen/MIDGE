@@ -70,7 +70,7 @@ class ThompsonSampler(ThompsonPersistenceMixin):
         self.persistence_path = persistence_path or DISTRIBUTIONS_FILE
         self.history_path = self.persistence_path.parent / "thompson_history.jsonl"
         self.prior_scale = prior_scale
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
 
         # Ensure data directory exists
         self.persistence_path.parent.mkdir(parents=True, exist_ok=True)
