@@ -159,13 +159,21 @@ class SensingReactiveMixin:
             signals = fetch_sec_form8k(self._sec_client, self._watchlist, from_form8k_event)
 
         elif source_name == "congressional":
-            signals = fetch_congressional(self._congress_client, from_congressional_trade)
+            signals = fetch_congressional(
+                self._congress_client, from_congressional_trade,
+                politician_tracker=self._politician_tracker,
+                correlation_converter=from_correlation_signal,
+            )
 
         elif source_name == "senate":
             signals = fetch_senate(self._senate_client, from_senate_trade)
 
         elif source_name == "hiring":
-            signals = fetch_hiring(self._job_tracker, self._watchlist, from_hiring_signal)
+            signals = fetch_hiring(
+                self._job_tracker, self._watchlist, from_hiring_signal,
+                contract_predictor=self._contract_predictor,
+                prediction_converter=from_contract_prediction,
+            )
 
         elif source_name == "usa_spending":
             signals = fetch_usa_spending(self._usa_spending, self._watchlist, from_government_contract)
