@@ -13,7 +13,7 @@ import json
 import logging
 import math
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -29,6 +29,13 @@ from mae_core.market.intelligence.world_model import WorldModel
 logger = logging.getLogger(__name__)
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
+
+
+def _ensure_utc(dt: datetime) -> datetime:
+    """Normalize a datetime to UTC-aware."""
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
 _DEFAULT_SIGNALS_DIR = str(_PROJECT_ROOT / "data" / "midge" / "signals")
 _DEFAULT_DATA_DIR = str(_PROJECT_ROOT / "data" / "market")
 
@@ -309,11 +316,11 @@ class DeepAnalyst:
 
         # Build signal list (capped at 50 for memory)
         signal_dicts = [
-            {"source": r.source, "strength": r.strength, "timestamp": r.timestamp.isoformat()}
-            for r in sorted(recs, key=lambda x: x.timestamp, reverse=True)[:50]
+            {"source": r.source, "strength": r.strength, "timestamp": _ensure_utc(r.timestamp).isoformat()}
+            for r in sorted(recs, key=lambda x: _ensure_utc(x.timestamp), reverse=True)[:50]
         ]
 
-        timestamps = [r.timestamp for r in recs]
+        timestamps = [_ensure_utc(r.timestamp) for r in recs]
         earliest = min(timestamps).isoformat() if timestamps else ""
         latest = max(timestamps).isoformat() if timestamps else ""
 
@@ -420,7 +427,8 @@ class DeepAnalyst:
             return 0.0
         weight_sum = 0.0
         for r in recs:
-            age_days = max(0.0, (today - r.timestamp).total_seconds() / 86400.0)
+            ts = r.timestamp.replace(tzinfo=timezone.utc) if r.timestamp.tzinfo is None else r.timestamp
+            age_days = max(0.0, (today - ts).total_seconds() / 86400.0)
             decay = math.exp(-age_days * math.log(2) / _DECAY_HALF_LIFE)
             weight_sum += r.strength * decay
         # Normalize: 20+ weighted units = score of 1.0
