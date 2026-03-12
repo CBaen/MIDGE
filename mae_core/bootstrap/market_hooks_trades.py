@@ -42,6 +42,17 @@ def _check_sweep_bypass(alerter, ctx: SimpleNamespace) -> None:
     bypass_dedup = getattr(ctx, "_bypass_dedup", {})
     now = datetime.now()
 
+    # Risk gates — sweep bypass must respect the same circuit breakers
+    _dm = getattr(ctx, "drawdown_monitor", None)
+    if _dm is not None and _dm.is_trading_halted():
+        logger.info("Sweep bypass BLOCKED — drawdown circuit breaker active")
+        return
+
+    _sm = getattr(ctx, "self_monitor", None)
+    if _sm is not None and _sm.is_alerting_suppressed():
+        logger.info("Sweep bypass BLOCKED — behavioral anomaly detected")
+        return
+
     for alert in ticker_alerts:
         # Check that at least one contributing signal comes from an eligible source
         signals = getattr(alert, "signals", [])

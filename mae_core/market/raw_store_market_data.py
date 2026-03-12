@@ -171,6 +171,55 @@ class RawStoreMarketDataMixin:
         logger.debug("RawStore: stored %d COT report rows", len(data))
         return len(data)
 
+    def get_cot_history(
+        self, contract_name: str, weeks: int = 52
+    ) -> List[Dict[str, Any]]:
+        """Retrieve the most recent N weeks of COT data for a contract.
+
+        Used to compute week-over-week change and COT Index (percentile rank).
+        Returns rows sorted oldest-first so callers can compute diffs directly.
+
+        Args:
+            contract_name: CFTC contract name (e.g. "GOLD", "E-MINI S&P 500").
+            weeks: How many weekly rows to return (default 52 for COT Index).
+
+        Returns:
+            List of dicts with keys: report_date, commercial_long, commercial_short,
+            noncommercial_long, noncommercial_short, open_interest.
+            Empty list if the cot_weekly table doesn't exist yet.
+        """
+        try:
+            conn = self._get_conn("cot")
+            # Use LIKE for partial match — contract names in the store may contain
+            # exchange suffix (e.g. "E-MINI S&P 500 - CHICAGO MERCANTILE EXCHANGE")
+            cursor = conn.execute(
+                """
+                SELECT report_date, commercial_long, commercial_short,
+                       noncommercial_long, noncommercial_short, open_interest
+                FROM cot_weekly
+                WHERE contract_name LIKE ?
+                ORDER BY report_date DESC
+                LIMIT ?
+                """,
+                (f"%{contract_name}%", weeks),
+            )
+            rows = cursor.fetchall()
+        except Exception as exc:
+            logger.debug("RawStore: get_cot_history failed for %s: %s", contract_name, exc)
+            return []
+
+        return [
+            {
+                "report_date": r[0],
+                "commercial_long": r[1],
+                "commercial_short": r[2],
+                "noncommercial_long": r[3],
+                "noncommercial_short": r[4],
+                "open_interest": r[5],
+            }
+            for r in reversed(rows)  # oldest-first
+        ]
+
     # --- EIA ---
 
     def store_eia_series(self, series_key: str, observations: List[Dict[str, Any]]) -> int:
