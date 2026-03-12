@@ -107,6 +107,11 @@ class LegislativeIndicator:
     direction: str            # bullish/bearish/neutral
     strength: float           # 0-1
     affected_tickers: list = field(default_factory=list)
+    # Sponsor/committee/subject enrichment (fetched from bill detail endpoint)
+    # Sponsors tell you WHO introduced it — defense committee member + defense stock = signal
+    sponsors: list = field(default_factory=list)      # List of sponsor dicts: {name, party, state, bioguideId}
+    committees: list = field(default_factory=list)    # List of committee dicts: {name, systemCode}
+    subjects: list = field(default_factory=list)      # Legislative subject tags (more granular than policyArea)
     signal_source: str = "congress_legislation"
     decay_rate: float = 0.03  # ~23-day half-life
     confidence: float = 0.65
@@ -300,6 +305,71 @@ class CongressGovClient:
         )
         return indicators
 
+    def get_bill_subjects(self, congress: int, bill_type: str, number: str) -> List[str]:
+        """Fetch legislative subject tags for a bill.
+
+        Returns a list of subject name strings (e.g. ["Defense Procurement",
+        "Military Personnel"]). Subjects are more granular than policyArea and
+        allow cross-referencing with sector-specific signals.
+
+        Returns an empty list on any failure (non-critical enrichment).
+        """
+        cache_key = f"bill_subjects_{congress}_{bill_type}_{number}"
+        if cache_key in self._cache:
+            data, cached_at = self._cache[cache_key]
+            if time.time() - cached_at < CACHE_DURATION:
+                return data
+
+        data = self._request(f"/bill/{congress}/{bill_type}/{number}/subjects", {})
+        if data is None:
+            return []
+
+        subjects_list = data.get("subjects", {})
+        if isinstance(subjects_list, dict):
+            # API returns {"subjects": {"legislativeSubjects": [...], "policyArea": {...}}}
+            items = subjects_list.get("legislativeSubjects", [])
+        elif isinstance(subjects_list, list):
+            items = subjects_list
+        else:
+            items = []
+
+        names = [item.get("name", "") for item in items if item.get("name")]
+        self._cache[cache_key] = (names, time.time())
+        return names
+
+    def get_bill_committees(self, congress: int, bill_type: str, number: str) -> List[Dict[str, Any]]:
+        """Fetch committee referrals for a bill.
+
+        Returns a list of committee dicts with keys: name, systemCode, chamber.
+        A defense committee referral for a spending bill is a strong signal that
+        the bill targets defense contractors.
+
+        Returns an empty list on any failure (non-critical enrichment).
+        """
+        cache_key = f"bill_committees_{congress}_{bill_type}_{number}"
+        if cache_key in self._cache:
+            data, cached_at = self._cache[cache_key]
+            if time.time() - cached_at < CACHE_DURATION:
+                return data
+
+        data = self._request(f"/bill/{congress}/{bill_type}/{number}/committees", {})
+        if data is None:
+            return []
+
+        committees_raw = data.get("committees", [])
+        if not isinstance(committees_raw, list):
+            return []
+
+        result = []
+        for c in committees_raw:
+            result.append({
+                "name": c.get("name", ""),
+                "systemCode": c.get("systemCode", ""),
+                "chamber": c.get("chamber", ""),
+            })
+        self._cache[cache_key] = (result, time.time())
+        return result
+
     def _build_indicator(self, bill: dict) -> Optional[LegislativeIndicator]:
         """Build a LegislativeIndicator from a raw bill dict + its detail."""
         congress = bill.get("congress")
@@ -330,10 +400,35 @@ class CongressGovClient:
         signal_type = _classify_signal_type(action_text)
         bill_id = self._bill_id_from_raw(bill)
 
+        # Extract sponsors from bill detail (already fetched above — no extra API call)
+        # Sponsors list in detail: [{bioguideId, fullName, firstName, lastName, party, state}]
+        raw_sponsors = detail.get("sponsors", []) or []
+        sponsors = [
+            {
+                "name": s.get("fullName") or f"{s.get('firstName', '')} {s.get('lastName', '')}".strip(),
+                "party": s.get("party", ""),
+                "state": s.get("state", ""),
+                "bioguideId": s.get("bioguideId", ""),
+            }
+            for s in raw_sponsors
+        ]
+
+        # Fetch committees and subjects (best-effort — skip on failure)
+        committees: List[Dict[str, Any]] = []
+        subjects: List[str] = []
+        try:
+            committees = self.get_bill_committees(int(congress), bill_type, number)
+        except Exception:
+            pass
+        try:
+            subjects = self.get_bill_subjects(int(congress), bill_type, number)
+        except Exception:
+            pass
+
         logger.debug(
-            "Congress.gov: %s [%s] %s strength=%.2f tickers=%s",
+            "Congress.gov: %s [%s] %s strength=%.2f tickers=%s sponsors=%d",
             bill_id, signal_type, direction, strength,
-            ", ".join(affected_tickers[:3]),
+            ", ".join(affected_tickers[:3]), len(sponsors),
         )
         return LegislativeIndicator(
             bill_id=bill_id,
@@ -347,6 +442,9 @@ class CongressGovClient:
             direction=direction,
             strength=round(strength, 3),
             affected_tickers=affected_tickers,
+            sponsors=sponsors,
+            committees=committees,
+            subjects=subjects,
         )
 
     @staticmethod
