@@ -60,3 +60,18 @@ Universal lessons go in `C:\Users\baenb\.claude\lessons-learned.md` instead.
 - **Pattern**: Convergence buffer started with 131 signals in 2 domains after restart. Needed 3+ domains to fire. MIDGE sat blind until live signals dripped in over hours. Meanwhile, 297K historical signals existed in the archive, unread.
 - **Rule**: On startup, warm the convergence buffer from the signal archive (`startup_warmup.py`). Run `archive_scanner.py` to log what MIDGE knows. Run `DeepAnalyst.analyze()` to produce immediate findings. MIDGE should never start from zero when she has data.
 - **Why**: Every restart that discards accumulated knowledge is a waste. The daemon should start smarter than it was yesterday, not amnesia every boot.
+
+### "Built" is not "wired" — check for disconnected systems
+- **Pattern**: DeepAnalyst was built in Session 3 (474 lines, tested, working). Two sessions later it had ZERO bootstrap references — never constructed, never called during daemon operation. PatternWatcher existed but only ran on a 10-step cadence, not reactively. WorldModel had `add_discovered_edge()` but nobody called it from Granger or lag findings. 3 of 15 intelligence systems were built but disconnected.
+- **Rule**: After building any system, grep for its class name in `market_systems.py` (bootstrap), `market_hooks*.py` (step loop), and `sensing_collector.py` (signal pipeline). If it appears in zero of these, it's dead code. A system that isn't bootstrapped AND called from a step hook is a system that doesn't exist.
+- **Why**: Waking these 3 systems produced immediate measurable activity: 649 reactive pattern checks, 20 ranked inevitabilities, 10 auto-discovered WorldModel edges — all in the first 1.5 hours. The intelligence was there all along; it just wasn't connected.
+
+### Reactive beats polling for pattern detection
+- **Pattern**: PatternWatcher ran every 10 steps via `_run_sensing_archaeology`. By adding a reactive check in `_collect_one()` (fires on every signal ingestion), pattern stacks are detected the moment signals arrive instead of up to 10 steps later.
+- **Rule**: For detection systems (PatternWatcher, convergence checks), trigger reactively on signal arrival AND keep the cadence tick as a safety net. The cadence tick catches anything the reactive path missed; the reactive path catches things instantly.
+- **Why**: In a fast market, 10 steps of delay (25+ seconds) can mean missing a stacking pattern as it forms. The reactive path caught 649 checks in 1.5 hours. The cadence safety net adds redundancy without cost (alerter deduplication prevents double-fires).
+
+### Auto-discovery turns curated graphs into living knowledge
+- **Pattern**: WorldModel had 102 hand-curated edges. Granger analyzer found 3 causal relationships per cycle. Lag correlator found 70+ correlations with |r| >= 0.6. But neither fed discoveries into the WorldModel — the graph never grew.
+- **Rule**: When statistical methods discover relationships (Granger causality, lag correlations), feed them into the WorldModel via `add_discovered_edge()`. Set a quality threshold (|r| >= 0.6 for lag, all significant for Granger). The method handles both new edges and strengthening existing ones on re-discovery.
+- **Why**: A static causal graph is a human's best guess. A growing graph is the system learning its own domain. Within 1.5 hours, the WorldModel grew from 102 to 112 edges autonomously — and will keep growing every 500 steps.
