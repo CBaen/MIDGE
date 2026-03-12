@@ -198,3 +198,7 @@ All existing tests must keep passing. Zero regressions policy.
 | `mae_core/market/intelligence/thompson_sampler.py` | Bayesian explore/exploit for signal reliability |
 | `mae_core/market/edge/contract_predictor.py` | Pre-announcement winner prediction |
 | `data/MAES-MATHEMATICAL-IDENTITY.md` | Full mathematical identity (research synthesis) |
+
+## Self-Improvement Loop
+
+After ANY correction from the user, append a lesson to `lessons-learned.md` in this project root. Format: `### Title` / `- **Pattern**:` what went wrong / `- **Rule**:` what to do instead / `- **Why**:` why the old way fails. Universal lessons go to `C:\Users\baenb\.claude\lessons-learned.md` instead.
