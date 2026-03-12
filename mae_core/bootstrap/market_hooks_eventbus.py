@@ -329,6 +329,10 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
                     if not domino_ticker or domino_direction not in ("bullish", "bearish"):
                         continue
 
+                    # Stage-gating: only boost watchable links (prior stage confirmed)
+                    if not domino.get("watchable", True):
+                        continue
+
                     try:
                         _alerter_ref.record_signal(
                             signal_id=f"cascade_{chain_id}_{domino_ticker}",
