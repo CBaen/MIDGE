@@ -70,10 +70,19 @@ class TestDirectionLogic:
     def test_unrate_mid_is_neutral(self):
         assert _determine_direction("UNRATE", 4.5) == "neutral"
 
-    # CPIAUCSL (inflation) — raw level is neutral per design
-    def test_cpiaucsl_always_neutral(self):
+    # CPIAUCSL (inflation) — delta-based: rising = bearish (price pressure)
+    def test_cpiaucsl_without_delta_is_neutral(self):
         assert _determine_direction("CPIAUCSL", 300.0) == "neutral"
         assert _determine_direction("CPIAUCSL", 100.0) == "neutral"
+
+    def test_cpiaucsl_rising_is_bearish(self):
+        assert _determine_direction("CPIAUCSL", 310.0, change_pct=0.30) == "bearish"
+
+    def test_cpiaucsl_falling_is_bullish(self):
+        assert _determine_direction("CPIAUCSL", 299.0, change_pct=-0.33) == "bullish"
+
+    def test_cpiaucsl_flat_is_neutral(self):
+        assert _determine_direction("CPIAUCSL", 300.0, change_pct=0.02) == "neutral"
 
     # TSIFRGHT (Freight Transportation Services Index — logistics demand)
     def test_freight_tsi_high_is_bullish(self):
@@ -94,20 +103,49 @@ class TestDirectionLogic:
 # --- New series direction logic (Wave 2 additions) ---
 
 class TestNewSeriesDirectionLogic:
-    # PCEPI — Fed's preferred inflation measure (raw index level = neutral)
-    def test_pcepi_always_neutral(self):
+    # PCEPI — Fed's preferred inflation measure: delta-based, rising = bearish
+    def test_pcepi_without_delta_is_neutral(self):
         assert _determine_direction("PCEPI", 115.0) == "neutral"
         assert _determine_direction("PCEPI", 80.0) == "neutral"
 
-    # PCEPILFE — Core PCE (Fed's policy anchor, raw level = neutral)
-    def test_pcepilfe_always_neutral(self):
+    def test_pcepi_rising_is_bearish(self):
+        assert _determine_direction("PCEPI", 115.0, change_pct=0.25) == "bearish"
+
+    def test_pcepi_falling_is_bullish(self):
+        assert _determine_direction("PCEPI", 114.0, change_pct=-0.20) == "bullish"
+
+    def test_pcepi_below_neutral_band_is_neutral(self):
+        # 0.03% change < 0.05% band → neutral
+        assert _determine_direction("PCEPI", 115.0, change_pct=0.03) == "neutral"
+
+    # PCEPILFE — Core PCE: delta-based, rising = bearish
+    def test_pcepilfe_without_delta_is_neutral(self):
         assert _determine_direction("PCEPILFE", 120.0) == "neutral"
         assert _determine_direction("PCEPILFE", 95.0) == "neutral"
 
-    # RSXFS — Retail Sales ex food services (level-based, neutral by design)
-    def test_rsxfs_always_neutral(self):
+    def test_pcepilfe_rising_is_bearish(self):
+        assert _determine_direction("PCEPILFE", 120.0, change_pct=0.18) == "bearish"
+
+    def test_pcepilfe_falling_is_bullish(self):
+        assert _determine_direction("PCEPILFE", 119.0, change_pct=-0.12) == "bullish"
+
+    def test_pcepilfe_below_neutral_band_is_neutral(self):
+        assert _determine_direction("PCEPILFE", 120.0, change_pct=0.02) == "neutral"
+
+    # RSXFS — Retail Sales: delta-based, rising = bullish
+    def test_rsxfs_without_delta_is_neutral(self):
         assert _determine_direction("RSXFS", 500000.0) == "neutral"
         assert _determine_direction("RSXFS", 300000.0) == "neutral"
+
+    def test_rsxfs_rising_is_bullish(self):
+        assert _determine_direction("RSXFS", 510000.0, change_pct=2.0) == "bullish"
+
+    def test_rsxfs_falling_is_bearish(self):
+        assert _determine_direction("RSXFS", 490000.0, change_pct=-2.0) == "bearish"
+
+    def test_rsxfs_below_neutral_band_is_neutral(self):
+        # 0.15% < 0.20% band → neutral
+        assert _determine_direction("RSXFS", 500300.0, change_pct=0.15) == "neutral"
 
     # UMCSENT — University of Michigan Consumer Sentiment
     def test_umcsent_high_is_bullish(self):
@@ -125,10 +163,21 @@ class TestNewSeriesDirectionLogic:
     def test_umcsent_exactly_at_bearish_threshold(self):
         assert _determine_direction("UMCSENT", 65.0) == "bearish"
 
-    # M2SL — M2 Money Supply (level = neutral, growth rate matters more)
-    def test_m2sl_always_neutral(self):
+    # M2SL — M2 Money Supply: delta-based, rising = bullish (liquidity expanding)
+    def test_m2sl_without_delta_is_neutral(self):
         assert _determine_direction("M2SL", 21000.0) == "neutral"
         assert _determine_direction("M2SL", 15000.0) == "neutral"
+
+    def test_m2sl_rising_is_bullish(self):
+        assert _determine_direction("M2SL", 21200.0, change_pct=0.95) == "bullish"
+
+    def test_m2sl_falling_is_bearish(self):
+        # M2 contraction = liquidity withdrawal = bearish
+        assert _determine_direction("M2SL", 20800.0, change_pct=-0.95) == "bearish"
+
+    def test_m2sl_below_neutral_band_is_neutral(self):
+        # 0.05% < 0.10% band → neutral
+        assert _determine_direction("M2SL", 21010.0, change_pct=0.05) == "neutral"
 
     # T5YIE — 5-Year Breakeven Inflation Rate
     def test_t5yie_high_is_bearish(self):
@@ -225,6 +274,273 @@ class TestNewSeriesDirectionLogic:
 
     def test_icsa_mid_is_neutral(self):
         assert _determine_direction("ICSA", 270.0) == "neutral"
+
+    # DGS2 / DGS10 — treasury yields: delta-based, rising = bearish (tighter)
+    def test_dgs2_without_delta_is_neutral(self):
+        assert _determine_direction("DGS2", 4.85) == "neutral"
+
+    def test_dgs2_rising_is_bearish(self):
+        assert _determine_direction("DGS2", 5.00, change_pct=3.09) == "bearish"
+
+    def test_dgs2_falling_is_bullish(self):
+        assert _determine_direction("DGS2", 4.50, change_pct=-7.22) == "bullish"
+
+    def test_dgs2_below_neutral_band_is_neutral(self):
+        # 0.03% < 0.05% band → neutral
+        assert _determine_direction("DGS2", 4.86, change_pct=0.02) == "neutral"
+
+    def test_dgs10_without_delta_is_neutral(self):
+        assert _determine_direction("DGS10", 4.50) == "neutral"
+
+    def test_dgs10_rising_is_bearish(self):
+        assert _determine_direction("DGS10", 4.60, change_pct=2.22) == "bearish"
+
+    def test_dgs10_falling_is_bullish(self):
+        assert _determine_direction("DGS10", 4.30, change_pct=-4.44) == "bullish"
+
+
+# --- DELTA_SERIES set and _determine_direction_from_delta ---
+
+class TestDeltaSeriesSet:
+    def test_delta_series_contains_expected_series(self):
+        expected = {"PCEPI", "PCEPILFE", "CPIAUCSL", "RSXFS", "M2SL", "DFF", "DGS2", "DGS10"}
+        assert expected.issubset(DELTA_SERIES), f"Missing: {expected - DELTA_SERIES}"
+
+    def test_delta_series_does_not_contain_level_threshold_series(self):
+        # Series with meaningful level thresholds should NOT be in DELTA_SERIES
+        for sid in ("T10Y2Y", "VIXCLS", "UMCSENT", "BAMLH0A0HYM2", "T5YIE",
+                    "HOUST", "PERMIT", "DCOILWTICO", "GOLDAMGBD228NLBM"):
+            assert sid not in DELTA_SERIES, f"{sid} should not be in DELTA_SERIES"
+
+
+class TestDetermineDirectionFromDelta:
+    def test_inflation_positive_is_bearish(self):
+        # Rising inflation = bearish
+        assert _determine_direction_from_delta("PCEPI", 0.25) == "bearish"
+
+    def test_inflation_negative_is_bullish(self):
+        assert _determine_direction_from_delta("PCEPI", -0.25) == "bullish"
+
+    def test_inflation_near_zero_is_neutral(self):
+        assert _determine_direction_from_delta("PCEPI", 0.02) == "neutral"
+
+    def test_growth_positive_is_bullish(self):
+        # Rising retail sales = bullish
+        assert _determine_direction_from_delta("RSXFS", 2.0) == "bullish"
+
+    def test_growth_negative_is_bearish(self):
+        assert _determine_direction_from_delta("RSXFS", -2.0) == "bearish"
+
+    def test_growth_near_zero_is_neutral(self):
+        assert _determine_direction_from_delta("RSXFS", 0.10) == "neutral"
+
+    def test_m2sl_expanding_is_bullish(self):
+        assert _determine_direction_from_delta("M2SL", 0.50) == "bullish"
+
+    def test_m2sl_contracting_is_bearish(self):
+        assert _determine_direction_from_delta("M2SL", -0.50) == "bearish"
+
+    def test_dff_rising_is_bearish(self):
+        assert _determine_direction_from_delta("DFF", 4.76) == "bearish"
+
+    def test_dff_falling_is_bullish(self):
+        assert _determine_direction_from_delta("DFF", -13.64) == "bullish"
+
+    def test_dgs2_rising_is_bearish(self):
+        assert _determine_direction_from_delta("DGS2", 3.09) == "bearish"
+
+    def test_dgs10_falling_is_bullish(self):
+        assert _determine_direction_from_delta("DGS10", -4.44) == "bullish"
+
+    def test_cpiaucsl_rising_is_bearish(self):
+        assert _determine_direction_from_delta("CPIAUCSL", 0.30) == "bearish"
+
+    def test_cpiaucsl_falling_is_bullish(self):
+        assert _determine_direction_from_delta("CPIAUCSL", -0.10) == "bullish"
+
+
+# --- get_series fetches two observations for delta series ---
+
+class TestGetSeriesDeltaFetch:
+    """Verify get_series() fetches limit=2 for DELTA_SERIES and populates delta fields."""
+
+    def _two_obs_response(self, current_val, prior_val):
+        """Build a mock FRED API response with two observations."""
+        return {
+            "observations": [
+                {"date": "2026-03-01", "value": str(current_val)},
+                {"date": "2026-02-01", "value": str(prior_val)},
+            ]
+        }
+
+    def _one_obs_response(self, val):
+        return {"observations": [{"date": "2026-03-01", "value": str(val)}]}
+
+    def _make_client(self):
+        return FREDClient(api_key="test_key")
+
+    def test_pcepi_fetches_limit_2(self):
+        client = self._make_client()
+        captured = {}
+
+        def fake_request(endpoint, params):
+            captured["limit"] = params.get("limit")
+            return self._two_obs_response(115.0, 114.5)
+
+        client._request = fake_request
+        client.get_series("PCEPI")
+        assert captured["limit"] == 2
+
+    def test_m2sl_fetches_limit_2(self):
+        client = self._make_client()
+        captured = {}
+
+        def fake_request(endpoint, params):
+            captured["limit"] = params.get("limit")
+            return self._two_obs_response(21000.0, 20900.0)
+
+        client._request = fake_request
+        client.get_series("M2SL")
+        assert captured["limit"] == 2
+
+    def test_dff_fetches_limit_2(self):
+        client = self._make_client()
+        captured = {}
+
+        def fake_request(endpoint, params):
+            captured["limit"] = params.get("limit")
+            return self._two_obs_response(5.5, 5.25)
+
+        client._request = fake_request
+        client.get_series("DFF")
+        assert captured["limit"] == 2
+
+    def test_vixcls_still_fetches_limit_1(self):
+        # Non-delta series uses the caller's default limit
+        client = self._make_client()
+        captured = {}
+
+        def fake_request(endpoint, params):
+            captured["limit"] = params.get("limit")
+            return self._one_obs_response(20.0)
+
+        client._request = fake_request
+        client.get_series("VIXCLS")
+        assert captured["limit"] == 1
+
+    def test_pcepi_indicator_has_prior_value(self):
+        client = self._make_client()
+        client._request = lambda ep, params: self._two_obs_response(115.0, 114.5)
+        ind = client.get_series("PCEPI")
+        assert ind is not None
+        assert ind.prior_value == 114.5
+
+    def test_pcepi_indicator_has_change_pct(self):
+        client = self._make_client()
+        client._request = lambda ep, params: self._two_obs_response(115.0, 114.5)
+        ind = client.get_series("PCEPI")
+        assert ind is not None
+        assert ind.change_pct is not None
+        expected = (115.0 - 114.5) / 114.5 * 100.0
+        assert abs(ind.change_pct - expected) < 1e-9
+
+    def test_pcepi_rising_produces_bearish_direction(self):
+        # 115 up from 114.5 = +0.436% = above 0.05% band → bearish (inflation rising)
+        client = self._make_client()
+        client._request = lambda ep, params: self._two_obs_response(115.0, 114.5)
+        ind = client.get_series("PCEPI")
+        assert ind is not None
+        assert ind.direction == "bearish"
+
+    def test_pcepi_falling_produces_bullish_direction(self):
+        # 114.0 down from 115.0 = -0.87% → bullish (inflation cooling)
+        client = self._make_client()
+        client._request = lambda ep, params: self._two_obs_response(114.0, 115.0)
+        ind = client.get_series("PCEPI")
+        assert ind is not None
+        assert ind.direction == "bullish"
+
+    def test_rsxfs_rising_produces_bullish_direction(self):
+        client = self._make_client()
+        client._request = lambda ep, params: self._two_obs_response(510000.0, 500000.0)
+        ind = client.get_series("RSXFS")
+        assert ind is not None
+        assert ind.direction == "bullish"
+
+    def test_m2sl_falling_produces_bearish_direction(self):
+        client = self._make_client()
+        client._request = lambda ep, params: self._two_obs_response(20800.0, 21000.0)
+        ind = client.get_series("M2SL")
+        assert ind is not None
+        assert ind.direction == "bearish"
+
+    def test_dff_rising_produces_bearish_direction(self):
+        # 5.5 up from 5.25 = +4.76% → bearish
+        client = self._make_client()
+        client._request = lambda ep, params: self._two_obs_response(5.5, 5.25)
+        ind = client.get_series("DFF")
+        assert ind is not None
+        assert ind.direction == "bearish"
+
+    def test_dgs2_rising_produces_bearish_direction(self):
+        client = self._make_client()
+        client._request = lambda ep, params: self._two_obs_response(5.00, 4.85)
+        ind = client.get_series("DGS2")
+        assert ind is not None
+        assert ind.direction == "bearish"
+
+    def test_dgs10_falling_produces_bullish_direction(self):
+        client = self._make_client()
+        client._request = lambda ep, params: self._two_obs_response(4.20, 4.50)
+        ind = client.get_series("DGS10")
+        assert ind is not None
+        assert ind.direction == "bullish"
+
+    def test_cpiaucsl_rising_produces_bearish_direction(self):
+        client = self._make_client()
+        client._request = lambda ep, params: self._two_obs_response(310.0, 309.0)
+        ind = client.get_series("CPIAUCSL")
+        assert ind is not None
+        assert ind.direction == "bearish"
+
+    def test_pcepilfe_rising_produces_bearish_direction(self):
+        client = self._make_client()
+        client._request = lambda ep, params: self._two_obs_response(120.0, 119.5)
+        ind = client.get_series("PCEPILFE")
+        assert ind is not None
+        assert ind.direction == "bearish"
+
+    def test_only_one_obs_available_falls_back_to_neutral(self):
+        # If API only returns 1 observation (rare), delta falls back to neutral
+        client = self._make_client()
+        client._request = lambda ep, params: self._one_obs_response(115.0)
+        ind = client.get_series("PCEPI")
+        assert ind is not None
+        assert ind.prior_value is None
+        assert ind.change_pct is None
+        assert ind.direction == "neutral"
+
+    def test_prior_value_missing_falls_back_to_neutral(self):
+        # Prior observation has FRED missing-value marker "."
+        client = self._make_client()
+        client._request = lambda ep, params: {
+            "observations": [
+                {"date": "2026-03-01", "value": "115.0"},
+                {"date": "2026-02-01", "value": "."},
+            ]
+        }
+        ind = client.get_series("PCEPI")
+        assert ind is not None
+        assert ind.prior_value is None
+        assert ind.direction == "neutral"
+
+    def test_non_delta_series_has_no_prior_value(self):
+        client = self._make_client()
+        client._request = lambda ep, params: self._one_obs_response(20.0)
+        ind = client.get_series("VIXCLS")
+        assert ind is not None
+        assert ind.prior_value is None
+        assert ind.change_pct is None
 
 
 # --- New series are present in FRED_SERIES with correct metadata ---
