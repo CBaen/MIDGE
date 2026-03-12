@@ -310,6 +310,24 @@ def _run_slow_cadence_ops(ctx: SimpleNamespace, step: int, _shm, _timer) -> None
                             for f in g_findings[:3]
                         ],
                     })
+                # Auto-discover WorldModel edges from Granger findings
+                _wm = getattr(ctx, "world_model", None)
+                if _wm is not None and g_findings:
+                    for f in g_findings:
+                        try:
+                            _wm.add_discovered_edge(
+                                cause=f.cause_source,
+                                effect=f.effect_source,
+                                strength=min(1.0, max(0.1, 1.0 - f.p_value)),
+                                lag_days=float(f.best_lag),
+                                evidence="granger",
+                            )
+                        except Exception:
+                            pass
+                    logger.info(
+                        "WorldModel: auto-discovered %d edges from Granger",
+                        len(g_findings),
+                    )
             except Exception:
                 logger.debug("Granger causality step failed", exc_info=True)
 
@@ -334,6 +352,36 @@ def _run_slow_cadence_ops(ctx: SimpleNamespace, step: int, _shm, _timer) -> None
                 logger.debug("Post-mortem review step failed", exc_info=True)
                 if _shm:
                     _shm.record_error("post_mortem", exc)
+
+        # DeepAnalyst: synthesize ranked inevitabilities from all data sources
+        _da = getattr(ctx, "deep_analyst", None)
+        if _da is not None:
+            try:
+                if _timer is not None:
+                    with _timer.track("deep_analyst"):
+                        _inevitabilities = _da.analyze(lookback_days=30, top_n=20)
+                else:
+                    _inevitabilities = _da.analyze(lookback_days=30, top_n=20)
+                if _inevitabilities:
+                    logger.info(
+                        "DeepAnalyst: top %d inevitabilities (best: %s %s score=%.3f)",
+                        len(_inevitabilities),
+                        _inevitabilities[0].ticker,
+                        _inevitabilities[0].direction,
+                        _inevitabilities[0].score,
+                    )
+                    # Publish for downstream subscribers
+                    if hasattr(ctx, "bus"):
+                        ctx.bus.publish("market.intel.deep_analysis", {
+                            "count": len(_inevitabilities),
+                            "top": [
+                                {"ticker": iv.ticker, "direction": iv.direction,
+                                 "score": iv.score, "domains": len(iv.domains)}
+                                for iv in _inevitabilities[:5]
+                            ],
+                        })
+            except Exception:
+                logger.debug("DeepAnalyst step failed", exc_info=True)
 
         # Expire stale cascade chains so WorldModel learns from failures
         _ct = getattr(ctx, "cascade_tracker", None)
