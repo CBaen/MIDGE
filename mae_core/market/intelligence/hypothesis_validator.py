@@ -158,12 +158,12 @@ class HypothesisValidator:
         # Find historical trigger events — composite hypotheses require both sources
         is_composite = bool(hypothesis.trigger.conjunct_source)
         if is_composite:
-            trigger_events = find_composite_trigger_events(
-                hypothesis, self._signals_dir, lookback_days
+            trigger_events = self._find_composite_trigger_events(
+                hypothesis, lookback_days
             )
         else:
-            trigger_events = find_trigger_events(
-                hypothesis, self._signals_dir, lookback_days
+            trigger_events = self._find_trigger_events(
+                hypothesis, lookback_days
             )
 
         if not trigger_events:
@@ -177,7 +177,7 @@ class HypothesisValidator:
         returns = []
 
         for event in trigger_events:
-            outcome = check_event_outcome(event, hypothesis, self._outcomes_path)
+            outcome = self._check_event_outcome(event, hypothesis)
             if outcome is None:
                 continue
 
@@ -312,7 +312,7 @@ class HypothesisValidator:
 
         win_rate = wins / total
         sharpe = hypothesis.stats.sharpe_ratio
-        dsr = compute_dsr(sharpe, total, self._dsr_trials_tracked)
+        dsr = self._compute_dsr(sharpe, total)
 
         has_real_causal_story = (
             hypothesis.causal_story
