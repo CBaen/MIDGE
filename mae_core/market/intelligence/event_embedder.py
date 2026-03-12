@@ -430,6 +430,35 @@ class EventEmbedder:
             logger.debug("EventEmbedder: embed_contract_award failed: %s", e)
             return None
 
+    def embed_inevitability(self, inv) -> Optional[str]:
+        """Embed and store an Inevitability object. Returns point ID or None."""
+        try:
+            ts = datetime.now()
+            description = (
+                f"{inv.ticker} {inv.direction} (score {inv.score:.2f}): {inv.evidence_summary}"
+            )
+            point_id = f"inevitability:{inv.ticker}:{inv.direction}:{ts.isoformat()}"
+
+            wm_chain = getattr(inv, "world_model_chain", None)
+            metadata = {
+                "ticker": inv.ticker,
+                "direction": inv.direction,
+                "score": round(inv.score, 3),
+                "domains": list(getattr(inv, "domains", [])),
+                "evidence_summary": inv.evidence_summary,
+                "template_match": getattr(inv, "template_match", 0.0),
+                "template_win_rate": getattr(inv, "template_win_rate", 0.0),
+                "expected_window_days": getattr(inv, "expected_window_days", 14),
+                "world_model_chain": str(wm_chain) if wm_chain else None,
+                "date": ts.strftime("%Y-%m-%d"),
+                "timestamp_iso": ts.isoformat(),
+            }
+
+            return self._describe_and_store(description, "inevitability", point_id, metadata)
+        except Exception as e:
+            logger.debug("EventEmbedder: embed_inevitability failed: %s", e)
+            return None
+
     # ------------------------------------------------------------------
     # Retrieval API
     # ------------------------------------------------------------------
