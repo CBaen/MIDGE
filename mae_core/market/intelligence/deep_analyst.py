@@ -445,8 +445,6 @@ class DeepAnalyst:
         # Above 0.5 WR → boost up to 1.25; below → penalty down to 0.8
         return max(0.8, min(1.25, 0.8 + 0.9 * wr))
 
-    # ── Internal: text generation ───────────────────────────────────────────
-
     def _build_evidence_summary(
         self,
         ticker: str,
@@ -468,8 +466,6 @@ class DeepAnalyst:
         if hist_wr is not None:
             parts.append(f"Past {ticker} {direction} predictions: {hist_wr:.0%} correct.")
         return " ".join(parts)
-
-    # ── Helpers ─────────────────────────────────────────────────────────────
 
     def _count_unique_tickers(self, results: List[Inevitability]) -> int:
         return len({iv.ticker for iv in results})
