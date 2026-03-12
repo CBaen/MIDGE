@@ -57,6 +57,9 @@ def _build_sensing_infrastructure(ctx: SimpleNamespace):
         _plib = getattr(ctx, "pattern_library", None)
         if _plib is not None:
             outcome_collector.set_pattern_library(_plib)
+        _at = getattr(ctx, "active_tracker", None)
+        if _at is not None and hasattr(_at, "set_outcome_collector"):
+            _at.set_outcome_collector(outcome_collector)
 
     memory = None
     try:
