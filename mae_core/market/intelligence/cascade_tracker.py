@@ -20,6 +20,7 @@ is reinforced. When it doesn't, error signals update the model.
 """
 
 import logging
+import threading
 import time
 from typing import Dict, List, Optional
 
@@ -50,6 +51,7 @@ class CascadeTracker:
         self._max_chains = max_chains
         self._stage_tolerance_days = stage_tolerance_days
         self._active_chains: Dict[str, dict] = {}
+        self._chains_lock = threading.Lock()
 
     def register_cascade(
         self,
@@ -69,6 +71,17 @@ class CascadeTracker:
         Returns:
             True if registered, False if duplicate or no effects.
         """
+        with self._chains_lock:
+            return self._register_cascade_locked(alert_id, trigger, ripple_effects, direction)
+
+    def _register_cascade_locked(
+        self,
+        alert_id: str,
+        trigger: str,
+        ripple_effects: List[dict],
+        direction: str,
+    ) -> bool:
+        """Inner — caller must hold self._chains_lock."""
         if not ripple_effects or alert_id in self._active_chains:
             return False
 
