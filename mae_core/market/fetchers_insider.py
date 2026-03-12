@@ -12,8 +12,18 @@ from typing import Any, Callable
 logger = logging.getLogger("midge.market.sensing")
 
 
-def fetch_sec_form4(sec_client: Any, watchlist: dict, converter: Callable) -> list:
-    """Fetch SEC Form 4 insider trades for watchlist tickers."""
+def fetch_sec_form4(
+    sec_client: Any,
+    watchlist: dict,
+    converter: Callable,
+    cluster_detector: Any = None,
+    cluster_converter: Callable = None,
+) -> list:
+    """Fetch SEC Form 4 insider trades for watchlist tickers.
+
+    If cluster_detector and cluster_converter are provided, also detects
+    insider buying clusters (3+ insiders) and appends ClusterSignal results.
+    """
     if sec_client is None:
         return []
 
@@ -31,6 +41,19 @@ def fetch_sec_form4(sec_client: Any, watchlist: dict, converter: Callable) -> li
                     pass
         except Exception as e:
             logger.debug("SEC Form 4 fetch failed for %s: %s", ticker, e)
+
+        # Cluster detection: find 3+ insiders buying same stock
+        if cluster_detector is not None and cluster_converter is not None:
+            try:
+                clusters = cluster_detector.find_clusters(ticker, days_back=30, min_insiders=3)
+                for cluster in clusters:
+                    try:
+                        signals.append(cluster_converter(cluster))
+                    except Exception:
+                        pass
+            except Exception as e:
+                logger.debug("Cluster detection failed for %s: %s", ticker, e)
+
     return signals
 
 
