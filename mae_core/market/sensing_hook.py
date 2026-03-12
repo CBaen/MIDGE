@@ -128,6 +128,9 @@ class MarketSensingHook(SensingSchedulerMixin, SensingCollectorMixin, SensingRea
         usda_client: Any = None,
         binance_funding_client: Any = None,
         kalshi_client: Any = None,
+        cluster_detector: Any = None,
+        politician_tracker: Any = None,
+        contract_predictor: Any = None,
     ):
         # API clients (all optional — graceful degradation)
         self._sec_client = sec_client
@@ -171,6 +174,9 @@ class MarketSensingHook(SensingSchedulerMixin, SensingCollectorMixin, SensingRea
         self._usda_client = usda_client
         self._binance_funding_client = binance_funding_client
         self._kalshi_client = kalshi_client
+        self._cluster_detector = cluster_detector
+        self._politician_tracker = politician_tracker
+        self._contract_predictor = contract_predictor
 
         # EventBus (injected by bootstrap for signal bridge)
         self._bus = None

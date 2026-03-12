@@ -101,6 +101,9 @@ class SensingReactiveMixin:
             from_hiring_signal,
             from_government_contract,
             from_contract_opportunity,
+            from_cluster_signal,
+            from_correlation_signal,
+            from_contract_prediction,
             from_social_sentiment,
             from_short_interest,
             from_filing_keyword,
@@ -146,7 +149,11 @@ class SensingReactiveMixin:
         signals = []
 
         if source_name == "sec_form4":
-            signals = fetch_sec_form4(self._sec_client, self._watchlist, from_insider_trade)
+            signals = fetch_sec_form4(
+                self._sec_client, self._watchlist, from_insider_trade,
+                cluster_detector=self._cluster_detector,
+                cluster_converter=from_cluster_signal,
+            )
 
         elif source_name == "sec_form8k":
             signals = fetch_sec_form8k(self._sec_client, self._watchlist, from_form8k_event)
