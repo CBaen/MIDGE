@@ -19,7 +19,7 @@
 - [x] Verify kalshi-python SDK against current API + demo env — DONE (2.1.4 deprecated, migrated to kalshi-python-sync 3.9.0)
 - [x] Review Kalshi ToS for algo trading restrictions — DONE (algo trading explicitly allowed, Basic tier = 20 read/10 write per sec)
 - [x] Kalshi REST API client with RSA key-pair auth (daemon-friendly) — DONE (kalshi_client.py + from_kalshi_mover adapter, 35 tests)
-- [ ] Wire Kalshi client into sensing pipeline (constants + fetcher + reactive + bootstrap)
+- [x] Wire Kalshi client into sensing pipeline (constants + fetcher + reactive + bootstrap) — DONE
 - [ ] Kalshi demo account signup + API key generation (Guiding Light action)
 - [ ] Prototype MarketSelector — map top 20 alerts to Kalshi contracts
 - [ ] Backtest MIDGE signals against historical Kalshi contracts
@@ -121,6 +121,7 @@
 - CascadeTracker stage-gating (temporal ordering enforcement, 23 tests)
 - Kalshi SDK verified + client built (kalshi-python-sync 3.9.0, 35 tests)
 - Kalshi ToS reviewed (algo trading allowed, no restrictions at Basic tier)
+- Kalshi sensing pipeline wired (constants + fetcher + reactive + bootstrap, 36 rotation slots, "prediction_market" domain)
 
 ---
 

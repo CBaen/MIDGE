@@ -87,7 +87,7 @@ class KalshiMarketClient:
         min_volume: int = 100,
         min_move_pct: float = 5.0,
     ):
-        self._api_key_id = api_key_id or os.environ.get("KALSHI_API_KEY_ID", "")
+        self._api_key_id = api_key_id or os.environ.get("KALSHI_API_KEY_ID", "") or os.environ.get("KALSHI_API_KEY", "")
         self._private_key_path = private_key_path or os.environ.get("KALSHI_PRIVATE_KEY_PATH", "")
         self._demo = demo if not os.environ.get("KALSHI_DEMO", "1") == "0" else False
         self._raw_store = raw_store
