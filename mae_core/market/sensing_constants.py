@@ -79,6 +79,8 @@ TIER_ROUTING: Dict[str, str] = {
     "fred_yields": "thematic",
     # Crypto derivatives positioning (Binance perpetual futures funding rates)
     "binance_funding": "tactical",
+    # Prediction markets (Kalshi — crowd probability estimates)
+    "kalshi_market": "strategic",
 }
 
 # Source names for rotation — 35 sources, 8 concurrent per cadence tick
