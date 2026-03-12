@@ -111,8 +111,19 @@ def fetch_13f_holdings(
     edgar_enhanced_client: Any,
     converter: Callable,
     activist_converter: Callable,
+    filer_activity_converter: Callable = None,
 ) -> list:
-    """Fetch 13F holdings + 13D activist filings from SEC EDGAR."""
+    """Fetch 13F filer activity + 13D activist filings from SEC EDGAR.
+
+    Two calls:
+    1. get_13d_filings() — activist investors taking >5% stake (high-signal, ticker-specific)
+    2. get_recent_13f_filers() — institutional quarterly filer metadata (market-wide activity)
+
+    The 13F filer metadata has no ticker holdings (would require individual filing XML
+    downloads), so it produces a market-wide institutional activity signal via
+    filer_activity_converter. When many institutions file in a window, it signals
+    broad repositioning.
+    """
     if edgar_enhanced_client is None:
         return []
     signals = []
@@ -126,6 +137,17 @@ def fetch_13f_holdings(
                 pass
     except Exception as e:
         logger.debug("SEC 13D fetch failed: %s", e)
+    # 13F institutional filer activity (previously built but never called)
+    if filer_activity_converter is not None:
+        try:
+            filers = edgar_enhanced_client.get_recent_13f_filers(days=30)
+            for filer in filers:
+                try:
+                    signals.append(filer_activity_converter(filer))
+                except Exception:
+                    pass
+        except Exception as e:
+            logger.debug("SEC 13F filer fetch failed: %s", e)
     return signals
 
 

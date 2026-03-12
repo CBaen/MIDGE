@@ -321,10 +321,11 @@ class TestNewSeriesInFredSeries:
             assert name, f"Empty name for {sid}"
             assert signal_type, f"Empty signal_type for {sid}"
 
-    def test_total_series_count_is_at_least_25(self):
+    def test_total_series_count_is_at_least_24(self):
         from mae_core.market.apis.fred_models import FRED_SERIES
-        # Original 11 + 14 new = 25 minimum (PERMIT is 14th, no NAPMPI — used proxy via MANEMP note)
-        assert len(FRED_SERIES) >= 25
+        # Original 11 + 13 new = 24 minimum
+        # (ISM Manufacturing has no free FRED proxy without subscription — omitted per task note)
+        assert len(FRED_SERIES) >= 24
 
     def test_all_original_series_still_present(self):
         from mae_core.market.apis.fred_models import FRED_SERIES

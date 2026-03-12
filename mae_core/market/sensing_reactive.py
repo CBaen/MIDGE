@@ -231,7 +231,8 @@ class SensingReactiveMixin:
             signals = fetch_openinsider(self._openinsider_client, from_openinsider)
 
         elif source_name == "institutional_13f":
-            signals = fetch_13f_holdings(self._edgar_enhanced_client, from_13f_holding, from_activist_filing)
+            from mae_core.market.signal_adapters.wave2_3_insider import from_13f_filer_activity
+            signals = fetch_13f_holdings(self._edgar_enhanced_client, from_13f_holding, from_activist_filing, from_13f_filer_activity)
 
         elif source_name == "finviz":
             signals = fetch_finviz(

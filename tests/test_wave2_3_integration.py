@@ -1119,3 +1119,250 @@ class TestWebSocketIntegration:
         # Alerter should have been called with the processed signal
         assert alerter.record_signal.call_count >= 1
         hook.shutdown()
+
+
+# ============================================================================
+# 12. Economic Surprise Adapter
+# ============================================================================
+
+class TestEconomicSurpriseAdapter:
+    """Tests for from_economic_surprise — Finnhub EconomicEvent with actual/estimate."""
+
+    def _make_event(self, event="NFP", country="US", impact="high",
+                    actual=200.0, estimate=180.0, previous=150.0, unit="K"):
+        """Return a duck-typed Finnhub EconomicEvent mock."""
+        m = MagicMock()
+        m.event = event
+        m.country = country
+        m.impact = impact
+        m.actual = actual
+        m.estimate = estimate
+        m.previous = previous
+        m.unit = unit
+        m.date = "2026-03-07"
+        return m
+
+    def test_growth_beat_is_bullish(self):
+        """NFP beat (actual > estimate) → bullish for growth indicator."""
+        from mae_core.market.signal_adapters.wave2_3_technical import from_economic_surprise
+        event = self._make_event(event="NFP", actual=200.0, estimate=180.0)
+        sig = from_economic_surprise(event)
+        assert sig.direction == "bullish"
+
+    def test_growth_miss_is_bearish(self):
+        """NFP miss (actual < estimate) → bearish for growth indicator."""
+        from mae_core.market.signal_adapters.wave2_3_technical import from_economic_surprise
+        event = self._make_event(event="NFP", actual=150.0, estimate=180.0)
+        sig = from_economic_surprise(event)
+        assert sig.direction == "bearish"
+
+    def test_inflation_beat_is_bearish(self):
+        """CPI beat (actual > estimate) → bearish (rate-hike pressure)."""
+        from mae_core.market.signal_adapters.wave2_3_technical import from_economic_surprise
+        event = self._make_event(event="CPI", actual=3.5, estimate=3.0)
+        sig = from_economic_surprise(event)
+        assert sig.direction == "bearish"
+
+    def test_inflation_miss_is_bullish(self):
+        """CPI miss (actual < estimate) → bullish (rate-cut hopes)."""
+        from mae_core.market.signal_adapters.wave2_3_technical import from_economic_surprise
+        event = self._make_event(event="CPI", actual=2.5, estimate=3.0)
+        sig = from_economic_surprise(event)
+        assert sig.direction == "bullish"
+
+    def test_ppi_treated_as_inflation(self):
+        """PPI contains 'PPI' → inflation indicator, beat is bearish."""
+        from mae_core.market.signal_adapters.wave2_3_technical import from_economic_surprise
+        event = self._make_event(event="PPI", actual=1.5, estimate=1.0)
+        sig = from_economic_surprise(event)
+        assert sig.direction == "bearish"
+
+    def test_source_field(self):
+        from mae_core.market.signal_adapters.wave2_3_technical import from_economic_surprise
+        event = self._make_event()
+        sig = from_economic_surprise(event)
+        assert sig.source == "economic_surprise"
+
+    def test_domain_is_macro(self):
+        """Domain is 'macro' (not 'events') for convergence diversity."""
+        from mae_core.market.signal_adapters.wave2_3_technical import from_economic_surprise
+        event = self._make_event()
+        sig = from_economic_surprise(event)
+        assert sig.domain == "macro"
+
+    def test_strength_scales_with_surprise(self):
+        """10% surprise → full strength 1.0; 5% → 0.5."""
+        from mae_core.market.signal_adapters.wave2_3_technical import from_economic_surprise
+        # 10% surprise: actual=198, estimate=180 → (18/180)=0.10
+        event = self._make_event(actual=198.0, estimate=180.0)
+        sig = from_economic_surprise(event)
+        assert sig.strength == pytest.approx(1.0)
+
+    def test_strength_partial_surprise(self):
+        """5% surprise → strength 0.5."""
+        from mae_core.market.signal_adapters.wave2_3_technical import from_economic_surprise
+        # 5% surprise: actual=189, estimate=180 → (9/180)=0.05
+        event = self._make_event(actual=189.0, estimate=180.0)
+        sig = from_economic_surprise(event)
+        assert sig.strength == pytest.approx(0.5)
+
+    def test_returns_none_when_no_actual(self):
+        """No actual value (event not yet released) → returns None."""
+        from mae_core.market.signal_adapters.wave2_3_technical import from_economic_surprise
+        event = self._make_event(actual=None)
+        result = from_economic_surprise(event)
+        assert result is None
+
+    def test_returns_none_when_no_estimate(self):
+        """No estimate value → returns None."""
+        from mae_core.market.signal_adapters.wave2_3_technical import from_economic_surprise
+        event = self._make_event(estimate=None)
+        result = from_economic_surprise(event)
+        assert result is None
+
+    def test_returns_none_when_surprise_below_threshold(self):
+        """Surprise < 0.5% → filtered as noise, returns None."""
+        from mae_core.market.signal_adapters.wave2_3_technical import from_economic_surprise
+        # 0.1% surprise: actual=180.18, estimate=180 → (0.18/180)=0.001
+        event = self._make_event(actual=180.18, estimate=180.0)
+        result = from_economic_surprise(event)
+        assert result is None
+
+    def test_surprise_pct_in_metadata(self):
+        """surprise_pct metadata contains the computed percentage surprise."""
+        from mae_core.market.signal_adapters.wave2_3_technical import from_economic_surprise
+        # 11.11% surprise: actual=200, estimate=180 → (20/180)=0.1111
+        event = self._make_event(actual=200.0, estimate=180.0)
+        sig = from_economic_surprise(event)
+        assert "surprise_pct" in sig.metadata
+        assert sig.metadata["surprise_pct"] == pytest.approx(11.111, abs=0.01)
+
+    def test_metadata_event_name(self):
+        from mae_core.market.signal_adapters.wave2_3_technical import from_economic_surprise
+        event = self._make_event(event="NFP")
+        sig = from_economic_surprise(event)
+        assert sig.metadata["event"] == "NFP"
+
+    def test_metadata_country(self):
+        from mae_core.market.signal_adapters.wave2_3_technical import from_economic_surprise
+        event = self._make_event(country="US")
+        sig = from_economic_surprise(event)
+        assert sig.metadata["country"] == "US"
+
+    def test_confidence_high_impact(self):
+        from mae_core.market.signal_adapters.wave2_3_technical import from_economic_surprise
+        event = self._make_event(impact="high")
+        sig = from_economic_surprise(event)
+        assert sig.confidence == pytest.approx(0.65)
+
+    def test_confidence_medium_impact(self):
+        from mae_core.market.signal_adapters.wave2_3_technical import from_economic_surprise
+        event = self._make_event(impact="medium", actual=200.0, estimate=180.0)
+        sig = from_economic_surprise(event)
+        assert sig.confidence == pytest.approx(0.55)
+
+    def test_confidence_low_impact(self):
+        from mae_core.market.signal_adapters.wave2_3_technical import from_economic_surprise
+        event = self._make_event(impact="low", actual=200.0, estimate=180.0)
+        sig = from_economic_surprise(event)
+        assert sig.confidence == pytest.approx(0.45)
+
+    def test_is_inflation_indicator_flag(self):
+        """Metadata correctly identifies inflation vs growth indicators."""
+        from mae_core.market.signal_adapters.wave2_3_technical import from_economic_surprise
+        cpi_event = self._make_event(event="CPI", actual=3.5, estimate=3.0)
+        nfp_event = self._make_event(event="NFP", actual=200.0, estimate=180.0)
+        assert from_economic_surprise(cpi_event).metadata["is_inflation_indicator"] is True
+        assert from_economic_surprise(nfp_event).metadata["is_inflation_indicator"] is False
+
+    def test_importable_from_wave2_3(self):
+        """from_economic_surprise is re-exported through wave2_3 package."""
+        from mae_core.market.signal_adapters.wave2_3 import from_economic_surprise
+        assert callable(from_economic_surprise)
+
+    def test_importable_from_signal_adapters(self):
+        """from_economic_surprise is re-exported through signal_adapters package."""
+        from mae_core.market.signal_adapters import from_economic_surprise
+        assert callable(from_economic_surprise)
+
+    def test_importable_from_signal(self):
+        """from_economic_surprise is re-exported through signal.py."""
+        from mae_core.market.signal import from_economic_surprise
+        assert callable(from_economic_surprise)
+
+
+# ============================================================================
+# 13. fetch_finnhub_extras with surprise_converter
+# ============================================================================
+
+class TestFetchFinnhubExtrasWithSurprise:
+    """Tests for fetch_finnhub_extras producing both event and surprise signals."""
+
+    def _make_finnhub_event(self, actual=200.0, estimate=180.0):
+        m = MagicMock()
+        m.event = "NFP"
+        m.country = "US"
+        m.impact = "high"
+        m.actual = actual
+        m.estimate = estimate
+        m.previous = 150.0
+        m.unit = "K"
+        m.date = "2026-03-07"
+        m.confidence = 0.55
+        m.decay_rate = 0.30
+        m.surprise_pct = MagicMock(return_value=(actual - estimate) / abs(estimate) if estimate else None)
+        return m
+
+    def test_surprise_signals_produced_alongside_event_signals(self):
+        """When surprise_converter is provided, extras fetcher produces both signal types."""
+        from mae_core.market.fetchers_social import fetch_finnhub_extras
+        from mae_core.market.signal_adapters.wave2_3_technical import from_economic_surprise
+        from mae_core.market.signal_adapters.layer6 import from_economic_event
+
+        finnhub = MagicMock()
+        finnhub.get_economic_calendar.return_value = [self._make_finnhub_event()]
+        finnhub.get_analyst_recommendations.return_value = []
+
+        watchlist = {"tickers": []}
+        signals = fetch_finnhub_extras(
+            finnhub, watchlist, from_economic_event, lambda r: None,
+            surprise_converter=from_economic_surprise,
+        )
+
+        sources = [s.source for s in signals if s is not None]
+        assert "economic_surprise" in sources
+
+    def test_no_surprise_when_converter_not_provided(self):
+        """Without surprise_converter, only event signals are produced."""
+        from mae_core.market.fetchers_social import fetch_finnhub_extras
+        from mae_core.market.signal_adapters.layer6 import from_economic_event
+
+        finnhub = MagicMock()
+        finnhub.get_economic_calendar.return_value = [self._make_finnhub_event()]
+        finnhub.get_analyst_recommendations.return_value = []
+
+        watchlist = {"tickers": []}
+        signals = fetch_finnhub_extras(finnhub, watchlist, from_economic_event, lambda r: None)
+
+        sources = [s.source for s in signals if s is not None]
+        assert "economic_surprise" not in sources
+
+    def test_surprise_none_not_appended(self):
+        """When surprise is below threshold (returns None), no extra signal added."""
+        from mae_core.market.fetchers_social import fetch_finnhub_extras
+        from mae_core.market.signal_adapters.wave2_3_technical import from_economic_surprise
+        from mae_core.market.signal_adapters.layer6 import from_economic_event
+
+        finnhub = MagicMock()
+        # Sub-threshold surprise: 0.1% difference
+        finnhub.get_economic_calendar.return_value = [self._make_finnhub_event(actual=180.18, estimate=180.0)]
+        finnhub.get_analyst_recommendations.return_value = []
+
+        watchlist = {"tickers": []}
+        signals = fetch_finnhub_extras(
+            finnhub, watchlist, from_economic_event, lambda r: None,
+            surprise_converter=from_economic_surprise,
+        )
+
+        sources = [s.source for s in signals if s is not None]
+        assert "economic_surprise" not in sources
