@@ -290,6 +290,16 @@ def _run_slow_cadence_ops(ctx: SimpleNamespace, step: int, _shm, _timer) -> None
                 if _shm:
                     _shm.record_error("post_mortem", exc)
 
+        # Expire stale cascade chains so WorldModel learns from failures
+        _ct = getattr(ctx, "cascade_tracker", None)
+        if _ct is not None:
+            try:
+                expired = _ct.expire_stale()
+                if expired:
+                    logger.info("CascadeTracker: expired %d stale chains", len(expired))
+            except Exception as exc:
+                logger.debug("CascadeTracker expire_stale failed", exc_info=True)
+
     if step % 1000 == 0:
         calibrator = getattr(ctx, "thompson_calibrator", None)
         if calibrator is not None:
