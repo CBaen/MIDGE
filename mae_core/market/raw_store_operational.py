@@ -180,10 +180,26 @@ class RawStoreOperationalMixin:
                 change_7d_pct REAL,
                 market_cap REAL,
                 last_updated TEXT,
+                high_24h REAL,
+                low_24h REAL,
+                ath_change_percentage REAL,
+                circulating_supply REAL,
+                total_supply REAL,
                 ingested_at TEXT,
                 PRIMARY KEY (coin_id, timestamp)
             )
         """)
+        # Idempotent migration for pre-existing tables missing the new columns
+        for col, col_type in [
+            ("high_24h", "REAL"), ("low_24h", "REAL"),
+            ("ath_change_percentage", "REAL"), ("circulating_supply", "REAL"),
+            ("total_supply", "REAL"),
+        ]:
+            try:
+                conn.execute(f"ALTER TABLE coingecko_prices ADD COLUMN {col} {col_type}")
+                conn.commit()
+            except Exception:
+                pass  # Column already exists
 
         now = datetime.now(timezone.utc).isoformat()
         data = []
@@ -198,6 +214,11 @@ class RawStoreOperationalMixin:
                     getattr(c, "change_7d_pct", 0.0),
                     getattr(c, "market_cap", 0.0),
                     getattr(c, "last_updated", ""),
+                    getattr(c, "high_24h", None),
+                    getattr(c, "low_24h", None),
+                    getattr(c, "ath_change_percentage", None),
+                    getattr(c, "circulating_supply", None),
+                    getattr(c, "total_supply", None),
                     now,
                 ))
             elif isinstance(c, dict):
@@ -206,15 +227,20 @@ class RawStoreOperationalMixin:
                     c.get("symbol", ""), c.get("price_usd", 0.0),
                     c.get("volume_24h", 0.0), c.get("change_24h_pct", 0.0),
                     c.get("change_7d_pct", 0.0), c.get("market_cap", 0.0),
-                    c.get("last_updated", ""), now,
+                    c.get("last_updated", ""),
+                    c.get("high_24h"), c.get("low_24h"),
+                    c.get("ath_change_percentage"), c.get("circulating_supply"),
+                    c.get("total_supply"), now,
                 ))
 
         if data:
             conn.executemany(
                 "INSERT OR REPLACE INTO coingecko_prices "
                 "(coin_id, timestamp, symbol, price_usd, volume_24h, "
-                "change_24h_pct, change_7d_pct, market_cap, last_updated, ingested_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "change_24h_pct, change_7d_pct, market_cap, last_updated, "
+                "high_24h, low_24h, ath_change_percentage, circulating_supply, "
+                "total_supply, ingested_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 data,
             )
             conn.commit()

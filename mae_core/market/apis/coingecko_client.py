@@ -34,6 +34,12 @@ class CryptoPrice:
     change_7d_pct: float
     market_cap: float
     last_updated: str
+    # Extended fields from CoinGecko /coins/markets response
+    high_24h: Optional[float] = None            # 24h high price — intraday range context
+    low_24h: Optional[float] = None             # 24h low price — intraday range context
+    ath_change_percentage: Optional[float] = None  # % distance from all-time high (mean reversion signal)
+    circulating_supply: Optional[float] = None  # Tokens in circulation (scarcity signal)
+    total_supply: Optional[float] = None        # Total token supply (inflation signal)
 
 
 @dataclass
@@ -118,6 +124,20 @@ class CoinGeckoClient:
                     ),
                     market_cap=float(coin.get("market_cap", 0)),
                     last_updated=coin.get("last_updated", ""),
+                    high_24h=float(coin["high_24h"]) if coin.get("high_24h") is not None else None,
+                    low_24h=float(coin["low_24h"]) if coin.get("low_24h") is not None else None,
+                    ath_change_percentage=(
+                        float(coin["ath_change_percentage"])
+                        if coin.get("ath_change_percentage") is not None else None
+                    ),
+                    circulating_supply=(
+                        float(coin["circulating_supply"])
+                        if coin.get("circulating_supply") is not None else None
+                    ),
+                    total_supply=(
+                        float(coin["total_supply"])
+                        if coin.get("total_supply") is not None else None
+                    ),
                 ))
             except (TypeError, ValueError):
                 continue

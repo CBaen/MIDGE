@@ -1,7 +1,30 @@
 #!/usr/bin/env python3
-"""SEC EDGAR data models - Form8KEvent and InsiderTrade."""
+"""SEC EDGAR data models - Form8KEvent, InsiderTrade, DerivativeTransaction."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import List, Optional
+
+
+@dataclass
+class DerivativeTransaction:
+    """A single derivative transaction from Form 4 Table II.
+
+    Covers options exercises, warrant conversions, RSU vestings, and other
+    derivative security transactions. Options exercises near earnings are a
+    documented signal — insiders exercising and holding (not selling) indicates
+    bullish conviction.
+    """
+    security_title: str           # e.g. "Employee Stock Option (right to buy)"
+    transaction_date: str         # YYYY-MM-DD or MM/DD/YYYY
+    transaction_code: str         # M=option exercise, C=conversion, etc.
+    transaction_type: str         # A=acquired, D=disposed
+    shares: float = 0.0           # Shares acquired/disposed via derivative
+    price_per_share: float = 0.0  # Conversion/exercise price per share
+    exercise_price: float = 0.0   # Strike price for options (column 3B)
+    expiration_date: str = ""     # Option expiration date
+    underlying_shares: float = 0.0  # Underlying shares if different from shares
+    shares_owned_after: float = 0.0
+    is_plan_sale: bool = False
 
 
 @dataclass
@@ -94,6 +117,9 @@ class InsiderTrade:
     form_type: str = "4"
     is_plan_sale: bool = False  # True if 10b5-1 plan detected via footnotes
     footnotes: str = ""  # Raw footnote text from filing (for audit trail)
+    # Derivative transactions from Table II (options, warrants, RSUs)
+    # Options exercises near earnings with hold-not-sell behavior = bullish signal
+    derivative_transactions: List["DerivativeTransaction"] = field(default_factory=list)
     signal_source: str = "insider"
     decay_rate: float = 0.035  # ~20 day half-life (Lakonishok & Lee 2001)
 

@@ -13,9 +13,10 @@ import xml.etree.ElementTree as ET
 from typing import List, Optional
 import requests
 
-from .models import Form8KEvent, InsiderTrade
+from .models import DerivativeTransaction, Form8KEvent, InsiderTrade
 from .sec_edgar_parsers import _parse_form4_html as _parse_form4_html_fn
 from .sec_edgar_parsers import _parse_transaction as _parse_transaction_fn
+from .sec_edgar_parsers import _parse_derivative_transaction as _parse_derivative_transaction_fn
 
 logger = logging.getLogger(__name__)
 
