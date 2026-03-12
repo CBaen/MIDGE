@@ -50,3 +50,13 @@ Universal lessons go in `C:\Users\baenb\.claude\lessons-learned.md` instead.
 - **Pattern**: 5 sessions of work happened before lessons-learned.md got a single entry. HANDOFF.md was stale for multiple sessions. Future instances repeated the same mistakes.
 - **Rule**: Every session MUST update HANDOFF.md with session notes AND append relevant lessons to this file. Check both before closing.
 - **Why**: Without persistent lessons, every instance starts from zero. Guiding Light has to re-teach the same things. That's unacceptable.
+
+### Build the analyst FIRST, not the plumbing
+- **Pattern**: 8+ sessions built API clients, bootstrap layers, connections, signals, templates — 287K signals accumulated, 43 templates, 56 correlations. But NOTHING synthesized them into "what's most likely to happen." Guiding Light asked for this repeatedly in different words across multiple sessions. Every instance treated it as a coding problem and built more infrastructure instead.
+- **Rule**: Before building ANY new data source, connection, or system, verify that MIDGE can answer: "Based on everything I know, what are the top 5 most likely near-term moves?" If she can't, fix THAT first. The analyst (`deep_analyst.py`) exists for this. Run it. If its output is weak, improve it. Don't add more plumbing.
+- **Why**: Data without analysis is a filing cabinet nobody reads. MIDGE's value is in synthesis, not collection. Guiding Light doesn't care how many API clients exist — they care whether MIDGE can tell them something actionable.
+
+### MIDGE must start from knowledge, not from zero
+- **Pattern**: Convergence buffer started with 131 signals in 2 domains after restart. Needed 3+ domains to fire. MIDGE sat blind until live signals dripped in over hours. Meanwhile, 297K historical signals existed in the archive, unread.
+- **Rule**: On startup, warm the convergence buffer from the signal archive (`startup_warmup.py`). Run `archive_scanner.py` to log what MIDGE knows. Run `DeepAnalyst.analyze()` to produce immediate findings. MIDGE should never start from zero when she has data.
+- **Why**: Every restart that discards accumulated knowledge is a waste. The daemon should start smarter than it was yesterday, not amnesia every boot.
