@@ -64,9 +64,21 @@
 - Adapter count tests updated 39→40, rotation count tests updated 35→36
 - 149 wiring+adapter+client tests pass, 204 total tests across all touched suites
 
+**Session 4 (2026-03-11):**
+- RUNTIME AUDIT: Daemon dead since March 7. 83/101 Thompson distributions still at priors. 43 templates with 0 outcome feedback. 1,048/1,055 paper trades were duplicates. SEC EDGAR raw store: 0 Form 4 trades. Crown jewel (convergence) nearly silent.
+- **4 bugs fixed:**
+  1. Paper trade dedup survives restarts — loads last 24h from paper_trades.jsonl on startup (was empty dict on restart). Stale cached alerts cleared on convergence exception (was frozen, re-triggering every step).
+  2. Pattern template feedback loop unblocked — dedup key includes date (was permanently blocking per symbol+direction for 90 days).
+  3. SEC EDGAR raw store: silent `except: pass` → `logger.warning` with traceback.
+  4. ActiveTracker `outcome_collector` bootstrap ordering — added `set_outcome_collector()` setter, wired after OutcomeCollector exists.
+- **CRITICAL PRIORITY: Start the daemon.** MIDGE has been starved of data for 4+ days. Architecture works but she's not running. Fix, feed, run, prove — no more building until she's learning.
+
 **What's left:**
-1. Wave 2 (test file splits) not started — see `DECOMPOSITION-PLAN.md` Teams 11-12
-2. 13 xdist-mode failures to investigate (pre-existing parallel-safety issues)
+1. **START THE DAEMON** — `python main.py --daemon --agents 12 --steps 500 --pace 2.0` — and keep it running 24/7
+2. Expand watchlist from 18 tickers to S&P 500 (500 tickers)
+3. Historical backtesting at scale (not 1 month, not 5 tickers — everything)
+4. Wave 2 (test file splits) not started — see `DECOMPOSITION-PLAN.md` Teams 11-12
+5. 13 xdist-mode failures to investigate (pre-existing parallel-safety issues)
 3. Thread-safety audit for API clients used in 12-worker ThreadPoolExecutor
 4. See `midge-queue.md` for full prioritized list
 
