@@ -88,8 +88,8 @@ class TestSignalAdapters:
         import mae_core.market.signal_adapters as sa
 
         assert hasattr(sa, "__all__"), "signal_adapters __init__ must define __all__"
-        assert len(sa.__all__) == 41, (
-            f"Expected 41 entries in __all__, found {len(sa.__all__)}"
+        assert len(sa.__all__) == 42, (
+            f"Expected 42 entries in __all__, found {len(sa.__all__)}"
         )
 
     def test_regulatory_adapters(self):
