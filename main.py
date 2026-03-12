@@ -1020,7 +1020,7 @@ def _write_alerts() -> None:
         return
 
     ticker_alerts = state.get("ticker_alerts", {})
-    now = datetime.datetime.utcnow().isoformat() + "Z"
+    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
     written = 0
 
     alerts_path.parent.mkdir(parents=True, exist_ok=True)

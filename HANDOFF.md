@@ -30,15 +30,30 @@
 
 **Test results:** 1074 passed, 0 regressions. Pre-existing: `test_congress_gov_client` (env var), `test_adapter_init_importable` (count mismatch 41→42).
 
-**Daemon status:** PID 27748 alive at step 4094+, actively sensing. Will pick up new wiring on next restart.
+**Daemon restarted with all 3 wirings active (PID 112216).** Runtime stats after ~1.5 hours:
+- **Step 600+**, **36,335 signals** fed from 37 sources
+- **Reactive PatternWatcher working:** 649 pattern stack checks triggered, 8+ stacks detected reactively on signal ingestion (previously only ran every 10 steps)
+- **DeepAnalyst first live run:** Loaded 410,121 signals (30 days), scored 214 candidates, returned top 20 inevitabilities in 35.7s. Best: AMD bearish (score 0.696)
+- **WorldModel auto-discovery working:** 7 edges from lag correlations (|r| >= 0.6) + 3 edges from Granger causality. Graph growing autonomously from 102 → 112 edges.
+- **Granger:** 3 causal relationships per cycle across 20 directional pairs
+- **PostMortem:** 23 outcomes reviewed, 4 combo Thompson updates pushed
+- **1 paper trade** loaded from disk (restart-safe dedup working)
+- **AbsenceMonitor:** 14 sources flagged as unexpectedly silent (market hours sensitivity)
+
+**Also fixed during restart:**
+- `test_decomposition_wiring.py` adapter count 41→42 (pre-existing mismatch)
+- `main.py` `datetime.utcnow()` deprecation → `datetime.now(timezone.utc)`
 
 **Guiding Light's framing:** MIDGE as ecosystem/company with departments. Floor 3 (Intelligence) has 15 workers — they were uncoordinated. "Review by many, often" = Law 7 applied to intelligence analysis. Build review pipeline where convergence alerts pass through 3+ validators before paper trade.
 
+**Guiding Light's closing note:** "This is fascinating. We'll watch over MIDGE."
+
 **Next priorities:**
-1. Restart daemon to activate all 3 new wirings
+1. **Keep daemon running 24/7** — all 3 new wirings are active and producing results
 2. Build review pipeline (Law 7 enforcement on convergence alerts → paper trades)
 3. Historical replay with all systems active (258K fingerprints + 913 days of signal archives)
 4. Wire remaining 2 disconnected systems (HypothesisEngine feedback, OctopusColony utilization)
+5. Investigate AbsenceMonitor's 14 silent sources — may be market-hours false positives or real wiring gaps
 
 ---
 
