@@ -209,6 +209,52 @@ def _run_paper_trading_gate(ctx: SimpleNamespace, alerts: list, step: int) -> No
                         _sm._anomaly_flags,
                     )
                     continue
+            # --- Law 7: Rule of 3 validators ---
+            # Count independent validators that agree on this trade.
+            _ticker = getattr(alert, "ticker", "") or ""
+            _direction = getattr(alert, "direction", "") or ""
+            _validators = 1  # Convergence alert itself = 1
+            _validator_names = ["convergence"]
+            # Validator 2: PatternWatcher — historical template match
+            _cached_stacks = getattr(ctx, "_cached_pattern_stacks", None)
+            if _cached_stacks:
+                for _ps in _cached_stacks:
+                    _ps_ticker = getattr(_ps, "ticker", "") or ""
+                    _ps_dir = getattr(_ps, "direction", "") or ""
+                    if _ps_ticker == _ticker and _ps_dir == _direction:
+                        _validators += 1
+                        _validator_names.append("pattern_stack")
+                        break
+            # Validator 3: DeepAnalyst — inevitability ranking
+            _invs = getattr(ctx, "inevitabilities", None)
+            if _invs:
+                for _iv in _invs:
+                    if (getattr(_iv, "ticker", "") == _ticker
+                            and getattr(_iv, "direction", "") == _direction
+                            and getattr(_iv, "score", 0) > 0.5):
+                        _validators += 1
+                        _validator_names.append("inevitability")
+                        break
+            # Validator 4: HypothesisEngine — recent hypothesis fire
+            _hyp_fires = getattr(ctx, "_recent_hypothesis_fires", None)
+            if _hyp_fires:
+                _hyp_key = f"{_ticker}:{_direction}"
+                _hyp_ts = _hyp_fires.get(_hyp_key)
+                if _hyp_ts is not None:
+                    from datetime import datetime as _dt, timedelta as _td
+                    if (_dt.now() - _hyp_ts) < _td(hours=2):
+                        _validators += 1
+                        _validator_names.append("hypothesis")
+            if _validators < 3:
+                logger.info(
+                    "Paper trade DEFERRED — Law 7: %d/3 validators (%s) for %s %s",
+                    _validators, "+".join(_validator_names), _ticker, _direction,
+                )
+                continue
+            logger.info(
+                "Paper trade APPROVED — Law 7: %d validators (%s) for %s %s",
+                _validators, "+".join(_validator_names), _ticker, _direction,
+            )
             _write_paper_trade(alert, ctx)
             _translate_and_log_executable_signal(alert, ctx)
     except Exception:
