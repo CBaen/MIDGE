@@ -387,6 +387,8 @@ def _run_slow_cadence_ops(ctx: SimpleNamespace, step: int, _shm, _timer) -> None
                 else:
                     _inevitabilities = _da.analyze(lookback_days=30, top_n=20)
                 if _inevitabilities:
+                    # Store on ctx for Law 7 validator access
+                    ctx.inevitabilities = _inevitabilities
                     logger.info(
                         "DeepAnalyst: top %d inevitabilities (best: %s %s score=%.3f)",
                         len(_inevitabilities),
@@ -394,13 +396,68 @@ def _run_slow_cadence_ops(ctx: SimpleNamespace, step: int, _shm, _timer) -> None
                         _inevitabilities[0].direction,
                         _inevitabilities[0].score,
                     )
-                    # Publish for downstream subscribers
+                    # Persist to JSONL
+                    try:
+                        import json as _json
+                        _inv_path = os.path.join("data", "midge", "inevitabilities.jsonl")
+                        os.makedirs(os.path.dirname(_inv_path), exist_ok=True)
+                        with open(_inv_path, "a", encoding="utf-8") as _f:
+                            for _iv in _inevitabilities[:10]:
+                                _f.write(_json.dumps({
+                                    "ticker": _iv.ticker,
+                                    "direction": _iv.direction,
+                                    "score": _iv.score,
+                                    "domains": _iv.domains,
+                                    "evidence_summary": _iv.evidence_summary,
+                                    "expected_window_days": _iv.expected_window_days,
+                                    "template_match": _iv.template_match,
+                                    "template_win_rate": _iv.template_win_rate,
+                                    "world_model_chain": str(_iv.world_model_chain) if _iv.world_model_chain else None,
+                                    "signal_count": _iv.signal_count,
+                                    "timestamp": datetime.now().isoformat(),
+                                }) + "\n")
+                    except Exception:
+                        logger.debug("Failed to persist inevitabilities", exc_info=True)
+                    # Embed top 5 in Qdrant (long-term semantic memory)
+                    _pmem = getattr(ctx, "pattern_memory", None)
+                    if _pmem is not None:
+                        for _iv in _inevitabilities[:5]:
+                            try:
+                                _pmem.remember_inevitability(_iv)
+                            except Exception:
+                                logger.debug("Failed to embed inevitability", exc_info=True)
+                    # Format top 5 for humans
+                    try:
+                        from mae_core.market.plain_language import format_inevitability, write_plain_alert
+                        for _iv in _inevitabilities[:5]:
+                            try:
+                                _alert_data = format_inevitability(_iv)
+                                write_plain_alert(_alert_data)
+                            except Exception:
+                                logger.debug("Failed to format inevitability", exc_info=True)
+                    except Exception:
+                        logger.debug("Plain language formatting unavailable", exc_info=True)
+                    # Register top 10 for outcome grading
+                    _oc = getattr(ctx, "outcome_collector", None)
+                    if _oc is not None:
+                        _registered = 0
+                        for _iv in _inevitabilities[:10]:
+                            try:
+                                if _oc.register_inevitability(_iv):
+                                    _registered += 1
+                            except Exception:
+                                pass
+                        if _registered:
+                            logger.info("DeepAnalyst: registered %d inevitabilities for outcome tracking", _registered)
+                    # Publish full payload to EventBus
                     if hasattr(ctx, "bus"):
                         ctx.bus.publish("market.intel.deep_analysis", {
                             "count": len(_inevitabilities),
                             "top": [
                                 {"ticker": iv.ticker, "direction": iv.direction,
-                                 "score": iv.score, "domains": len(iv.domains)}
+                                 "score": iv.score, "domains": iv.domains,
+                                 "evidence_summary": iv.evidence_summary,
+                                 "expected_window_days": iv.expected_window_days}
                                 for iv in _inevitabilities[:5]
                             ],
                         })

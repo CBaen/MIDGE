@@ -366,4 +366,38 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
         ctx.bus.register_callback(CH_CASCADE_CONFIRMED, _on_cascade_confirmed)
         logger.info("Layer 33f - Forward chain boost: cascade confirmed → synthetic signal injection wired")
 
+    # --- Hypothesis fired: boost focused attention for the predicted effect ---
+    from mae_core.market.channels import CH_HYPOTHESIS_FIRED
+
+    def _on_hypothesis_fired(channel, data):
+        try:
+            msg = data if isinstance(data, dict) else {}
+            trigger_source = msg.get("trigger_source", "")
+            trigger_symbol = msg.get("trigger_symbol", "")
+            expected_direction = msg.get("expected_direction", "")
+            if trigger_source and hasattr(ctx, "sensing_hook"):
+                hook = ctx.sensing_hook
+                if hasattr(hook, "_priority_requests"):
+                    from mae_core.market.sensing_constants import _DOMAIN_TO_SOURCES
+                    from datetime import datetime, timedelta
+                    for domain, sources in _DOMAIN_TO_SOURCES.items():
+                        if trigger_source in sources:
+                            for src in sources:
+                                hook._priority_requests[src] = {
+                                    "reason": f"hypothesis_fired:{trigger_symbol}",
+                                    "boost": 2.0,
+                                    "expires": datetime.now() + timedelta(hours=1),
+                                }
+                            break
+            if trigger_symbol:
+                if not hasattr(ctx, "_recent_hypothesis_fires"):
+                    ctx._recent_hypothesis_fires = {}
+                from datetime import datetime
+                ctx._recent_hypothesis_fires[f"{trigger_symbol}:{expected_direction}"] = datetime.now()
+        except Exception:
+            logger.debug("Hypothesis fire handler failed", exc_info=True)
+
+    ctx.bus.register_callback(CH_HYPOTHESIS_FIRED, _on_hypothesis_fired)
+    logger.info("Layer 33f - Hypothesis fired: focused attention boost + fire tracker wired")
+
     logger.info("Layer 33f - Market EventBus: convergence + hypothesis -> endocrine coupling wired")
