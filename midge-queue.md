@@ -20,7 +20,7 @@
 - [x] Review Kalshi ToS for algo trading restrictions — DONE (algo trading explicitly allowed, Basic tier = 20 read/10 write per sec)
 - [x] Kalshi REST API client with RSA key-pair auth (daemon-friendly) — DONE (kalshi_client.py + from_kalshi_mover adapter, 35 tests)
 - [x] Wire Kalshi client into sensing pipeline (constants + fetcher + reactive + bootstrap) — DONE
-- [ ] Kalshi demo account signup + API key generation (Guiding Light action)
+- [x] Kalshi demo account signup + API key generation — DONE (API key + RSA private key in .env)
 - [ ] Prototype MarketSelector — map top 20 alerts to Kalshi contracts
 - [ ] Backtest MIDGE signals against historical Kalshi contracts
 - [ ] Shadow mode stage — $1-10 real trades before scaling
