@@ -553,4 +553,27 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
 
     ctx.bus.register_callback(CH_PREDICTION_RESULT, _on_prediction_result_track_record)
 
+    # --- DeepAnalyst results subscriber ---
+    # Logs when DeepAnalyst produces inevitability rankings so the output is
+    # visible in logs without needing to tail data/midge/inevitabilities.jsonl.
+    # ctx.inevitabilities is already set in _run_slow_cadence_ops before this
+    # fires, so this is purely observability — no state mutation here.
+    def _on_deep_analysis(channel, data):
+        msg = data if isinstance(data, dict) else {}
+        count = msg.get("count", 0)
+        top = msg.get("top", [])
+        if not top:
+            return
+        best = top[0]
+        logger.info(
+            "DeepAnalyst: %d inevitabilities published — top: %s %s score=%.3f domains=%s",
+            count,
+            best.get("ticker", "?"),
+            best.get("direction", "?"),
+            best.get("score", 0.0),
+            best.get("domains", []),
+        )
+
+    ctx.bus.register_callback("market.intel.deep_analysis", _on_deep_analysis)
+
     logger.info("Layer 33f - Market EventBus: convergence + hypothesis -> endocrine coupling wired")

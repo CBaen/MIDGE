@@ -23,7 +23,6 @@ class SensingCollectorMixin:
       self._outcome_collector, self._recent_domains,
       self._total_signals_fed, self._last_fetch_source,
       self._trigger_reactive_convergence
-    Plus module-level constants: TIER_ROUTING
     """
 
     def _collect_results(self):
@@ -34,7 +33,6 @@ class SensingCollectorMixin:
 
     def _collect_one(self, source_name: str):
         """Process signals from a single completed fetch."""
-        from mae_core.market.sensing_constants import TIER_ROUTING
         from mae_core.market.sensing_lifecycle import store_signals
 
         future = self._pending_futures.pop(source_name, None)
@@ -83,14 +81,13 @@ class SensingCollectorMixin:
                 except Exception:
                     logger.debug("Failed to feed signal to global alerter", exc_info=True)
 
-            # Route to tier
-            tier = TIER_ROUTING.get(sig.source, "strategic")
-            tier_alerter = self._tiered_alerters.get(tier)
-            if tier_alerter is not None:
+            # Feed all tiered alerters (tactical/strategic/thematic) so each
+            # accumulates its own cross-domain convergence window.
+            for _tier_name, _tier_alerter in self._tiered_alerters.items():
                 try:
-                    tier_alerter.record_signal(**sig_kwargs)
+                    _tier_alerter.record_signal(**sig_kwargs)
                 except Exception:
-                    logger.debug("Failed to feed signal to %s alerter", tier, exc_info=True)
+                    logger.debug("Failed to feed signal to %s alerter", _tier_name, exc_info=True)
 
         # Track per-ticker signal domains for archetype scanning (Gift 8)
         for sig in signals:

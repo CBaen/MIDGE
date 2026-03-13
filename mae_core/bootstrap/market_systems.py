@@ -506,6 +506,18 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         except Exception:
             logger.debug("Market: pattern_memory → convergence_alerter wiring failed", exc_info=True)
 
+    # --- SituationBoard (typed replacement for ad-hoc _market_advisory dict) ---
+    try:
+        from mae_core.market.intelligence.situation_board import SituationBoard
+        from pathlib import Path as _Path
+        ctx.situation_board = SituationBoard()
+        _sb_path = _Path("data/midge/situation_board.json")
+        if _sb_path.exists():
+            ctx.situation_board.load(_sb_path)
+    except Exception:
+        logger.debug("Market: situation_board failed", exc_info=True)
+        ctx.situation_board = None
+
     logger.info(
         "Layer 33a - Market systems: %d instantiated (%d failures)", 59 - failures, failures,
     )
