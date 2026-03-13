@@ -119,6 +119,12 @@ class ConvergenceDetectionMixin(ConvergenceTickerMixin):
                 if (last_time is not None
                         and (now - last_time).total_seconds() / 3600
                         < self._min_alert_interval_hours):
+                    remaining = (self._min_alert_interval_hours * 3600
+                                 - (now - last_time).total_seconds())
+                    logger.info(
+                        "Convergence %s alert suppressed (dedup), %.0fs remaining",
+                        direction, remaining
+                    )
                     continue
                 filtered.append(alert)
                 self._last_alert_times[direction] = now
@@ -189,6 +195,11 @@ class ConvergenceDetectionMixin(ConvergenceTickerMixin):
                 categories_seen.add(self.domain_categories.get(domain, domain))
 
         if len(domains_seen) < self.min_domains:
+            logger.info(
+                "Convergence %s: %d domains seen (%s), need %d — skipping",
+                direction, len(domains_seen),
+                ", ".join(sorted(domains_seen)), self.min_domains
+            )
             if directional_signals and self._bus is not None:
                 try:
                     signal_dicts = [{"source": s.source, "strength": s.strength,
