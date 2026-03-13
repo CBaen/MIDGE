@@ -601,13 +601,6 @@ class TestNewSeriesInFredSeries:
         assert "WTI" in name or "Crude" in name
         assert signal_type == "energy_price"
 
-    def test_gold_in_fred_series(self):
-        from mae_core.market.apis.fred_models import FRED_SERIES
-        assert "GOLDAMGBD228NLBM" in FRED_SERIES
-        name, signal_type = FRED_SERIES["GOLDAMGBD228NLBM"]
-        assert "Gold" in name
-        assert signal_type == "gold_price"
-
     def test_bamlc0a0cm_in_fred_series(self):
         from mae_core.market.apis.fred_models import FRED_SERIES
         assert "BAMLC0A0CM" in FRED_SERIES
@@ -634,18 +627,18 @@ class TestNewSeriesInFredSeries:
         new_series = [
             "PCEPI", "PCEPILFE", "RSXFS", "UMCSENT", "M2SL",
             "T5YIE", "HOUST", "PERMIT", "DCOILWTICO",
-            "GOLDAMGBD228NLBM", "BAMLC0A0CM", "TEDRATE", "ICSA",
+            "BAMLC0A0CM", "TEDRATE", "ICSA",
         ]
         for sid in new_series:
             name, signal_type = FRED_SERIES[sid]
             assert name, f"Empty name for {sid}"
             assert signal_type, f"Empty signal_type for {sid}"
 
-    def test_total_series_count_is_at_least_24(self):
+    def test_total_series_count_is_at_least_23(self):
         from mae_core.market.apis.fred_models import FRED_SERIES
-        # Original 11 + 13 new = 24 minimum
-        # (ISM Manufacturing has no free FRED proxy without subscription — omitted per task note)
-        assert len(FRED_SERIES) >= 24
+        # Original 11 + 12 new = 23 minimum
+        # (GOLDAMGBD228NLBM removed 2026-03-13 — FRED returns HTTP 400; covered by GC=F via yfinance)
+        assert len(FRED_SERIES) >= 23
 
     def test_all_original_series_still_present(self):
         from mae_core.market.apis.fred_models import FRED_SERIES
@@ -735,13 +728,6 @@ class TestMacroSnapshotIncludesNewSeries:
         called_ids = {call.args[0] for call in client.get_series.call_args_list}
         assert "DCOILWTICO" in called_ids
 
-    def test_snapshot_requests_gold(self):
-        client = FREDClient(api_key="test_key")
-        client.get_series = MagicMock(side_effect=self._make_indicator)
-        client.get_macro_snapshot()
-        called_ids = {call.args[0] for call in client.get_series.call_args_list}
-        assert "GOLDAMGBD228NLBM" in called_ids
-
     def test_snapshot_requests_bamlc0a0cm(self):
         client = FREDClient(api_key="test_key")
         client.get_series = MagicMock(side_effect=self._make_indicator)
@@ -771,12 +757,12 @@ class TestMacroSnapshotIncludesNewSeries:
         originals = {"T10Y2Y", "BAMLH0A0HYM2", "VIXCLS", "DFF", "UNRATE", "DGS2", "DGS10", "T10Y3M", "DTWEXBGS"}
         assert originals.issubset(called_ids), f"Missing originals: {originals - called_ids}"
 
-    def test_snapshot_requests_at_least_22_series(self):
+    def test_snapshot_requests_at_least_21_series(self):
         client = FREDClient(api_key="test_key")
         client.get_series = MagicMock(side_effect=self._make_indicator)
         client.get_macro_snapshot()
-        # Original 9 (in snapshot) + 13 new = 22 minimum
-        assert client.get_series.call_count >= 22
+        # 21 series in snapshot_series list after gold removal (CPIAUCSL + TSIFRGHT are in FRED_SERIES but omitted from snapshot)
+        assert client.get_series.call_count >= 21
 
 
 # --- MacroIndicator dataclass defaults ---
