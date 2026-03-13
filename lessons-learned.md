@@ -75,3 +75,13 @@ Universal lessons go in `C:\Users\baenb\.claude\lessons-learned.md` instead.
 - **Pattern**: WorldModel had 102 hand-curated edges. Granger analyzer found 3 causal relationships per cycle. Lag correlator found 70+ correlations with |r| >= 0.6. But neither fed discoveries into the WorldModel — the graph never grew.
 - **Rule**: When statistical methods discover relationships (Granger causality, lag correlations), feed them into the WorldModel via `add_discovered_edge()`. Set a quality threshold (|r| >= 0.6 for lag, all significant for Granger). The method handles both new edges and strengthening existing ones on re-discovery.
 - **Why**: A static causal graph is a human's best guess. A growing graph is the system learning its own domain. Within 1.5 hours, the WorldModel grew from 102 to 112 edges autonomously — and will keep growing every 500 steps.
+
+### Measure before building (Session 10 reconfirmation)
+- **Pattern**: Council was about to recommend building 3 new analyst classes. Devil's Advocate checked actual data: 4 combo stats, 2 Granger findings, template win rates all 1.0. Data too immature for specialists.
+- **Rule**: Before building ANY new analytical system, check the actual data volume it will consume. If inputs have <50 entries, the system will produce "insufficient data" reports. Gate on data maturity, not architecture readiness.
+- **Why**: Phase 0 measurements (Session 5) caught this same pattern. This is now a proven principle: measure before building prevents wasted effort every time.
+
+### Dead wires have two failure modes
+- **Pattern**: Tiered alerters were assumed "disconnected" (output goes nowhere). The actual failure was signal starvation (they received zero input). Two different problems, two different fixes.
+- **Rule**: When a system produces empty output, check BOTH the input path AND the output path. Trace the full pipeline before diagnosing.
+- **Why**: Fixing only the output routing would have left the alerters still starving. The council's codebase analyst caught this by tracing the actual signal feed path.
