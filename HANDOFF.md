@@ -5,32 +5,60 @@
 
 ---
 
-## Session 7 (2026-03-12): CIRCULAR INTELLIGENCE ARCHITECTURE — Phase 1+2 (partial)
+## Session 8 (2026-03-12): CIRCULAR INTELLIGENCE ARCHITECTURE — COMPLETE
 
-**Guiding Light's directive:** "Focus on long-term, not order of ease." Design the full circular information flow, then build toward it.
+**Guiding Light's directive:** "Full circle, do it well, then start her up." Complete all 5 arcs of the circular architecture before restarting the daemon.
 
-**Expedition completed:** `research/expedition-midge-introspection/` — 5 Opus research teams + 3 validators mapped MIDGE's internal ecosystem. Found 3 structural forces (Memory-Action Divergence, Bio Feedback Void, Agent-Market Disconnect) and ranked 10 fixes by trading impact.
+**ALL 5 ARCS NOW COMPLETE.** Sessions 7+8 together built the full circular information flow.
 
-**Architecture designed:** 5-arc circular flow closing all 3 structural forces. Plan: `C:\Users\baenb\.claude\plans\eager-popping-aho.md`
+**Architecture plan:** `C:\Users\baenb\.claude\plans\eager-popping-aho.md`
 
-**What was built (Phases 1A + 2A + 2B):**
+### Arc 1: Outcomes → Advisors (Session 7)
+- CH_PREDICTION_RESULT publishes from `outcome_collector.py` → 9 bio-systems hear wins/losses
 
-1. **CH_PREDICTION_RESULT now publishes** — `outcome_collector.py:_on_outcome_graded()` broadcasts every graded outcome to EventBus. 9 bio-systems (arousal, nociception, metacognition, HAVEN, stigmergy, lymphatic, senescence, vestibular, proprioception) now receive win/loss feedback. Payload: `{won, ticker, confidence, sources, step, pct_change, source}`. Bus wired at bootstrap via `market_hooks_sensing_setup.py`.
+### Arc 2: Advisors → Decisions (Sessions 7+8)
+- Bio caution (InhibitionSystem) penalizes paper trade confidence (up to 30%)
+- HAVEN suspicion flags penalize convergence confidence (up to 20%)
+- **NEW:** Circadian activity scales sensing worker concurrency (0.25x–2.0x)
+- **NEW:** Risk channels (CH_DRAWDOWN_WARNING, CH_TRADING_HALTED/RESUMED) → ctx._risk_halt blocks paper trades
 
-2. **Bio caution influences paper trades** — `market_hooks_sensing.py:_run_paper_trading_gate()` reads `ctx._market_caution` (set by InhibitionSystem on deception detection). Caution > 0.3 applies up to 30% confidence penalty. Can block trades if penalty drops confidence below threshold.
+### Arc 3: Memory → Observer (Session 8)
+- **NEW:** Pre-convergence Qdrant recall — `pattern_memory.recall_similar()` modifies confidence ±10% based on similar past outcomes
+- **NEW:** Validator 5 (PatternMemory) — 2+ winning precedents adds a Law 7 validator
+- **NEW:** Granger → HypothesisGenerator bridge — `granger_causality.json` feeds hypothesis creation alongside lag correlations
+- **NEW:** Hypothesis outcome tracking — `register_hypothesis_prediction()` makes hypothesis retirement data-driven
 
-3. **HAVEN suspicion flags reach convergence** — `convergence_confidence.py:_apply_confidence_modifiers()` reads `ctx._haven_market_flags` (source → suspicion score dict). Sources with suspicion > 0.5 penalize convergence confidence by up to 20%. Wired in `market.py` after bio_market_wiring runs.
+### Arc 4: Agents ↔ Market (Session 8)
+- **NEW:** CH_PREDICTION_RESULT → agent track records (per-role wins/losses on ctx._agent_track_records)
+- **NEW:** market_actions.py blends 30% outcome-based win-rate reward (after 5+ outcomes) into agent rewards
 
-**Remaining phases (not yet built):**
-- **Phase 2C:** Circadian scaling of sensing workers
-- **Phase 2D:** Risk channel subscribers (CH_DRAWDOWN_WARNING, CH_TRADING_HALTED)
-- **Phase 3:** Memory → Observer (Qdrant recall, Granger→Hypothesis, hypothesis outcome tracking)
-- **Phase 4:** Agent ↔ Market bridge (outcome-blended agent rewards)
-- **Phase 5:** Orphan channel wiring + circular health check
+### Arc 5: Risk → Decisions + Observability (Session 8)
+- **NEW:** 8 orphaned channels wired: contradiction→log, absence→Octopus investigation, somatic anticipation→focused attention, drift→regime reclassification, granger finding→hypothesis generation, plus 3 risk channels
+- **NEW:** 3 new channel constants (CH_DRIFT_DETECTED, CH_GRANGER_FINDING, CH_DEEP_ANALYSIS)
+- **NEW:** Circular health check every 500 steps — reports which arcs are active vs dormant
 
-**Test status:** Running (check task bvin3ev83). Pre-existing failures: `test_congress_gov_client` (env var).
+**Files modified (Session 8):**
+- `mae_core/market/sensing_hook.py` — circadian scaling
+- `mae_core/market/sensing_scheduler.py` — dynamic concurrent slot budget
+- `mae_core/bootstrap/market_hooks_eventbus.py` — risk + orphan + track record subscribers
+- `mae_core/bootstrap/market_hooks_sensing.py` — risk halt guard, circadian wiring, Validator 5
+- `mae_core/bootstrap/market_hooks_steps.py` — circular health check
+- `mae_core/market/intelligence/convergence_alerter.py` — pattern_memory parameter + setter
+- `mae_core/market/intelligence/convergence_confidence.py` — Qdrant recall modifier
+- `mae_core/bootstrap/market_systems.py` — pattern_memory wiring to convergence alerter
+- `mae_core/market/intelligence/hypothesis_generator.py` — Granger bridge
+- `mae_core/market/intelligence/outcome_collector.py` — hypothesis prediction registration
+- `mae_core/market/market_actions.py` — outcome-blended agent rewards
+- `mae_core/market/channels.py` — 3 new channel constants
 
-**Daemon:** PID 112216 still running from Session 5. Needs restart to pick up circular wiring.
+**Test status:** 110 passed (key module tests), all imports clean.
+
+**NEXT STEPS:**
+1. **Restart daemon** — old PID 112216 must be killed and restarted to pick up circular wiring
+2. **Watch the circular health check** — at step 500, verify all 5 arcs report as active
+3. **Monitor for bugs** — MIDGE is large and complex; the circular wiring touches many systems
+4. **Qdrant must be running** for Arc 3 (memory recall) to be active
+5. **Full test suite** needs a clean run (the background test run timed out — run manually)
 
 ---
 
