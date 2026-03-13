@@ -99,9 +99,14 @@ class InhibitionSystem:
             veto_sources.append(f"risk:{risk_score:.2f}")
 
         # Exhaustion rest: low energy
-        if energy_level < 0.2:
-            nogo += 0.3 * (1.0 - energy_level)
-            veto_sources.append(f"energy:{energy_level:.2f}")
+        # MIDGE: disabled — fictional physiology harms trading daemon.
+        # EnergyReserve drains to 0 during busy sessions (convergence alerts
+        # drain faster than REST phases refill). With reserves permanently near
+        # zero, this added ~0.27 NoGo pressure every step, suppressing agent
+        # action before any market intelligence could run.
+        # if energy_level < 0.2:
+        #     nogo += 0.3 * (1.0 - energy_level)
+        #     veto_sources.append(f"energy:{energy_level:.2f}")
 
         # Somatic warning: negative emotion + high arousal
         if emotional_valence < -0.3 and emotional_arousal > 0.6:

@@ -104,23 +104,24 @@ class InhibitDecideMixin:
                 logger.debug("reflex check failed", exc_info=True)
 
         # --- Collision avoidance (predictive field) ---
-        collision_risks = getattr(self, "_collision_risks", None)
-        if collision_risks:
-            try:
-                if len(collision_risks) > 0:
-                    return "rest"  # Stop to avoid collision
-            except Exception:
-                pass
-
-        # FIX-3: Stigmergy-informed decision bias (biological: chemotaxis)
-        danger_grad = getattr(self, "_danger_gradient", None)
-        if danger_grad is not None and isinstance(danger_grad, (list, tuple)) and len(danger_grad) > 0:
-            try:
-                danger_strength = float(danger_grad[0]) if isinstance(danger_grad[0], (int, float)) else 0.0
-                if danger_strength > 0.5:
-                    return "rest"
-            except (TypeError, ValueError, IndexError):
-                pass
+        # MIDGE: disabled — fictional physiology harms trading daemon.
+        # _collision_risks and _danger_gradient are spatial navigation concepts
+        # from a grid-based agent model. MIDGE agents are not navigating physical
+        # space. If either attribute is set by any system (e.g., stigmergy field
+        # gradients), these blocks would freeze all agents before market intelligence
+        # runs. Removed both blocks entirely. The dead code below is preserved for
+        # mae-core compatibility.
+        #
+        # collision_risks = getattr(self, "_collision_risks", None)
+        # if collision_risks:
+        #     if len(collision_risks) > 0:
+        #         return "rest"  # Stop to avoid collision
+        #
+        # danger_grad = getattr(self, "_danger_gradient", None)
+        # if danger_grad is not None and isinstance(danger_grad, (list, tuple)) and len(danger_grad) > 0:
+        #     danger_strength = float(danger_grad[0]) if isinstance(danger_grad[0], (int, float)) else 0.0
+        #     if danger_strength > 0.5:
+        #         return "rest"
 
         # Advisory-guided decision routing (organism intelligence → agent action)
         advisory = getattr(self, "_current_advisory", None)

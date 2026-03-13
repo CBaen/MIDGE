@@ -99,23 +99,29 @@ def wire_bio_systems_to_market(ctx: SimpleNamespace) -> None:
         logger.debug("Tier 4+5 bio wiring failed", exc_info=True)
 
     # Endocrine → ResourceGovernor cortisol coupling.
-    # High cortisol (stress) tightens EXPLORE budgets; low cortisol relaxes them.
-    # Must run after both endocrine (Layer 26) and resource_governor (Layer 33a)
-    # are fully initialized.
-    if hasattr(ctx, "resource_governor") and ctx.resource_governor is not None:
-        endocrine = getattr(ctx, "endocrine", None)
-        if endocrine is not None and hasattr(endocrine, "register_resource_governor"):
-            try:
-                endocrine.register_resource_governor(ctx.resource_governor)
-                count += 1
-                logger.debug(
-                    "Layer 33k - Endocrine → ResourceGovernor cortisol coupling wired"
-                )
-            except Exception:
-                logger.debug(
-                    "Layer 33k - Endocrine → ResourceGovernor coupling failed",
-                    exc_info=True,
-                )
+    # MIDGE: disabled — fictional physiology harms trading daemon.
+    # High cortisol (market stress events: deception detected, failed predictions)
+    # was reducing EXPLORE-tier API source budgets by the cortisol factor (up to
+    # 40% reduction at cortisol=0.6). Market stress is exactly when MIDGE should
+    # fetch MORE data, not less. The ResourceGovernor itself (real API rate limits)
+    # remains fully operational — only the cortisol multiplier is disabled.
+    # To re-enable: uncomment the block below.
+    #
+    # if hasattr(ctx, "resource_governor") and ctx.resource_governor is not None:
+    #     endocrine = getattr(ctx, "endocrine", None)
+    #     if endocrine is not None and hasattr(endocrine, "register_resource_governor"):
+    #         try:
+    #             endocrine.register_resource_governor(ctx.resource_governor)
+    #             count += 1
+    #             logger.debug(
+    #                 "Layer 33k - Endocrine → ResourceGovernor cortisol coupling wired"
+    #             )
+    #         except Exception:
+    #             logger.debug(
+    #                 "Layer 33k - Endocrine → ResourceGovernor coupling failed",
+    #                 exc_info=True,
+    #             )
+    logger.debug("Layer 33k - Cortisol → ResourceGovernor coupling DISABLED (fictional physiology)")
 
     logger.info(
         "Layer 33k - Bio-market activation: %d systems wired to market channels",

@@ -72,33 +72,36 @@ def _wire_pearl_defense(ctx: SimpleNamespace, bus: Any) -> int:
 def _wire_respiratory(ctx: SimpleNamespace, bus: Any) -> int:
     """RespiratorySystem: processing throughput as oxygen.
 
-    Each convergence alert costs metabolic oxygen to process.
-    High sensing load depletes O2. Low O2 = gasping = the organism
-    should throttle market sensing to recover capacity.
+    MIDGE: oxygen drain callbacks DISABLED — fictional physiology harms trading daemon.
+    Convergence alerts draining oxygen (0.03/alert) created a success-punishment loop:
+    the more MIDGE succeeded at detecting convergences, the more she throttled herself.
+    At busy market sessions, oxygen dropped below 0.3 → CH_HYPOXIA → OrganismState
+    _oxygen_level < 0.3 → get_reflex_override() returned "rest" → agents frozen.
+
+    The RespiratorySystem remains bootstrapped for mae-core compatibility and monitoring.
+    No callbacks are registered here so oxygen stays at its natural resting level.
+    If get_reflex_override() is re-enabled, the oxygen level will be stable (healthy).
     """
     respiratory = getattr(ctx, "respiratory_system", None)
     if respiratory is None:
         return 0
 
-    from mae_core.market.channels import CH_CONVERGENCE, CH_VELOCITY_ANOMALY
+    # MIDGE: disabled — fictional physiology harms trading daemon.
+    # The convergence and velocity callbacks that called respiratory.consume_oxygen()
+    # have been removed. Oxygen will remain at resting level (no drain).
+    # Dead code preserved for mae-core compatibility reference:
+    #
+    # from mae_core.market.channels import CH_CONVERGENCE, CH_VELOCITY_ANOMALY
+    # def _on_convergence(channel, data):
+    #     respiratory.consume_oxygen(0.03)
+    # def _on_velocity(channel, data):
+    #     msg = _parse(data)
+    #     magnitude = msg.get("magnitude", 0.0)
+    #     if magnitude > 2.0:
+    #         respiratory.consume_oxygen(min(0.1, magnitude * 0.02))
+    # bus.register_callback(CH_CONVERGENCE, _on_convergence)
+    # bus.register_callback(CH_VELOCITY_ANOMALY, _on_velocity)
 
-    def _on_convergence(channel, data):
-        try:
-            respiratory.consume_oxygen(0.03)
-        except Exception:
-            pass
-
-    def _on_velocity(channel, data):
-        msg = _parse(data)
-        magnitude = msg.get("magnitude", 0.0)
-        if magnitude > 2.0:
-            try:
-                respiratory.consume_oxygen(min(0.1, magnitude * 0.02))
-            except Exception:
-                pass
-
-    bus.register_callback(CH_CONVERGENCE, _on_convergence)
-    bus.register_callback(CH_VELOCITY_ANOMALY, _on_velocity)
     return 1
 
 

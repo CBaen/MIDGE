@@ -84,9 +84,14 @@ def _wire_quorum(ctx: SimpleNamespace, bus: Any) -> int:
 def _wire_circadian(ctx: SimpleNamespace, bus: Any) -> int:
     """CircadianRhythm: market-aware activity modulation.
 
-    When circadian phase changes, store activity multiplier on ctx
-    for the sensing hook to read and scale worker count.
-    ACTIVE -> full sensing. CONSOLIDATION -> reduced. REST -> minimal.
+    Phase-change callbacks trigger hypothesis consolidation and excavation
+    daemon steps (legitimate market jobs). The sensing worker count scaling
+    is DISABLED (MIDGE: fictional physiology harms trading daemon) — during
+    REST phase the real circadian multiplier drops to 0.1, cutting sensing
+    workers from 12 to 3. Markets do not pause for simulated sleep; a 24/7
+    trading daemon should not lose 75% of sensing capacity on a phase cycle.
+    ctx._circadian_activity is pinned to 1.0 so the scheduler always sees
+    full capacity regardless of phase.
     """
     circadian = getattr(ctx, "circadian_rhythm", None)
     if circadian is None:
@@ -95,12 +100,15 @@ def _wire_circadian(ctx: SimpleNamespace, bus: Any) -> int:
     def _on_phase_change(channel, data):
         msg = _parse(data)
         new_phase = msg.get("new_phase", "")
-        multiplier = circadian.get_activity_multiplier()
-        ctx._circadian_activity = multiplier
+        # MIDGE: disabled — fictional physiology harms trading daemon.
+        # Do NOT read circadian.get_activity_multiplier() here — that value
+        # drops to 0.1 in REST phase, throttling sensing workers to 25% capacity.
+        # Pin to 1.0 permanently so workers are always at full strength.
+        ctx._circadian_activity = 1.0  # was: circadian.get_activity_multiplier()
         ctx._circadian_phase = new_phase
         logger.debug(
-            "Circadian phase -> %s, activity multiplier %.1f",
-            new_phase, multiplier,
+            "Circadian phase -> %s, activity multiplier pinned to 1.0 (sensing throttle disabled)",
+            new_phase,
         )
 
     from mae_core.coordination.circadian_rhythm import CH_PHASE_CHANGE
