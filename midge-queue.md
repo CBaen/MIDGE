@@ -1,7 +1,7 @@
 # MIDGE Queue
 
 **Purpose:** Active tasks only. Git history preserves completed work.
-**Last updated:** 2026-03-11
+**Last updated:** 2026-03-13
 
 ---
 
@@ -37,6 +37,11 @@
 ### Pattern Discovery
 - [ ] CausationEntropy weekly batch (experimental, monitored)
 - [ ] smart-money-concepts as new edge detector domain
+
+### Analyst Infrastructure
+- [ ] Wire tiered alerter output to SituationBoard (they now receive signals but output still goes to ctx._market_advisory)
+- [ ] Measure DeepAnalyst cost at 733K signals (performance at scale unknown)
+- [ ] Three specialist analysts: Causal, Quality, Temporal (gated on 50+ combo stats AND 10+ Granger findings — check before building)
 
 ### Causal Reasoning
 - [x] Sequential chain stage-gating — DONE (links grouped by lag into stages, stage N opens when N-1 confirmed, 23 tests)
@@ -86,11 +91,23 @@
 - [x] connection_registrations_bio.py split — DONE (500→311 + backbone 118 + cognition 131)
 - [x] market_hooks.py size audit — DONE (already split into 7 files, largest is 457 lines, all under 500)
 - [ ] Broker-side bracket orders (survive MIDGE process failure)
+- [ ] Fix test_signal_persistence tests (_DATA_DIR attr missing)
 
 ---
 
 ## Completed (cleared from queue — git history preserves)
 
+- Finnhub WebSocket exponential backoff (5s→300s, 60s min on 429s, stability detection)
+- Senate stock watcher removed from rotation (DNS dead, sources 37→35)
+- FRED GOLDAMGBD228NLBM removed (HTTP 400 every cycle, GC=F covers gold)
+- Global API CircuitBreaker built (circuit_breaker.py, 3-failure OPEN, 60s→1800s cooldown, wired into scheduler+collector)
+- Convergence dedup cooldown 4h→1h
+- Convergence diagnostic logging added
+- SQLite thread safety fixed (check_same_thread=False in raw_store_base.py)
+- Tiered alerter signal fan-out fixed (all 3 tiers now receive every signal)
+- DeepAnalyst EventBus subscriber added
+- SituationBoard built (situation_board.py, 197 lines, thread-safe, persists to data/midge/situation_board.json)
+- SituationBoard bootstrapped + heartbeat integration + DeepAnalyst feed
 - Fix 4 broken systems (FinnhubWS, ActiveTracker, SAM.gov, MassiveClient)
 - Raw store expansion 12→24 clients (all wired, 58 tests)
 - Parallelism upgrade (12 concurrent, 25-step cadence)
