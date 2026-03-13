@@ -138,6 +138,14 @@ def _instantiate_infrastructure(ctx: SimpleNamespace) -> None:
         logger.debug("Market: governance_logger failed to construct", exc_info=True)
         ctx.governance_logger = None
 
+    # --- API Circuit Breaker (per-source failure protection + backoff) ---
+    try:
+        from mae_core.market.intelligence.circuit_breaker import CircuitBreaker
+        ctx.circuit_breaker = CircuitBreaker()
+    except Exception:
+        logger.debug("Market: circuit_breaker failed to construct", exc_info=True)
+        ctx.circuit_breaker = None
+
     # --- Risk Architecture (DrawdownMonitor, SystemHealthMonitor, SelfMonitor) ---
     try:
         from mae_core.market.intelligence.drawdown_monitor import DrawdownMonitor

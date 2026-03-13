@@ -357,7 +357,7 @@ class FREDClient:
         - Inflation: PCEPI, PCEPILFE (CPIAUCSL omitted — raw level not actionable)
         - Liquidity/money: M2SL
         - Housing: HOUST, PERMIT
-        - Commodities: DCOILWTICO, GOLDAMGBD228NLBM
+        - Commodities: DCOILWTICO (GOLDAMGBD228NLBM removed — FRED returns 400; gold via GC=F/yfinance)
         - Forex: DGS2, DGS10, T10Y3M, DTWEXBGS
 
         Returns:

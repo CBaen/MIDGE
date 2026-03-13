@@ -110,7 +110,8 @@ FRED_SERIES: dict[str, tuple] = {
     "PERMIT":       ("Building Permits (Thousands of Units)", "housing_permits"),
     # Commodities via FRED — cross-asset convergence anchors
     "DCOILWTICO":   ("WTI Crude Oil Price (Dollars per Barrel)", "energy_price"),
-    "GOLDAMGBD228NLBM": ("Gold Price London Fix (USD per Troy Oz)", "gold_price"),
+    # NOTE: GOLDAMGBD228NLBM removed 2026-03-13 — FRED returns HTTP 400 "series does not exist".
+    # Gold is covered by GC=F (gold futures) in the watchlist via yfinance.
     # Credit stress indicators
     "BAMLC0A0CM":   ("ICE BofA Investment Grade Corporate Bond Spread", "credit_spread_ig"),
     "TEDRATE":      ("TED Spread (3-Month LIBOR minus T-Bill, Bank Stress)", "bank_stress"),
@@ -258,16 +259,6 @@ def _determine_direction(
             return "bearish"   # Demand-destroying / margin-compressing for non-energy
         elif value < 50:
             return "bullish"   # Input cost relief = consumer/industrial tailwind
-        return "neutral"
-
-    elif series_id == "GOLDAMGBD228NLBM":
-        # Gold Price (USD per troy oz, London afternoon fix)
-        # Gold rising = fear/inflation hedge demand = risk-off = bearish for equities
-        # Gold falling = risk-on rotation away from safe haven = bullish for equities
-        if value > 2500:
-            return "bearish"   # Extreme safe-haven demand = systemic fear
-        elif value < 1700:
-            return "bullish"   # Low fear premium, risk assets preferred
         return "neutral"
 
     elif series_id == "BAMLC0A0CM":
