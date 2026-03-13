@@ -5,6 +5,35 @@
 
 ---
 
+## Session 7 (2026-03-12): CIRCULAR INTELLIGENCE ARCHITECTURE — Phase 1+2 (partial)
+
+**Guiding Light's directive:** "Focus on long-term, not order of ease." Design the full circular information flow, then build toward it.
+
+**Expedition completed:** `research/expedition-midge-introspection/` — 5 Opus research teams + 3 validators mapped MIDGE's internal ecosystem. Found 3 structural forces (Memory-Action Divergence, Bio Feedback Void, Agent-Market Disconnect) and ranked 10 fixes by trading impact.
+
+**Architecture designed:** 5-arc circular flow closing all 3 structural forces. Plan: `C:\Users\baenb\.claude\plans\eager-popping-aho.md`
+
+**What was built (Phases 1A + 2A + 2B):**
+
+1. **CH_PREDICTION_RESULT now publishes** — `outcome_collector.py:_on_outcome_graded()` broadcasts every graded outcome to EventBus. 9 bio-systems (arousal, nociception, metacognition, HAVEN, stigmergy, lymphatic, senescence, vestibular, proprioception) now receive win/loss feedback. Payload: `{won, ticker, confidence, sources, step, pct_change, source}`. Bus wired at bootstrap via `market_hooks_sensing_setup.py`.
+
+2. **Bio caution influences paper trades** — `market_hooks_sensing.py:_run_paper_trading_gate()` reads `ctx._market_caution` (set by InhibitionSystem on deception detection). Caution > 0.3 applies up to 30% confidence penalty. Can block trades if penalty drops confidence below threshold.
+
+3. **HAVEN suspicion flags reach convergence** — `convergence_confidence.py:_apply_confidence_modifiers()` reads `ctx._haven_market_flags` (source → suspicion score dict). Sources with suspicion > 0.5 penalize convergence confidence by up to 20%. Wired in `market.py` after bio_market_wiring runs.
+
+**Remaining phases (not yet built):**
+- **Phase 2C:** Circadian scaling of sensing workers
+- **Phase 2D:** Risk channel subscribers (CH_DRAWDOWN_WARNING, CH_TRADING_HALTED)
+- **Phase 3:** Memory → Observer (Qdrant recall, Granger→Hypothesis, hypothesis outcome tracking)
+- **Phase 4:** Agent ↔ Market bridge (outcome-blended agent rewards)
+- **Phase 5:** Orphan channel wiring + circular health check
+
+**Test status:** Running (check task bvin3ev83). Pre-existing failures: `test_congress_gov_client` (env var).
+
+**Daemon:** PID 112216 still running from Session 5. Needs restart to pick up circular wiring.
+
+---
+
 ## Session 5 (2026-03-12): WAKE UP INTELLIGENCE — 3 DISCONNECTED SYSTEMS WIRED
 
 **Guiding Light's directive:** "Anything asleep or disconnected needs to be woken and connected." MIDGE has 15 independent pattern-finding processes — 5 were disconnected or passive. This session wired 3 of them.
