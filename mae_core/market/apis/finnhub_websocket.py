@@ -111,9 +111,12 @@ class FinnhubWebSocket:
         # Thread-safe signal queue consumed by the main step loop
         self._pending_signals: Queue = Queue(maxsize=1000)
 
-        # Reconnect back-off (doubles on each failure, caps at 60 s)
-        self._reconnect_delay: float = 1.0
-        self._max_reconnect_delay: float = 60.0
+        # Reconnect back-off (doubles on each consecutive failure, caps at 300 s)
+        self._reconnect_delay: float = 5.0
+        self._max_reconnect_delay: float = 300.0
+        self._consecutive_failures: int = 0
+        self._connect_time: Optional[float] = None  # wall-clock time of last successful open
+        self._last_429: bool = False  # flag set by _on_error / _on_message on rate-limit
 
         # Protects _tickers list during update_subscriptions
         self._lock = threading.Lock()
