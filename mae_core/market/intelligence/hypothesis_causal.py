@@ -60,6 +60,19 @@ _DOMAIN_ROLES = {
     "finnhub_analyst": ("fundamental", "analyst_consensus"),
     "finnhub_earnings_calendar": ("fundamental", "earnings_schedule"),
     "yfinance_price": ("technical", "price_action"),
+    "openinsider_purchase": ("insider", "insider_buying"),
+    "openinsider_cluster": ("insider", "coordinated_buying"),
+    "massive_snapshot": ("technical", "volume_anomaly"),
+    "eia_energy": ("macro", "energy_supply"),
+    "congress_legislation": ("political", "legislative_activity"),
+    "economic_calendar": ("macro", "economic_event"),
+    "activist_13d": ("institutional", "activist_position"),
+    "institutional_13f": ("institutional", "portfolio_rebalancing"),
+    "crypto_coingecko": ("crypto", "price_action"),
+    "crypto_coincap": ("crypto", "exchange_volume"),
+    "yahoo_rss": ("information", "headline_velocity"),
+    "finviz_unusual_volume": ("technical", "volume_anomaly"),
+    "finviz_short_squeeze": ("institutional", "short_positioning"),
 }
 
 
