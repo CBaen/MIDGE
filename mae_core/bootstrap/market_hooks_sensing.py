@@ -447,6 +447,10 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
         _sensing_step_counter[0] += 1
         step = _sensing_step_counter[0]
         _shm = getattr(ctx, "system_health_monitor", None)
+        # Phase 2C: circadian scaling of sensing workers
+        _circ = getattr(ctx, "_circadian_activity", 1.0)
+        if hasattr(hook, "set_circadian_scale"):
+            hook.set_circadian_scale(_circ)
         try:
             original_step()
             if _shm:

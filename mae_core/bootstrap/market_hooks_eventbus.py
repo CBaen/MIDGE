@@ -400,4 +400,110 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
     ctx.bus.register_callback(CH_HYPOTHESIS_FIRED, _on_hypothesis_fired)
     logger.info("Layer 33f - Hypothesis fired: focused attention boost + fire tracker wired")
 
+    # --- Arc 2/5: Risk channel subscribers ---
+    from mae_core.market.channels import (
+        CH_DRAWDOWN_WARNING, CH_TRADING_HALTED, CH_TRADING_RESUMED,
+    )
+
+    def _on_drawdown_warning(channel, data):
+        msg = data if isinstance(data, dict) else {}
+        ctx._drawdown_warning = msg
+        logger.info("Risk: drawdown warning received — %s", msg.get("message", ""))
+
+    def _on_trading_halted(channel, data):
+        ctx._risk_halt = True
+        logger.warning("Risk: TRADING HALTED via EventBus")
+
+    def _on_trading_resumed(channel, data):
+        ctx._risk_halt = False
+        logger.info("Risk: trading resumed via EventBus")
+
+    ctx.bus.register_callback(CH_DRAWDOWN_WARNING, _on_drawdown_warning)
+    ctx.bus.register_callback(CH_TRADING_HALTED, _on_trading_halted)
+    ctx.bus.register_callback(CH_TRADING_RESUMED, _on_trading_resumed)
+
+    # --- Arc 5: Wire orphaned publisher channels ---
+    from mae_core.market.channels import (
+        CH_CONTRADICTION_DETECTED, CH_ABSENCE_DETECTED,
+        CH_SOMATIC_ANTICIPATION,
+    )
+
+    def _on_contradiction_detected(channel, data):
+        msg = data if isinstance(data, dict) else {}
+        logger.info(
+            "Contradiction: %s vs %s (coherence=%.2f)",
+            msg.get("dominant_direction", "?"),
+            msg.get("minority_direction", "?"),
+            msg.get("coherence", 0.0),
+        )
+        ctx._last_contradiction = msg
+
+    def _on_absence_detected(channel, data):
+        msg = data if isinstance(data, dict) else {}
+        logger.info(
+            "Absence: expected %s signal missing for %s",
+            msg.get("expected_source", "?"),
+            msg.get("ticker", "?"),
+        )
+        colony = getattr(ctx, "octopus_colony", None)
+        if colony is not None:
+            try:
+                colony.submit_task({
+                    "ticker": msg.get("ticker", ""),
+                    "direction": "neutral",
+                    "domains_seen": [],
+                    "missing_domains": [msg.get("expected_domain", "")],
+                    "source": "absence_detection",
+                }, "investigate_partial")
+            except Exception:
+                pass
+
+    def _on_somatic_anticipation(channel, data):
+        msg = data if isinstance(data, dict) else {}
+        ticker = msg.get("ticker", "")
+        if ticker and hasattr(ctx, "sensing_hook"):
+            hook = ctx.sensing_hook
+            if hasattr(hook, "_priority_requests"):
+                import time as _time
+                hook._priority_requests[f"somatic_{ticker}"] = {
+                    "ticker": ticker,
+                    "domains_needed": msg.get("anticipated_domains", []),
+                    "priority": "high",
+                    "expires": _time.time() + 3600,
+                    "source": "somatic_anticipation",
+                }
+
+    ctx.bus.register_callback(CH_CONTRADICTION_DETECTED, _on_contradiction_detected)
+    ctx.bus.register_callback(CH_ABSENCE_DETECTED, _on_absence_detected)
+    ctx.bus.register_callback(CH_SOMATIC_ANTICIPATION, _on_somatic_anticipation)
+
+    # Wire drift → regime recalculation
+    def _on_drift_detected(channel, data):
+        msg = data if isinstance(data, dict) else {}
+        logger.info("Drift: %s stream shifted (%.4f → %.4f)",
+                    msg.get("stream", "?"), msg.get("old_mean", 0), msg.get("new_mean", 0))
+        rc = getattr(ctx, "regime_classifier", None)
+        if rc is not None:
+            try:
+                rc.classify()
+            except Exception:
+                pass
+
+    ctx.bus.register_callback("market.intel.drift_detected", _on_drift_detected)
+
+    # Wire granger findings → hypothesis generator
+    def _on_granger_finding(channel, data):
+        msg = data if isinstance(data, dict) else {}
+        count = msg.get("count", 0)
+        if count > 0:
+            logger.info("Granger: %d causal findings — hypothesis generation triggered", count)
+            gen = getattr(ctx, "hypothesis_generator", None)
+            if gen is not None:
+                try:
+                    gen.generate()
+                except Exception:
+                    pass
+
+    ctx.bus.register_callback("market.intel.granger_finding", _on_granger_finding)
+
     logger.info("Layer 33f - Market EventBus: convergence + hypothesis -> endocrine coupling wired")

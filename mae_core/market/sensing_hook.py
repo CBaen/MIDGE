@@ -312,6 +312,10 @@ class MarketSensingHook(SensingSchedulerMixin, SensingCollectorMixin, SensingRea
         if self._step_counter % 100 == 0:
             self._run_step_pattern_completion()
 
+    def set_circadian_scale(self, activity: float) -> None:
+        """Set circadian activity scaling factor for fetch concurrency."""
+        self._circadian_scale = max(0.25, min(2.0, activity))
+
     def _process_realtime_signals(self, signals: list):
         """Process real-time WebSocket signals — same pipeline as rotation signals."""
         self._last_fetch_source = "finnhub_realtime"

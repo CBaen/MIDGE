@@ -46,8 +46,9 @@ class SensingSchedulerMixin:
         except Exception:
             logger.debug("Priority request cleanup failed", exc_info=True)
 
-        # Fill available slots (8 max concurrent)
-        slots = 8 - len(self._pending_futures)
+        # Fill available slots — scaled by circadian activity (default 8)
+        _max_concurrent = max(3, int(12 * getattr(self, "_circadian_scale", 1.0)))
+        slots = _max_concurrent - len(self._pending_futures)
         if slots <= 0:
             return
 

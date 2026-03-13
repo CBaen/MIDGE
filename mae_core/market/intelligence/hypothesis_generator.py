@@ -137,6 +137,9 @@ class HypothesisGenerator:
         Returns list of newly created hypotheses (bivariate + composite).
         """
         findings = self._load_lag_findings()
+        # Arc 3: Also load Granger causal findings (directional evidence)
+        granger_findings = self._load_granger_findings()
+        findings.extend(granger_findings)
         if not findings:
             return []
 
@@ -324,8 +327,40 @@ class HypothesisGenerator:
                 return True
         return False
 
+    def _load_granger_findings(self) -> list:
+        """Load Granger causality findings and convert to lag correlation format.
+
+        Maps Granger fields to the same dict shape as lag_correlations.json so
+        _finding_to_hypothesis() can process them without branching.
+        """
+        granger_path = DATA_DIR / "granger_causality.json"
+        if not granger_path.exists():
+            return []
+        try:
+            granger_data = json.loads(granger_path.read_text())
+            if not isinstance(granger_data, list):
+                return []
+            results = []
+            for entry in granger_data:
+                p_value = entry.get("p_value", 1.0)
+                converted = {
+                    "source_a": entry.get("cause_source", ""),
+                    "source_b": entry.get("effect_source", ""),
+                    "lag_days": entry.get("best_lag", 0),
+                    "correlation": max(0.5, 1.0 - p_value * 5),
+                    "n_pairs": 10,
+                    "direction": entry.get("direction", ""),
+                    "evidence_type": "granger",
+                }
+                if converted["source_a"] and converted["source_b"]:
+                    results.append(converted)
+            return results
+        except Exception as e:
+            logger.warning("Failed to load granger_causality.json: %s", e)
+            return []
+
     def _load_lag_findings(self) -> list:
-        """Load lag-correlation findings from disk, merged with Granger causality findings."""
+        """Load lag-correlation findings from disk."""
         findings = []
 
         if not self._lag_data_path.exists():
@@ -337,31 +372,6 @@ class HypothesisGenerator:
                     findings.extend(data)
             except (json.JSONDecodeError, Exception) as e:
                 logger.warning("Failed to load lag correlations: %s", e)
-
-        granger_path = DATA_DIR / "granger_causality.json"
-        if granger_path.exists():
-            try:
-                granger_data = json.loads(granger_path.read_text())
-                if isinstance(granger_data, list):
-                    for entry in granger_data:
-                        p_value = entry.get("p_value", 1.0)
-                        converted = {
-                            "source_a": entry.get("cause_source", ""),
-                            "source_b": entry.get("effect_source", ""),
-                            "lag_days": entry.get("best_lag", 0),
-                            "correlation": min(1.0, max(0.1, 1.0 - p_value)),
-                            "n_pairs": entry.get("n_observations", 0),
-                            "direction": entry.get("direction", ""),
-                            "evidence_type": "granger",
-                        }
-                        if converted["source_a"] and converted["source_b"]:
-                            findings.append(converted)
-                    logger.debug(
-                        "Merged %d Granger causality findings into lag findings",
-                        len(granger_data) if isinstance(granger_data, list) else 0,
-                    )
-            except (json.JSONDecodeError, Exception) as e:
-                logger.warning("Failed to load granger_causality.json: %s", e)
 
         return findings
 
