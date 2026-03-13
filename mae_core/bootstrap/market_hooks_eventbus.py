@@ -450,7 +450,7 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
         ctx._last_contradiction = msg
 
     def _on_absence_detected(channel, data):
-        msg = data if isinstance(data, dict) else {}
+        msg = (json.loads(data) if isinstance(data, str) else data) if data else {}
         logger.info(
             "Absence: expected %s signal missing for %s",
             msg.get("expected_source", "?"),
@@ -470,7 +470,7 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
                 pass
 
     def _on_somatic_anticipation(channel, data):
-        msg = data if isinstance(data, dict) else {}
+        msg = (json.loads(data) if isinstance(data, str) else data) if data else {}
         ticker = msg.get("ticker", "")
         if ticker and hasattr(ctx, "sensing_hook"):
             hook = ctx.sensing_hook
@@ -490,7 +490,7 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
 
     # Wire drift → regime recalculation
     def _on_drift_detected(channel, data):
-        msg = data if isinstance(data, dict) else {}
+        msg = (json.loads(data) if isinstance(data, str) else data) if data else {}
         logger.info("Drift: %s stream shifted (%.4f → %.4f)",
                     msg.get("stream", "?"), msg.get("old_mean", 0), msg.get("new_mean", 0))
         rc = getattr(ctx, "regime_classifier", None)
@@ -504,7 +504,7 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
 
     # Wire granger findings → hypothesis generator
     def _on_granger_finding(channel, data):
-        msg = data if isinstance(data, dict) else {}
+        msg = (json.loads(data) if isinstance(data, str) else data) if data else {}
         count = msg.get("count", 0)
         if count > 0:
             logger.info("Granger: %d causal findings — hypothesis generation triggered", count)
@@ -521,7 +521,7 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
     from mae_core.market.channels import CH_PREDICTION_RESULT
 
     def _on_prediction_result_track_record(channel, data):
-        msg = data if isinstance(data, dict) else {}
+        msg = (json.loads(data) if isinstance(data, str) else data) if data else {}
         won = msg.get("won", False)
         source = msg.get("source", "")
 
@@ -570,7 +570,7 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
     # ctx.inevitabilities is already set in _run_slow_cadence_ops before this
     # fires, so this is purely observability — no state mutation here.
     def _on_deep_analysis(channel, data):
-        msg = data if isinstance(data, dict) else {}
+        msg = (json.loads(data) if isinstance(data, str) else data) if data else {}
         count = msg.get("count", 0)
         top = msg.get("top", [])
         if not top:
