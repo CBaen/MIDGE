@@ -235,16 +235,6 @@ class TestNewSeriesDirectionLogic:
     def test_dcoilwtico_mid_is_neutral(self):
         assert _determine_direction("DCOILWTICO", 70.0) == "neutral"
 
-    # GOLDAMGBD228NLBM — Gold Price
-    def test_gold_very_high_is_bearish(self):
-        assert _determine_direction("GOLDAMGBD228NLBM", 2700.0) == "bearish"
-
-    def test_gold_low_is_bullish(self):
-        assert _determine_direction("GOLDAMGBD228NLBM", 1600.0) == "bullish"
-
-    def test_gold_mid_is_neutral(self):
-        assert _determine_direction("GOLDAMGBD228NLBM", 2000.0) == "neutral"
-
     # BAMLC0A0CM — Investment Grade Corporate Bond Spread
     def test_ig_spread_wide_is_bearish(self):
         assert _determine_direction("BAMLC0A0CM", 2.5) == "bearish"
@@ -309,7 +299,7 @@ class TestDeltaSeriesSet:
     def test_delta_series_does_not_contain_level_threshold_series(self):
         # Series with meaningful level thresholds should NOT be in DELTA_SERIES
         for sid in ("T10Y2Y", "VIXCLS", "UMCSENT", "BAMLH0A0HYM2", "T5YIE",
-                    "HOUST", "PERMIT", "DCOILWTICO", "GOLDAMGBD228NLBM"):
+                    "HOUST", "PERMIT", "DCOILWTICO"):
             assert sid not in DELTA_SERIES, f"{sid} should not be in DELTA_SERIES"
 
 

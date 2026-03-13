@@ -298,7 +298,7 @@ class TestGetStatistics(unittest.TestCase):
         self.assertEqual(stats["tickers"], ["AAPL", "MSFT"])
         self.assertEqual(stats["buffers"], 0)
         self.assertEqual(stats["pending_signals"], 0)
-        self.assertEqual(stats["reconnect_delay"], 1.0)
+        self.assertEqual(stats["reconnect_delay"], 5.0)
 
     def test_buffers_count_increases_with_trades(self):
         ws = make_ws()
@@ -407,25 +407,31 @@ class TestReconnectBackoff(unittest.TestCase):
 
     def test_initial_reconnect_delay(self):
         ws = make_ws()
-        self.assertEqual(ws._reconnect_delay, 1.0)
+        self.assertEqual(ws._reconnect_delay, 5.0)
 
     def test_on_open_resets_delay(self):
+        # _on_open no longer resets _reconnect_delay — it only records _connect_time.
+        # Backoff resets in _run_loop only after a stable connection (>= 60 s).
         ws = make_ws()
         ws._reconnect_delay = 32.0  # simulate prior failures
         mock_ws = MagicMock()
         ws._on_open(mock_ws)
-        self.assertEqual(ws._reconnect_delay, 1.0)
+        # Delay must NOT be reset by _on_open
+        self.assertEqual(ws._reconnect_delay, 32.0)
+        # _connect_time must be recorded so _run_loop can measure stability
+        self.assertIsNotNone(ws._connect_time)
 
     def test_delay_does_not_exceed_max(self):
         ws = make_ws()
-        ws._reconnect_delay = 50.0
-        # Simulate one more failure
+        # Start above the halfway point so doubling exceeds the new 300 s cap
+        ws._reconnect_delay = 200.0
+        # Simulate one more failure doubling the delay
         ws._reconnect_delay = min(ws._reconnect_delay * 2, ws._max_reconnect_delay)
         self.assertEqual(ws._reconnect_delay, ws._max_reconnect_delay)
 
     def test_max_reconnect_delay(self):
         ws = make_ws()
-        self.assertEqual(ws._max_reconnect_delay, 60.0)
+        self.assertEqual(ws._max_reconnect_delay, 300.0)
 
 
 # ---------------------------------------------------------------------------
