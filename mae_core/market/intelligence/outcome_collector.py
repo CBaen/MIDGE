@@ -77,10 +77,12 @@ class OutcomeCollector:
         thompson_sampler,
         regime_classifier=None,
         data_dir: Path = None,
+        bus=None,
     ):
         from mae_core.market.outcome_tracker import OutcomeTracker
 
         self._data_dir = data_dir or DATA_DIR
+        self._bus = bus
         self.tracker = OutcomeTracker(
             price_fetcher, thompson_sampler, regime_classifier,
             data_dir=self._data_dir,
