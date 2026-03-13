@@ -198,11 +198,19 @@ class HypothesisValidator:
         sharpe = self._compute_sharpe(returns)
         dsr = self._compute_dsr(sharpe, total)
 
-        # Promotion/retirement decisions
+        # Promotion/retirement decisions — re-attempt auto-generation for
+        # hypotheses created before _auto_generate_causal_story() was functional
         has_real_causal_story = (
             hypothesis.causal_story
             and "REQUIRES MANUAL REVIEW" not in hypothesis.causal_story
         )
+        if not has_real_causal_story and hypothesis.trigger.source_a and hypothesis.trigger.source_b:
+            from mae_core.market.intelligence.hypothesis_causal import _get_causal_story
+            refreshed = _get_causal_story(hypothesis.trigger.source_a, hypothesis.trigger.source_b)
+            if refreshed and "REQUIRES MANUAL REVIEW" not in refreshed:
+                hypothesis.causal_story = refreshed
+                has_real_causal_story = True
+                logger.info("Auto-refreshed causal story for %s", hypothesis.name)
 
         # Read live gates from config (with regime delta + fallback)
         _min_obs = _get_gate("min_observations")
