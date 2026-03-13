@@ -31,7 +31,7 @@ class RawStoreBase:
     def _get_conn(self, domain: str) -> sqlite3.Connection:
         if domain not in self._connections:
             db_path = self._base_dir / f"{domain}.db"
-            conn = sqlite3.connect(str(db_path))
+            conn = sqlite3.connect(str(db_path), check_same_thread=False)
             conn.execute("PRAGMA journal_mode=WAL")
             conn.execute("PRAGMA synchronous=NORMAL")
             self._connections[domain] = conn
