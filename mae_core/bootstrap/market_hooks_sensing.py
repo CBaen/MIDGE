@@ -209,6 +209,23 @@ def _run_paper_trading_gate(ctx: SimpleNamespace, alerts: list, step: int) -> No
                         _sm._anomaly_flags,
                     )
                     continue
+            # Arc 2: Bio-system caution (InhibitionSystem) penalizes confidence
+            _caution = getattr(ctx, "_market_caution", 0.0)
+            if _caution > 0.3:
+                _penalty = _caution * 0.3  # max 30% penalty at caution=1.0
+                _orig_conf = alert.confidence
+                alert.confidence = max(0.05, alert.confidence * (1.0 - _penalty))
+                logger.info(
+                    "Bio caution %.2f → confidence %.3f→%.3f for %s",
+                    _caution, _orig_conf, alert.confidence,
+                    getattr(alert, "ticker", ""),
+                )
+                # Re-check min confidence after penalty
+                if alert.confidence < LEARNING_CONFIG.get("paper_trade_min_confidence", 0.45):
+                    logger.info(
+                        "Paper trade BLOCKED — bio caution reduced confidence below threshold"
+                    )
+                    continue
             # --- Law 7: Rule of 3 validators ---
             # Count independent validators that agree on this trade.
             _ticker = getattr(alert, "ticker", "") or ""

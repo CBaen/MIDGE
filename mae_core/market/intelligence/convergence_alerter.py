@@ -200,6 +200,7 @@ class ConvergenceAlerter(ConvergenceConfidenceMixin, ConvergenceDetectionMixin):
         self._economic_calendar = economic_calendar
         self._correlation_tracker = correlation_tracker
         self._quorum_space = quorum_space
+        self._haven_flags = None  # Set via set_haven_flags() — bio HAVEN suspicion scores
         self._cached_regime = ("default", 0.0)  # (regime_str, timestamp)
 
         # Per-domain convergence windows — slow-moving data sources need longer lookback.

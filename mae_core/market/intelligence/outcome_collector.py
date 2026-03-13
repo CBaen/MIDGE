@@ -102,9 +102,30 @@ class OutcomeCollector:
     def _on_outcome_graded(self, pred: dict, success: bool, pct_change: float) -> None:
         """Callback fired by OutcomeTracker for each graded outcome.
 
-        For pattern_stack predictions, updates each template's win/loss stats
-        in PatternLibrary — closing the feedback loop so templates improve.
+        Two responsibilities:
+        1. Publish CH_PREDICTION_RESULT to EventBus — wakes 9 bio-systems
+           (arousal, nociception, metacognition, HAVEN, stigmergy, lymphatic,
+           senescence, vestibular, proprioception).
+        2. For pattern_stack predictions, update template win/loss stats.
         """
+        # Arc 1: Broadcast outcome to bio-systems via EventBus
+        if self._bus is not None:
+            try:
+                from mae_core.market.channels import CH_PREDICTION_RESULT
+                metadata = pred.get("metadata", {})
+                self._bus.publish(CH_PREDICTION_RESULT, {
+                    "won": success,
+                    "ticker": pred.get("symbol", ""),
+                    "confidence": metadata.get("confidence", 0.5),
+                    "sources": metadata.get("sources", []),
+                    "step": metadata.get("step", 0),
+                    "pct_change": pct_change,
+                    "source": pred.get("source", ""),
+                })
+            except Exception:
+                logger.debug("CH_PREDICTION_RESULT publish failed", exc_info=True)
+
+        # Template feedback for pattern_stack predictions
         source = pred.get("source", "")
         if not source.startswith("pattern_stack:") or self._pattern_library is None:
             return

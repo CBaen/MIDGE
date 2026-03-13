@@ -48,6 +48,7 @@ def _build_sensing_infrastructure(ctx: SimpleNamespace):
                 price_fetcher=getattr(ctx, "price_fetcher", None),
                 thompson_sampler=_ts,
                 regime_classifier=getattr(ctx, "regime_classifier", None),
+                bus=getattr(ctx, "bus", None),
             )
     except Exception:
         logger.debug("OutcomeCollector construction failed", exc_info=True)
