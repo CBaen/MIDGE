@@ -202,6 +202,7 @@ class MarketSensingHook(SensingSchedulerMixin, SensingCollectorMixin, SensingRea
 
         # Async fetch state — 12 concurrent workers for parallel senses
         self._executor = ThreadPoolExecutor(max_workers=12, thread_name_prefix="mkt-sense")
+        self._circadian_scale = 1.0
         self._pending_futures: Dict[str, Future] = {}  # source_name -> future
         self._fetch_queue = deque(SOURCE_ROTATION)
         self._step_counter = 0
