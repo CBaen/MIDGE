@@ -219,21 +219,22 @@ def _wire_proprioception(ctx: SimpleNamespace, bus: Any) -> int:
 def _wire_energy_reserve(ctx: SimpleNamespace, bus: Any) -> int:
     """EnergyReserve: API budget as metabolic energy.
 
-    Convergence signals spend energy (processing cost). During
-    circadian REST, bank surplus energy. During ACTIVE, release
+    During circadian REST, bank surplus energy. During ACTIVE, release
     stored energy. Low leptin = hungry = increase scanning.
+
+    NOTE: The convergence drain (energy.release(0.5) per alert) was
+    removed because convergence alerts fire faster than REST phases
+    can refill, permanently locking reserves at 0.0. At 0.0 the
+    organism enters starvation reflex every step, hijacking agent
+    decisions before market intelligence runs. The REST-phase store
+    remains so reserves can actually accumulate.
     """
     energy = getattr(ctx, "energy_reserve", None)
     if energy is None:
         return 0
 
-    from mae_core.market.channels import CH_CONVERGENCE
-
-    def _on_convergence(channel, data):
-        try:
-            energy.release(0.5)
-        except Exception:
-            pass
+    # Convergence drain REMOVED — see note above.
+    # do NOT register a CH_CONVERGENCE callback here that calls energy.release().
 
     def _on_phase_change(channel, data):
         msg = _parse(data)
@@ -246,7 +247,6 @@ def _wire_energy_reserve(ctx: SimpleNamespace, bus: Any) -> int:
         except Exception:
             pass
 
-    bus.register_callback(CH_CONVERGENCE, _on_convergence)
     from mae_core.coordination.circadian_rhythm import CH_PHASE_CHANGE
     bus.register_callback(CH_PHASE_CHANGE, _on_phase_change)
     return 1
