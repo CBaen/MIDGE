@@ -118,7 +118,7 @@ class TestConstruction(unittest.TestCase):
         self.assertFalse(ws._connected)
         self.assertEqual(len(ws._buffers), 0)
         self.assertEqual(ws._pending_signals.qsize(), 0)
-        self.assertEqual(ws._reconnect_delay, 1.0)
+        self.assertEqual(ws._reconnect_delay, 5.0)
 
 
 # ---------------------------------------------------------------------------

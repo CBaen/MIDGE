@@ -121,7 +121,10 @@ class SensingSchedulerMixin:
 
         # Sort descending by score, pick top N
         scored.sort(reverse=True)
+        _cb = getattr(self, "_circuit_breaker", None)
         for _, source in scored[:slots]:
+            if _cb is not None and not _cb.can_call(source):
+                continue  # Circuit breaker blocking this source
             self._total_fetches += 1
             logger.info(
                 "Market sensing: Thompson-guided fetch [%s] (cycle %d)",
@@ -144,6 +147,10 @@ class SensingSchedulerMixin:
 
             if source in self._pending_futures:
                 continue
+
+            _cb = getattr(self, "_circuit_breaker", None)
+            if _cb is not None and not _cb.can_call(source):
+                continue  # Circuit breaker blocking this source
 
             self._total_fetches += 1
             logger.info(

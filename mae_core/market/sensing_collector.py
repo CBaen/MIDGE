@@ -41,14 +41,23 @@ class SensingCollectorMixin:
         if future is None:
             return
 
+        _cb = getattr(self, "_circuit_breaker", None)
         try:
             signals = future.result()
-        except Exception:
+        except Exception as _exc:
             logger.warning("Market sensing: fetch [%s] failed", source_name, exc_info=True)
+            if _cb is not None:
+                _cb.record_failure(source_name, str(_exc))
             signals = []
 
         if not signals:
+            # Empty result counts as a soft failure for circuit breaker purposes
+            # (avoids tripping on legitimately empty responses like after-hours data)
+            # Only record failure if an exception was thrown (handled above).
             return
+
+        if _cb is not None:
+            _cb.record_success(source_name)
 
         self._last_fetch_source = source_name
 
