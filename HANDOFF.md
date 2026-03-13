@@ -5,6 +5,32 @@
 
 ---
 
+## Session 9 (2026-03-12): OPERATIONAL EFFICIENCY EXPEDITION + FIXES
+
+**Guiding Light's directive:** Full expedition into why MIDGE eats but doesn't digest. Then fix what's broken.
+
+### Expedition: Operational Efficiency (`research/expedition-operational-efficiency/`)
+4-team Opus expedition investigated Thompson silence, convergence silence, hypothesis stagnation, cadence conflicts. Full findings in research directory.
+
+**Critical correction discovered during implementation:** Thompson IS learning (93 distributions moved, 13,819 outcomes graded, 18,165 history entries). The "all at prior" claim in prior handoff was a data-reading bug — `v.get("alpha")` on a nested `{"default": {"alpha": ...}}` dict always returned the default. Fix 1 (namespace mismatch) from the expedition was unnecessary.
+
+### Fixes Applied
+1. **Auto causal stories unblock 26 hypotheses** — Added 14 sources to `_DOMAIN_ROLES` in `hypothesis_causal.py` (29→43 sources). Validator in `hypothesis_validator.py` now re-attempts `_get_causal_story()` when it encounters "REQUIRES MANUAL REVIEW" from older hypotheses. All lag_correlation pairs now generate auto stories.
+
+2. **Per-ticker convergence wired** — `check_ticker_convergence(min_domains=3)` runs every step in `market_hooks_steps_core.py` alongside global convergence. Ticker-specific alerts published to EventBus, logged, and registered for outcome tracking. Surfaces "NOC has 5 domains converging" instead of just "bearish globally."
+
+3. **Unknown domain sources mapped** — Added 14 sources to `_SOURCE_DOMAIN_MAP` in `pattern_library.py`. Recovers signals previously classified as "unknown" domain (751 bearish signals at avg strength 0.824).
+
+### Daemon Status
+Running at step 5200+ with `--agents 12 --steps 500 --pace 2.0 --daemon`. Thompson-guided fetching active across all sources. TA predictions start maturing March 13+ (14-day windows from Feb 27 registrations).
+
+### Remaining from expedition (for next session)
+- **Fix FRED macro directionality** — `fred_client.py` and `fred_models.py` already staged in git but have a 400 error (bad series name). 2,361 macro signals mostly neutral — need directional emission.
+- **Add API rate-limit backoff** — per-source failure tracking in sensing scheduler. No backoff currently; failed fetches silently dropped.
+- **2 pre-existing test failures** — `test_replay_history::test_three_domains_fire_alert` (different symbols per signal) and `test_signal_persistence::test_save_load_round_trip_empty` (missing `_DATA_DIR` attr). Neither caused by session 9 changes.
+
+---
+
 ## Session 8 (2026-03-12): CIRCULAR INTELLIGENCE ARCHITECTURE — COMPLETE
 
 **Guiding Light's directive:** "Full circle, do it well, then start her up." Complete all 5 arcs of the circular architecture before restarting the daemon.
