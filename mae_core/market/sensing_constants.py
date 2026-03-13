@@ -83,12 +83,15 @@ TIER_ROUTING: Dict[str, str] = {
     "kalshi_market": "strategic",
 }
 
-# Source names for rotation — 36 sources, 8 concurrent per cadence tick
+# Source names for rotation — 35 sources, 8 concurrent per cadence tick
+# NOTE: "senate" removed 2026-03-13 — senatestockwatcher.com DNS dead, all endpoints
+# return DNS failures. Client code preserved in senate_stock_watcher.py but excluded
+# from rotation so Thompson stops selecting it. Re-add if DNS resolves.
 SOURCE_ROTATION: List[str] = [
     "sec_form4",
     "sec_form8k",
     "congressional",
-    "senate",
+    # "senate",  # DISABLED 2026-03-13: senatestockwatcher.com DNS dead on all endpoints
     "hiring",
     "usa_spending",
     "sam_gov_and_prices",
@@ -143,7 +146,7 @@ _ROTATION_TO_THOMPSON: Dict[str, str] = {
     "sec_form4": "sec_form4",
     "sec_form8k": "sec_form8k",
     "congressional": "congressional",
-    "senate": "senate",
+    # "senate": "senate",  # DISABLED 2026-03-13: senatestockwatcher.com DNS dead
     "hiring": "hiring_tracker",
     "usa_spending": "contract_award",
     "sam_gov_and_prices": "sam_gov",

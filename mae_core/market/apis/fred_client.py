@@ -380,7 +380,9 @@ class FREDClient:
             # Housing (rate-sensitive leading indicator)
             "HOUST", "PERMIT",
             # Commodities (cross-asset convergence anchors)
-            "DCOILWTICO", "GOLDAMGBD228NLBM",
+            # NOTE: GOLDAMGBD228NLBM removed 2026-03-13 — returns HTTP 400 "series does not exist".
+            # Gold price is already covered by GC=F (gold futures) in the watchlist via yfinance.
+            "DCOILWTICO",
             # Forex-critical: yield differentials and dollar strength
             "DGS2", "DGS10", "T10Y3M", "DTWEXBGS",
         ]

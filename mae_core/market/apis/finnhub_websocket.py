@@ -239,12 +239,43 @@ class FinnhubWebSocket:
             except Exception:
                 logger.debug("WebSocket run_forever raised", exc_info=True)
 
+            # If the connection stayed alive for >= 60 s, consider it stable and
+            # reset the backoff counter so the next disconnect starts fresh.
+            if self._connect_time is not None:
+                alive_seconds = time.monotonic() - self._connect_time
+                if alive_seconds >= 60.0:
+                    self._reconnect_delay = 5.0
+                    self._consecutive_failures = 0
+                    logger.debug(
+                        "FinnhubWebSocket: connection was stable (%.0fs) — backoff reset",
+                        alive_seconds,
+                    )
+            self._connect_time = None
+            self._connected = False
+
             if self._running:
-                logger.info(
-                    "FinnhubWebSocket: reconnecting in %.0f s...",
-                    self._reconnect_delay,
-                )
-                time.sleep(self._reconnect_delay)
+                self._consecutive_failures += 1
+
+                # 429 rate-limit: enforce a hard minimum of 60 s regardless of
+                # where the backoff counter currently sits.
+                if self._last_429:
+                    delay = max(self._reconnect_delay, 60.0)
+                    logger.warning(
+                        "FinnhubWebSocket: rate-limited (429) — backing off %ds "
+                        "after %d consecutive failure(s). Slow down.",
+                        int(delay),
+                        self._consecutive_failures,
+                    )
+                    self._last_429 = False
+                else:
+                    delay = self._reconnect_delay
+                    logger.info(
+                        "FinnhubWebSocket: backing off %ds after %d consecutive failure(s)",
+                        int(delay),
+                        self._consecutive_failures,
+                    )
+
+                time.sleep(delay)
                 self._reconnect_delay = min(
                     self._reconnect_delay * 2, self._max_reconnect_delay
                 )
@@ -252,7 +283,9 @@ class FinnhubWebSocket:
     def _on_open(self, ws) -> None:
         """Called once the WebSocket handshake completes."""
         self._connected = True
-        self._reconnect_delay = 1.0  # reset back-off on successful connect
+        self._connect_time = time.monotonic()
+        # Do NOT reset backoff here — wait until the connection proves stable
+        # (>= 60 s alive).  The _run_loop checks this after run_forever returns.
         with self._lock:
             tickers = list(self._tickers)
         logger.info(
@@ -272,11 +305,28 @@ class FinnhubWebSocket:
 
     def _on_error(self, ws, error) -> None:
         """Called on non-fatal WebSocket errors."""
-        logger.debug("FinnhubWebSocket error: %s", error)
+        error_str = str(error)
+        if "429" in error_str:
+            self._last_429 = True
+            logger.warning(
+                "FinnhubWebSocket: received 429 Too Many Requests — "
+                "rate limit hit, will enforce minimum 60s backoff"
+            )
+        else:
+            logger.debug("FinnhubWebSocket error: %s", error)
 
     def _on_message(self, ws, message: str) -> None:
         """Parse incoming Finnhub trade messages. Called in WebSocket thread."""
         try:
+            # 429 can arrive as a plain-text or JSON error message before the
+            # server closes the connection.
+            if "429" in message:
+                self._last_429 = True
+                logger.warning(
+                    "FinnhubWebSocket: 429 Too Many Requests in message — "
+                    "rate limit hit, will enforce minimum 60s backoff"
+                )
+                return
             data = json.loads(message)
             if data.get("type") != "trade":
                 return
