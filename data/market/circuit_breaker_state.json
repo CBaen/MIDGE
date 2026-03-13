@@ -1,0 +1,10 @@
+{
+  "test_source": {
+    "state": "OPEN",
+    "consecutive_failures": 3,
+    "total_failures": 3,
+    "cooldown": 60.0,
+    "tripped_at": 1773437934.1283636,
+    "last_error": "err3"
+  }
+}

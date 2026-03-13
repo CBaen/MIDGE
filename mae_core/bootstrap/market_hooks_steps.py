@@ -84,6 +84,15 @@ def _write_convergence_heartbeat(ctx: SimpleNamespace, step: int) -> None:
         # Kelly
         heartbeat["kelly"] = getattr(ctx, "_latest_kelly", {})
 
+        # SituationBoard snapshot
+        sb = getattr(ctx, "situation_board", None)
+        if sb is not None:
+            try:
+                heartbeat["situation_board"] = sb.get_snapshot()
+                sb.save(Path("data/midge/situation_board.json"))
+            except Exception:
+                logger.debug("SituationBoard snapshot/save failed", exc_info=True)
+
         # Write
         out_dir = Path("data/midge")
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -434,6 +443,28 @@ def _run_slow_cadence_ops(ctx: SimpleNamespace, step: int, _shm, _timer) -> None
                 if _inevitabilities:
                     # Store on ctx for Law 7 validator access
                     ctx.inevitabilities = _inevitabilities
+                    # Publish top 5 inevitabilities to SituationBoard
+                    _sb = getattr(ctx, "situation_board", None)
+                    if _sb is not None:
+                        try:
+                            from mae_core.market.intelligence.situation_board import AnalystFinding
+                            for _iv in _inevitabilities[:5]:
+                                _sb.publish(AnalystFinding(
+                                    analyst_id="deep_analyst",
+                                    ticker=_iv.ticker,
+                                    direction=_iv.direction,
+                                    confidence=_iv.score,
+                                    summary=(_iv.evidence_summary[:200]
+                                             if _iv.evidence_summary else ""),
+                                    evidence=[],
+                                    domains=_iv.domains,
+                                    timestamp=datetime.now().isoformat(),
+                                    step=step,
+                                    decay_hours=4.0,
+                                ))
+                        except Exception:
+                            logger.debug("SituationBoard publish (deep_analyst) failed",
+                                         exc_info=True)
                     logger.info(
                         "DeepAnalyst: top %d inevitabilities (best: %s %s score=%.3f)",
                         len(_inevitabilities),

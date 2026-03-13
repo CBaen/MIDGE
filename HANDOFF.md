@@ -1,7 +1,63 @@
 # MIDGE Handoff
 
-**Last updated:** 2026-03-12
+**Last updated:** 2026-03-13
 **For session history:** `git log --oneline`
+
+---
+
+## Session 10 (2026-03-13): API PROTECTION + ORPHAN WIRING + SITUATION BOARD
+
+**Guiding Light's directive:** Fix broken wires, protect APIs, build shared workspace for analysts.
+
+### Phase 1: API Protection & Health Fixes
+
+1. **Finnhub WebSocket exponential backoff** — Backoff range 5s→300s, 60s minimum on 429 rate-limit responses, stability detection before reconnect. Prevents hammering on reconnect loops.
+
+2. **Senate stock watcher removed** — DNS dead, removed from fetch rotation. Sources: 37 → 35 active.
+
+3. **FRED gold series removed** — `GOLDAMGBD228NLBM` returned HTTP 400 every cycle. Removed. GC=F (gold futures) already covers gold price signals.
+
+4. **Global API CircuitBreaker built** — `mae_core/market/intelligence/circuit_breaker.py` (~200 lines). 3 consecutive failures → OPEN state. Exponential cooldown 60s→1800s. Wired into `sensing_scheduler.py` and `sensing_collector.py`. All 35 sources protected.
+
+5. **Convergence dedup cooldown** — Reduced 4h→1h in `convergence_alerter.py`. Both bullish and bearish alerts now qualify at 3+ domains within the tighter window.
+
+6. **Convergence diagnostic logging** — Added to `convergence_detection.py`. Shows domain count and dedup remaining per check. Debugging convergence silence is now possible.
+
+### Phase 2: Connect Orphaned Systems
+
+1. **SQLite thread safety fixed** — `raw_store_base.py`: `check_same_thread=False`. SEC Form 4 data was failing every store operation silently.
+
+2. **Tiered alerter signal fan-out fixed** — `sensing_collector.py`. Signals were routed to only ONE tier per source instead of ALL three. Tactical, strategic, and thematic alerters now all receive every signal.
+
+3. **DeepAnalyst EventBus subscriber added** — `market_hooks_eventbus.py`. Results now logged on publish. DeepAnalyst had no observer.
+
+4. **Validator 3 (inevitabilities→paper trade gate)** — Confirmed already wired by prior sibling. No change needed.
+
+### Phase 3: SituationBoard
+
+- **New:** `mae_core/market/intelligence/situation_board.py` (197 lines). Thread-safe shared workspace for analyst findings. `AnalystFinding` dataclass, `publish()`/`get_findings()`/`get_snapshot()`/`get_ticker_consensus()`/`save()`/`load()`.
+- **Bootstrapped** in `market_systems.py`. Persists to `data/midge/situation_board.json`.
+- **Heartbeat integration:** Situation snapshot included in every convergence heartbeat write.
+- **DeepAnalyst feed:** Top 5 inevitabilities published to SituationBoard every 200 steps.
+
+### Research Council: Multi-Analyst Architecture
+
+- Full 4-agent council at `research/council-analyst-architecture/`.
+- Consensus: Build SituationBoard now (done). Three specialist analysts (Causal, Quality, Temporal) gated on data maturity (50+ combo stats, 10+ Granger findings).
+- Key finding: Temporal Analyst (timing/energy/sequence specialist) is a genuine innovation — no existing trading framework has one.
+- Devil's Advocate caught live SQLite thread error and data immaturity (4 combo stats, 2 Granger findings, template win rates all 1.0) — changed other agents' scores. Data too immature for specialists today.
+
+### Daemon Status
+
+Running with `--agents 12 --steps 500 --pace 2.0 --daemon`. All fixes active. Convergence alerts will fire at 1h intervals. Circuit breaker protecting all 35 sources.
+
+### Remaining for Next Session
+
+- **FRED macro directionality fix** — 2,361 neutral signals need directional emission (already staged in git as `fred_client.py` and `fred_models.py` changes with a 400 error on a bad series name)
+- **2+ pre-existing test failures** — `test_replay_history`, `test_signal_persistence` (`_DATA_DIR` attr missing)
+- **Three specialist analysts** — gated on 50+ combo stats, 10+ Granger findings
+- **Wire tiered alerter output to SituationBoard** — they receive signals but output still routes to `ctx._market_advisory`
+- **Measure DeepAnalyst cost** — performance at 733K signals unknown
 
 ---
 
@@ -353,7 +409,7 @@ All step cadences reduced ~2.5x for accelerated learning:
 
 ## What Is MIDGE
 
-MIDGE is Mae differentiated for financial markets. She's an inevitability surfacer — a living organism that observes patterns across 37 data sources, finds where converging forces make outcomes structurally inevitable, and trades on them.
+MIDGE is Mae differentiated for financial markets. She's an inevitability surfacer — a living organism that observes patterns across 35 data sources, finds where converging forces make outcomes structurally inevitable, and trades on them.
 
 Guiding Light's vision: MIDGE as personal autonomous trader across ALL markets — stocks (Alpaca), futures/forex (FTMO), crypto (exchanges), prediction markets (Kalshi). Not one venue — all of them.
 
@@ -362,12 +418,14 @@ Guiding Light's vision: MIDGE as personal autonomous trader across ALL markets �
 ## What Works Right Now
 
 ### The Brain
-- **37 data sources** feeding signals through 12 concurrent workers, 25-step rotation cadence (36 rotation slots; Kalshi prediction market wired as "prediction_market" domain)
-- **Convergence engine** (crown jewel) — fires when 3+ independent domains agree on direction
+- **35 data sources** feeding signals through 12 concurrent workers, 25-step rotation cadence (36 rotation slots; Kalshi prediction market wired as "prediction_market" domain; senate stock watcher removed Session 10)
+- **Convergence engine** (crown jewel) — fires when 3+ independent domains agree on direction; dedup cooldown 1h (was 4h); diagnostic logging added
+- **CircuitBreaker** — protects all 35 sources, 3-failure OPEN state, 60s→1800s exponential cooldown
 - **Thompson Bayesian learning** — 101 distributions with 17,263 historical updates + 13,065 graded outcomes. Brain is learning.
 - **Signal translator** — ConvergenceAlert → ExecutableSignal with ATR-based stop-loss/take-profit
 - **Pattern archaeology** — 223K fingerprints, 39 templates, live matching via PatternWatcher
 - **WorldModel causal graph** — 114 nodes, 102 edges, forward/backward cascade tracking
+- **SituationBoard** — thread-safe shared workspace for analyst findings, persists to `data/midge/situation_board.json`
 
 ### The Body
 - **149 systems** (92 core + 57 market), 33-layer bootstrap, 157 holons, 428 connections
@@ -378,15 +436,16 @@ Guiding Light's vision: MIDGE as personal autonomous trader across ALL markets �
 ### Execution
 - **Alpaca paper trading: WIRED.** Keys in `.env`. Convergence alerts auto-submit bracket orders (entry + SL + TP) for US equities. DrawdownMonitor circuit breaker + SelfMonitor anomaly detection gate all trades. Forex/futures/crypto tickers filtered out (Alpaca = equities only).
 - **FTMO backtester: PORTED.** `ftmo_engine.py` + `ftmo_config.py` in `mae_core/market/execution/`. Simulates challenge constraints (daily loss, total DD, profit target). Not yet validated against MIDGE signals.
-- **Kalshi prediction market: WIRED.** `kalshi-python-sync 3.9.0`, RSA-PSS auth, demo mode default. Client reads market movers (probability shifts), adapter converts to "prediction_market" domain signals. 36 rotation slots, 37 data sources total. Keys needed: `KALSHI_API_KEY_ID`, `KALSHI_PRIVATE_KEY_PATH`.
+- **Kalshi prediction market: WIRED.** `kalshi-python-sync 3.9.0`, RSA-PSS auth, demo mode default. Client reads market movers (probability shifts), adapter converts to "prediction_market" domain signals. 36 rotation slots, 35 data sources total. Keys needed: `KALSHI_API_KEY_ID`, `KALSHI_PRIVATE_KEY_PATH`.
 
 ### Risk
 - **DrawdownMonitor** — 40% max DD circuit breaker, halts all paper trades
 - **SystemHealthMonitor** — 8 subsystems tracked, tier-based health (Green→Red)
 - **SelfMonitor** — behavioral anomaly detection (runaway rate, direction bias, ticker flooding)
+- **CircuitBreaker** — per-source failure protection, exponential cooldown, OPEN/CLOSED/HALF_OPEN states
 
 ### Data Infrastructure
-- **SQLite** — 10 databases in `data/market/raw/` (raw data ingest)
+- **SQLite** — 10 databases in `data/market/raw/` (raw data ingest); thread-safe (check_same_thread=False fixed Session 10)
 - **DuckDB** — in-process analytical queries across SQLite (zero migration)
 - **Neo4j Community** — Docker container `midge-neo4j` (causal knowledge graph, ports 7474/7687)
 - **Qdrant** — Docker container (semantic pattern similarity, port 6333/6335)
@@ -399,10 +458,11 @@ Guiding Light's vision: MIDGE as personal autonomous trader across ALL markets �
 **CRITICAL DIRECTIVE: No more building until MIDGE is running and learning. Fix, feed, run, prove.**
 
 1. **Start the daemon** — `python main.py --daemon --agents 12 --steps 500 --pace 2.0` — MIDGE will sense, converge, and paper-trade on Alpaca automatically. Keep it running 24/7. Every hour offline is learning lost.
-2. **Historical backtesting at scale** — not 1 month, not 5 tickers. Everything.
-3. **FTMO validation** — run historical convergence alerts through ftmo_engine.py
-4. **Kalshi live verification** — SDK wired, verify against demo env
-5. See `midge-queue.md` for full prioritized list
+2. **FRED macro directionality** — 2,361 neutral macro signals need directional emission fix.
+3. **Historical backtesting at scale** — not 1 month, not 5 tickers. Everything.
+4. **FTMO validation** — run historical convergence alerts through ftmo_engine.py
+5. **Kalshi live verification** — SDK wired, verify against demo env
+6. See `midge-queue.md` for full prioritized list
 
 ---
 
@@ -416,10 +476,13 @@ Guiding Light's vision: MIDGE as personal autonomous trader across ALL markets �
 | `mae_core/bootstrap/market_systems.py` | System instantiation (444 lines) |
 | `mae_core/market/intelligence/convergence_alerter.py` | Crown jewel — multi-domain synthesis |
 | `mae_core/market/intelligence/thompson_sampler.py` | Bayesian learning with replay |
+| `mae_core/market/intelligence/circuit_breaker.py` | API source protection (Session 10) |
+| `mae_core/market/intelligence/situation_board.py` | Shared analyst workspace (Session 10) |
 | `mae_core/market/execution/signal_translator.py` | ConvergenceAlert → ExecutableSignal |
 | `mae_core/market/execution/ftmo_engine.py` | FTMO challenge backtester |
 | `mae_core/market/sensing_hook.py` | MarketSensingHook — data fetching orchestrator |
 | `data/midge/watchlist.json` | Tickers + keywords MIDGE watches |
+| `data/midge/situation_board.json` | SituationBoard persistence |
 
 **Backbone sub-modules** (split during decomposition):
 - `fractal_act.py` → re-export hub: `fractal_act_subsystem.py`, `fractal_act_organ.py`, `fractal_act_organism.py`
@@ -476,6 +539,7 @@ Guiding Light's vision: MIDGE as personal autonomous trader across ALL markets �
 | Competitive Edge | `research/expedition-competitive-edge/` | Cross-domain convergence is MIDGE's structural moat |
 | Evolution Blueprint | `research/evolution-blueprint/` | 10-team architectural roadmap |
 | Phase 0 Measurements | `research/phase0-measurements.md` | 3.34:1 payoff ratio, 19.9% convergence WR |
+| Multi-Analyst Architecture | `research/council-analyst-architecture/` | SituationBoard built; 3 specialists gated on data maturity |
 
 ---
 
@@ -491,6 +555,6 @@ python main.py --agents 3 --steps 30           # Smoke test
 
 - **149 systems** (92 core + 57 market), **4,700+ tests**, **157 holons**, **428 connections**
 - **123 market files** (34 API + 12 edge + 36 intelligence + 8 signal_adapters + 10 archaeology + 6 execution + 17 root)
-- **37 sources**, **13 domains**, **41 adapters**, **12 concurrent fetches**, **25-step cadence**
+- **35 sources**, **13 domains**, **41 adapters**, **12 concurrent fetches**, **25-step cadence**
 - **510 tickers** (S&P 500 + forex/futures/crypto proxies)
 - **33-layer bootstrap**, **14 mixins** on MycelialAgent
