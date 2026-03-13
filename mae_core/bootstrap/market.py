@@ -148,3 +148,9 @@ def _wire_bio_systems(ctx: SimpleNamespace) -> None:
         wire_bio_systems_to_market(ctx)
     except Exception:
         logger.debug("Bio-market wiring failed", exc_info=True)
+
+    # Arc 2: Wire HAVEN suspicion flags into convergence alerter
+    _alerter = getattr(ctx, "convergence_alerter", None)
+    _haven = getattr(ctx, "_haven_market_flags", None)
+    if _alerter is not None and _haven is not None and hasattr(_alerter, "set_haven_flags"):
+        _alerter.set_haven_flags(_haven)

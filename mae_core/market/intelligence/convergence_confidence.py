@@ -391,6 +391,18 @@ class ConvergenceConfidenceMixin(ConvergenceLagScoringMixin, ConvergenceBufferMi
             except Exception:
                 pass
 
+        # Arc 2: HAVEN bio-system source suspicion — downweight flagged sources.
+        if self._haven_flags:
+            try:
+                max_suspicion = 0.0
+                for src, score in self._haven_flags.items():
+                    if score > max_suspicion:
+                        max_suspicion = score
+                if max_suspicion > 0.5:
+                    confidence = max(0.05, confidence * (1.0 - max_suspicion * 0.2))
+            except Exception:
+                pass
+
         return confidence
 
     def _compute_coherence_score(self) -> dict:

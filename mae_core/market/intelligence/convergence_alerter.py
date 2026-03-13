@@ -258,3 +258,7 @@ class ConvergenceAlerter(ConvergenceConfidenceMixin, ConvergenceDetectionMixin):
         # Loaded from disk on startup so alerter has data from prior runs.
         self._lag_findings: List = []
         self._load_lag_findings()
+
+    def set_haven_flags(self, flags_dict):
+        """Wire HAVEN bio-system suspicion flags for source trust modulation."""
+        self._haven_flags = flags_dict
