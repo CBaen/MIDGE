@@ -171,7 +171,7 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                     logger.debug("Drift detector step failed", exc_info=True)
 
         # Every 200 steps: Bayesian forgetting
-        if step % 200 == 0:
+        if step % 75 == 0:
             sampler = getattr(ctx, "thompson_sampler", None)
             if sampler is not None:
                 try:
@@ -208,7 +208,7 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                 _run_octopus_dispatch(colony, step)
 
         # Every 500/1000/5000 steps: slow cadence ops
-        if step % 500 == 0 or step % 1000 == 0 or step % 5000 == 0:
+        if step % 200 == 0 or step % 500 == 0 or step % 2000 == 0:
             _run_slow_cadence_ops(ctx, step, _shm, _timer)
 
         # Every step: hypothesis engine (manages its own cadence internally)

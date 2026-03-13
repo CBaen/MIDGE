@@ -35,14 +35,30 @@
 ### Arc 5: Risk → Decisions + Observability (Session 8)
 - **NEW:** 8 orphaned channels wired: contradiction→log, absence→Octopus investigation, somatic anticipation→focused attention, drift→regime reclassification, granger finding→hypothesis generation, plus 3 risk channels
 - **NEW:** 3 new channel constants (CH_DRIFT_DETECTED, CH_GRANGER_FINDING, CH_DEEP_ANALYSIS)
-- **NEW:** Circular health check every 500 steps — reports which arcs are active vs dormant
+- **NEW:** Circular health check every 200 steps (growth sprint) — reports which arcs are active vs dormant
+
+### Growth Sprint (Session 8, late)
+All step cadences reduced ~2.5x for accelerated learning:
+
+| Operation | Was | Now |
+|-----------|-----|-----|
+| Signal fetching | 25 steps | 10 steps |
+| Outcome evaluation | 200 steps | 75 steps |
+| Thompson forgetting | 200 steps | 75 steps |
+| Slow cadence gate | 500/1000/5000 | 200/500/2000 |
+| Raw data analysis | 100 steps | 50 steps |
+| Lag/Granger/PostMortem/DeepAnalyst | 500 steps | 200 steps |
+| Thompson calibration | 1000 steps | 500 steps |
+| Backtest/Excavation | 5000 steps | 2000 steps |
+| Circular health check | 5000 steps | 200 steps |
 
 **Files modified (Session 8):**
-- `mae_core/market/sensing_hook.py` — circadian scaling
+- `mae_core/market/sensing_hook.py` — circadian scaling + growth sprint cadences (fetch 10, outcome 75)
 - `mae_core/market/sensing_scheduler.py` — dynamic concurrent slot budget
 - `mae_core/bootstrap/market_hooks_eventbus.py` — risk + orphan + track record subscribers
 - `mae_core/bootstrap/market_hooks_sensing.py` — risk halt guard, circadian wiring, Validator 5
-- `mae_core/bootstrap/market_hooks_steps.py` — circular health check
+- `mae_core/bootstrap/market_hooks_steps.py` — circular health check (moved to 200-step cadence), growth sprint cadences
+- `mae_core/bootstrap/market_hooks_steps_core.py` — Thompson forget 75 steps, slow cadence gate 200/500/2000
 - `mae_core/market/intelligence/convergence_alerter.py` — pattern_memory parameter + setter
 - `mae_core/market/intelligence/convergence_confidence.py` — Qdrant recall modifier
 - `mae_core/bootstrap/market_systems.py` — pattern_memory wiring to convergence alerter
@@ -51,14 +67,20 @@
 - `mae_core/market/market_actions.py` — outcome-blended agent rewards
 - `mae_core/market/channels.py` — 3 new channel constants
 
-**Test status:** 110 passed (key module tests), all imports clean.
+**Test status:** 35 passed (targeted convergence/hypothesis tests), all imports clean. Full suite running.
+
+**Daemon status:** RUNNING. Restarted with `--agents 12 --steps 500 --pace 2.0`. Growth sprint cadences active. Reached step 3817+ and stepping steadily.
+
+**Known observations:**
+- Finnhub WebSocket hits 429 rate limits frequently — reconnects with exponential backoff (pre-existing)
+- "Advisory: unregistered connection market -> event_bus" (12 warnings at sensing time) — from new orphan channel subscribers, advisory only
+- Step registration log message shows old cadence values (cosmetic — actual runtime uses new values)
 
 **NEXT STEPS:**
-1. **Restart daemon** — old PID 112216 must be killed and restarted to pick up circular wiring
-2. **Watch the circular health check** — at step 500, verify all 5 arcs report as active
-3. **Monitor for bugs** — MIDGE is large and complex; the circular wiring touches many systems
-4. **Qdrant must be running** for Arc 3 (memory recall) to be active
-5. **Full test suite** needs a clean run (the background test run timed out — run manually)
+1. **Observe** — watch step 4000 health check, monitor for bugs
+2. **Qdrant must be running** for Arc 3 (memory recall) to be active
+3. **Fix Finnhub WebSocket** — the constant 429 reconnection loops slow stepping
+4. **After growth sprint stabilizes**, consider reverting cadences to production values
 
 ---
 

@@ -227,7 +227,7 @@ def _run_raw_analyst(ctx: SimpleNamespace, step: int) -> None:
     analyst = getattr(ctx, "raw_data_analyst", None)
     if analyst is None:
         return
-    if step % 100 != 0:
+    if step % 50 != 0:
         return
     try:
         enriched_signals = analyst.analyze(step)
@@ -312,7 +312,7 @@ def _run_slow_cadence_ops(ctx: SimpleNamespace, step: int, _shm, _timer) -> None
     # --- Every 100 steps: raw data cross-domain analysis ---
     _run_raw_analyst(ctx, step)
 
-    if step % 500 == 0:
+    if step % 200 == 0:
         lag = getattr(ctx, "lag_correlation_analyzer", None)
         if lag is not None:
             try:
@@ -519,7 +519,10 @@ def _run_slow_cadence_ops(ctx: SimpleNamespace, step: int, _shm, _timer) -> None
             except Exception as exc:
                 logger.debug("CascadeTracker expire_stale failed", exc_info=True)
 
-    if step % 1000 == 0:
+        # Arc 5: Circular flow health check (growth sprint: every 200 steps)
+        _run_circular_health_check(ctx, step)
+
+    if step % 500 == 0:
         calibrator = getattr(ctx, "thompson_calibrator", None)
         if calibrator is not None:
             try:
@@ -531,16 +534,13 @@ def _run_slow_cadence_ops(ctx: SimpleNamespace, step: int, _shm, _timer) -> None
             except Exception:
                 logger.debug("Thompson calibration step failed", exc_info=True)
 
-    if step % 5000 == 0:
+    if step % 2000 == 0:
         scheduler = getattr(ctx, "backtest_scheduler", None)
         if scheduler is not None:
             try:
                 scheduler.check_and_schedule()
             except Exception:
                 logger.debug("Backtest scheduler check failed", exc_info=True)
-
-        # Arc 5: Circular flow health check
-        _run_circular_health_check(ctx, step)
 
         daemon = getattr(ctx, "excavation_daemon", None)
         if daemon is not None:
