@@ -64,9 +64,22 @@ class OrganismStateOutputsMixin:
         Returns an action string if an override is active, or None if the
         normal decision cascade should proceed. Priority order (highest
         first): pain > stability > oxygen > energy > toxin.
+
+        MIDGE: disabled — fictional physiology harms trading daemon.
+        All five reflex conditions (pain, stability, oxygen, toxin, homeostasis)
+        map to biological metaphors with no real-world meaning for a software
+        trading daemon. When active, they silently override market intelligence
+        and force agents to "rest" during the moments MIDGE most needs to act
+        (high volatility, many convergence alerts, threat detection events).
+        The dead code below is preserved for mae-core compatibility and future
+        repurposing if real market equivalents are defined for these signals.
         """
+        # MIDGE: disabled — fictional physiology harms trading daemon
+        return None
+
+        # --- Dead code below: mae-core compatibility, do not remove ---
         # Priority 1: Acute pain withdrawal
-        if self._pain_load > 0.8:
+        if self._pain_load > 0.8:  # noqa: unreachable
             return "rest"
 
         # Priority 2: Vertigo stabilization
@@ -77,14 +90,9 @@ class OrganismStateOutputsMixin:
         if self._oxygen_level < 0.3:
             return "rest"
 
-        # Priority 4: Starvation foraging — neutralized.
-        # Returning "explore" here hijacks every agent decision when reserves
-        # are at 0.0 (which is permanent when convergence alerts drain faster
-        # than REST phases refill). Returning None lets market intelligence
-        # run normally. The check is preserved so this can be re-enabled if
-        # the energy balance is fixed at the source.
+        # Priority 4: Starvation foraging — previously neutralized.
         if self._energy_critical:
-            return None  # was "explore" — see comment above
+            return None
 
         # Priority 5: Kidney stress
         if self._toxin_load > 4.0:
