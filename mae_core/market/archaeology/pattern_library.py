@@ -457,6 +457,18 @@ class PatternLibrary:
         "convergence_alert": "convergence",
         # Real-economy
         "eia_energy": "energy",
+        # Previously unmapped sources (751 "unknown" signals recovered)
+        "insider_cluster": "insider", "openinsider_cluster": "insider",
+        "finviz_insider": "insider",
+        "senate": "government",
+        "contract_prediction": "contracts", "hiring_tracker": "contracts",
+        "social_text": "sentiment",
+        "yahoo_rss": "events",
+        "finnhub_economic": "macro", "fred_yields": "macro",
+        "usda_agriculture": "macro",
+        "polygon": "technical",
+        "binance_funding": "positioning",
+        "kalshi_market": "events",
     }
 
     @classmethod
