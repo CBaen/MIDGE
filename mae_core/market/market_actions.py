@@ -47,6 +47,16 @@ def act_market(agent: Any, action_type: str) -> Optional[float]:
 
     try:
         reward = handler(agent)
+        # Arc 4: Blend agent track record into reward
+        _ctx = getattr(agent, "_model_ctx_ref", None)
+        _track_records = getattr(_ctx, "_agent_track_records", None) if _ctx is not None else None
+        if _track_records and role in _track_records:
+            _rec = _track_records[role]
+            _total = _rec["wins"] + _rec["losses"]
+            if _total >= 5:  # Only blend after 5+ outcomes
+                _wr = _rec["wins"] / _total
+                _outcome_reward = _wr  # Win rate as reward [0, 1]
+                reward = reward * 0.7 + _outcome_reward * 0.3  # 30% from outcomes
         return max(0.0, min(0.8, reward))  # Clamp to [0.0, 0.8]
     except Exception:
         logger.debug("Market action failed: %s/%s", role, action_type, exc_info=True)

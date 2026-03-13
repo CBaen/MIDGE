@@ -58,9 +58,18 @@ class HypothesisGenerator:
         self,
         registry: HypothesisRegistry,
         lag_data_path: Path = None,
+        granger_data_path: Path = None,
     ):
         self._registry = registry
         self._lag_data_path = lag_data_path or (DATA_DIR / "lag_correlations.json")
+        if granger_data_path is not None:
+            self._granger_data_path = granger_data_path
+        elif lag_data_path is not None:
+            # When a custom lag path is provided (e.g. in tests), look for
+            # granger file alongside it so tests stay isolated.
+            self._granger_data_path = lag_data_path.parent / "granger_causality.json"
+        else:
+            self._granger_data_path = DATA_DIR / "granger_causality.json"
 
         # Derive pair outcomes path from registry's data_dir so tests using
         # tmp_path registries get isolated persistence (no cross-test contamination).
@@ -333,7 +342,7 @@ class HypothesisGenerator:
         Maps Granger fields to the same dict shape as lag_correlations.json so
         _finding_to_hypothesis() can process them without branching.
         """
-        granger_path = DATA_DIR / "granger_causality.json"
+        granger_path = self._granger_data_path
         if not granger_path.exists():
             return []
         try:
