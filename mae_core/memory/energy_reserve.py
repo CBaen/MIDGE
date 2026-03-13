@@ -195,11 +195,15 @@ class EnergyReserve:
                     "step": self._step_count,
                     "message": "STARVATION: energy reserves critically low",
                 })
-                logger.warning(
-                    "STARVATION ALERT: reserves=%.1f (critical=%.1f)",
-                    self._reserves,
-                    self._min_critical,
-                )
+                # Throttled: log only once every 500 steps to avoid flooding.
+                # At 0.0 reserves this fires every step — that's thousands of
+                # identical warnings per session with zero diagnostic value.
+                if self._step_count % 500 == 0:
+                    logger.warning(
+                        "STARVATION ALERT: reserves=%.1f (critical=%.1f)",
+                        self._reserves,
+                        self._min_critical,
+                    )
 
         # Reserves full alert
         if self.is_full():

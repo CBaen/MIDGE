@@ -93,7 +93,7 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
         colony = getattr(ctx, "octopus_colony", None)
         if colony is None:
             return
-        msg = data if isinstance(data, dict) else {}
+        msg = (json.loads(data) if isinstance(data, str) else data) if data else {}
         direction = msg.get("direction", "neutral")
         # Extract ticker from signal symbol fields (global convergence
         # partials don't carry a top-level ticker).
@@ -136,7 +136,7 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
 
         def _on_signal_causal_watch(channel, data):
             try:
-                msg = data if isinstance(data, dict) else {}
+                msg = (json.loads(data) if isinstance(data, str) else data) if data else {}
                 source = msg.get("source", "")
                 metadata = msg.get("metadata", {})
                 ticker = (
@@ -254,7 +254,7 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
         def _on_signal_cascade_check(channel, data):
             _shm_ct = getattr(ctx, "system_health_monitor", None)
             try:
-                msg = data if isinstance(data, dict) else {}
+                msg = (json.loads(data) if isinstance(data, str) else data) if data else {}
                 ticker = msg.get("symbol", "") or msg.get("metadata", {}).get("symbol", "")
                 direction = msg.get("direction", "")
                 if ticker and direction in ("bullish", "bearish"):
@@ -268,7 +268,7 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
         def _on_convergence_register_cascade(channel, data):
             _shm_ct = getattr(ctx, "system_health_monitor", None)
             try:
-                msg = data if isinstance(data, dict) else {}
+                msg = (json.loads(data) if isinstance(data, str) else data) if data else {}
                 alert_id = msg.get("alert_id", "")
                 ripples = msg.get("ripple_effects", [])
                 if not alert_id or not ripples:
@@ -307,7 +307,7 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
 
         def _on_cascade_confirmed(channel, data):
             try:
-                msg = data if isinstance(data, dict) else {}
+                msg = (json.loads(data) if isinstance(data, str) else data) if data else {}
                 chain_id = msg.get("chain_id", "")
                 trigger = msg.get("trigger", "")
                 confirmed_count = msg.get("confirmed_count", 0)
@@ -371,7 +371,7 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
 
     def _on_hypothesis_fired(channel, data):
         try:
-            msg = data if isinstance(data, dict) else {}
+            msg = (json.loads(data) if isinstance(data, str) else data) if data else {}
             trigger_source = msg.get("trigger_source", "")
             trigger_symbol = msg.get("trigger_symbol", "")
             expected_direction = msg.get("expected_direction", "")
@@ -406,7 +406,7 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
     )
 
     def _on_drawdown_warning(channel, data):
-        msg = data if isinstance(data, dict) else {}
+        msg = (json.loads(data) if isinstance(data, str) else data) if data else {}
         ctx._drawdown_warning = msg
         logger.info("Risk: drawdown warning received — %s", msg.get("message", ""))
 
@@ -429,11 +429,22 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
     )
 
     def _on_contradiction_detected(channel, data):
-        msg = data if isinstance(data, dict) else {}
-        logger.info(
+        msg = (json.loads(data) if isinstance(data, str) else data) if data else {}
+        dominant = msg.get("dominant_direction", "?")
+        # Publisher sends bullish_count/bearish_count, not minority_direction.
+        # Derive minority as the non-dominant side with votes.
+        bullish_count = msg.get("bullish_count", 0)
+        bearish_count = msg.get("bearish_count", 0)
+        if dominant == "bullish" and bearish_count > 0:
+            minority = "bearish"
+        elif dominant == "bearish" and bullish_count > 0:
+            minority = "bullish"
+        else:
+            minority = "?"
+        logger.debug(
             "Contradiction: %s vs %s (coherence=%.2f)",
-            msg.get("dominant_direction", "?"),
-            msg.get("minority_direction", "?"),
+            dominant,
+            minority,
             msg.get("coherence", 0.0),
         )
         ctx._last_contradiction = msg

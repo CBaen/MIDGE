@@ -77,9 +77,14 @@ class OrganismStateOutputsMixin:
         if self._oxygen_level < 0.3:
             return "rest"
 
-        # Priority 4: Starvation foraging
+        # Priority 4: Starvation foraging — neutralized.
+        # Returning "explore" here hijacks every agent decision when reserves
+        # are at 0.0 (which is permanent when convergence alerts drain faster
+        # than REST phases refill). Returning None lets market intelligence
+        # run normally. The check is preserved so this can be re-enabled if
+        # the energy balance is fixed at the source.
         if self._energy_critical:
-            return "explore"
+            return None  # was "explore" — see comment above
 
         # Priority 5: Kidney stress
         if self._toxin_load > 4.0:
