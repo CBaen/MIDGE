@@ -183,6 +183,7 @@ class ConvergenceAlerter(ConvergenceConfidenceMixin, ConvergenceDetectionMixin):
         correlation_tracker=None,
         world_model=None,
         quorum_space=None,
+        pattern_memory=None,
     ):
         self.min_domains = min_domains
         self.min_strength = min_strength
@@ -200,6 +201,7 @@ class ConvergenceAlerter(ConvergenceConfidenceMixin, ConvergenceDetectionMixin):
         self._economic_calendar = economic_calendar
         self._correlation_tracker = correlation_tracker
         self._quorum_space = quorum_space
+        self._pattern_memory = pattern_memory
         self._haven_flags = None  # Set via set_haven_flags() — bio HAVEN suspicion scores
         self._cached_regime = ("default", 0.0)  # (regime_str, timestamp)
 
@@ -262,3 +264,7 @@ class ConvergenceAlerter(ConvergenceConfidenceMixin, ConvergenceDetectionMixin):
     def set_haven_flags(self, flags_dict):
         """Wire HAVEN bio-system suspicion flags for source trust modulation."""
         self._haven_flags = flags_dict
+
+    def set_pattern_memory(self, pm):
+        """Wire PatternMemory after bootstrap (two-phase init — pattern_memory is constructed last)."""
+        self._pattern_memory = pm

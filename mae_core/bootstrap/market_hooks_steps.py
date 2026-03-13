@@ -258,6 +258,51 @@ def _run_raw_analyst(ctx: SimpleNamespace, step: int) -> None:
         logger.debug("_run_raw_analyst failed", exc_info=True)
 
 
+def _run_circular_health_check(ctx: SimpleNamespace, step: int) -> None:
+    """Verify all 5 arcs of the circular architecture carried data.
+
+    Observability, not enforcement — tells us which arcs are active vs dormant.
+    """
+    arcs = {}
+
+    # Arc 1: Outcomes → Advisors (CH_PREDICTION_RESULT published?)
+    _bus = getattr(ctx, "bus", None)
+    if _bus is not None:
+        # Check if outcome collector has bus wired
+        _oc = getattr(ctx, "outcome_collector", None)
+        arcs["arc1_outcomes_to_advisors"] = _oc is not None and getattr(_oc, "_bus", None) is not None
+    else:
+        arcs["arc1_outcomes_to_advisors"] = False
+
+    # Arc 2: Advisors → Decisions (bio caution or HAVEN flags set?)
+    _caution = getattr(ctx, "_market_caution", None)
+    _haven = getattr(ctx, "_haven_market_flags", None)
+    arcs["arc2_advisors_to_decisions"] = _caution is not None or _haven is not None
+
+    # Arc 3: Memory → Observer (pattern_memory available?)
+    _pmem = getattr(ctx, "pattern_memory", None)
+    arcs["arc3_memory_to_observer"] = _pmem is not None and getattr(_pmem, "is_available", False)
+
+    # Arc 4: Agents ↔ Market (track records populated?)
+    _tracks = getattr(ctx, "_agent_track_records", None)
+    arcs["arc4_agents_market"] = _tracks is not None and len(_tracks) > 0
+
+    # Arc 5: Risk → Decisions (risk channels wired?)
+    arcs["arc5_risk_to_decisions"] = hasattr(ctx, "_risk_halt") or hasattr(ctx, "_drawdown_warning")
+
+    active = sum(1 for v in arcs.values() if v)
+    total = len(arcs)
+
+    logger.info(
+        "Circular health: %d/%d arcs active — %s",
+        active, total,
+        ", ".join(f"{k}={'OK' if v else 'DORMANT'}" for k, v in arcs.items()),
+    )
+
+    # Store for external monitoring
+    ctx._circular_health = arcs
+
+
 def _run_slow_cadence_ops(ctx: SimpleNamespace, step: int, _shm, _timer) -> None:
     """Run every-500-step analysis: lag-correlation, Granger causality, post-mortem.
 
@@ -493,6 +538,9 @@ def _run_slow_cadence_ops(ctx: SimpleNamespace, step: int, _shm, _timer) -> None
                 scheduler.check_and_schedule()
             except Exception:
                 logger.debug("Backtest scheduler check failed", exc_info=True)
+
+        # Arc 5: Circular flow health check
+        _run_circular_health_check(ctx, step)
 
         daemon = getattr(ctx, "excavation_daemon", None)
         if daemon is not None:

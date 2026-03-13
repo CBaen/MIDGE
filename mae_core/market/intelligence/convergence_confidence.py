@@ -381,6 +381,31 @@ class ConvergenceConfidenceMixin(ConvergenceLagScoringMixin, ConvergenceBufferMi
             except Exception:
                 pass
 
+        # Arc 3: Memory recall — consult Qdrant for similar past situations
+        if primary_ticker and self._pattern_memory is not None:
+            try:
+                if getattr(self._pattern_memory, "is_available", False):
+                    _desc = f"{primary_ticker} {direction} domains:{','.join(sorted(domains_seen))}"
+                    _recalls = self._pattern_memory.recall_similar(_desc, limit=3)
+                    if _recalls:
+                        _won_scores = []
+                        _lost_scores = []
+                        for _r in _recalls:
+                            _meta = _r.get("metadata", {}) if isinstance(_r, dict) else {}
+                            _score = _r.get("score", 0.5) if isinstance(_r, dict) else 0.5
+                            if _meta.get("outcome") == "win":
+                                _won_scores.append(_score)
+                            elif _meta.get("outcome") == "loss":
+                                _lost_scores.append(_score)
+                        if _won_scores and not _lost_scores:
+                            _avg = sum(_won_scores) / len(_won_scores)
+                            confidence = min(0.95, confidence * (1.0 + 0.1 * _avg))
+                        elif _lost_scores and not _won_scores:
+                            _avg = sum(_lost_scores) / len(_lost_scores)
+                            confidence = max(0.05, confidence * (1.0 - 0.1 * _avg))
+            except Exception:
+                pass
+
         # Combo Thompson — per-combination historical win rate adjustment.
         if self._thompson is not None:
             try:

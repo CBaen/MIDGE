@@ -195,6 +195,10 @@ def _run_paper_trading_gate(ctx: SimpleNamespace, alerts: list, step: int) -> No
             if _dm and _dm.is_trading_halted():
                 logger.info("Paper trade BLOCKED — drawdown circuit breaker active")
                 continue
+            # Arc 5: EventBus risk halt (backup path)
+            if getattr(ctx, "_risk_halt", False):
+                logger.info("Paper trade BLOCKED — EventBus risk halt active")
+                continue
             _sm = getattr(ctx, "self_monitor", None)
             if _sm:
                 _sm.record_alert(
@@ -262,6 +266,20 @@ def _run_paper_trading_gate(ctx: SimpleNamespace, alerts: list, step: int) -> No
                     if (_dt.now() - _hyp_ts) < _td(hours=2):
                         _validators += 1
                         _validator_names.append("hypothesis")
+            # Validator 5: PatternMemory — Qdrant semantic precedent
+            _pmem = getattr(ctx, "pattern_memory", None)
+            if _pmem is not None and getattr(_pmem, "is_available", False):
+                try:
+                    _precedents = _pmem.find_precedents(_ticker, [], limit=3)
+                    if _precedents:
+                        # Check if precedents indicate strong win rate
+                        _wins = sum(1 for p in _precedents
+                                   if isinstance(p, dict) and p.get("metadata", {}).get("outcome") == "win")
+                        if _wins >= 2:  # 2+ winning precedents
+                            _validators += 1
+                            _validator_names.append("memory_precedent")
+                except Exception:
+                    pass
             if _validators < 3:
                 logger.info(
                     "Paper trade DEFERRED — Law 7: %d/3 validators (%s) for %s %s",

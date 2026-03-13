@@ -52,6 +52,7 @@ OUTCOME_WINDOWS = {
     "correlation": 21,
     "convergence_combo": 14,  # Combo-level convergence alert outcome window
     "pattern_stack": 14,      # Pattern archaeology stacking detection
+    "hypothesis": 30,         # Active hypothesis prediction window
 }
 
 # 5% move required — 2% was too close to random noise after transaction costs
@@ -342,6 +343,42 @@ class OutcomeCollector:
             ticker, direction, getattr(inv, "score", 0.0), window,
         )
         return True
+
+    def register_hypothesis_prediction(self, hypothesis) -> bool:
+        """Register an active hypothesis as a prediction for outcome tracking.
+
+        When a hypothesis is promoted to active, this registers it so
+        OutcomeTracker will grade it against real market outcomes.
+        Makes hypothesis retirement data-driven rather than schedule-based.
+        """
+        try:
+            trigger = getattr(hypothesis, "trigger", None)
+            if trigger is None:
+                return False
+
+            source_b = getattr(trigger, "source_b", "")
+            direction = getattr(trigger, "direction", "")
+            hyp_id = getattr(hypothesis, "hypothesis_id", "") or getattr(hypothesis, "name", "")
+
+            if not source_b or not direction:
+                return False
+
+            # Use hypothesis expected timeframe or default to 30 days
+            window_days = OUTCOME_WINDOWS.get("hypothesis", 30)
+
+            source_key = f"hypothesis:{hyp_id}"
+            self.tracker.record_prediction(
+                source=source_key,
+                symbol=source_b,  # The effect source is what we're predicting about
+                direction=direction,
+                outcome_window_days=window_days,
+            )
+            logger.info("Registered hypothesis prediction: %s → %s %s (%dd window)",
+                         hyp_id, source_b, direction, window_days)
+            return True
+        except Exception:
+            logger.debug("Failed to register hypothesis prediction", exc_info=True)
+            return False
 
     def evaluate(self) -> int:
         """

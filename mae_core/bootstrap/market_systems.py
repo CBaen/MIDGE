@@ -498,6 +498,14 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         ctx.event_embedder = None
         ctx.pattern_memory = None
 
+    # Two-phase wiring: pattern_memory → convergence_alerter
+    # (pattern_memory is constructed last; use setter to avoid ordering constraint)
+    if getattr(ctx, "convergence_alerter", None) is not None and getattr(ctx, "pattern_memory", None) is not None:
+        try:
+            ctx.convergence_alerter.set_pattern_memory(ctx.pattern_memory)
+        except Exception:
+            logger.debug("Market: pattern_memory → convergence_alerter wiring failed", exc_info=True)
+
     logger.info(
         "Layer 33a - Market systems: %d instantiated (%d failures)", 59 - failures, failures,
     )

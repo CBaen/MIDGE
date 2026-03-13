@@ -506,4 +506,51 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
 
     ctx.bus.register_callback("market.intel.granger_finding", _on_granger_finding)
 
+    # --- Arc 4: Agent track records from market outcomes ---
+    from mae_core.market.channels import CH_PREDICTION_RESULT
+
+    def _on_prediction_result_track_record(channel, data):
+        msg = data if isinstance(data, dict) else {}
+        won = msg.get("won", False)
+        source = msg.get("source", "")
+
+        # Map source domains to agent roles
+        _SOURCE_TO_ROLE = {
+            "sec_form4": "SEC_WATCHER", "sec_form8k": "SEC_WATCHER",
+            "sec_efts": "SEC_WATCHER", "insider_cluster": "SEC_WATCHER",
+            "openinsider_purchase": "SEC_WATCHER",
+            "congressional": "CONTRACT_TRACKER", "senate": "CONTRACT_TRACKER",
+            "contract_award": "CONTRACT_TRACKER", "contract_prediction": "CONTRACT_TRACKER",
+            "sam_gov": "CONTRACT_TRACKER", "congress_legislation": "CONTRACT_TRACKER",
+            "convergence_combo": "MARKET_ANALYST",
+        }
+
+        role = _SOURCE_TO_ROLE.get(source)
+        if role is None:
+            # Check if source starts with known prefixes
+            if source.startswith("pattern_stack"):
+                role = "MARKET_ANALYST"
+            elif source.startswith("hypothesis"):
+                role = "HYPOTHESIS_EXPLORER"
+            else:
+                return  # No agent role for this source
+
+        if not hasattr(ctx, "_agent_track_records"):
+            ctx._agent_track_records = {}
+
+        if role not in ctx._agent_track_records:
+            ctx._agent_track_records[role] = {"wins": 0, "losses": 0}
+
+        if won:
+            ctx._agent_track_records[role]["wins"] += 1
+        else:
+            ctx._agent_track_records[role]["losses"] += 1
+
+        record = ctx._agent_track_records[role]
+        total = record["wins"] + record["losses"]
+        wr = record["wins"] / total if total > 0 else 0.0
+        logger.debug("Agent track record: %s — %d/%d (%.1f%% WR)", role, record["wins"], total, wr * 100)
+
+    ctx.bus.register_callback(CH_PREDICTION_RESULT, _on_prediction_result_track_record)
+
     logger.info("Layer 33f - Market EventBus: convergence + hypothesis -> endocrine coupling wired")

@@ -68,3 +68,12 @@ CH_TRADING_HALTED = "market.risk.trading_halted"
 CH_TRADING_RESUMED = "market.risk.trading_resumed"
 CH_HEALTH_TIER_CHANGE = "market.health.tier_change"
 CH_BEHAVIORAL_ANOMALY = "market.risk.behavioral_anomaly"
+
+# Drift detection (ADWIN concept drift)
+CH_DRIFT_DETECTED = "market.intel.drift_detected"
+
+# Granger causality finding
+CH_GRANGER_FINDING = "market.intel.granger_finding"
+
+# Deep analysis (inevitability rankings)
+CH_DEEP_ANALYSIS = "market.intel.deep_analysis"
