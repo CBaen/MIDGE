@@ -195,6 +195,43 @@ def fetch_finnhub(
     return signals
 
 
+def fetch_news_headlines(news_aggregator_client: Any) -> list:
+    """Fetch free news headlines from RSS feeds — events domain signals."""
+    if news_aggregator_client is None:
+        return []
+    from datetime import datetime, timezone
+    signals = []
+    try:
+        headlines = news_aggregator_client.get_headlines(max_per_source=10)
+        for h in headlines:
+            if not h.tickers or h.sentiment == "neutral":
+                continue
+            direction = "bullish" if h.sentiment == "positive" else "bearish"
+            for ticker in h.tickers[:3]:
+                signals.append({
+                    "source": "news_headlines",
+                    "symbol": ticker,
+                    "asset_class": "stock",
+                    "domain": "events",
+                    "direction": direction,
+                    "strength": 0.45,
+                    "confidence": 0.40,
+                    "decay_rate": 0.30,
+                    "timestamp": h.published or datetime.now(timezone.utc).isoformat(),
+                    "outcome_window_days": 5,
+                    "metadata": {
+                        "title": h.title[:200],
+                        "source_name": h.source,
+                        "sentiment": h.sentiment,
+                        "keywords": h.keywords[:5],
+                        "signal_source": "news_aggregator",
+                    },
+                })
+    except Exception as e:
+        logger.debug("News headlines fetch failed: %s", e)
+    return signals
+
+
 def fetch_finnhub_extras(
     finnhub: Any,
     watchlist: dict,

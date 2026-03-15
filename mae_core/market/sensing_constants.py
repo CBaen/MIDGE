@@ -88,6 +88,8 @@ TIER_ROUTING: Dict[str, str] = {
     "crypto_fear_greed": "thematic",
     # SEC EDGAR XBRL — fundamental financial data (revenue, debt, cash flow)
     "edgar_xbrl": "strategic",
+    # News aggregator — free RSS headlines from Reuters, CNBC, MarketWatch, Fed
+    "news_headlines": "tactical",
 }
 
 # Source names for rotation — 35 sources, 8 concurrent per cadence tick
@@ -151,6 +153,8 @@ SOURCE_ROTATION: List[str] = [
     "crypto_fear_greed",
     # SEC EDGAR XBRL fundamentals (free, no key)
     "edgar_xbrl",
+    # News headlines — free RSS aggregation (no key)
+    "news_headlines",
 ]
 
 # Map rotation source names → Thompson distribution keys for guided selection.
@@ -195,6 +199,7 @@ _ROTATION_TO_THOMPSON: Dict[str, str] = {
     "cboe_options": "cboe_vix_family",
     "crypto_fear_greed": "crypto_fear_greed",
     "edgar_xbrl": "edgar_xbrl",
+    "news_headlines": "news_headlines",
 }
 
 # Map absence source names back to convergence domains
@@ -223,6 +228,7 @@ _ABSENCE_SOURCE_DOMAINS: Dict[str, str] = {
     "cboe_put_call": "options",
     "crypto_fear_greed": "sentiment",
     "edgar_xbrl": "fundamental",
+    "news_headlines": "events",
 }
 
 
