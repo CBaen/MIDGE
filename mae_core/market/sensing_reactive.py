@@ -293,6 +293,12 @@ class SensingReactiveMixin:
         # Moved from _collect_results() so Ollama's 15s timeout doesn't block
         # the main step loop. Thread-safe: only mutates signal objects.
         for sig in signals:
-            enrich_signal(sig, self._velocity_detector, self._filing_analyzer, self._form8k_sentiment)
+            enrich_signal(
+                sig,
+                self._velocity_detector,
+                self._filing_analyzer,
+                self._form8k_sentiment,
+                self._thompson_sampler,
+            )
 
         return signals

@@ -160,6 +160,13 @@ class ConvergenceDetectionMixin(ConvergenceTickerMixin):
         categories_seen = set()
         effective_strengths = {}   # id(signal) -> effective strength
 
+        # Minimum Thompson confidence for a domain to count as a convergence vote.
+        # Domains whose empirical hit rate (Thompson mean) is below this threshold
+        # add noise to the geometric mean without adding real predictive value.
+        # After Step 2 enrichment, signal.confidence == Thompson empirical mean for
+        # mature distributions, so this directly gates weak-reliability domains.
+        _DOMAIN_CONFIDENCE_GATE = 0.35
+
         for domain, signals in self.signals.items():
             matching = [
                 s for s in signals
@@ -175,6 +182,18 @@ class ConvergenceDetectionMixin(ConvergenceTickerMixin):
                     matching,
                     key=lambda s: s.strength * self._compute_freshness(s, domain)
                 )
+
+                # Domain gate: skip domains whose Thompson-derived confidence is
+                # below threshold. This prevents low-reliability sources (e.g.
+                # institutional_synthesis hardcoded at 0.15) from poisoning the
+                # geometric mean and reducing confidence as domain count grows.
+                if strongest.confidence < _DOMAIN_CONFIDENCE_GATE:
+                    logger.debug(
+                        "Convergence %s: domain [%s] gated (confidence=%.3f < %.2f)",
+                        direction, domain, strongest.confidence, _DOMAIN_CONFIDENCE_GATE,
+                    )
+                    continue
+
                 max_eff = strongest.strength * self._compute_freshness(strongest, domain)
 
                 count = len(matching)
@@ -190,6 +209,15 @@ class ConvergenceDetectionMixin(ConvergenceTickerMixin):
                     neutral,
                     key=lambda s: s.strength * self._compute_freshness(s, domain)
                 )
+
+                # Apply same gate to neutral signals (they still enter geometric mean)
+                if strongest_neutral.confidence < _DOMAIN_CONFIDENCE_GATE:
+                    logger.debug(
+                        "Convergence %s: neutral domain [%s] gated (confidence=%.3f < %.2f)",
+                        direction, domain, strongest_neutral.confidence, _DOMAIN_CONFIDENCE_GATE,
+                    )
+                    continue
+
                 neutral_signals.append(strongest_neutral)
                 domains_seen.add(domain)
                 categories_seen.add(self.domain_categories.get(domain, domain))
