@@ -210,6 +210,7 @@ def _wire_octopus_colony(ctx: SimpleNamespace) -> None:
         def _on_octopus_investigation(channel, data):
             msg = data if isinstance(data, dict) else {}
             ticker = msg.get("ticker", "?")
+            direction = msg.get("direction", "neutral")
             source = msg.get("source", "?")
             check_count = msg.get("check_count", 0)
             priority_created = msg.get("priority_request_created", False)
@@ -220,9 +221,60 @@ def _wire_octopus_colony(ctx: SimpleNamespace) -> None:
                 " [FOCUSED-ATTENTION ENGAGED]" if priority_created else "",
             )
 
+            # --- Priority 2 (triadic audit 2026-03-14): Wire investigation findings
+            # into convergence confidence. When a high-win-rate historical template
+            # is found, inject a synthetic "investigation" domain signal into the
+            # convergence alerter. This closes the feedback loop: investigation
+            # findings previously went to logs only; now they compound with live
+            # signals to push the ticker toward the convergence threshold faster.
+            #
+            # Threshold: win_rate > 0.60 AND >= 5 instances (same as priority_request gate).
+            # Signal strength = template win_rate (0.6-1.0 maps to moderate-high strength).
+            # Domain "investigation" is a synthetic domain that adds one independent vote
+            # without duplicating existing insider/macro/technical domain signals.
+            alerter = getattr(ctx, "convergence_alerter", None)
+            if alerter is not None and historical and direction in ("bullish", "bearish"):
+                best_template = max(
+                    (t for t in historical if t.get("win_rate", 0) > 0.60
+                     and t.get("instances", 0) >= 5),
+                    key=lambda t: t.get("win_rate", 0),
+                    default=None,
+                )
+                if best_template is not None:
+                    win_rate = best_template.get("win_rate", 0.0)
+                    instances = best_template.get("instances", 0)
+                    try:
+                        alerter.record_signal(
+                            signal_id=f"octopus_investigation_{ticker}_{direction}",
+                            strength=win_rate,
+                            domain="investigation",
+                            direction=direction,
+                            confidence=win_rate,
+                            metadata={
+                                "symbol": ticker,
+                                "investigation_source": source,
+                                "template_win_rate": win_rate,
+                                "template_instances": instances,
+                                "template_domains": best_template.get("domain_signature", []),
+                                "cross_validated": best_template.get("cross_validated", False),
+                            },
+                            source="octopus_investigation",
+                        )
+                        logger.info(
+                            "OctopusInvestigation: injected confidence boost for %s %s "
+                            "(win_rate=%.2f, instances=%d, cross_validated=%s)",
+                            ticker, direction, win_rate, instances,
+                            best_template.get("cross_validated", False),
+                        )
+                    except Exception:
+                        logger.debug(
+                            "OctopusInvestigation: confidence injection failed for %s",
+                            ticker, exc_info=True,
+                        )
+
         bus_obj = getattr(ctx, "bus", None)
         if bus_obj is not None:
             bus_obj.register_callback(CH_OCTOPUS_INVESTIGATION, _on_octopus_investigation)
-            logger.info("OctopusColony: investigation subscriber wired")
+            logger.info("OctopusColony: investigation subscriber wired (with confidence feedback)")
     except Exception:
         logger.debug("OctopusColony investigation subscriber failed", exc_info=True)
