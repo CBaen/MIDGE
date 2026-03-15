@@ -30,7 +30,7 @@ import sys
 from datetime import date
 from pathlib import Path
 
-_PROJECT_ROOT = Path(__file__).resolve().parents[4]
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _PID_FILE     = _PROJECT_ROOT / "data" / "midge" / "continuous_replay.pid"
 
 

@@ -46,7 +46,7 @@ import numpy as np
 from statsmodels.tsa.stattools import grangercausalitytests
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
-_PROJECT_ROOT = Path(__file__).resolve().parents[4]
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _SIGNALS_DIR = _PROJECT_ROOT / "data" / "midge" / "signals"
 _DATA_DIR = _PROJECT_ROOT / "data" / "market"
 _OUTPUT_PATH = _DATA_DIR / "granger_continuous.json"
