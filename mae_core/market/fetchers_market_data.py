@@ -171,3 +171,37 @@ def fetch_massive_snapshot(
     except Exception as e:
         logger.debug("Massive snapshot fetch failed: %s", e)
     return signals
+
+
+def fetch_edgar_xbrl(edgar_xbrl_client: Any, watchlist: dict) -> list:
+    """Fetch SEC EDGAR XBRL fundamental signals for watchlist tickers."""
+    if edgar_xbrl_client is None:
+        return []
+    from datetime import datetime, timezone
+    signals = []
+    tickers = watchlist.get("tickers", [])[:10]  # Cap at 10 per cycle (rate limit)
+    try:
+        results = edgar_xbrl_client.scan_watchlist(tickers)
+        for sig in results:
+            signals.append({
+                "source": "edgar_xbrl",
+                "symbol": sig.ticker,
+                "asset_class": "stock",
+                "domain": "fundamental",
+                "direction": sig.direction,
+                "strength": sig.strength,
+                "confidence": sig.confidence,
+                "decay_rate": 0.02,  # Slow decay — fundamentals change quarterly
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "outcome_window_days": 30,
+                "metadata": {
+                    "revenue_growth_yoy": getattr(sig, "revenue_growth_yoy", None),
+                    "debt_cash_ratio": getattr(sig, "debt_cash_ratio", None),
+                    "cf_margin": getattr(sig, "cf_margin", None),
+                    "reasons": sig.reasons if hasattr(sig, "reasons") else [],
+                    "signal_source": "edgar_xbrl",
+                },
+            })
+    except Exception as e:
+        logger.debug("EDGAR XBRL fetch failed: %s", e)
+    return signals

@@ -149,6 +149,8 @@ SOURCE_ROTATION: List[str] = [
     "cboe_options",
     # Crypto Fear & Greed Index (free, no key)
     "crypto_fear_greed",
+    # SEC EDGAR XBRL fundamentals (free, no key)
+    "edgar_xbrl",
 ]
 
 # Map rotation source names → Thompson distribution keys for guided selection.
@@ -192,6 +194,7 @@ _ROTATION_TO_THOMPSON: Dict[str, str] = {
     "kalshi_market": "kalshi_market",
     "cboe_options": "cboe_vix_family",
     "crypto_fear_greed": "crypto_fear_greed",
+    "edgar_xbrl": "edgar_xbrl",
 }
 
 # Map absence source names back to convergence domains
@@ -219,6 +222,7 @@ _ABSENCE_SOURCE_DOMAINS: Dict[str, str] = {
     "cboe_vix_family": "options",
     "cboe_put_call": "options",
     "crypto_fear_greed": "sentiment",
+    "edgar_xbrl": "fundamental",
 }
 
 
