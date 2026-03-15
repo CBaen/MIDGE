@@ -67,6 +67,10 @@ class OutcomeTracker:
         self.min_price_move_pct = 2.0  # 2% move = successful prediction
         self._logger = logger
         self.on_outcome = None  # Optional callback: (prediction_dict, success, pct_change)
+        # Fix: track price-fetch failure counts per signal_id so predictions that
+        # permanently lack price data don't clog the queue forever.
+        self._price_fetch_failures: dict = {}  # signal_id -> int
+        self.MAX_PRICE_FETCH_FAILURES = 5
 
         # Ensure data directory exists
         self.data_dir.mkdir(parents=True, exist_ok=True)
@@ -193,8 +197,22 @@ class OutcomeTracker:
                 )
 
                 if price_result is None:
-                    # Price unavailable — keep for retry
-                    remaining_predictions.append(pred)
+                    # Price unavailable — increment retry counter.
+                    # After MAX_PRICE_FETCH_FAILURES attempts, drop the prediction
+                    # without updating Thompson (unresolvable) to keep the queue clean.
+                    fail_count = self._price_fetch_failures.get(signal_id, 0) + 1
+                    self._price_fetch_failures[signal_id] = fail_count
+                    if fail_count >= self.MAX_PRICE_FETCH_FAILURES:
+                        self._logger.warning(
+                            "Dropping unresolvable prediction %s (%s %s) after %d failed "
+                            "price lookups — no Thompson update.",
+                            signal_id, outcome_symbol,
+                            pred.get("source", "?"), fail_count,
+                        )
+                        # Do NOT append to remaining — prediction is discarded.
+                        del self._price_fetch_failures[signal_id]
+                    else:
+                        remaining_predictions.append(pred)
                     continue
 
                 price_change_pct, success = price_result
