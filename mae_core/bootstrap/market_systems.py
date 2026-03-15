@@ -518,6 +518,31 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         logger.debug("Market: situation_board failed", exc_info=True)
         ctx.situation_board = None
 
+    # --- Neo4j knowledge graph (Phase 3: Three Conditions for Inevitability) ---
+    # Dual-write mirror alongside flat files. If Neo4j is unavailable, ctx.knowledge_graph
+    # is set to None and all callers skip Neo4j writes silently.
+    try:
+        from mae_core.market.intelligence.knowledge_graph import KnowledgeGraph
+        _kg = KnowledgeGraph()
+        if _kg.is_connected():
+            ctx.knowledge_graph = _kg
+            # One-time migration: seed from existing flat files (idempotent MERGE)
+            try:
+                _seeded_g = _kg.seed_from_granger()
+                _seeded_t = _kg.seed_from_thompson()
+                if _seeded_g or _seeded_t:
+                    logger.info(
+                        "Market: Neo4j seeded %d Granger findings + %d Thompson snapshots",
+                        _seeded_g, _seeded_t,
+                    )
+            except Exception:
+                logger.debug("Market: Neo4j seed failed", exc_info=True)
+        else:
+            ctx.knowledge_graph = None
+    except Exception:
+        logger.debug("Market: knowledge_graph failed to construct", exc_info=True)
+        ctx.knowledge_graph = None
+
     # --- Email notifier (MIDGE → Guiding Light outbound alerts) ---
     try:
         from mae_core.market.notifications.email_notifier import EmailNotifier
