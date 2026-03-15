@@ -59,6 +59,8 @@ from mae_core.market.fetchers_crypto import (
     fetch_kalshi_movers,
     fetch_finra_short,
     fetch_economic_calendar,
+    fetch_cboe_options,
+    fetch_crypto_fear_greed,
 )
 
 __all__ = [
@@ -98,4 +100,6 @@ __all__ = [
     "fetch_kalshi_movers",
     "fetch_finra_short",
     "fetch_economic_calendar",
+    "fetch_cboe_options",
+    "fetch_crypto_fear_greed",
 ]

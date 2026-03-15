@@ -143,6 +143,8 @@ class SensingReactiveMixin:
             fetch_social_text, fetch_yahoo_rss, fetch_usda, fetch_fred_yields,
             fetch_binance_funding,
             fetch_kalshi_movers,
+            fetch_cboe_options,
+            fetch_crypto_fear_greed,
         )
         from mae_core.market.sensing_lifecycle import enrich_signal
 
@@ -288,6 +290,12 @@ class SensingReactiveMixin:
         elif source_name == "fred_yields":
             from mae_core.market.signal_adapters.market_data import from_fred_yield
             signals = fetch_fred_yields(self._fred, from_fred_yield)
+
+        elif source_name == "cboe_options":
+            signals = fetch_cboe_options(getattr(self, "_cboe_options_client", None))
+
+        elif source_name == "crypto_fear_greed":
+            signals = fetch_crypto_fear_greed(getattr(self, "_crypto_fear_greed_client", None))
 
         # Enrich in background thread (velocity, filing-time, Ollama sentiment)
         # Moved from _collect_results() so Ollama's 15s timeout doesn't block
