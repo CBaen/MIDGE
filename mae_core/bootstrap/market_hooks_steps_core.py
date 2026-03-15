@@ -350,6 +350,11 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                 except Exception:
                     logger.debug("Pattern discovery step failed", exc_info=True)
 
+            # Refill curiosity investigation budget every 100 steps
+            if hasattr(ctx, "_curiosity_budget"):
+                ctx._curiosity_budget = 5
+                ctx._curiosity_step_counter = 0
+
     ctx.model.add_step_hook(_market_sense_hook)
     logger.info(
         "Layer 33g - Market step hooks: 1 sense hook registered "
