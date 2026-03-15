@@ -202,12 +202,11 @@ def _wire_memory_consolidator(ctx: SimpleNamespace, bus: Any) -> int:
     def _on_phase_change(channel, data):
         msg = _parse(data)
         new_phase = msg.get("new_phase", "")
-        if new_phase == "CONSOLIDATION" and hypothesis_engine is not None:
-            try:
-                hypothesis_engine.step()
-            except Exception:
-                logger.debug("Hypothesis consolidation failed", exc_info=True)
-        elif new_phase == "REST" and excavation_daemon is not None:
+        if new_phase == "REST" and excavation_daemon is not None:
+            # NOTE: hypothesis_engine.step() was previously called here on every
+            # CONSOLIDATION phase-change. That was a duplicate — the main market
+            # step hook (_market_sense_hook) already calls it every step and the
+            # engine manages its own internal cadence. Removed to avoid double execution.
             try:
                 excavation_daemon.step()
             except Exception:
