@@ -81,6 +81,11 @@ TIER_ROUTING: Dict[str, str] = {
     "binance_funding": "tactical",
     # Prediction markets (Kalshi — crowd probability estimates)
     "kalshi_market": "strategic",
+    # Options domain — CBOE VIX family + put/call ratio
+    "cboe_vix_family": "strategic",
+    "cboe_put_call": "strategic",
+    # Crypto Fear & Greed Index — crowd psychology contrarian signal
+    "crypto_fear_greed": "thematic",
 }
 
 # Source names for rotation — 35 sources, 8 concurrent per cadence tick
@@ -138,6 +143,10 @@ SOURCE_ROTATION: List[str] = [
     "binance_funding",
     # Prediction markets (Kalshi — crowd probability estimates)
     "kalshi_market",
+    # Options domain — CBOE VIX family + put/call ratio (free, no key)
+    "cboe_options",
+    # Crypto Fear & Greed Index (free, no key)
+    "crypto_fear_greed",
 ]
 
 # Map rotation source names → Thompson distribution keys for guided selection.
@@ -179,6 +188,8 @@ _ROTATION_TO_THOMPSON: Dict[str, str] = {
     "fred_yields": "fred_macro",
     "binance_funding": "binance_funding",
     "kalshi_market": "kalshi_market",
+    "cboe_options": "cboe_vix_family",
+    "crypto_fear_greed": "crypto_fear_greed",
 }
 
 # Map absence source names back to convergence domains
@@ -203,6 +214,9 @@ _ABSENCE_SOURCE_DOMAINS: Dict[str, str] = {
     "fred_yields": "macro",
     "binance_funding": "positioning",
     "kalshi_market": "prediction_market",
+    "cboe_vix_family": "options",
+    "cboe_put_call": "options",
+    "crypto_fear_greed": "sentiment",
 }
 
 

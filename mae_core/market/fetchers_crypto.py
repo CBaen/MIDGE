@@ -101,6 +101,95 @@ def fetch_kalshi_movers(kalshi_client: Any, converter: Callable) -> list:
     return signals
 
 
+def fetch_cboe_options(cboe_options_client: Any) -> list:
+    """Fetch CBOE VIX family + put/call ratio — options domain signals."""
+    if cboe_options_client is None:
+        return []
+    from datetime import datetime, timezone
+    signals = []
+    try:
+        # VIX family signals (VVIX, VIX9D, OVX, GVZ)
+        vix_signals = cboe_options_client.get_vix_family()
+        for sig in (vix_signals or []):
+            signals.append({
+                "source": f"cboe_{sig.index_name.lower()}" if hasattr(sig, "index_name") else sig.signal_source,
+                "symbol": getattr(sig, "index_name", "VIX_FAMILY"),
+                "asset_class": "index",
+                "domain": "options",
+                "direction": sig.direction,
+                "strength": sig.strength,
+                "confidence": sig.confidence,
+                "decay_rate": sig.decay_rate,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "outcome_window_days": 7,
+                "metadata": {
+                    "value": getattr(sig, "value", None),
+                    "note": getattr(sig, "note", ""),
+                    "signal_source": sig.signal_source,
+                },
+            })
+    except Exception as e:
+        logger.debug("CBOE VIX family fetch failed: %s", e)
+
+    try:
+        # Put/Call ratio
+        pc = cboe_options_client.get_put_call_ratio()
+        if pc is not None:
+            signals.append({
+                "source": "cboe_put_call",
+                "symbol": "SPX",
+                "asset_class": "index",
+                "domain": "options",
+                "direction": pc.direction,
+                "strength": pc.strength,
+                "confidence": pc.confidence,
+                "decay_rate": pc.decay_rate,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "outcome_window_days": 7,
+                "metadata": {
+                    "equity_pc": getattr(pc, "equity_pc", None),
+                    "index_pc": getattr(pc, "index_pc", None),
+                    "total_pc": getattr(pc, "total_pc", None),
+                    "signal_source": pc.signal_source,
+                },
+            })
+    except Exception as e:
+        logger.debug("CBOE put/call fetch failed: %s", e)
+    return signals
+
+
+def fetch_crypto_fear_greed(fear_greed_client: Any) -> list:
+    """Fetch Crypto Fear & Greed Index — contrarian sentiment signal."""
+    if fear_greed_client is None:
+        return []
+    from datetime import datetime, timezone
+    signals = []
+    try:
+        fg = fear_greed_client.get_fear_greed()
+        if fg is not None and fg.direction != "neutral":
+            signals.append({
+                "source": "crypto_fear_greed",
+                "symbol": "BTC",
+                "asset_class": "crypto",
+                "domain": "sentiment",
+                "direction": fg.direction,
+                "strength": fg.strength,
+                "confidence": fg.confidence,
+                "decay_rate": fg.decay_rate,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "outcome_window_days": 7,
+                "metadata": {
+                    "value": fg.value,
+                    "classification": fg.classification,
+                    "trend": fg.trend,
+                    "signal_source": fg.signal_source,
+                },
+            })
+    except Exception as e:
+        logger.debug("Crypto Fear & Greed fetch failed: %s", e)
+    return signals
+
+
 def fetch_economic_calendar(calendar_client: Any, converter: Callable) -> list:
     """Fetch upcoming high-impact economic events as suppression signals."""
     if calendar_client is None:
