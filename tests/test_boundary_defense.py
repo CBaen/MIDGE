@@ -12,6 +12,8 @@ import json
 import math
 import unittest
 
+import pytest
+
 
 # ===========================================================================
 # BoundaryMembrane Tests
@@ -641,6 +643,11 @@ class TestEnergyReserve(unittest.TestCase):
         self.assertAlmostEqual(released, 2.0, places=5)
         self.assertAlmostEqual(reserve.get_reserves(), 0.0, places=5)
 
+    @pytest.mark.skip(
+        reason="MIDGE: is_critical() pinned to False (16a8b75 fix — fictional physiology "
+               "harms trading daemon; starvation chain suppresses agents). "
+               "Starvation alert never fires because is_critical() always returns False."
+    )
     def test_starvation_alert(self):
         """Reserves below min_critical triggers starvation alert."""
         reserve, bus = self._make_reserve()
