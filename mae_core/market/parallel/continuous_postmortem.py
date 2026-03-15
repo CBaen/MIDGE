@@ -793,9 +793,6 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    global LOOKBACK_DAYS  # noqa: PLW0603
-    LOOKBACK_DAYS = args.lookback
-
     logger = _setup_logging(LOG_PATH)
     logger.info(
         "Continuous post-mortem starting — interval=%ds, lookback=%dd, once=%s",
@@ -807,7 +804,7 @@ def main() -> None:
         cycle += 1
         logger.info("=== Analysis cycle %d ===", cycle)
         try:
-            report = run_analysis(logger)
+            report = run_analysis(logger, lookback_days=args.lookback)
             write_report(report, logger)
         except Exception:
             logger.exception("Cycle %d failed", cycle)
