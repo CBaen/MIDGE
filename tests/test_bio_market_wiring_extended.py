@@ -1,4 +1,9 @@
-"""Tests for Tier 4+5 bio-market wiring (Layer 33k extended)."""
+"""Tests for Tier 4+5 bio-market wiring (Layer 33k extended).
+
+NOTE: Many bio system callbacks were unsubscribed from market channels by
+the triadic system audit (2026-03-14). Tests for removed subscriptions are
+skipped with reason tags. See research/triadic-system-audit/deliverable.md.
+"""
 import json
 import threading
 import time
