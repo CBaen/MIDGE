@@ -86,6 +86,8 @@ TIER_ROUTING: Dict[str, str] = {
     "cboe_put_call": "strategic",
     # Crypto Fear & Greed Index — crowd psychology contrarian signal
     "crypto_fear_greed": "thematic",
+    # SEC EDGAR XBRL — fundamental financial data (revenue, debt, cash flow)
+    "edgar_xbrl": "strategic",
 }
 
 # Source names for rotation — 35 sources, 8 concurrent per cadence tick
