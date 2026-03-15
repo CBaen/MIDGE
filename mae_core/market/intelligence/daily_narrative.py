@@ -389,122 +389,220 @@ def _gather_data(date_str: str) -> dict:
 # ── Narrative Generation ─────────────────────────────────────────────
 
 
+def _confidence_words(pct: int) -> str:
+    """Translate a numeric confidence percentage into plain English."""
+    if pct > 80:
+        return "very confident"
+    if pct > 60:
+        return "fairly sure"
+    if pct >= 45:
+        return "forming — need more"
+    return "early / still watching"
+
+
+def _direction_words(direction: str) -> str:
+    """Translate a direction string into plain English."""
+    d = direction.lower()
+    if "bull" in d or "long" in d or "up" in d:
+        return "looks like it might rise"
+    if "bear" in d or "short" in d or "down" in d:
+        return "looks like it might fall"
+    return "direction unclear"
+
+
+def _domain_plain(domains: list[str]) -> str:
+    """Translate domain names into plain-English source descriptions.
+
+    The goal is to give the LLM human-readable context so it doesn't
+    reproduce the raw domain names in the final letter.
+    """
+    _MAP = {
+        "insider": "insider buying/selling reports",
+        "macro": "economic data",
+        "technical": "price-chart patterns",
+        "events": "company announcements",
+        "positioning": "large-trader positioning data",
+        "government": "government contracts and congressional trades",
+        "contracts": "government contract awards",
+        "sentiment": "social-media chatter",
+        "fundamental": "company financials",
+        "institutional": "large institutional fund movements",
+        "crypto": "crypto market signals",
+        "energy": "energy market data",
+        "causal": "confirmed cause-and-effect chains",
+        "cascade": "domino-effect chain confirmations",
+    }
+    translated = [_MAP.get(d.lower(), d) for d in domains[:4]]
+    return ", ".join(translated) if translated else "multiple sources"
+
+
 def _build_llm_prompt(summary: dict) -> str:
-    """Build the prompt to send to the LLM."""
+    """Build the plain-English data context to hand to the LLM.
+
+    All technical terms are translated here so the LLM never sees jargon
+    it might echo back. The LLM's job is ONLY to write the letter in MIDGE's
+    voice — we do the data translation in Python.
+    """
     lines = [
-        f"Today is {summary['date']}. Here is what my organs are reporting:",
+        f"Today is {summary['date']}. Here is everything I know right now.",
+        "Write the daily letter using this data. Follow all style rules exactly.",
         "",
     ]
 
-    # Developing situations
+    # ── LEAD: Granger causal discoveries (the "weird" thing) ──────────
+    # These go FIRST in the prompt so the LLM treats them as the most
+    # important input and leads the letter with them.
+    granger = summary.get("granger", [])
+    if granger:
+        lines.append("STRANGE CAUSAL DISCOVERIES (LEAD WITH THESE — most interesting to Guiding Light):")
+        for g in granger[:3]:
+            lines.append(f"  - {g['story']}")
+        lines.append(
+            "  INSTRUCTION: These are the weirdest things I've found. "
+            "The first thing in the letter body should reference the most surprising one "
+            "in plain English. Example: 'Here's something strange I noticed: when [X] happens, "
+            "[Y] tends to follow about [N] days later. Like clockwork.'"
+        )
+    else:
+        lines.append("CAUSAL DISCOVERIES: None new to report.")
+
+    lines.append("")
+
+    # ── Developing situations ──────────────────────────────────────
     devs = summary.get("developing", [])
     if devs:
-        lines.append("DEVELOPING SITUATIONS:")
+        lines.append("DEVELOPING SITUATIONS (what I'm actively watching):")
         for d in devs:
+            direction_plain = _direction_words(d["direction"])
+            confidence_plain = _confidence_words(d["confidence"])
+            sources_plain = _domain_plain(d["domains"])
             lines.append(
-                f"  - {d['ticker']} ({d['direction']}, {d['confidence']}% confidence): "
-                f"domains active = {', '.join(d['domains'][:5])}. {d['summary'][:120]}"
+                f"  - {d['ticker']}: {direction_plain}. "
+                f"I am {confidence_plain}. "
+                f"Evidence comes from: {sources_plain}. "
+                f"Note: {d['summary'][:120]}" if d.get("summary") else
+                f"  - {d['ticker']}: {direction_plain}. "
+                f"I am {confidence_plain}. "
+                f"Evidence comes from: {sources_plain}."
             )
     else:
-        lines.append("DEVELOPING SITUATIONS: None currently active.")
+        lines.append("DEVELOPING SITUATIONS: None with strong evidence right now.")
 
     lines.append("")
 
-    # Recent alerts
+    # ── Recent convergence alerts ──────────────────────────────────
     alerts = summary.get("recent_alerts", [])
     if alerts:
-        lines.append("SIGNALS FIRED IN LAST 24H:")
+        lines.append("SIGNALS THAT FIRED IN THE LAST 24 HOURS:")
         for a in alerts:
+            direction_plain = _direction_words(a["direction"])
+            confidence_plain = _confidence_words(a["confidence"])
+            lines.append(f"  - {a['ticker']}: {direction_plain}. I am {confidence_plain}.")
+    else:
+        lines.append("SIGNALS LAST 24H: None.")
+
+    lines.append("")
+
+    # ── Paper trades ────────────────────────────────────────────────
+    n_trades = summary.get("paper_trades_today", 0)
+    top_trade = summary.get("top_trade")
+    if n_trades > 0 and top_trade:
+        direction_plain = _direction_words(top_trade["direction"])
+        confidence_plain = _confidence_words(top_trade["confidence"])
+        lines.append(
+            f"PAPER TRADES PLACED TODAY: {n_trades} trade(s). "
+            f"Strongest: {top_trade['asset']} ({direction_plain}, I am {confidence_plain})."
+        )
+        lines.append(
+            "  INSTRUCTION: Include a 'WHAT I THINK YOU SHOULD LOOK AT' section. "
+            "Say 'I placed a paper trade on [TICKER]' in bold. Explain why in one plain sentence. "
+            "State the market (US stock, futures, crypto, etc). Give timing and risk estimates."
+        )
+    else:
+        lines.append("PAPER TRADES TODAY: None placed.")
+
+    lines.append("")
+
+    # ── Outcomes (recent graded predictions) ─────────────────────
+    oc = summary.get("outcomes", {})
+    total = oc.get("total", 0)
+    wins = oc.get("wins", 0)
+    losses = oc.get("losses", 0)
+    if total > 0:
+        lines.append(
+            f"RECENT PREDICTION RESULTS (last 7 days): "
+            f"{wins} correct out of {total} checked."
+        )
+        if oc.get("win_examples"):
             lines.append(
-                f"  - {a['ticker']} {a['direction']} ({a['confidence']}% confidence, {a['source']})"
+                "  What moved the right way: "
+                + ", ".join(f"{e['symbol']} moved {e['pct']}%" for e in oc["win_examples"])
+            )
+        if oc.get("loss_examples"):
+            lines.append(
+                "  What I got wrong: "
+                + ", ".join(f"{e['symbol']} moved {e['pct']}%" for e in oc["loss_examples"])
             )
     else:
-        lines.append("SIGNALS FIRED IN LAST 24H: None.")
+        lines.append("RECENT PREDICTION RESULTS: No predictions have been graded yet this week.")
 
     lines.append("")
 
-    # Outcomes
-    oc = summary.get("outcomes", {})
-    lines.append(
-        f"RECENT OUTCOMES (last 7 days): {oc.get('total', 0)} graded, "
-        f"{oc.get('wins', 0)} wins, {oc.get('losses', 0)} losses."
-    )
-    if oc.get("win_examples"):
-        lines.append(
-            "  Wins: " + ", ".join(
-                f"{e['symbol']} +{e['pct']}%" for e in oc["win_examples"]
-            )
-        )
-    if oc.get("loss_examples"):
-        lines.append(
-            "  Losses: " + ", ".join(
-                f"{e['symbol']} {e['pct']}%" for e in oc["loss_examples"]
-            )
-        )
-
-    lines.append("")
-
-    # Post-mortem
+    # ── Post-mortem learning ───────────────────────────────────────
     pm = summary.get("postmortem", {})
-    if pm:
+    if pm and pm.get("total_graded", 0) > 0:
+        pm_wr = pm.get("overall_win_rate_pct", "?")
+        pm_grade = pm.get("grade", "")
         lines.append(
-            f"OVERALL PERFORMANCE: {pm.get('overall_win_rate_pct', '?')} win rate "
-            f"({pm.get('grade', '?')}, n={pm.get('total_graded', 0)} graded)."
+            f"OVERALL TRACK RECORD: {pm_wr} of predictions have been correct "
+            f"({pm.get('total_graded', 0)} total checked so far, grade: {pm_grade})."
         )
         if pm.get("best_combos"):
-            lines.append(f"  Best domain combos: {'; '.join(pm['best_combos'])}")
-        if pm.get("worst_combos"):
-            lines.append(f"  Worst combos: {'; '.join(pm['worst_combos'])}")
+            # Translate combo keys into plain language note
+            lines.append(
+                f"  Signal combinations that work best: "
+                f"{'; '.join(pm['best_combos'][:2])}"
+            )
+            lines.append(
+                "  INSTRUCTION: Do NOT repeat the combo keys verbatim. "
+                "Describe them in plain language, e.g. 'when company news, economic data, and "
+                "price patterns all agree' — not the raw source names."
+            )
         if pm.get("timing_insight"):
-            lines.append(f"  Timing note: {pm['timing_insight']}")
+            lines.append(f"  Timing observation: {pm['timing_insight']}")
+    else:
+        lines.append("OVERALL TRACK RECORD: Not enough graded data yet.")
 
     lines.append("")
 
-    # Thompson
+    # ── Source reliability ─────────────────────────────────────────
     th = summary.get("thompson", {})
     trusted = th.get("trusted", [])
     distrusted = th.get("distrusted", [])
-    if trusted:
-        lines.append(
-            "SOURCES I TRUST: "
-            + ", ".join(
-                f"{s['source']} ({s['win_rate_pct']}%, n={s['n_observations']})"
-                for s in trusted
+    if trusted or distrusted:
+        lines.append("WHAT I'VE LEARNED ABOUT MY OWN SOURCES:")
+        if trusted:
+            # Avoid printing internal source names — just describe how reliable
+            lines.append(
+                f"  {len(trusted)} source(s) have proven consistently reliable "
+                f"(correct more than 55% of the time based on what I've learned)."
             )
-        )
-    if distrusted:
-        lines.append(
-            "SOURCES I DISTRUST: "
-            + ", ".join(
-                f"{s['source']} ({s['win_rate_pct']}%, n={s['n_observations']})"
-                for s in distrusted
+        if distrusted:
+            lines.append(
+                f"  {len(distrusted)} source(s) are performing below chance — "
+                "I'm giving them less weight."
             )
-        )
-
-    lines.append("")
-
-    # Granger
-    granger = summary.get("granger", [])
-    if granger:
-        lines.append("CAUSAL RELATIONSHIPS I'VE DISCOVERED:")
-        for g in granger[:4]:
-            lines.append(f"  - {g['story']}")
-
-    lines.append("")
-    lines.append(f"PAPER TRADES FILED TODAY: {summary.get('paper_trades_today', 0)}")
-
-    if summary.get("top_trade"):
-        t = summary["top_trade"]
         lines.append(
-            f"  Strongest signal: {t['asset']} {t['direction']} at {t['confidence']}% confidence"
+            "  INSTRUCTION: Do NOT name the sources by their technical names. "
+            "Describe them by what they measure: 'insider buying reports' not 'sec_form4'."
         )
 
     lines.append("")
     lines.append(
-        "Now write the daily letter. Use the five sections: WHAT I'M WATCHING, "
-        "WHAT CONFIRMED, WHAT I LEARNED, WHAT I'M UNCERTAIN ABOUT, WHAT I GOT WRONG. "
-        "Sign it '— MIDGE'. Max 500 words. No jargon. Be the observer, not the spreadsheet. "
-        "If there's not much to report in a section, be honest about that."
+        "Now write the daily letter. Follow the style rules precisely: "
+        "bold the punch lines, use bullets, lead with the weird causal discovery, "
+        "no jargon, translate everything to plain English. "
+        "Under 400 words. Sign it '— MIDGE'."
     )
 
     return "\n".join(lines)
@@ -513,33 +611,41 @@ def _build_llm_prompt(summary: dict) -> str:
 def _template_narrative(summary: dict, date_str: str) -> str:
     """Template fallback when no LLM is available.
 
-    Produces a structured but readable letter using plain_language.py patterns.
+    Short, punchy, jargon-free. Matches the style guide: bold punch lines,
+    bullets, plain English, lead with the weird thing.
     """
     lines = [
         f"Subject: MIDGE Daily Letter — {date_str}",
         "",
-        "Good morning.",
-        "",
     ]
 
-    # WHAT I'M WATCHING
-    lines.append("WHAT I'M WATCHING")
+    # ── Lead hook — Granger weirdness first ───────────────────────
+    granger = summary.get("granger", [])
+    if granger:
+        g = granger[0]
+        lines.append(f"**Here's something strange I noticed: {g['story']}**")
+        lines.append("")
+
+    # ── WHAT I'M WATCHING ─────────────────────────────────────────
+    lines.append("## WHAT I'M WATCHING")
+    lines.append("")
     devs = summary.get("developing", [])
     if devs:
         for d in devs[:3]:
-            dir_word = "rising" if "bull" in d["direction"] else "falling" if "bear" in d["direction"] else "moving"
-            domain_list = ", ".join(d["domains"][:4]) if d["domains"] else "multiple domains"
-            lines.append(
-                f"{d['ticker']} looks {dir_word} ({d['confidence']}% confidence). "
-                f"Evidence from: {domain_list}."
-            )
+            direction_plain = _direction_words(d["direction"])
+            confidence_plain = _confidence_words(d["confidence"])
+            sources_plain = _domain_plain(d["domains"])
+            lines.append(f"**{d['ticker']}** — {direction_plain}.")
+            lines.append(f"- I am {confidence_plain}.")
+            lines.append(f"- Evidence is coming from: {sources_plain}.")
+            lines.append("")
     else:
-        lines.append("No strong developing situations right now. Watching broadly.")
+        lines.append("Nothing with strong evidence right now. Watching broadly.")
+        lines.append("")
 
+    # ── WHAT CONFIRMED ────────────────────────────────────────────
+    lines.append("## WHAT CONFIRMED")
     lines.append("")
-
-    # WHAT CONFIRMED
-    lines.append("WHAT CONFIRMED")
     oc = summary.get("outcomes", {})
     total = oc.get("total", 0)
     wins = oc.get("wins", 0)
@@ -548,87 +654,120 @@ def _template_narrative(summary: dict, date_str: str) -> str:
         win_examples = oc.get("win_examples", [])
         loss_examples = oc.get("loss_examples", [])
         lines.append(
-            f"Graded {total} predictions in the past 7 days: {wins} correct, {losses} incorrect."
+            f"I checked {total} of my recent calls — **{wins} were right, {losses} were wrong.**"
         )
         if win_examples:
             lines.append(
-                "Wins: " + ", ".join(f"{e['symbol']} moved {e['pct']}%" for e in win_examples)
+                "- Right: " + ", ".join(f"{e['symbol']} moved {e['pct']}%" for e in win_examples)
             )
         if loss_examples:
             lines.append(
-                "Misses: " + ", ".join(f"{e['symbol']} moved {e['pct']}%" for e in loss_examples)
+                "- Wrong: " + ", ".join(f"{e['symbol']} moved {e['pct']}%" for e in loss_examples)
             )
     else:
-        lines.append("No outcomes graded in the last 7 days.")
-
+        lines.append("No recent calls have been checked yet.")
     lines.append("")
 
-    # WHAT I LEARNED
-    lines.append("WHAT I LEARNED")
+    # ── WHAT I LEARNED ────────────────────────────────────────────
+    lines.append("## WHAT I LEARNED")
+    lines.append("")
     pm = summary.get("postmortem", {})
     th = summary.get("thompson", {})
-    granger = summary.get("granger", [])
-    learned_items = []
+    learned_any = False
 
-    if pm.get("best_combos"):
-        learned_items.append(
-            f"Strongest signal combinations: {'; '.join(pm['best_combos'][:2])}"
+    if granger and len(granger) > 1:
+        for g in granger[1:3]:
+            lines.append(f"- **{g['story']}**")
+            learned_any = True
+
+    pm_wr = pm.get("overall_win_rate_pct", "")
+    pm_graded = pm.get("total_graded", 0)
+    if pm_wr and pm_graded > 0:
+        lines.append(
+            f"- Overall, **{pm_wr} of my calls have been correct** ({pm_graded} checked so far)."
         )
-    if th.get("trusted"):
-        names = [s["source"] for s in th["trusted"][:2]]
-        learned_items.append(f"Most reliable sources: {', '.join(names)}")
-    if granger:
-        g = granger[0]
-        learned_items.append(f"Causal pattern confirmed: {g['story']}")
+        learned_any = True
 
-    if learned_items:
-        for item in learned_items:
-            lines.append(f"  - {item}")
-    else:
-        lines.append("  Not enough graded data yet to identify learning patterns.")
+    trusted = th.get("trusted", [])
+    distrusted = th.get("distrusted", [])
+    if trusted:
+        lines.append(
+            f"- **{len(trusted)} of my information source(s) are proving consistently reliable** "
+            "based on what I've seen so far."
+        )
+        learned_any = True
+    if distrusted:
+        lines.append(
+            f"- {len(distrusted)} source(s) are not doing well — I'm trusting them less."
+        )
+        learned_any = True
 
+    if not learned_any:
+        lines.append("- Not enough graded data yet to say something concrete.")
     lines.append("")
 
-    # WHAT I'M UNCERTAIN ABOUT
-    lines.append("WHAT I'M UNCERTAIN ABOUT")
+    # ── WHAT I'M UNCERTAIN ABOUT ─────────────────────────────────
+    lines.append("## WHAT I'M UNCERTAIN ABOUT")
+    lines.append("")
     pm_grade = pm.get("grade", "")
-    pm_graded = pm.get("total_graded", 0)
     if pm_graded < 30:
         lines.append(
-            f"Most of my predictions are still within their evaluation window ({pm_graded} graded). "
-            "I can't yet tell which signal combinations are truly reliable."
+            "Most of my calls are still within their evaluation window. "
+            "I don't have enough checked results yet to know which patterns are truly reliable."
         )
     elif pm_grade in ("WEAK", "POOR"):
         lines.append(
-            "My overall performance is weaker than I'd like. "
-            "The signal combinations that work well are not yet consistent."
+            "**My hit rate is lower than I'd like.** "
+            "The signal combinations that work are not consistent enough yet."
         )
     else:
-        lines.append("My timing accuracy needs improvement — many moves are happening outside my expected windows.")
+        lines.append("My timing is often off — moves are happening, but outside the windows I expected.")
 
-    if th.get("distrusted"):
-        names = [s["source"] for s in th["distrusted"][:2]]
-        lines.append(f"  Sources I'm uncertain about: {', '.join(names)}")
-
+    pm_timing = pm.get("timing_insight", "")
+    if pm_timing:
+        lines.append(f"- {pm_timing}")
     lines.append("")
 
-    # WHAT I GOT WRONG
-    lines.append("WHAT I GOT WRONG")
+    # ── WHAT I GOT WRONG ─────────────────────────────────────────
+    lines.append("## WHAT I GOT WRONG")
+    lines.append("")
     loss_examples = oc.get("loss_examples", [])
-    timing_insight = pm.get("timing_insight", "")
     if loss_examples:
-        lines.append(
-            "Recent misses: "
-            + ", ".join(
-                f"{e['symbol']} (moved {e['pct']}% — I was wrong direction)"
-                for e in loss_examples[:3]
+        for e in loss_examples[:2]:
+            lines.append(
+                f"- **{e['symbol']}**: I thought it would move the other way. "
+                f"It moved {e['pct']}%."
             )
-        )
-    if timing_insight:
-        lines.append(f"Timing: {timing_insight}")
-    if not loss_examples and not timing_insight:
-        lines.append("Not enough recent graded outcomes to identify specific failures.")
+    else:
+        lines.append("Nothing specific to report yet — not enough graded calls.")
+    lines.append("")
 
+    # ── PAPER TRADE RECOMMENDATION (when applicable) ──────────────
+    n_trades = summary.get("paper_trades_today", 0)
+    top_trade = summary.get("top_trade")
+    if n_trades > 0 and top_trade:
+        lines.append("## WHAT I THINK YOU SHOULD LOOK AT")
+        lines.append("")
+        direction_plain = _direction_words(top_trade["direction"])
+        confidence_plain = _confidence_words(top_trade["confidence"])
+        asset = top_trade["asset"]
+        lines.append(f"**I placed a paper trade on {asset}.**")
+        lines.append(f"- It {direction_plain} based on multiple independent signals.")
+        lines.append(f"- I am {confidence_plain}.")
+        lines.append("- This is a US stock (paper trading active via Alpaca).")
+        lines.append("")
+
+    # ── Footer ────────────────────────────────────────────────────
+    lines.append("---")
+    lines.append(
+        "*This is what I see, not financial advice. Do your own research.*"
+    )
+    lines.append("")
+    lines.append(
+        "**What I'm watching:** Stocks (US markets, paper trading active) · "
+        "Crypto (24/7) · Futures and forex (watching, not yet trading) · "
+        "Prediction markets (coming soon)"
+    )
     lines.append("")
     lines.append("— MIDGE")
 
