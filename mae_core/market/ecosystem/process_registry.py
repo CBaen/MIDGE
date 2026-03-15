@@ -64,6 +64,14 @@ ECOSYSTEM_PROCESSES: List[ProcessSpec] = [
         "restart_delay": 30,
         "critical": False,
     },
+    {
+        "name": "midge-cross-market",
+        "module": "mae_core.market.parallel.cross_market_hunter",
+        "args": [],
+        "tier": "analysis",
+        "restart_delay": 30,
+        "critical": False,
+    },
 ]
 
 # All valid tier names — used for --only filtering
