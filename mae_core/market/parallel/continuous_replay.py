@@ -14,8 +14,9 @@ Design principles:
   - Writes only to data/midge/continuous_replay_results.jsonl (append)
   - Writes progress state to data/midge/continuous_replay_state.json
   - Logs to data/midge/continuous_replay.log
-  - Sleeps 0.5s between days to avoid CPU hogging
-  - Sleeps CYCLE_REST_SECONDS between full archive cycles
+  - Sleeps 0.05s between days (50ms — yields CPU without stalling throughput)
+  - Sleeps 60s between full archive cycles (Thompson weights may have updated)
+  - Splits archive into 4 chunks processed in parallel
 
 Usage:
     python -m mae_core.market.parallel.continuous_replay

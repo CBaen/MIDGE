@@ -315,6 +315,7 @@ def _run_circular_health_check(ctx: SimpleNamespace, step: int) -> None:
 
 
 _GRANGER_BRIDGE_PATH = Path(__file__).resolve().parents[2] / "data" / "market" / "granger_bridge.json"
+_REPLAY_BRIDGE_PATH  = Path(__file__).resolve().parents[2] / "data" / "market" / "replay_bridge.json"
 
 
 def _ingest_granger_bridge(ctx: SimpleNamespace) -> None:
@@ -391,6 +392,109 @@ def _ingest_granger_bridge(ctx: SimpleNamespace) -> None:
             _wm.persist()
         except Exception:
             logger.debug("WorldModel persist after bridge inject failed", exc_info=True)
+
+
+def _ingest_replay_bridge(ctx: SimpleNamespace) -> None:
+    """Read replay_bridge.json (written by feed_replay_to_thompson.py) and push
+    aggregated replay outcomes into the live Thompson combo distributions.
+
+    Designed for cross-process safety:
+      - continuous_replay.py runs in a separate OS process, grades historical
+        convergence alerts against known price outcomes, and appends to
+        continuous_replay_results.jsonl.
+      - feed_replay_to_thompson.py aggregates those results and writes
+        replay_bridge.json atomically (write-to-tmp, then replace).
+      - This function reads replay_bridge.json; the daemon never touches the
+        source JSONL directly.
+
+    Deduplication: ctx._replay_bridge_ts tracks the last-seen 'last_updated'
+    timestamp.  If the file hasn't changed since the last call we skip all I/O.
+
+    Thompson update:
+      For each (combo, regime) entry with wins + losses >= MIN_OUTCOMES_GATE,
+      calls thompson_sampler.update("combo:<combo>", success=True/False, regime)
+      once per win and once per loss.  This is additive across bridge reads —
+      calling update() N times is equivalent to N Bayesian observations.
+
+    The regime in the bridge is always "default" (replay has no live regime
+    classifier).  If a future version adds regime information, it flows through
+    automatically.
+    """
+    ts = getattr(ctx, "thompson_sampler", None)
+    if ts is None:
+        return
+
+    if not _REPLAY_BRIDGE_PATH.exists():
+        return
+
+    try:
+        raw = json.loads(_REPLAY_BRIDGE_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        logger.debug("_ingest_replay_bridge: could not read bridge file", exc_info=True)
+        return
+
+    last_updated = raw.get("last_updated", "")
+    if last_updated and last_updated == getattr(ctx, "_replay_bridge_ts", ""):
+        return  # Nothing new since last read
+
+    outcomes = raw.get("replay_outcomes", [])
+    if not outcomes:
+        ctx._replay_bridge_ts = last_updated
+        return
+
+    min_gate = int(raw.get("min_outcomes_gate", 5))
+    combos_updated = 0
+
+    for entry in outcomes:
+        combo  = entry.get("combo", "")
+        regime = entry.get("regime", "default") or "default"
+        wins   = int(entry.get("wins", 0))
+        losses = int(entry.get("losses", 0))
+
+        if not combo:
+            continue
+        if wins + losses < min_gate:
+            continue  # Too few samples — skip to avoid noise
+
+        signal_id = f"combo:{combo}"
+
+        # Apply each win/loss as a Bayesian observation.
+        # update() is thread-safe (ThompsonSampler uses an RLock internally).
+        for _ in range(wins):
+            try:
+                ts.update(signal_id, success=True, regime=regime)
+            except Exception:
+                logger.debug(
+                    "_ingest_replay_bridge: update failed for %s (win)", signal_id,
+                    exc_info=True,
+                )
+
+        for _ in range(losses):
+            try:
+                ts.update(signal_id, success=False, regime=regime)
+            except Exception:
+                logger.debug(
+                    "_ingest_replay_bridge: update failed for %s (loss)", signal_id,
+                    exc_info=True,
+                )
+
+        combos_updated += 1
+
+    ctx._replay_bridge_ts = last_updated
+
+    if combos_updated:
+        logger.info(
+            "Thompson: injected replay outcomes for %d combo distributions "
+            "(source: %d lines, %d total outcomes)",
+            combos_updated,
+            raw.get("source_line_count", 0),
+            raw.get("outcome_count", 0),
+        )
+        # Persist so updated combo distributions survive a daemon restart
+        try:
+            ts.save_distributions()
+        except Exception:
+            logger.debug("Thompson persist after replay bridge inject failed", exc_info=True)
 
 
 def _run_slow_cadence_ops(ctx: SimpleNamespace, step: int, _shm, _timer) -> None:
@@ -500,6 +604,17 @@ def _run_slow_cadence_ops(ctx: SimpleNamespace, step: int, _shm, _timer) -> None
             _ingest_granger_bridge(ctx)
         except Exception:
             logger.debug("_ingest_granger_bridge failed", exc_info=True)
+
+        # --- Continuous replay bridge: push graded replay outcomes into Thompson combos ---
+        # continuous_replay.py (separate OS process) grades historical convergence alerts
+        # against known price outcomes and writes continuous_replay_results.jsonl.
+        # feed_replay_to_thompson.py aggregates those into replay_bridge.json.
+        # We read and inject those combo distributions here — same decoupled pattern
+        # as the Granger bridge above.
+        try:
+            _ingest_replay_bridge(ctx)
+        except Exception:
+            logger.debug("_ingest_replay_bridge failed", exc_info=True)
 
         post_mortem = getattr(ctx, "post_mortem_reviewer", None)
         if post_mortem is not None:
@@ -697,3 +812,34 @@ def _run_slow_cadence_ops(ctx: SimpleNamespace, step: int, _shm, _timer) -> None
                         )
                 except Exception:
                     logger.debug("Excavation daemon step failed", exc_info=True)
+
+    # ── Daily narrative letter ─────────────────────────────────────
+    # Check once every 100 steps whether we've crossed into a new calendar day.
+    # If so, generate the morning letter and email it to Guiding Light.
+    if step % 100 == 0:
+        try:
+            today_str = datetime.now().strftime("%Y-%m-%d")
+            last_narrative_day = getattr(ctx, "_last_narrative_day", "")
+            if today_str != last_narrative_day:
+                ctx._last_narrative_day = today_str
+                logger.info("Daily narrative: generating letter for %s", today_str)
+                try:
+                    from mae_core.market.intelligence.daily_narrative import (
+                        generate_daily_narrative,
+                    )
+                    narrative_text = generate_daily_narrative(today_str)
+                    # Email if notifier is configured
+                    _notifier = getattr(ctx, "email_notifier", None)
+                    if _notifier is not None:
+                        try:
+                            sent = _notifier.send_daily_narrative(narrative_text)
+                            if sent:
+                                logger.info("Daily narrative emailed to Guiding Light")
+                        except Exception:
+                            logger.debug("Daily narrative email failed", exc_info=True)
+                    else:
+                        logger.info("Daily narrative ready (no email notifier configured)")
+                except Exception:
+                    logger.debug("Daily narrative generation failed", exc_info=True)
+        except Exception:
+            logger.debug("Daily narrative date check failed", exc_info=True)

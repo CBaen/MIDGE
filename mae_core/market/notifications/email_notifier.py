@@ -222,6 +222,36 @@ class EmailNotifier:
 
         return sent
 
+    def send_daily_narrative(self, narrative_text: str) -> bool:
+        """Send the daily narrative letter to Guiding Light.
+
+        The full text is passed as-is. Extracts subject from first line if it
+        begins with "Subject:", otherwise uses a default subject.
+
+        Args:
+            narrative_text: Full letter text from daily_narrative.generate_daily_narrative()
+
+        Returns:
+            True if sent, False if skipped or failed.
+        """
+        if not self.is_configured():
+            return False
+
+        lines = narrative_text.strip().splitlines()
+        subject = f"MIDGE Daily Letter — {__import__('datetime').datetime.now().strftime('%Y-%m-%d')}"
+        body = narrative_text
+
+        # Extract subject from first line if present
+        if lines and lines[0].lower().startswith("subject:"):
+            subject = lines[0][len("subject:"):].strip()
+            # Body starts after the subject line (skip blank line if present)
+            body_start = 1
+            if len(lines) > 1 and lines[1].strip() == "":
+                body_start = 2
+            body = "\n".join(lines[body_start:])
+
+        return self.send(subject, body)
+
     def send_daily_summary(self, summary_dict: dict) -> bool:
         """Format and send a daily summary email.
 
