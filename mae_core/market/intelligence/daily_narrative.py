@@ -711,7 +711,8 @@ def _build_llm_prompt(summary: dict) -> str:
             chain_note = ""
             if chain_raw and chain_raw != "None":
                 # Strip list brackets and quote chars for readability
-                chain_note = f" Causal chain: {chain_raw.strip('[]').replace(\"'\", '')}"
+                _chain_clean = chain_raw.strip("[]").replace("'", "")
+                chain_note = f" Causal chain: {_chain_clean}"
             window_note = f" Expected timing: within {window} days." if window else ""
             lines.append(
                 f"  - {inv['ticker']}: {direction_plain}. "
@@ -963,6 +964,53 @@ def _template_narrative(summary: dict, date_str: str) -> str:
         lines.append("Nothing with strong evidence right now. Watching broadly.")
         lines.append("")
 
+    # ── Inevitabilities (inject into WHAT I'M WATCHING if present) ──
+    inevitabilities = summary.get("inevitabilities", [])
+    if inevitabilities and not devs:
+        # Only use inevitabilities as fallback if situation_board is empty
+        for inv in inevitabilities[:3]:
+            direction_plain = _direction_words(inv["direction"])
+            confidence_plain = _confidence_words(inv["score"])
+            sources_plain = _domain_plain(inv["domains"])
+            window = inv.get("expected_window_days")
+            window_note = f" (timing: ~{window} days)" if window else ""
+            chain_raw = inv.get("world_model_chain", "")
+            chain_note = ""
+            if chain_raw and chain_raw != "None":
+                _chain_clean_tmpl = chain_raw.strip("[]").replace("'", "")
+                chain_note = f"\n- Causal chain: {_chain_clean_tmpl}"
+            lines.append(f"**{inv['ticker']}** — {direction_plain}.{window_note}")
+            lines.append(f"- I am {confidence_plain}.")
+            lines.append(f"- Evidence from: {sources_plain}.{chain_note}")
+            lines.append("")
+
+    # ── Developing situations ─────────────────────────────────────
+    dev_sits = summary.get("developing_situations", [])
+    if dev_sits:
+        lines.append("**Also watching (not ready yet):**")
+        for s in dev_sits[:2]:
+            direction_plain = _direction_words(s["direction"])
+            domains_seen_plain = _domain_plain(s["domains_seen"])
+            missing_plain = _domain_plain(s.get("missing_domains", []))
+            missing_note = f" Waiting for: {missing_plain}." if missing_plain else ""
+            lines.append(
+                f"- {s['ticker']}: {direction_plain}. {domains_seen_plain} seen.{missing_note}"
+            )
+        lines.append("")
+
+    # ── Somatic building ──────────────────────────────────────────
+    somatic = summary.get("somatic_building", [])
+    if somatic:
+        top_s = somatic[0]
+        direction_plain = _direction_words(top_s["dominant_direction"])
+        domain_plain = _domain_plain(top_s["domains"])
+        lines.append(
+            f"*Sensing something in {top_s['ticker']} — "
+            f"{top_s['domain_count']} sources pointing {direction_plain} "
+            f"({domain_plain}). Not ready to call it yet.*"
+        )
+        lines.append("")
+
     # ── WHAT CONFIRMED ────────────────────────────────────────────
     lines.append("## WHAT CONFIRMED")
     lines.append("")
@@ -1019,6 +1067,35 @@ def _template_narrative(summary: dict, date_str: str) -> str:
     if distrusted:
         lines.append(
             f"- {len(distrusted)} source(s) are not doing well — I'm trusting them less."
+        )
+        learned_any = True
+
+    # ── Cascade learning ─────────────────────────────────────────
+    cascade = summary.get("cascade_status", {})
+    notable_chains = cascade.get("notable_chains", [])
+    for _ch in notable_chains[:1]:
+        _confirmed = _ch.get("confirmed_count", 0)
+        _total = _ch.get("total_links", 0)
+        _trigger = _ch.get("trigger", "?")
+        _next = _ch.get("next_dominoes", [])
+        if _confirmed > 0 and _total > 1:
+            _next_note = f" Watching for: {', '.join(_next[:2])}." if _next else ""
+            lines.append(
+                f"- **A chain I predicted from {_trigger} is unfolding: "
+                f"{_confirmed} of {_total} dominoes confirmed.**{_next_note}"
+            )
+            learned_any = True
+
+    # ── Active hypothesis insight ─────────────────────────────────
+    active_hyps = summary.get("active_hypotheses", [])
+    best_hyp = next(
+        (h for h in active_hyps if h["status"] == "active" and h.get("win_rate_pct") and h["win_rate_pct"] > 50),
+        None,
+    )
+    if best_hyp:
+        lines.append(
+            f"- **My theory '{best_hyp['name']}' is holding up: "
+            f"{best_hyp['win_rate_pct']}% accuracy over {best_hyp['observations']} checks.**"
         )
         learned_any = True
 
