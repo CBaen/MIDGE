@@ -35,6 +35,7 @@ import os
 import sys
 import time
 from collections import Counter, defaultdict
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -57,13 +58,21 @@ LOG_PATH           = _PROJECT_ROOT / "data" / "midge" / "continuous_replay.log"
 # ---------------------------------------------------------------------------
 
 # Seconds to sleep between processing each day's signals
-DAY_SLEEP_SECONDS: float = 0.5
+# 50ms — enough to yield CPU without stalling throughput
+DAY_SLEEP_SECONDS: float = 0.05
 
 # Seconds to rest after completing a full archive cycle before restarting
-CYCLE_REST_SECONDS: float = 3600.0  # 1 hour — gives Thompson time to update
+# Short sleep: Thompson weights may have updated, so replay again quickly
+CYCLE_REST_SECONDS: float = 60.0
+
+# Number of parallel workers — 4 chunks processed simultaneously
+NUM_WORKERS: int = 4
 
 # Price-lookup rate limit (yfinance)
 PRICE_LOOKUP_DELAY: float = 0.25
+
+# Log progress every N days within each worker
+PROGRESS_LOG_INTERVAL: int = 50
 
 # Outcome window: days after alert to check price
 DEFAULT_OUTCOME_WINDOW_DAYS: int = 14
@@ -250,6 +259,19 @@ def _append_result(record: dict) -> None:
         logger.warning("Could not write result record: %s", exc)
 
 
+def _append_results_bulk(records: List[dict]) -> None:
+    """Write a batch of records to the shared results file in one open."""
+    if not records:
+        return
+    RESULTS_JSONL.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with open(RESULTS_JSONL, "a", encoding="utf-8") as fh:
+            for record in records:
+                fh.write(json.dumps(record, default=str) + "\n")
+    except Exception as exc:
+        logger.warning("Could not write bulk result records: %s", exc)
+
+
 # ---------------------------------------------------------------------------
 # Price grading
 # ---------------------------------------------------------------------------
@@ -401,7 +423,6 @@ def _build_alerter(min_domains: int, use_thompson: bool):
     if use_thompson:
         from mae_core.market.intelligence.thompson_sampler import ThompsonSampler
         thompson = ThompsonSampler()
-        logger.info("Thompson loaded: %d distributions", len(thompson.distributions))
 
     alerter = ConvergenceAlerter(
         min_domains=min_domains,
@@ -411,7 +432,149 @@ def _build_alerter(min_domains: int, use_thompson: bool):
 
 
 # ---------------------------------------------------------------------------
-# One full archive cycle
+# Chunk helper
+# ---------------------------------------------------------------------------
+
+def _split_into_chunks(items: list, n: int) -> List[list]:
+    """Split *items* into *n* roughly equal chunks."""
+    if not items:
+        return [[] for _ in range(n)]
+    chunk_size = math.ceil(len(items) / n)
+    return [items[i: i + chunk_size] for i in range(0, len(items), chunk_size)]
+
+
+# ---------------------------------------------------------------------------
+# Worker function — runs in a subprocess, processes one chunk of days
+# ---------------------------------------------------------------------------
+
+def _worker_process_chunk(
+    worker_id: int,
+    days_iso: List[str],
+    min_domains: int,
+    use_thompson: bool,
+    outcome_window_days: int,
+    dry_run: bool,
+    tmp_output_path: str,
+    signals_dir_str: str,
+    project_root_str: str,
+) -> dict:
+    """
+    Top-level function executed in a subprocess.
+
+    Must be a module-level function (not a lambda or nested def) so that
+    Python's multiprocessing can handle it on Windows (spawn start method).
+
+    Each worker gets its own ThompsonSampler + ConvergenceAlerter instance.
+    Results are written to a per-worker temp file; the parent merges them.
+    Returns a stats dict summarising what the worker found.
+    """
+    signals_dir = Path(signals_dir_str)
+
+    prefix = f"Replay worker {worker_id}"
+
+    def _wlog(msg: str) -> None:
+        ts = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        print(f"{ts} INFO    [{prefix}] {msg}", file=sys.stderr, flush=True)
+
+    _wlog(f"starting -- {len(days_iso)} days to process")
+
+    try:
+        alerter, ca_module = _build_alerter(min_domains, use_thompson)
+    except Exception as exc:
+        _wlog(f"FATAL: could not build alerter: {exc}")
+        return {"worker_id": worker_id, "error": str(exc), "alerts_found": 0,
+                "days_processed": 0, "total_signals": 0, "alerts_graded": 0,
+                "alerts_pending": 0, "alerts_ungraded": 0, "successes": 0, "failures": 0}
+
+    original_datetime = ca_module.datetime
+
+    price_fetcher = None
+    if not dry_run:
+        try:
+            from mae_core.market.apis.price_fetcher import PriceFetcher
+            price_fetcher = PriceFetcher()
+        except Exception as exc:
+            _wlog(f"PriceFetcher unavailable -- alerts will be ungraded: {exc}")
+
+    stats: dict = {
+        "worker_id":      worker_id,
+        "days_processed": 0,
+        "total_signals":  0,
+        "alerts_found":   0,
+        "alerts_graded":  0,
+        "alerts_pending": 0,
+        "alerts_ungraded": 0,
+        "successes":      0,
+        "failures":       0,
+    }
+
+    tmp_records: List[dict] = []
+
+    try:
+        for i, day_iso in enumerate(days_iso):
+            day = date.fromisoformat(day_iso)
+            day_signals = _load_day_signals(day, signals_dir)
+            stats["total_signals"] += len(day_signals)
+
+            alerts = _replay_day(day, alerter, ca_module, original_datetime, use_thompson)
+
+            for ad in alerts:
+                if price_fetcher and not dry_run:
+                    _grade_alert(ad, price_fetcher, outcome_window_days)
+                else:
+                    ad["grade"] = "dry_run" if dry_run else "ungraded"
+
+                grade = ad.get("grade", "ungraded")
+                if grade == "success":
+                    stats["successes"] += 1
+                    stats["alerts_graded"] += 1
+                elif grade == "failure":
+                    stats["failures"] += 1
+                    stats["alerts_graded"] += 1
+                elif grade == "pending":
+                    stats["alerts_pending"] += 1
+                else:
+                    stats["alerts_ungraded"] += 1
+
+                stats["alerts_found"] += 1
+                tmp_records.append(ad)
+
+            stats["days_processed"] += 1
+
+            # Progress report every PROGRESS_LOG_INTERVAL days
+            if (i + 1) % PROGRESS_LOG_INTERVAL == 0:
+                graded = stats["alerts_graded"]
+                _wlog(
+                    f"{i + 1}/{len(days_iso)} days complete, "
+                    f"{stats['alerts_found']} alerts found, "
+                    f"{graded} graded"
+                )
+
+            time.sleep(DAY_SLEEP_SECONDS)
+
+    finally:
+        ca_module.datetime = original_datetime
+
+    # Write all records to the worker's own temp file (no cross-process locking needed)
+    if not dry_run and tmp_records:
+        try:
+            Path(tmp_output_path).parent.mkdir(parents=True, exist_ok=True)
+            with open(tmp_output_path, "w", encoding="utf-8") as fh:
+                for rec in tmp_records:
+                    fh.write(json.dumps(rec, default=str) + "\n")
+        except Exception as exc:
+            _wlog(f"WARNING: could not write temp output: {exc}")
+
+    _wlog(
+        f"done -- {stats['days_processed']} days, "
+        f"{stats['alerts_found']} alerts, "
+        f"{stats['alerts_graded']} graded"
+    )
+    return stats
+
+
+# ---------------------------------------------------------------------------
+# One full archive cycle — parallel edition
 # ---------------------------------------------------------------------------
 
 def _run_cycle(
