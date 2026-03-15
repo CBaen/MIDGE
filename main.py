@@ -1048,7 +1048,7 @@ def main() -> None:
     # to measure whether alert quality, frequency, or confidence changes.
     # If it doesn't, the case for keeping agents minimal becomes concrete.
     # If it does, the specific mechanism can be identified and preserved.
-    parser.add_argument("--agents", type=int, default=3, help="Number of agents (min 3)")
+    parser.add_argument("--agents", type=int, default=5, help="Number of agents (min 3, odd for consensus)")
     parser.add_argument("--steps", type=int, default=100, help="Simulation steps")
     parser.add_argument("--cycle", type=int, default=100, help="Circadian cycle length")
     parser.add_argument("--rounds", type=int, default=1, help="Number of rounds (state persists between rounds)")

@@ -36,6 +36,7 @@ from mae_core.market.fetchers_market_data import (
     fetch_vix,
     fetch_eia,
     fetch_massive_snapshot,
+    fetch_edgar_xbrl,
 )
 from mae_core.market.fetchers_technical import (
     fetch_ta_indicators,
@@ -102,4 +103,5 @@ __all__ = [
     "fetch_economic_calendar",
     "fetch_cboe_options",
     "fetch_crypto_fear_greed",
+    "fetch_edgar_xbrl",
 ]

@@ -50,8 +50,8 @@ OUTCOME_WINDOWS = {
     "hiring_tracker": 90,
     "sam_gov": 90,
     "correlation": 21,
-    "convergence_combo": 14,  # Combo-level convergence alert outcome window
-    "pattern_stack": 14,      # Pattern archaeology stacking detection
+    "convergence_combo": 21,  # Extended from 14 — MIDGE self-reported 15 moves after window
+    "pattern_stack": 21,      # Extended from 14 — pattern archaeology stacking detection
     "hypothesis": 30,         # Active hypothesis prediction window
 }
 

@@ -145,6 +145,7 @@ class SensingReactiveMixin:
             fetch_kalshi_movers,
             fetch_cboe_options,
             fetch_crypto_fear_greed,
+            fetch_edgar_xbrl,
         )
         from mae_core.market.sensing_lifecycle import enrich_signal
 
@@ -296,6 +297,9 @@ class SensingReactiveMixin:
 
         elif source_name == "crypto_fear_greed":
             signals = fetch_crypto_fear_greed(getattr(self, "_crypto_fear_greed_client", None))
+
+        elif source_name == "edgar_xbrl":
+            signals = fetch_edgar_xbrl(getattr(self, "_edgar_xbrl_client", None), self._watchlist)
 
         # Enrich in background thread (velocity, filing-time, Ollama sentiment)
         # Moved from _collect_results() so Ollama's 15s timeout doesn't block

@@ -27,7 +27,7 @@ ECOSYSTEM_PROCESSES: List[ProcessSpec] = [
     {
         "name": "midge-daemon",
         "module": "main",
-        "args": ["--daemon", "--agents", "5", "--steps", "500", "--pace", "2.0"],
+        "args": ["--daemon", "--agents", "5", "--steps", "500", "--pace", "1.5"],
         "tier": "core",
         "restart_delay": 5,
         "critical": True,
