@@ -383,6 +383,182 @@ def _gather_data(date_str: str) -> dict:
             "confidence": round(float(best.get("confidence", 0)) * 100),
         }
 
+    # ── DeepAnalyst inevitabilities (top 5 most structurally inevitable) ──
+    try:
+        inv_records: list[dict] = []
+        inv_path = _DATA_MIDGE / "inevitabilities.jsonl"
+        if inv_path.exists():
+            # Read the last 100 lines (many runs append throughout the day)
+            # and de-duplicate by ticker+direction, keeping the highest score
+            _seen_inv: dict[str, dict] = {}
+            with open(inv_path, encoding="utf-8") as _f:
+                _lines_inv = _f.readlines()
+            for _line in reversed(_lines_inv[-200:]):
+                _line = _line.strip()
+                if not _line:
+                    continue
+                try:
+                    _rec = json.loads(_line)
+                    _key = f"{_rec.get('ticker', '')}:{_rec.get('direction', '')}"
+                    if _key not in _seen_inv:
+                        _seen_inv[_key] = _rec
+                except Exception:
+                    pass
+            # Sort by score descending and take top 5
+            inv_records = sorted(
+                _seen_inv.values(),
+                key=lambda x: float(x.get("score", 0)),
+                reverse=True,
+            )[:5]
+        summary["inevitabilities"] = [
+            {
+                "ticker": r.get("ticker", "?"),
+                "direction": r.get("direction", "?"),
+                "score": round(float(r.get("score", 0)) * 100),
+                "domains": r.get("domains", []),
+                "evidence_summary": r.get("evidence_summary", ""),
+                "world_model_chain": r.get("world_model_chain", ""),
+                "expected_window_days": r.get("expected_window_days"),
+                "signal_count": r.get("signal_count", 0),
+            }
+            for r in inv_records
+        ]
+    except Exception:
+        logger.debug("Could not read inevitabilities", exc_info=True)
+        summary["inevitabilities"] = []
+
+    # ── Developing situations (OctopusColony partial convergences) ────
+    try:
+        _dev_sit = _safe_read_json(_DATA_MARKET / "developing_situations.json")
+        if _dev_sit and isinstance(_dev_sit, dict):
+            _sits = []
+            for _key, _sit in _dev_sit.items():
+                if not isinstance(_sit, dict):
+                    continue
+                _check_count = _sit.get("check_count", 0)
+                if _check_count >= 20:
+                    continue  # Eviction candidate — skip stale
+                _sits.append({
+                    "ticker": _sit.get("ticker", "?"),
+                    "direction": _sit.get("direction", "?"),
+                    "domains_seen": _sit.get("domains_seen", []),
+                    "missing_domains": _sit.get("missing_domains", []),
+                    "causal_predictions": _sit.get("causal_predictions", []),
+                    "check_count": _check_count,
+                    "investigation_results": _sit.get("investigation_results", [])[:2],
+                })
+            # Sort by check_count descending (most-watched first)
+            _sits.sort(key=lambda x: x["check_count"], reverse=True)
+            summary["developing_situations"] = _sits[:5]
+        else:
+            summary["developing_situations"] = []
+    except Exception:
+        logger.debug("Could not read developing_situations", exc_info=True)
+        summary["developing_situations"] = []
+
+    # ── Active hypotheses (HypothesisEngine: active + strong probation) ─
+    try:
+        _hyp_snap = _safe_read_json(_DATA_MARKET / "hypotheses_snapshot.json")
+        if _hyp_snap and isinstance(_hyp_snap, dict):
+            _hyps_raw = _hyp_snap.get("hypotheses", {})
+            _active_hyps = []
+            for _hid, _h in _hyps_raw.items():
+                _status = _h.get("status", "")
+                if _status not in ("active", "probation"):
+                    continue
+                _stats = _h.get("stats", {})
+                _n = int(_stats.get("total_observations", 0))
+                _wr = (
+                    round(_stats.get("wins", 0) / _n * 100)
+                    if _n > 0 else None
+                )
+                # Only include if it has observations or is active
+                if _status == "probation" and _n < 5:
+                    continue
+                _active_hyps.append({
+                    "name": _h.get("name", "?"),
+                    "status": _status,
+                    "causal_story": _h.get("causal_story", "")[:200],
+                    "win_rate_pct": _wr,
+                    "observations": _n,
+                    "cumulative_return_pct": round(float(_stats.get("cumulative_return_pct", 0)), 1),
+                })
+            # Active first, then by observations
+            _active_hyps.sort(
+                key=lambda x: (x["status"] != "active", -(x["observations"] or 0))
+            )
+            summary["active_hypotheses"] = _active_hyps[:6]
+        else:
+            summary["active_hypotheses"] = []
+    except Exception:
+        logger.debug("Could not read hypotheses_snapshot", exc_info=True)
+        summary["active_hypotheses"] = []
+
+    # ── Cascade tracker status (causal chains unfolding) ─────────────
+    try:
+        _cascade_snap = _safe_read_json(_DATA_MARKET / "cascade_snapshot.json")
+        if _cascade_snap and isinstance(_cascade_snap, dict):
+            _chains = _cascade_snap.get("chains", [])
+            _stats_c = _cascade_snap.get("stats", {})
+            # Only include chains with at least one confirmed link
+            _active_cascades = [c for c in _chains if c.get("confirmed_count", 0) > 0]
+            summary["cascade_status"] = {
+                "active_chains": _stats_c.get("active_chains", 0),
+                "confirmed_links": _stats_c.get("confirmed_links", 0),
+                "pending_links": _stats_c.get("pending_links", 0),
+                "confirmation_rate": _stats_c.get("confirmation_rate", 0),
+                "mean_energy_ratio": _stats_c.get("mean_energy_ratio"),
+                "notable_chains": [
+                    {
+                        "trigger": c.get("trigger", "?"),
+                        "direction": c.get("direction", "?"),
+                        "confirmed_count": c.get("confirmed_count", 0),
+                        "total_links": c.get("total_links", 0),
+                        "confirmed_tickers": c.get("confirmed_tickers", []),
+                        "next_dominoes": c.get("next_dominoes", []),
+                        "energy_ratio": c.get("mean_energy_ratio"),
+                    }
+                    for c in _active_cascades[:3]
+                ],
+            }
+        else:
+            summary["cascade_status"] = {}
+    except Exception:
+        logger.debug("Could not read cascade_snapshot", exc_info=True)
+        summary["cascade_status"] = {}
+
+    # ── Somatic anticipation (pre-convergence signal accumulation) ────
+    try:
+        _somatic = _safe_read_json(_DATA_MARKET / "somatic_state.json")
+        if _somatic and isinstance(_somatic, dict):
+            _ticker_states = _somatic.get("ticker_states", {})
+            _building: list[dict] = []
+            for _ticker, _ts in _ticker_states.items():
+                _domains = _ts.get("domains_active", [])
+                if len(_domains) < 2:
+                    continue  # Need at least 2 domains to be interesting
+                _directions = _ts.get("directions", {})
+                # Find dominant direction (most signals)
+                _dom_dir = max(_directions, key=lambda d: _directions[d], default="neutral")
+                _total_signals = _ts.get("signal_count", 0)
+                if _total_signals < 10:
+                    continue
+                _building.append({
+                    "ticker": _ticker,
+                    "domains": _domains,
+                    "dominant_direction": _dom_dir,
+                    "signal_count": _total_signals,
+                    "domain_count": len(_domains),
+                })
+            # Sort by domain count then signal count
+            _building.sort(key=lambda x: (x["domain_count"], x["signal_count"]), reverse=True)
+            summary["somatic_building"] = _building[:5]
+        else:
+            summary["somatic_building"] = []
+    except Exception:
+        logger.debug("Could not read somatic_state", exc_info=True)
+        summary["somatic_building"] = []
+
     return summary
 
 
@@ -520,6 +696,150 @@ def _build_llm_prompt(summary: dict) -> str:
         )
     else:
         lines.append("PAPER TRADES TODAY: None placed.")
+
+    lines.append("")
+
+    # ── DeepAnalyst inevitabilities ────────────────────────────────
+    inevitabilities = summary.get("inevitabilities", [])
+    if inevitabilities:
+        lines.append("SITUATIONS I THINK ARE MOST INEVITABLE RIGHT NOW (ranked by structural convergence):")
+        for inv in inevitabilities:
+            direction_plain = _direction_words(inv["direction"])
+            sources_plain = _domain_plain(inv["domains"])
+            window = inv.get("expected_window_days")
+            chain_raw = inv.get("world_model_chain", "")
+            chain_note = ""
+            if chain_raw and chain_raw != "None":
+                # Strip list brackets and quote chars for readability
+                chain_note = f" Causal chain: {chain_raw.strip('[]').replace(\"'\", '')}"
+            window_note = f" Expected timing: within {window} days." if window else ""
+            lines.append(
+                f"  - {inv['ticker']}: {direction_plain}. "
+                f"Evidence from: {sources_plain}.{window_note}{chain_note}"
+            )
+        lines.append(
+            "  INSTRUCTION: These are the situations where multiple independent forces "
+            "converge toward the same outcome. Use plain English. "
+            "Example: 'NVDA has insider buying, company news, and price patterns all pointing up "
+            "— three separate sources arriving at the same conclusion.' "
+            "If a causal chain exists, mention it conversationally: "
+            "'What's interesting: this connects through [X] all the way to [Y].'"
+        )
+    else:
+        lines.append("MOST INEVITABLE SITUATIONS: Nothing stands out strongly today.")
+
+    lines.append("")
+
+    # ── Developing situations (OctopusColony partial convergences) ──
+    dev_sits = summary.get("developing_situations", [])
+    if dev_sits:
+        lines.append("SITUATIONS I'M INVESTIGATING (not ready yet — something is building):")
+        for s in dev_sits:
+            domains_seen_plain = _domain_plain(s["domains_seen"])
+            missing_plain = _domain_plain(s["missing_domains"]) if s.get("missing_domains") else ""
+            direction_plain = _direction_words(s["direction"])
+            missing_note = f" Missing confirmation from: {missing_plain}." if missing_plain else ""
+            inv_notes = s.get("investigation_results", [])
+            inv_note = ""
+            if inv_notes:
+                inv_note = f" Investigation hint: {str(inv_notes[0])[:100]}."
+            lines.append(
+                f"  - {s['ticker']}: {direction_plain}. "
+                f"Evidence so far: {domains_seen_plain}.{missing_note}{inv_note}"
+            )
+        lines.append(
+            "  INSTRUCTION: These are situations where I've seen 2 of 3 required signals — "
+            "not enough to be sure yet. Use language like 'I'm watching' or "
+            "'something is starting to form' — not definitive."
+        )
+    else:
+        lines.append("DEVELOPING INVESTIGATIONS: Nothing partial in progress right now.")
+
+    lines.append("")
+
+    # ── Active hypotheses ──────────────────────────────────────────
+    active_hyps = summary.get("active_hypotheses", [])
+    if active_hyps:
+        lines.append("THEORIES I'M ACTIVELY TESTING (market hypotheses I track):")
+        for h in active_hyps:
+            wr = h.get("win_rate_pct")
+            wr_note = f" So far: {wr}% of the time it works ({h['observations']} checks)." if wr is not None else ""
+            story = h.get("causal_story", "")[:150]
+            lines.append(
+                f"  - {h['name']}: {story}{wr_note}"
+            )
+        lines.append(
+            "  INSTRUCTION: These are testable theories MIDGE is watching. "
+            "Translate the theory name into plain language. "
+            "Example: 'I have a theory: when crude oil futures get swept at session lows, "
+            "they often bounce. I've tested this 44 times. It works 52% of the time.' "
+            "Do NOT repeat technical names like 'CL=F' or 'DSR'."
+        )
+    else:
+        lines.append("ACTIVE THEORIES: No hypotheses with enough data yet.")
+
+    lines.append("")
+
+    # ── Cascade status (causal chains unfolding) ───────────────────
+    cascade = summary.get("cascade_status", {})
+    notable_chains = cascade.get("notable_chains", [])
+    if notable_chains:
+        lines.append("CAUSAL CHAINS CURRENTLY UNFOLDING (domino effects in progress):")
+        for ch in notable_chains:
+            confirmed = ch.get("confirmed_count", 0)
+            total = ch.get("total_links", 0)
+            trigger = ch.get("trigger", "?")
+            direction_plain = _direction_words(ch.get("direction", "?"))
+            confirmed_tickers = ch.get("confirmed_tickers", [])
+            next_dominoes = ch.get("next_dominoes", [])
+            energy = ch.get("energy_ratio")
+            energy_note = ""
+            if energy is not None:
+                if energy > 1.1:
+                    energy_note = " The chain is moving faster than expected."
+                elif energy < 0.9:
+                    energy_note = " The chain is moving slower than expected."
+            next_note = f" Watching for: {', '.join(next_dominoes)}." if next_dominoes else ""
+            confirmed_note = f" Already confirmed: {', '.join(confirmed_tickers)}." if confirmed_tickers else ""
+            lines.append(
+                f"  - Chain starting from {trigger} ({direction_plain}): "
+                f"{confirmed} of {total} dominoes confirmed.{confirmed_note}{next_note}{energy_note}"
+            )
+        lines.append(
+            "  INSTRUCTION: These are multi-step causal chains MIDGE predicted. "
+            "The dramatic framing is: 'I predicted A would trigger B would trigger C. "
+            "A happened. B just happened. Now I'm watching for C.' "
+            "Use domino/chain language. If energy ratio > 1, say the chain is accelerating."
+        )
+    elif cascade.get("active_chains", 0) > 0:
+        lines.append(
+            f"CAUSAL CHAINS: {cascade['active_chains']} active chains tracking — "
+            "none have confirmed dominoes yet."
+        )
+    else:
+        lines.append("CAUSAL CHAINS: No active chains tracking right now.")
+
+    lines.append("")
+
+    # ── Somatic anticipation (pre-convergence building) ────────────
+    somatic = summary.get("somatic_building", [])
+    if somatic:
+        lines.append("WHERE MY ATTENTION IS BUILDING (signals accumulating, not yet enough for a call):")
+        for s in somatic:
+            domain_plain = _domain_plain(s["domains"])
+            direction_plain = _direction_words(s["dominant_direction"])
+            lines.append(
+                f"  - {s['ticker']}: {s['domain_count']} information sources pointing "
+                f"{direction_plain}. Sources: {domain_plain}. ({s['signal_count']} signals so far.)"
+            )
+        lines.append(
+            "  INSTRUCTION: These are tickers where signals are piling up but haven't reached "
+            "the threshold for a formal call. Use language like 'I'm sensing something', "
+            "'my attention keeps going back to', 'not ready to say anything definitive but'. "
+            "Pick the 1-2 most interesting ones — don't list all of them."
+        )
+    else:
+        lines.append("PRE-CONVERGENCE SENSING: Nothing accumulating strongly right now.")
 
     lines.append("")
 
