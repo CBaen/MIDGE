@@ -701,7 +701,7 @@ def _mine_openinsider(
                 trade_date
             FROM openinsider.insider_purchases
             WHERE trade_date >= '{cutoff}'
-              AND LOWER(trade_type) LIKE '%buy%'
+              AND trade_type = 'P - Purchase'
               AND (
                   UPPER(title) LIKE '%CEO%'
                   OR UPPER(title) LIKE '%CFO%'
@@ -757,7 +757,7 @@ def _mine_openinsider(
             SELECT ticker, insider_name, title, value, delta_owned_pct, trade_date
             FROM openinsider.insider_purchases
             WHERE trade_date >= '{cutoff}'
-              AND LOWER(trade_type) LIKE '%buy%'
+              AND trade_type = 'P - Purchase'
               AND delta_owned_pct >= 50
               AND COALESCE(value, 0) > 10000
             ORDER BY delta_owned_pct DESC
@@ -1202,22 +1202,38 @@ def _mine_finviz(
         return signals
 
     try:
-        rows = con.execute("""
-            SELECT
-                uv.ticker,
-                uv.sector,
-                uv.price,
-                uv.change_pct,
-                uv.volume_ratio,
-                ss.short_float_pct,
-                ss.short_ratio,
-                uv.ingested_at
-            FROM finviz.finviz_unusual_volume uv
-            INNER JOIN finviz.finviz_short_squeeze ss
-                ON uv.ticker = ss.ticker
-            WHERE uv.volume_ratio >= 2.0
-              AND ss.short_float_pct >= 15.0
-        """).fetchall()
+        # Check if finviz_short_squeeze table exists before JOINing
+        tables = [r[0] for r in con.execute(
+            "SELECT name FROM finviz.sqlite_master WHERE type='table'"
+        ).fetchall()]
+        if "finviz_short_squeeze" not in tables:
+            # Table doesn't exist yet — fall back to volume-only squeeze heuristic
+            # High volume + big price drop = potential short squeeze candidate
+            rows = con.execute("""
+                SELECT
+                    ticker, sector, price, change_pct, volume_ratio,
+                    NULL AS short_float_pct, NULL AS short_ratio, ingested_at
+                FROM finviz.finviz_unusual_volume
+                WHERE volume_ratio >= 3.0
+                  AND change_pct <= -5.0
+            """).fetchall()
+        else:
+            rows = con.execute("""
+                SELECT
+                    uv.ticker,
+                    uv.sector,
+                    uv.price,
+                    uv.change_pct,
+                    uv.volume_ratio,
+                    ss.short_float_pct,
+                    ss.short_ratio,
+                    uv.ingested_at
+                FROM finviz.finviz_unusual_volume uv
+                INNER JOIN finviz.finviz_short_squeeze ss
+                    ON uv.ticker = ss.ticker
+                WHERE uv.volume_ratio >= 2.0
+                  AND ss.short_float_pct >= 15.0
+            """).fetchall()
     except Exception as exc:
         logger.debug("finviz cross-query failed: %s", exc)
         return signals
