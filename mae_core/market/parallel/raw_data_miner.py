@@ -645,7 +645,7 @@ def _mine_openinsider(
                 LIST(title) AS titles
             FROM openinsider.insider_purchases
             WHERE trade_date >= '{cutoff}'
-              AND LOWER(trade_type) LIKE '%buy%'
+              AND trade_type = 'P - Purchase'
               AND value > 10000
             GROUP BY ticker
             HAVING COUNT(*) >= 3
