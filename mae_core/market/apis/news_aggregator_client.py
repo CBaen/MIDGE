@@ -2,22 +2,21 @@
 news_aggregator_client.py — Free Financial News Headline Aggregator
 
 Aggregates financial news headlines from multiple free RSS feeds and
-public APIs. No API keys required. Complements per-ticker Yahoo RSS
-with broad market news awareness — major macro events, Fed releases,
-and cross-market signals that no single ticker feed would surface.
+the SEC EDGAR public search endpoint. No API keys required. Complements
+per-ticker Yahoo RSS with broad market news awareness — major macro
+events, Fed releases, and cross-market signals that no single ticker
+feed would surface.
 
-Sources:
-  - Reuters Business RSS (top business/finance stories)
-  - CNBC Top News RSS (US market-moving headlines)
-  - MarketWatch Top Stories RSS (equity + macro)
+Sources (configured in news_aggregator_constants.py):
+  - Reuters Business RSS
+  - CNBC Top News RSS
+  - MarketWatch Top Stories RSS
   - Bloomberg Markets RSS (may return 403 — handled gracefully)
-  - Federal Reserve Press Releases RSS (Fed policy signals)
+  - Federal Reserve Press Releases RSS
   - SEC EDGAR Full-Text Search (8-K material events — same-day)
 
-Caching: 30 minutes per source (headlines change frequently but
-hammering RSS feeds every step is inconsiderate and gets you blocked).
-
-Rate limiting: 5 seconds between source fetches to be a polite citizen.
+Caching: 30 minutes per source.
+Rate limiting: 5 seconds between source fetches.
 
 Design contract:
   - Never crash on a single source failure. All sources are independent.
@@ -31,142 +30,27 @@ import logging
 import re
 import time
 import xml.etree.ElementTree as ET
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from typing import Dict, List, Optional, Set, Tuple
 
 import httpx
 
+from .news_aggregator_constants import (
+    EDGAR_8K_URL,
+    FINANCIAL_KEYWORDS,
+    NEGATIVE_KEYWORDS,
+    POSITIVE_KEYWORDS,
+    RSS_SOURCES,
+    SP500_TICKERS,
+)
+
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Timing constants
-# ---------------------------------------------------------------------------
-CACHE_DURATION = 1800           # 30 minutes per source
-INTER_SOURCE_DELAY = 5.0        # Seconds between source requests
-HTTP_TIMEOUT = 15.0             # Per-request timeout
-
-# ---------------------------------------------------------------------------
-# Sentiment keyword sets  (keyword-based, no LLM)
-# ---------------------------------------------------------------------------
-NEGATIVE_KEYWORDS: frozenset = frozenset({
-    "crash", "crashes", "plunge", "plunges", "plunging",
-    "layoff", "layoffs", "job cuts", "cuts jobs", "mass layoff",
-    "recall", "recalled",
-    "default", "defaulted",
-    "bankruptcy", "bankrupt", "chapter 11", "chapter 7",
-    "investigation", "investigated", "probe", "subpoena",
-    "fraud", "fraudulent", "ponzi",
-    "warning", "warns", "warning sign",
-    "downgrade", "downgraded",
-    "miss", "misses", "missed estimates",
-    "decline", "declines", "declining",
-    "loss", "losses",
-    "slump", "slumps",
-    "shutdown", "shuttered",
-    "inflation", "stagflation",
-    "recession", "contraction",
-    "rate hike", "rate hikes", "tightening",
-    "sanction", "sanctions",
-    "tariff", "tariffs",
-})
-
-POSITIVE_KEYWORDS: frozenset = frozenset({
-    "surge", "surges", "surging",
-    "record", "record high", "all-time high",
-    "upgrade", "upgraded",
-    "beat", "beats", "beat expectations", "earnings beat",
-    "approval", "approved", "fda approves", "fda approval",
-    "launch", "launches", "launched",
-    "expansion", "expands", "expanding",
-    "partnership", "partnerships",
-    "acquisition", "acquires", "merger", "deal",
-    "profit", "profits",
-    "rally", "rallies", "rallying",
-    "breakout",
-    "rate cut", "rate cuts", "easing",
-    "stimulus",
-    "growth", "growing",
-    "hiring", "jobs added",
-})
-
-# ---------------------------------------------------------------------------
-# Financial keywords that add analytical context
-# ---------------------------------------------------------------------------
-FINANCIAL_KEYWORDS: frozenset = frozenset({
-    "fed", "federal reserve", "fomc", "interest rate", "rate hike", "rate cut",
-    "inflation", "cpi", "pce", "gdp", "jobs report", "nfp", "unemployment",
-    "earnings", "revenue", "guidance", "forecast",
-    "ipo", "spac", "merger", "acquisition",
-    "sec", "filing", "8-k", "10-k", "10-q",
-    "congress", "senate", "legislation", "regulation",
-    "oil", "crude", "energy", "natural gas",
-    "gold", "silver", "copper",
-    "yield", "treasury", "bond", "debt ceiling",
-    "bitcoin", "crypto", "cryptocurrency",
-    "china", "trade war", "tariff",
-    "recession", "contraction", "expansion",
-    "stock", "shares", "equities",
-    "market", "nasdaq", "s&p", "dow",
-    "bank", "banking", "credit",
-    "dollar", "yen", "euro", "forex",
-})
-
-# ---------------------------------------------------------------------------
-# S&P 500 ticker set for standalone-word extraction (top 100 by recognition)
-# ---------------------------------------------------------------------------
-_SP500_TICKERS: Set[str] = {
-    "AAPL", "MSFT", "AMZN", "NVDA", "GOOGL", "GOOG", "META", "TSLA", "BRK",
-    "UNH", "LLY", "JPM", "V", "AVGO", "XOM", "PG", "MA", "JNJ", "HD",
-    "MRK", "ABBV", "CVX", "CRM", "BAC", "COST", "NFLX", "AMD", "PEP", "KO",
-    "TMO", "ADBE", "WMT", "ACN", "MCD", "CSCO", "LIN", "ABT", "DHR", "TXN",
-    "CMCSA", "VZ", "NEE", "WFC", "PM", "MS", "BMY", "ORCL", "INTC", "T",
-    "RTX", "AMGN", "GE", "HON", "QCOM", "IBM", "CAT", "UPS", "COP", "GS",
-    "LOW", "SPGI", "DE", "INTU", "ELV", "SBUX", "MDT", "AXP", "ISRG", "PLD",
-    "GILD", "CVS", "CI", "SYK", "ADP", "BLK", "TJX", "NOW", "REGN", "ZTS",
-    "MO", "DUK", "SO", "PNC", "USB", "MMC", "VRTX", "CB", "SCHW", "ADI",
-    "LRCX", "KLAC", "PANW", "SNPS", "CDNS", "MELI", "SHW", "ITW", "APD",
-    "GM", "F", "BA", "DAL", "UAL", "AAL", "LUV", "X", "NUE", "CLF",
-    "SPY", "QQQ", "IWM", "GLD", "SLV", "USO", "TLT", "HYG",
-}
-
-# ---------------------------------------------------------------------------
-# RSS feed definitions
-# ---------------------------------------------------------------------------
-_RSS_SOURCES: List[Dict] = [
-    {
-        "name": "reuters",
-        "url": "https://www.reutersagency.com/feed/?best-topics=business-finance&post_type=best",
-        "label": "Reuters Business",
-    },
-    {
-        "name": "cnbc",
-        "url": "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114",
-        "label": "CNBC Top News",
-    },
-    {
-        "name": "marketwatch",
-        "url": "https://feeds.marketwatch.com/marketwatch/topstories/",
-        "label": "MarketWatch",
-    },
-    {
-        "name": "bloomberg",
-        "url": "https://feeds.bloomberg.com/markets/news.rss",
-        "label": "Bloomberg Markets",
-    },
-    {
-        "name": "federal_reserve",
-        "url": "https://www.federalreserve.gov/feeds/press_all.xml",
-        "label": "Federal Reserve",
-    },
-]
-
-# ---------------------------------------------------------------------------
-# SEC EDGAR full-text search for 8-K filings (no API key needed)
-# ---------------------------------------------------------------------------
-_EDGAR_8K_URL = "https://efts.sec.gov/LATEST/search-index?q=%228-K%22&forms=8-K&dateRange=custom&startdt={date}&enddt={date}&hits.hits._source=period_of_report,entity_name,file_date,form_type,biz_location,inc_states"
-_EDGAR_FULL_TEXT_URL = "https://efts.sec.gov/LATEST/search-index?q=%22material+event%22&forms=8-K&dateRange=custom&startdt={date}&enddt={date}"
+CACHE_DURATION = 1800       # 30 minutes per source
+INTER_SOURCE_DELAY = 5.0    # Seconds between source requests
+HTTP_TIMEOUT = 15.0         # Per-request timeout
 
 # ---------------------------------------------------------------------------
 # Data model
@@ -201,25 +85,23 @@ class NewsHeadline:
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Parsing helpers
 # ---------------------------------------------------------------------------
 
 def _parse_date(date_str: str) -> str:
     """
     Normalise any date string to ISO 8601 UTC.
 
-    Tries RFC 2822 (RSS), then ISO 8601, then gives up and returns
-    the input string so the headline is never discarded for a bad date.
+    Tries RFC 2822 (standard RSS pubDate), then ISO 8601 variants.
+    Returns the input string unchanged on complete failure so the
+    headline is never silently dropped for a bad date.
     """
     if not date_str:
         return datetime.now(timezone.utc).isoformat()
-    # RFC 2822 (standard RSS pubDate)
     try:
-        dt = parsedate_to_datetime(date_str)
-        return dt.astimezone(timezone.utc).isoformat()
+        return parsedate_to_datetime(date_str).astimezone(timezone.utc).isoformat()
     except Exception:
         pass
-    # ISO 8601 variants
     for fmt in ("%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%d"):
         try:
             dt = datetime.strptime(date_str.strip(), fmt)
@@ -228,7 +110,7 @@ def _parse_date(date_str: str) -> str:
             return dt.astimezone(timezone.utc).isoformat()
         except Exception:
             pass
-    return date_str  # Return as-is rather than discard the headline
+    return date_str
 
 
 def _detect_sentiment(title: str) -> str:
@@ -237,69 +119,64 @@ def _detect_sentiment(title: str) -> str:
     keyword matching only. No LLM or external service required.
     """
     lower = title.lower()
-    neg_hits = sum(1 for kw in NEGATIVE_KEYWORDS if kw in lower)
-    pos_hits = sum(1 for kw in POSITIVE_KEYWORDS if kw in lower)
-    if neg_hits > pos_hits:
+    neg = sum(1 for kw in NEGATIVE_KEYWORDS if kw in lower)
+    pos = sum(1 for kw in POSITIVE_KEYWORDS if kw in lower)
+    if neg > pos:
         return "negative"
-    if pos_hits > neg_hits:
+    if pos > neg:
         return "positive"
     return "neutral"
 
 
 def _extract_financial_keywords(title: str) -> List[str]:
-    """Return financial keywords found in a headline title."""
+    """Return financial domain keywords found in a headline title."""
     lower = title.lower()
     return [kw for kw in FINANCIAL_KEYWORDS if kw in lower]
 
 
 def _extract_tickers(title: str) -> List[str]:
     """
-    Extract ticker symbols from a headline title via three strategies:
+    Extract ticker symbols from a headline title via four strategies:
 
     1. Explicit $TICKER notation  — $AAPL, $TSLA
     2. Parenthetical notation     — (AAPL), (NYSE: AAPL)
     3. Colon notation             — AAPL:
-    4. Standalone word match      — known S&P 500 tickers appearing as words
-       (capped at 3 tickers to avoid false positives from common words)
+    4. Standalone word match      — known S&P 500 tickers as whole words
+       (capped at 3 to suppress false positives from common uppercase words)
     """
     found: List[str] = []
     seen: Set[str] = set()
 
-    # Strategy 1: $TICKER
     for m in re.finditer(r'\$([A-Z]{1,5})\b', title):
         t = m.group(1)
         if t not in seen:
             seen.add(t)
             found.append(t)
 
-    # Strategy 2: (TICKER) or (EXCHANGE: TICKER)
     for m in re.finditer(r'\((?:[A-Z]+:\s*)?([A-Z]{1,5})\)', title):
         t = m.group(1)
         if t not in seen:
             seen.add(t)
             found.append(t)
 
-    # Strategy 3: TICKER: at start of word boundary
     for m in re.finditer(r'\b([A-Z]{1,5}):', title):
         t = m.group(1)
         if t not in seen:
             seen.add(t)
             found.append(t)
 
-    # Strategy 4: known S&P 500 tickers as standalone words (limit noise)
     words = set(re.findall(r'\b([A-Z]{1,5})\b', title))
-    standalone = [t for t in words if t in _SP500_TICKERS and t not in seen]
-    found.extend(standalone[:3])  # Cap at 3 to suppress false positives
+    standalone = [t for t in words if t in SP500_TICKERS and t not in seen]
+    found.extend(standalone[:3])
 
     return found
 
 
 def _parse_rss_xml(xml_text: str, source_name: str) -> List[Tuple[str, str, str]]:
     """
-    Parse raw RSS/Atom XML into (title, link, pubDate) tuples.
+    Parse raw RSS 2.0 or Atom 1.0 XML into (title, link, pubDate) tuples.
 
-    Handles both RSS 2.0 and Atom 1.0 gracefully. Returns an empty
-    list rather than raising on malformed XML.
+    Returns an empty list rather than raising on malformed XML.
     """
     results: List[Tuple[str, str, str]] = []
     try:
@@ -308,11 +185,9 @@ def _parse_rss_xml(xml_text: str, source_name: str) -> List[Tuple[str, str, str]
         logger.debug("NewsAggregator: XML parse error for %s: %s", source_name, exc)
         return results
 
-    # Detect namespace (Atom uses {http://www.w3.org/2005/Atom})
     ns_atom = "http://www.w3.org/2005/Atom"
 
-    # --- RSS 2.0 path ---
-    # <rss><channel><item><title>/<link>/<pubDate>
+    # RSS 2.0: <rss><channel><item>
     items = root.findall(".//item")
     if items:
         for item in items:
@@ -323,15 +198,15 @@ def _parse_rss_xml(xml_text: str, source_name: str) -> List[Tuple[str, str, str]
                 results.append((title, link, pub))
         return results
 
-    # --- Atom 1.0 path ---
-    # <feed><entry><title>/<link href="">/<updated>
+    # Atom 1.0: <feed><entry>
+    # ElementTree element truth value is based on child count, not identity.
+    # Must use explicit `is not None` checks to avoid the Python deprecation
+    # trap where `elem_a or elem_b` silently picks elem_b when elem_a exists.
     entries = root.findall(f"{{{ns_atom}}}entry")
     if not entries:
-        entries = root.findall("entry")  # Some feeds omit namespace
+        entries = root.findall("entry")
 
     for entry in entries:
-        # Use explicit is not None checks — ET elements are truthy even when empty,
-        # so `a or b` would skip `a` when it exists but has no text children.
         title_el = entry.find(f"{{{ns_atom}}}title")
         if title_el is None:
             title_el = entry.find("title")
@@ -365,15 +240,14 @@ class NewsAggregatorClient:
     Aggregates free financial news headlines from multiple RSS feeds
     and the SEC EDGAR public search endpoint.
 
-    No API keys required. Uses httpx for HTTP. Parses RSS with
-    xml.etree.ElementTree (stdlib, no feedparser dependency).
+    No API keys required. Uses httpx for HTTP, xml.etree.ElementTree
+    (stdlib) for RSS parsing — no feedparser dependency.
 
-    Cache: 30 minutes per source. Sources are fetched sequentially
-    with a 5-second inter-source delay to avoid rate bans.
+    Cache: 30 minutes per source. Sources fetched with a 5-second
+    inter-source delay to avoid rate bans.
 
-    Failure policy: every source is wrapped in its own try/except.
-    A single blocked, timed-out, or malformed source never affects
-    the others. Partial results are always returned.
+    Failure policy: every source has its own try/except. A single
+    blocked, timed-out, or malformed source never affects the others.
 
     Usage:
         client = NewsAggregatorClient(raw_store=store)
@@ -381,7 +255,6 @@ class NewsAggregatorClient:
         aapl_news = client.get_ticker_mentions("AAPL")
     """
 
-    # Reusable httpx client — connection pooling + consistent headers
     _HTTP_HEADERS = {
         "User-Agent": "MIDGE/1.0 Financial Research Bot (midge@example.com)",
         "Accept": "application/rss+xml, application/xml, text/xml, */*",
@@ -390,19 +263,13 @@ class NewsAggregatorClient:
     def __init__(self, raw_store=None):
         """
         Args:
-            raw_store: Optional RawStore instance. When provided, raw
-                       headlines are persisted to SQLite before processing.
+            raw_store: Optional RawStore instance for SQLite persistence.
                        Always works without it — just no persistence.
         """
         self._raw_store = raw_store
-
-        # Per-source cache: {source_name: (headlines_list, fetch_epoch)}
+        # {source_name: (headlines_list, fetch_epoch)}
         self._cache: Dict[str, Tuple[List[NewsHeadline], float]] = {}
-
-        # Track last fetch time for inter-source rate limiting
         self._last_fetch_time: float = 0.0
-
-        # Lazy-initialised httpx client
         self._http: Optional[httpx.Client] = None
 
     # ------------------------------------------------------------------
@@ -410,7 +277,6 @@ class NewsAggregatorClient:
     # ------------------------------------------------------------------
 
     def _get_http(self) -> httpx.Client:
-        """Return (or create) the shared httpx client."""
         if self._http is None or self._http.is_closed:
             self._http = httpx.Client(
                 headers=self._HTTP_HEADERS,
@@ -421,109 +287,77 @@ class NewsAggregatorClient:
 
     def _fetch_url(self, url: str) -> Optional[str]:
         """
-        Fetch URL text with rate limiting and graceful error handling.
+        Fetch URL text with inter-source rate limiting.
 
-        Returns the response body as a string, or None on any failure
-        (timeout, 4xx, 5xx, DNS error, etc.).
+        Returns response body as str, or None on any failure
+        (timeout, 4xx, 5xx, DNS error). Never raises.
         """
-        # Enforce inter-source delay
         elapsed = time.time() - self._last_fetch_time
         if elapsed < INTER_SOURCE_DELAY:
             time.sleep(INTER_SOURCE_DELAY - elapsed)
         self._last_fetch_time = time.time()
 
         try:
-            http = self._get_http()
-            resp = http.get(url)
+            resp = self._get_http().get(url)
             if resp.status_code == 200:
                 return resp.text
             if resp.status_code == 403:
-                logger.debug(
-                    "NewsAggregator: 403 Forbidden for %s (likely paywall)", url
-                )
+                logger.debug("NewsAggregator: 403 Forbidden for %s (paywall?)", url)
             else:
-                logger.debug(
-                    "NewsAggregator: HTTP %d for %s", resp.status_code, url
-                )
+                logger.debug("NewsAggregator: HTTP %d for %s", resp.status_code, url)
             return None
         except httpx.TimeoutException:
             logger.debug("NewsAggregator: timeout fetching %s", url)
-            return None
         except httpx.ConnectError:
             logger.debug("NewsAggregator: DNS/connect error for %s", url)
-            return None
         except Exception as exc:
             logger.debug("NewsAggregator: fetch error for %s: %s", url, exc)
-            return None
+        return None
 
     # ------------------------------------------------------------------
-    # RSS source fetchers
+    # RSS source fetcher
     # ------------------------------------------------------------------
 
-    def _fetch_rss_source(
-        self, source: Dict, max_items: int
-    ) -> List[NewsHeadline]:
-        """
-        Fetch a single RSS source and convert to NewsHeadline objects.
-
-        Checks cache first. Stores raw data via raw_store when available.
-        Returns empty list on any failure — never raises.
-        """
+    def _fetch_rss_source(self, source: Dict, max_items: int) -> List[NewsHeadline]:
+        """Fetch one RSS source, serve from cache when fresh."""
         name = source["name"]
-        url = source["url"]
         now = time.time()
 
-        # Serve from cache if fresh
         if name in self._cache:
-            cached_headlines, cached_at = self._cache[name]
+            cached, cached_at = self._cache[name]
             if now - cached_at < CACHE_DURATION:
-                logger.debug(
-                    "NewsAggregator: serving %s from cache (%d items)",
-                    name, len(cached_headlines),
-                )
-                return cached_headlines[:max_items]
+                return cached[:max_items]
 
-        xml_text = self._fetch_url(url)
+        xml_text = self._fetch_url(source["url"])
         if not xml_text:
             return []
 
         raw_items = _parse_rss_xml(xml_text, name)
         if not raw_items:
-            logger.debug("NewsAggregator: no items parsed from %s", name)
             return []
 
-        headlines: List[NewsHeadline] = []
-        for title, link, pub_raw in raw_items[:max_items]:
-            if not title:
-                continue
-            published = _parse_date(pub_raw)
-            tickers = _extract_tickers(title)
-            sentiment = _detect_sentiment(title)
-            keywords = _extract_financial_keywords(title)
-
-            headlines.append(NewsHeadline(
+        headlines = [
+            NewsHeadline(
                 title=title,
                 source=name,
                 url=link,
-                published=published,
-                tickers=tickers,
-                sentiment=sentiment,
-                keywords=keywords,
-            ))
+                published=_parse_date(pub_raw),
+                tickers=_extract_tickers(title),
+                sentiment=_detect_sentiment(title),
+                keywords=_extract_financial_keywords(title),
+            )
+            for title, link, pub_raw in raw_items[:max_items]
+            if title
+        ]
 
-        # Persist raw data
         if self._raw_store is not None and headlines:
             try:
                 self._store_raw_headlines(name, headlines)
             except Exception as exc:
-                logger.debug(
-                    "NewsAggregator: raw_store write failed for %s: %s", name, exc
-                )
+                logger.debug("NewsAggregator: raw_store write failed for %s: %s", name, exc)
 
         self._cache[name] = (headlines, now)
-        logger.debug(
-            "NewsAggregator: fetched %d headlines from %s", len(headlines), name
-        )
+        logger.debug("NewsAggregator: fetched %d headlines from %s", len(headlines), name)
         return headlines
 
     # ------------------------------------------------------------------
@@ -532,23 +366,19 @@ class NewsAggregatorClient:
 
     def _fetch_edgar_8k(self, max_items: int) -> List[NewsHeadline]:
         """
-        Fetch today's SEC 8-K filings from EDGAR full-text search.
-
-        Uses the public efts.sec.gov endpoint — no API key required.
-        Returns NewsHeadline objects with source="sec_edgar_8k".
+        Fetch today's 8-K filings from EDGAR full-text search.
+        No API key required. Returns neutral NewsHeadline objects.
         """
         name = "sec_edgar_8k"
         now = time.time()
 
         if name in self._cache:
-            cached_headlines, cached_at = self._cache[name]
+            cached, cached_at = self._cache[name]
             if now - cached_at < CACHE_DURATION:
-                return cached_headlines[:max_items]
+                return cached[:max_items]
 
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        url = _EDGAR_8K_URL.format(date=today)
-
-        text = self._fetch_url(url)
+        text = self._fetch_url(EDGAR_8K_URL.format(date=today))
         if not text:
             return []
 
@@ -558,33 +388,27 @@ class NewsAggregatorClient:
             logger.debug("NewsAggregator: EDGAR JSON parse error: %s", exc)
             return []
 
-        hits = data.get("hits", {}).get("hits", [])
         headlines: List[NewsHeadline] = []
-
-        for hit in hits[:max_items]:
-            source_data = hit.get("_source", {})
-            entity = source_data.get("entity_name", "Unknown entity")
-            period = source_data.get("period_of_report", today)
-            form_type = source_data.get("form_type", "8-K")
+        for hit in data.get("hits", {}).get("hits", [])[:max_items]:
+            src = hit.get("_source", {})
+            entity = src.get("entity_name", "Unknown entity")
+            period = src.get("period_of_report", today)
+            form_type = src.get("form_type", "8-K")
             filing_id = hit.get("_id", "")
 
             title = f"{entity} filed {form_type} ({period})"
-            url_hit = (
-                f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany"
-                f"&filenum={filing_id}"
+            url = (
+                f"https://www.sec.gov/cgi-bin/browse-edgar"
+                f"?action=getcompany&filenum={filing_id}"
             ) if filing_id else "https://efts.sec.gov/LATEST/search-index"
-
-            # Tickers: EDGAR doesn't return them in this endpoint — skip extraction
-            # to avoid false positives from company name fragments
-            tickers = _extract_tickers(entity.upper())
 
             headlines.append(NewsHeadline(
                 title=title,
                 source=name,
-                url=url_hit,
-                published=_parse_date(source_data.get("file_date", today)),
-                tickers=tickers,
-                sentiment="neutral",    # 8-K filing is neutral until context is known
+                url=url,
+                published=_parse_date(src.get("file_date", today)),
+                tickers=_extract_tickers(entity.upper()),
+                sentiment="neutral",
                 keywords=["sec", "filing", "8-k"],
             ))
 
@@ -592,35 +416,21 @@ class NewsAggregatorClient:
             try:
                 self._store_raw_headlines(name, headlines)
             except Exception as exc:
-                logger.debug(
-                    "NewsAggregator: raw_store write failed for edgar_8k: %s", exc
-                )
+                logger.debug("NewsAggregator: raw_store write failed for edgar_8k: %s", exc)
 
         self._cache[name] = (headlines, now)
-        logger.debug(
-            "NewsAggregator: fetched %d EDGAR 8-K filings", len(headlines)
-        )
+        logger.debug("NewsAggregator: fetched %d EDGAR 8-K filings", len(headlines))
         return headlines
 
     # ------------------------------------------------------------------
     # Raw store persistence
     # ------------------------------------------------------------------
 
-    def _store_raw_headlines(
-        self, source_name: str, headlines: List[NewsHeadline]
-    ) -> None:
-        """
-        Persist headlines to raw_store SQLite.
-
-        Creates a unified `news_headlines` table across all sources.
-        Deduplicates by (source, title, published) so re-fetches are safe.
-        """
-        raw_store = self._raw_store
-        if raw_store is None:
+    def _store_raw_headlines(self, source_name: str, headlines: List[NewsHeadline]) -> None:
+        """Persist headlines to a unified `news_headlines` SQLite table."""
+        if self._raw_store is None:
             return
-
-        # Use the _get_conn pattern from RawStoreBase
-        conn = raw_store._get_conn("news_aggregator")
+        conn = self._raw_store._get_conn("news_aggregator")
         conn.execute("""
             CREATE TABLE IF NOT EXISTS news_headlines (
                 source      TEXT,
@@ -634,21 +444,15 @@ class NewsAggregatorClient:
                 PRIMARY KEY (source, title, published)
             )
         """)
-
         now_iso = datetime.now(timezone.utc).isoformat()
-        rows = []
-        for h in headlines:
-            rows.append((
-                h.source,
-                h.title[:500],
-                h.url[:500],
-                h.published,
-                json.dumps(h.tickers),
-                h.sentiment,
-                json.dumps(h.keywords),
-                now_iso,
-            ))
-
+        rows = [
+            (
+                h.source, h.title[:500], h.url[:500], h.published,
+                json.dumps(h.tickers), h.sentiment,
+                json.dumps(h.keywords), now_iso,
+            )
+            for h in headlines
+        ]
         if rows:
             conn.executemany(
                 "INSERT OR REPLACE INTO news_headlines "
@@ -666,81 +470,60 @@ class NewsAggregatorClient:
         """
         Fetch headlines from all configured sources.
 
-        Each source is attempted independently. A failure in one source
-        does not affect the others. Results are sorted newest-first.
+        Each source is attempted independently. Failures do not
+        propagate. Results are sorted newest-first by ISO timestamp.
 
         Args:
-            max_per_source: Maximum headlines to return per source.
-                            Total upper bound = sources × max_per_source.
+            max_per_source: Upper bound per source.
 
         Returns:
-            List of NewsHeadline objects, sorted by published timestamp
-            descending. Empty list if all sources fail.
+            List of NewsHeadline, newest-first. Empty if all fail.
         """
         all_headlines: List[NewsHeadline] = []
 
-        # RSS sources
-        for source in _RSS_SOURCES:
+        for source in RSS_SOURCES:
             try:
-                items = self._fetch_rss_source(source, max_per_source)
-                all_headlines.extend(items)
+                all_headlines.extend(self._fetch_rss_source(source, max_per_source))
             except Exception as exc:
-                logger.warning(
-                    "NewsAggregator: source '%s' failed unexpectedly: %s",
-                    source["name"], exc,
-                )
+                logger.warning("NewsAggregator: source '%s' failed: %s", source["name"], exc)
 
-        # SEC EDGAR 8-K source
         try:
-            edgar_items = self._fetch_edgar_8k(max_per_source)
-            all_headlines.extend(edgar_items)
+            all_headlines.extend(self._fetch_edgar_8k(max_per_source))
         except Exception as exc:
             logger.warning("NewsAggregator: EDGAR 8-K fetch failed: %s", exc)
 
-        # Sort newest-first. Use published string for ISO-sortable comparison;
-        # fall back to stable ordering for non-parseable dates.
         all_headlines.sort(key=lambda h: h.published, reverse=True)
-
         logger.info(
             "NewsAggregator: aggregated %d headlines from %d sources",
-            len(all_headlines), len(_RSS_SOURCES) + 1,
+            len(all_headlines), len(RSS_SOURCES) + 1,
         )
         return all_headlines
 
     def get_ticker_mentions(self, ticker: str) -> List[NewsHeadline]:
         """
-        Return all cached headlines that mention a specific ticker.
+        Return cached headlines that mention a specific ticker.
 
-        Searches across both extracted tickers and the headline title
-        itself (to catch cases where the extraction missed a mention).
-
-        Does NOT trigger a fresh fetch — uses whatever is in cache
-        from the last get_headlines() call. Call get_headlines() first
-        if you need fresh data.
+        Searches extracted tickers list first, then falls back to
+        word-boundary scan of the raw title. Does NOT trigger a fresh
+        fetch — call get_headlines() first if you need current data.
 
         Args:
-            ticker: Ticker symbol to search for, e.g. "AAPL".
+            ticker: Symbol to search for, e.g. "AAPL".
 
         Returns:
-            List of NewsHeadline objects mentioning the ticker.
-            Sorted newest-first.
+            Deduplicated list sorted newest-first.
         """
         ticker_upper = ticker.upper().strip()
         matches: List[NewsHeadline] = []
 
-        for _source_name, (cached_headlines, _cached_at) in self._cache.items():
-            for h in cached_headlines:
-                # Check extracted tickers list first (fast path)
+        for _name, (cached, _at) in self._cache.items():
+            for h in cached:
                 if ticker_upper in h.tickers:
                     matches.append(h)
                     continue
-                # Fallback: scan title for standalone mention
-                # Word-boundary check prevents "CAT" matching "CATALYST"
                 if re.search(rf'\b{re.escape(ticker_upper)}\b', h.title):
                     matches.append(h)
 
-        # Deduplicate by (source, title) in case a headline appeared in
-        # multiple passes without a cache refresh
         seen: Set[Tuple[str, str]] = set()
         unique: List[NewsHeadline] = []
         for h in matches:
@@ -791,18 +574,16 @@ if __name__ == "__main__":
     headlines = client.get_headlines(max_per_source=max_items)
 
     if headlines:
-        # Group by source for readability
         by_source: Dict[str, List[NewsHeadline]] = {}
         for h in headlines:
             by_source.setdefault(h.source, []).append(h)
-        for source_name, items in sorted(by_source.items()):
-            print(f"\n  [{source_name.upper()}] ({len(items)} headlines)")
+        for src_name, items in sorted(by_source.items()):
+            print(f"\n  [{src_name.upper()}] ({len(items)} headlines)")
             for h in items[:3]:
                 print(f"    {h.to_plain_language()}")
     else:
         print("  No headlines returned from any source.")
 
-    # Demonstrate ticker mentions
     print("\n  AAPL mentions:")
     aapl = client.get_ticker_mentions("AAPL")
     if aapl:
