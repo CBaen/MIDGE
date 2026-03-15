@@ -330,16 +330,24 @@ def _parse_rss_xml(xml_text: str, source_name: str) -> List[Tuple[str, str, str]
         entries = root.findall("entry")  # Some feeds omit namespace
 
     for entry in entries:
-        title_el = entry.find(f"{{{ns_atom}}}title") or entry.find("title")
+        # Use explicit is not None checks — ET elements are truthy even when empty,
+        # so `a or b` would skip `a` when it exists but has no text children.
+        title_el = entry.find(f"{{{ns_atom}}}title")
+        if title_el is None:
+            title_el = entry.find("title")
         title = (title_el.text or "").strip() if title_el is not None else ""
 
-        link_el = entry.find(f"{{{ns_atom}}}link") or entry.find("link")
+        link_el = entry.find(f"{{{ns_atom}}}link")
+        if link_el is None:
+            link_el = entry.find("link")
         if link_el is not None:
             link = link_el.get("href", link_el.text or "").strip()
         else:
             link = ""
 
-        updated_el = entry.find(f"{{{ns_atom}}}updated") or entry.find("updated")
+        updated_el = entry.find(f"{{{ns_atom}}}updated")
+        if updated_el is None:
+            updated_el = entry.find("updated")
         pub = (updated_el.text or "").strip() if updated_el is not None else ""
 
         if title:

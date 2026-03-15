@@ -423,7 +423,7 @@ def detect_volume_clusters(
 
         desc = (
             f"{len(spikes)} unrelated tickers showed coordinated strength spikes on {day} "
-            f"(average {mean_factor:.1f}× above their 30-day baseline). "
+            f"(average {mean_factor:.1f}x above their 30-day baseline). "
             f"Top tickers: {', '.join(tickers[:5])}. "
             f"Coordinated spikes across unrelated instruments suggest institutional "
             f"activity, sector rotation, or broad risk-on/risk-off positioning."
