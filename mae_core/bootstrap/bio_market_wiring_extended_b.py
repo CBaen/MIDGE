@@ -142,10 +142,12 @@ def _wire_vestibular(ctx: SimpleNamespace, bus: Any) -> int:
 
     NOTE: CH_CONVERGENCE subscription REMOVED (2026-03-14, triadic audit P1).
     VestibularSystem's convergence callback called report_metric("convergence_rate"),
-    but vertigo/stability state feeds a reflex condition that is permanently
-    disabled (returns None unconditionally). Confirmed inert by triadic audit.
-    Prediction outcome callback retained as it provides the accuracy signal
-    that the vestibular model uses to track stability.
+    but the reflex condition it fed was permanently disabled. Confirmed inert by
+    triadic audit. Prediction outcome callback retained.
+
+    Vertigo output is now LIVE: when stability drops below 0.3, CH_VERTIGO fires
+    and market_hooks_eventbus._on_vertigo() immediately busts the RegimeClassifier
+    day-cache and calls classify() — bypassing the normal 500-step cadence.
     """
     vestibular = getattr(ctx, "vestibular_system", None)
     if vestibular is None:

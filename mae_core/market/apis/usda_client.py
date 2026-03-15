@@ -161,11 +161,13 @@ class USDAClient:
     Cache: 6 hours — monthly reports rarely change intraday.
     """
 
-    def __init__(self, raw_store=None):
+    def __init__(self, raw_store=None, provider=None):
         """Initialize USDA client.
 
         Args:
             raw_store: Optional RawStore for persisting API responses.
+            provider: Unused — USDAClient uses httpx directly. Accepted so
+                      the bootstrap can pass a uniform kwargs dict.
         """
         self._raw_store = raw_store
         self._last_request_time: float = 0.0

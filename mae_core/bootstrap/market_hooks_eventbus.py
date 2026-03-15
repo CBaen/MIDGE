@@ -265,7 +265,8 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
                 logger.debug("Vestibular-triggered regime reclassification failed", exc_info=True)
 
         ctx.bus.register_callback(CH_VERTIGO, _on_vertigo)
-        logger.info("Layer 33f - Causal watch: signal → WorldModel → downstream + backward root-cause wired")
+
+    logger.info("Layer 33f - Causal watch: signal → WorldModel → downstream + backward root-cause wired")
 
     # --- Cascade tracking: watch dominoes fall, confirm chain links ---
     # When signals arrive, check if they confirm any predicted cascade.

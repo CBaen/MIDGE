@@ -323,6 +323,13 @@ class JobTracker:
             base_confidence += 0.10
         signal.confidence = min(0.90, base_confidence)
 
+        # Persist raw posting signal before returning — store ALL, not just spikes
+        if self._raw_store is not None and signal.jobs_7d > 0:
+            try:
+                self._raw_store.store_job_postings([signal])
+            except Exception:
+                pass  # Never let raw storage failure block signal processing
+
         return signal
 
     def detect_hiring_blitz(
