@@ -2,11 +2,13 @@
 
 Extracted from market_hooks.py — purely structural split.
 Contains: _write_convergence_heartbeat, _run_drift_detector,
-          _run_slow_cadence_ops (every-500/1000/5000-step analysis).
+          _run_slow_cadence_ops (every-500/1000/5000-step analysis),
+          _ingest_granger_bridge (continuous-Granger → WorldModel bridge reader).
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 from datetime import datetime
@@ -312,6 +314,85 @@ def _run_circular_health_check(ctx: SimpleNamespace, step: int) -> None:
     ctx._circular_health = arcs
 
 
+_GRANGER_BRIDGE_PATH = Path(__file__).resolve().parents[2] / "data" / "market" / "granger_bridge.json"
+
+
+def _ingest_granger_bridge(ctx: SimpleNamespace) -> None:
+    """Read granger_bridge.json (written by feed_granger_to_worldmodel.py) and inject
+    any new/updated domain-level causal edges into the live WorldModel.
+
+    Designed for cross-process safety:
+      - Parallel Granger process writes granger_continuous.json
+      - feed_granger_to_worldmodel.py converts it to granger_bridge.json (atomic write)
+      - This function reads granger_bridge.json; the daemon never touches the source file
+
+    Deduplication: ctx._granger_bridge_ts tracks the last-seen 'last_written' timestamp.
+    If the file hasn't changed since the last call, we skip all I/O.
+
+    Edge injection mirrors the existing in-process Granger path (lines ~392-408 above):
+      world_model.add_discovered_edge(cause, effect, strength, lag_days, evidence)
+    """
+    _wm = getattr(ctx, "world_model", None)
+    if _wm is None:
+        return
+
+    if not _GRANGER_BRIDGE_PATH.exists():
+        return
+
+    try:
+        raw = json.loads(_GRANGER_BRIDGE_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        logger.debug("_ingest_granger_bridge: could not read bridge file", exc_info=True)
+        return
+
+    last_written = raw.get("last_written", "")
+    # Skip if nothing new since last read
+    if last_written and last_written == getattr(ctx, "_granger_bridge_ts", ""):
+        return
+
+    edges = raw.get("edges", [])
+    if not edges:
+        ctx._granger_bridge_ts = last_written
+        return
+
+    injected = 0
+    for edge in edges:
+        cause = edge.get("cause", "")
+        effect = edge.get("effect", "")
+        strength = float(edge.get("strength", 0.5))
+        lag_days = float(edge.get("lag_days", 3.0))
+        if not cause or not effect:
+            continue
+        try:
+            _wm.add_discovered_edge(
+                cause=cause,
+                effect=effect,
+                strength=strength,
+                lag_days=lag_days,
+                evidence="granger_continuous",
+            )
+            injected += 1
+        except Exception:
+            logger.debug(
+                "_ingest_granger_bridge: add_discovered_edge failed for %s→%s",
+                cause, effect, exc_info=True,
+            )
+
+    ctx._granger_bridge_ts = last_written
+
+    if injected:
+        logger.info(
+            "WorldModel: injected %d domain-level edges from continuous Granger "
+            "(source: %s)",
+            injected, raw.get("source_last_updated", "?"),
+        )
+        # Persist WorldModel so discovered edges survive daemon restart
+        try:
+            _wm.persist()
+        except Exception:
+            logger.debug("WorldModel persist after bridge inject failed", exc_info=True)
+
+
 def _run_slow_cadence_ops(ctx: SimpleNamespace, step: int, _shm, _timer) -> None:
     """Run every-500-step analysis: lag-correlation, Granger causality, post-mortem.
 
@@ -408,6 +489,17 @@ def _run_slow_cadence_ops(ctx: SimpleNamespace, step: int, _shm, _timer) -> None
                     )
             except Exception:
                 logger.debug("Granger causality step failed", exc_info=True)
+
+        # --- Continuous Granger bridge: inject domain-level edges from parallel process ---
+        # The parallel continuous_granger.py discovers domain-level causal relationships
+        # (e.g. institutional → insider, macro → institutional) from the full 874K signal
+        # archive.  feed_granger_to_worldmodel.py converts its output to granger_bridge.json.
+        # We read and inject those edges here — the daemon never touches granger_continuous.json
+        # directly, keeping the two processes cleanly decoupled.
+        try:
+            _ingest_granger_bridge(ctx)
+        except Exception:
+            logger.debug("_ingest_granger_bridge failed", exc_info=True)
 
         post_mortem = getattr(ctx, "post_mortem_reviewer", None)
         if post_mortem is not None:
