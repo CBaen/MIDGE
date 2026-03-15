@@ -316,6 +316,70 @@ def _run_circular_health_check(ctx: SimpleNamespace, step: int) -> None:
 
 _GRANGER_BRIDGE_PATH = Path(__file__).resolve().parents[2] / "data" / "market" / "granger_bridge.json"
 _REPLAY_BRIDGE_PATH  = Path(__file__).resolve().parents[2] / "data" / "market" / "replay_bridge.json"
+_BRIDGE_DIR          = Path(__file__).resolve().parents[2] / "data" / "market"
+
+
+def _ingest_jsonl_bridge(ctx: SimpleNamespace, bridge_name: str) -> None:
+    """Read a JSONL bridge file and inject signals into the convergence engine.
+
+    Generic bridge reader for any ecosystem process that writes MarketSignal-format
+    JSONL. Reads new lines since last offset, injects via convergence_alerter.record_signal().
+
+    Used for: raw_miner_signals.jsonl, cross_market_signals.jsonl
+    """
+    bridge_path = _BRIDGE_DIR / f"{bridge_name}.jsonl"
+    if not bridge_path.exists():
+        return
+
+    offset_attr = f"_bridge_offset_{bridge_name}"
+    last_offset = getattr(ctx, offset_attr, 0)
+
+    alerter = getattr(ctx, "convergence_alerter", None)
+    if alerter is None:
+        return
+
+    try:
+        file_size = bridge_path.stat().st_size
+        if file_size <= last_offset:
+            return  # No new data
+
+        injected = 0
+        with open(bridge_path, "r", encoding="utf-8") as f:
+            f.seek(last_offset)
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    sig = json.loads(line)
+                    alerter.record_signal(
+                        signal_id=sig.get("signal_id", f"{bridge_name}_{injected}"),
+                        strength=sig.get("strength", 0.5),
+                        domain=sig.get("domain", "unknown"),
+                        direction=sig.get("direction", ""),
+                        confidence=sig.get("confidence", 0.5),
+                        timestamp=sig.get("timestamp", ""),
+                        metadata={
+                            "symbol": sig.get("symbol", ""),
+                            "asset_class": sig.get("asset_class", ""),
+                            "signal_source": sig.get("source", bridge_name),
+                            **(sig.get("metadata", {})),
+                        },
+                        source=sig.get("source", bridge_name),
+                    )
+                    injected += 1
+                except Exception:
+                    pass  # Skip malformed lines
+            new_offset = f.tell()
+
+        setattr(ctx, offset_attr, new_offset)
+        if injected > 0:
+            logger.info(
+                "Bridge %s: injected %d signals into convergence engine",
+                bridge_name, injected,
+            )
+    except Exception:
+        logger.debug("_ingest_jsonl_bridge(%s) failed", bridge_name, exc_info=True)
 
 
 def _ingest_granger_bridge(ctx: SimpleNamespace) -> None:

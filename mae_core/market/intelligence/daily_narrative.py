@@ -559,6 +559,35 @@ def _gather_data(date_str: str) -> dict:
         logger.debug("Could not read somatic_state", exc_info=True)
         summary["somatic_building"] = []
 
+    # ── Cross-market anomaly discoveries ────────────────────────────
+    cross_market = _read_recent_jsonl(_DATA_MARKET / "cross_market_discoveries.jsonl", days=1, max_lines=5)
+    summary["cross_market_anomalies"] = [
+        {
+            "type": d.get("discovery_type", "unknown"),
+            "description": d.get("description", ""),
+            "strength": d.get("strength", 0),
+            "tickers": d.get("affected_tickers", [])[:5],
+            "domains": d.get("affected_domains", []),
+        }
+        for d in cross_market if isinstance(d, dict)
+    ]
+
+    # ── Crypto Fear & Greed Index ────────────────────────────────────
+    try:
+        from mae_core.market.apis.crypto_fear_greed_client import get_fear_greed
+        fg = get_fear_greed()
+        if fg:
+            summary["crypto_fear_greed"] = {
+                "value": fg.value,
+                "classification": fg.classification,
+                "direction": fg.direction,
+                "trend": fg.trend,
+            }
+        else:
+            summary["crypto_fear_greed"] = {}
+    except Exception:
+        summary["crypto_fear_greed"] = {}
+
     return summary
 
 
