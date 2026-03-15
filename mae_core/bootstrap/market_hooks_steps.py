@@ -757,6 +757,42 @@ def _run_slow_cadence_ops(ctx: SimpleNamespace, step: int, _shm, _timer) -> None
             except Exception as exc:
                 logger.debug("CascadeTracker expire_stale failed", exc_info=True)
 
+            # Persist cascade snapshot for daily narrative (file-based reader)
+            try:
+                _chains = _ct.get_active_chains()
+                _stats = _ct.get_statistics()
+                _snap: list[dict] = []
+                for _chain_id, _chain in _chains.items():
+                    _confirmed = [lk for lk in _chain.get("links", []) if lk.get("status") == "confirmed"]
+                    _pending = [lk for lk in _chain.get("links", []) if lk.get("status") == "pending"]
+                    if not _chain.get("links"):
+                        continue
+                    _snap.append({
+                        "trigger": _chain.get("trigger", "?"),
+                        "direction": _chain.get("direction", "?"),
+                        "total_links": len(_chain.get("links", [])),
+                        "confirmed_count": len(_confirmed),
+                        "pending_count": len(_pending),
+                        "confirmed_tickers": [lk.get("ticker") for lk in _confirmed],
+                        "next_dominoes": [lk.get("ticker") for lk in _pending[:3]],
+                        "registered_at": _chain.get("registered_at", ""),
+                        "mean_energy_ratio": (
+                            round(sum(lk["energy_ratio"] for lk in _confirmed if "energy_ratio" in lk)
+                                  / max(len([lk for lk in _confirmed if "energy_ratio" in lk]), 1), 3)
+                            if any("energy_ratio" in lk for lk in _confirmed) else None
+                        ),
+                    })
+                # Sort by confirmed_count descending — most-confirmed chains first
+                _snap.sort(key=lambda x: x["confirmed_count"], reverse=True)
+                _cascade_path = os.path.join("data", "market", "cascade_snapshot.json")
+                os.makedirs(os.path.dirname(_cascade_path), exist_ok=True)
+                import json as _json_cas
+                with open(_cascade_path, "w", encoding="utf-8") as _cf:
+                    _json_cas.dump({"updated_at": datetime.now().isoformat(),
+                                    "stats": _stats, "chains": _snap[:10]}, _cf)
+            except Exception:
+                logger.debug("CascadeTracker snapshot failed", exc_info=True)
+
         # Arc 5: Circular flow health check (growth sprint: every 200 steps)
         _run_circular_health_check(ctx, step)
 
