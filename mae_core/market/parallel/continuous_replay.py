@@ -400,7 +400,7 @@ def _build_alerter(min_domains: int, use_thompson: bool):
     if use_thompson:
         from mae_core.market.intelligence.thompson_sampler import ThompsonSampler
         thompson = ThompsonSampler()
-        logger.info("Thompson loaded: %d distributions", len(thompson._distributions))
+        logger.info("Thompson loaded: %d distributions", len(thompson.distributions))
 
     alerter = ConvergenceAlerter(
         min_domains=min_domains,
