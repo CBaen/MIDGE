@@ -114,13 +114,18 @@ def _wire_arousal(ctx: SimpleNamespace, bus: Any) -> int:
     """ArousalRegulator: Yerkes-Dodson for trading.
 
     Prediction outcomes -> reward signal (win=high, loss=low).
-    Convergence -> moderate reward (opportunity detected).
+
+    NOTE: CH_CONVERGENCE subscription REMOVED (2026-03-14, triadic audit P1).
+    ArousalRegulator's convergence callback fed reward signal based on
+    convergence confidence — but arousal state is not read by any market
+    decision pathway. Confirmed inert by triadic audit. Prediction outcome
+    callback retained (direct win/loss feedback).
     """
     arousal = getattr(ctx, "arousal_regulator", None)
     if arousal is None:
         return 0
 
-    from mae_core.market.channels import CH_CONVERGENCE, CH_PREDICTION_RESULT
+    from mae_core.market.channels import CH_PREDICTION_RESULT
 
     def _on_prediction_result(channel, data):
         msg = _parse(data)
@@ -130,14 +135,7 @@ def _wire_arousal(ctx: SimpleNamespace, bus: Any) -> int:
         elif won is False:
             arousal.record_reward(0.0)
 
-    def _on_convergence(channel, data):
-        msg = _parse(data)
-        confidence = msg.get("confidence", 0.0)
-        if confidence > 0.6:
-            arousal.record_reward(confidence * 0.5)
-
     bus.register_callback(CH_PREDICTION_RESULT, _on_prediction_result)
-    bus.register_callback(CH_CONVERGENCE, _on_convergence)
     return 1
 
 

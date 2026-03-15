@@ -38,30 +38,19 @@ def _parse(data: Any) -> dict:
 def _wire_digestive(ctx: SimpleNamespace, bus: Any) -> int:
     """DigestiveSystem: data = nutrients.
 
-    Convergence alerts are high-nutrition data (worth processing).
-    Partial convergences are lower value (still worth ingesting).
-    The digestive system's energy budget gates how much the organism
-    can process — overfed = reject low-value signals.
+    Partial convergences are lower value data (still worth ingesting).
+
+    NOTE: CH_CONVERGENCE subscription REMOVED (2026-03-14, triadic audit P1).
+    DigestiveSystem's convergence callback called digestive.ingest(), but the
+    digestive state is not read by any market decision pathway. Confirmed inert
+    by triadic audit. Partial convergence callback retained as it represents
+    incoming-data ingestion at a lower cost/value tier.
     """
     digestive = getattr(ctx, "digestive_system", None)
     if digestive is None:
         return 0
 
-    from mae_core.market.channels import CH_CONVERGENCE, CH_PARTIAL_CONVERGENCE
-
-    def _on_convergence(channel, data):
-        msg = _parse(data)
-        strength = msg.get("strength", 0.5)
-        ticker = msg.get("ticker", "unknown")
-        try:
-            digestive.ingest(
-                source=f"convergence:{ticker}",
-                content=msg,
-                energy_cost=0.3,
-                nutritional_value=strength,
-            )
-        except Exception:
-            pass
+    from mae_core.market.channels import CH_PARTIAL_CONVERGENCE
 
     def _on_partial(channel, data):
         msg = _parse(data)
@@ -75,7 +64,6 @@ def _wire_digestive(ctx: SimpleNamespace, bus: Any) -> int:
         except Exception:
             pass
 
-    bus.register_callback(CH_CONVERGENCE, _on_convergence)
     bus.register_callback(CH_PARTIAL_CONVERGENCE, _on_partial)
     return 1
 
@@ -83,26 +71,19 @@ def _wire_digestive(ctx: SimpleNamespace, bus: Any) -> int:
 def _wire_circulatory(ctx: SimpleNamespace, bus: Any) -> int:
     """CirculatorySystem: distribute attention resources by market priority.
 
-    Convergence alerts request attention resources (high urgency).
     Velocity anomalies request compute resources (investigation needed).
-    The circulatory system's heart rate rises under load — observable
-    by thermoregulation and other body-awareness systems.
+
+    NOTE: CH_CONVERGENCE subscription REMOVED (2026-03-14, triadic audit P1).
+    CirculatorySystem's convergence callback called request_resource(), but
+    resource allocation results are not read by any market decision pathway.
+    Confirmed inert by triadic audit. Velocity anomaly callback retained as a
+    load signal that keeps the circulatory model calibrated.
     """
     circulatory = getattr(ctx, "circulatory_system", None)
     if circulatory is None:
         return 0
 
-    from mae_core.market.channels import CH_CONVERGENCE, CH_VELOCITY_ANOMALY
-
-    def _on_convergence(channel, data):
-        msg = _parse(data)
-        strength = msg.get("strength", 0.5)
-        try:
-            circulatory.request_resource(
-                "convergence_alerter", "attention", strength, urgency=0.8,
-            )
-        except Exception:
-            pass
+    from mae_core.market.channels import CH_VELOCITY_ANOMALY
 
     def _on_velocity(channel, data):
         msg = _parse(data)
@@ -116,7 +97,6 @@ def _wire_circulatory(ctx: SimpleNamespace, bus: Any) -> int:
             except Exception:
                 pass
 
-    bus.register_callback(CH_CONVERGENCE, _on_convergence)
     bus.register_callback(CH_VELOCITY_ANOMALY, _on_velocity)
     return 1
 
@@ -169,26 +149,23 @@ def _wire_lymphatic(ctx: SimpleNamespace, bus: Any) -> int:
 def _wire_microbiome(ctx: SimpleNamespace, bus: Any) -> int:
     """Microbiome: microbial strains pre-process market data.
 
-    Convergence alerts are complex data routed to the decomposer strain.
     Velocity anomalies are unusual readings routed to the detector strain.
     Pattern stacks are weak signals routed to the amplifier strain.
+
+    NOTE: CH_CONVERGENCE subscription REMOVED (2026-03-14, triadic audit P1).
+    Microbiome's convergence callback called process_input("complex", ...), but
+    microbiome diversity/composition is not read by any market decision pathway.
+    Confirmed inert by triadic audit. Velocity and pattern stack callbacks
+    retained as those signal types flow into non-convergence paths.
     """
     microbiome = getattr(ctx, "microbiome", None)
     if microbiome is None:
         return 0
 
     from mae_core.market.channels import (
-        CH_CONVERGENCE,
         CH_PATTERN_STACK_DETECTED,
         CH_VELOCITY_ANOMALY,
     )
-
-    def _on_convergence(channel, data):
-        msg = _parse(data)
-        try:
-            microbiome.process_input("complex", msg)
-        except Exception:
-            pass
 
     def _on_velocity(channel, data):
         msg = _parse(data)
@@ -206,7 +183,6 @@ def _wire_microbiome(ctx: SimpleNamespace, bus: Any) -> int:
             except Exception:
                 pass
 
-    bus.register_callback(CH_CONVERGENCE, _on_convergence)
     bus.register_callback(CH_VELOCITY_ANOMALY, _on_velocity)
     bus.register_callback(CH_PATTERN_STACK_DETECTED, _on_pattern_stack)
     return 1
@@ -216,14 +192,19 @@ def _wire_renal_filter(ctx: SimpleNamespace, bus: Any) -> int:
     """RenalFilter: filter corrupted/toxic market data.
 
     Deception events teach new toxin patterns so future data from
-    that source gets scrutinized. Convergence signals are filtered
-    for integrity before reaching downstream systems.
+    that source gets scrutinized.
+
+    NOTE: CH_CONVERGENCE subscription REMOVED (2026-03-14, triadic audit P1).
+    RenalFilter's convergence callback called filter_item() and logged a warning
+    if toxic, but the filter verdict was never acted on downstream — confirmed
+    inert by triadic audit. Deception callback retained: it teaches toxin
+    patterns from real deception events, which is a valid data-quality job.
     """
     renal = getattr(ctx, "renal_filter", None)
     if renal is None:
         return 0
 
-    from mae_core.market.channels import CH_CONVERGENCE, CH_DECEPTION_DETECTED
+    from mae_core.market.channels import CH_DECEPTION_DETECTED
 
     def _on_deception(channel, data):
         msg = _parse(data)
@@ -239,22 +220,7 @@ def _wire_renal_filter(ctx: SimpleNamespace, bus: Any) -> int:
         except Exception:
             pass
 
-    def _on_convergence(channel, data):
-        msg = _parse(data)
-        ticker = msg.get("ticker", "unknown")
-        try:
-            result = renal.filter_item(
-                item_id=f"conv_{ticker}_{time.monotonic_ns()}",
-                source="convergence_alerter",
-                data=msg,
-            )
-            if hasattr(result, "verdict") and result.verdict == "toxic":
-                logger.warning("RenalFilter: toxic convergence signal for %s", ticker)
-        except Exception:
-            pass
-
     bus.register_callback(CH_DECEPTION_DETECTED, _on_deception)
-    bus.register_callback(CH_CONVERGENCE, _on_convergence)
     return 1
 
 

@@ -221,8 +221,13 @@ def _wire_memory_consolidator(ctx: SimpleNamespace, bus: Any) -> int:
 def _wire_collective_dream(ctx: SimpleNamespace, bus: Any) -> int:
     """CollectiveDreamPlanner: market-expertise-weighted dreaming.
 
-    Fix missing event_bus. When convergence fires, nudge expertise
-    weights so the collective dream reflects market-active agents.
+    Fix missing event_bus so CollectiveDreamPlanner can publish internally.
+
+    NOTE: CH_CONVERGENCE subscription REMOVED (2026-03-14, triadic audit P1).
+    The convergence callback nudged dreamer expertise weights, but the outputs
+    of the collective dream planner are not consumed by any market decision
+    pathway. Confirmed inert by triadic audit. EventBus reference wired so
+    internal planner operations remain functional.
     """
     dream = getattr(ctx, "collective_dream", None)
     if dream is None:
@@ -231,17 +236,6 @@ def _wire_collective_dream(ctx: SimpleNamespace, bus: Any) -> int:
     if getattr(dream, "_bus", None) is None:
         dream._bus = bus
 
-    from mae_core.market.channels import CH_CONVERGENCE
-
-    def _on_convergence(channel, data):
-        agents = getattr(dream, "_agents", [])
-        for dreamer in agents:
-            try:
-                dreamer.expertise = min(1.0, dreamer.expertise + 0.02)
-            except Exception:
-                pass
-
-    bus.register_callback(CH_CONVERGENCE, _on_convergence)
     return 1
 
 
