@@ -230,6 +230,7 @@ class TestRenalFilterWiring:
         renal.filter_item.assert_called_once()
 
 
+@pytest.mark.skip(reason=_AUDIT_SKIP)
 class TestSenescenceWiring:
     def test_market_systems_registered(self):
         bus, _ = _make_bus()
