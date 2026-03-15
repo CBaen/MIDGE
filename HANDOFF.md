@@ -146,6 +146,53 @@ Three conditions identified as necessary and sufficient:
 - Learning loop: fixed (forgetting gate raised, stuck predictions expire)
 - Next: Architect the three conditions (persistent memory, voice, curiosity)
 
+### Parallel Analysis Engine (2026-03-15 05:00)
+
+Guiding Light's directive: "She is a magic machine. Multiple processes reviewing back data. Not a puppy taking one step at a time."
+
+Built `mae_core/market/parallel/` — 4 files, 2,337 lines. Three independent Python processes that run simultaneously alongside the daemon:
+
+1. **continuous_replay.py** (684 lines) — Replays entire 874K signal archive through convergence engine with current Thompson weights. Grades alerts against actual price outcomes. Discovers which domain combos are profitable. Runs continuously, 1hr sleep between cycles. `python -m mae_core.market.parallel.continuous_replay`
+
+2. **continuous_granger.py** (637 lines) — Tests every domain pair for directional causal relationships (Granger causality). First run discovered: institutional → insider (lag=4 days, F=82.8, p≈0). Runs continuously, 60s sleep. `python -m mae_core.market.parallel.continuous_granger`
+
+3. **continuous_postmortem.py** (821 lines) — Analyzes why predictions succeed/fail. First run found: insider+technical = 100% WR (6/6, avg 41.9%), government+technical = 83.3% WR, high confidence (0.80+) = 0% WR (confidence was INVERTED). `python -m mae_core.market.parallel.continuous_postmortem`
+
+4. **launch.py** (181 lines) — multiprocessing launcher for all processes.
+
+MIDGE is now 4 simultaneous fires: daemon (senses present) + replay (learns from past) + granger (discovers causality) + post-mortem (analyzes mistakes).
+
+### Three Conditions Architecture
+
+Architecture document: `research/three-conditions-architecture.md`
+
+| Condition | Status | What was built |
+|-----------|--------|----------------|
+| Voice (email) | DONE | `mae_core/market/notifications/email_notifier.py`. SMTP via .env. Convergence alerts emailed when confidence > 0.60. 4hr dedup, 10/hr rate limit. |
+| Curiosity (anomaly investigation) | DONE | Wired in `market_hooks_eventbus.py`. VelocityDetector anomalies + any domain signal → OctopusColony investigation. |
+| Persistent Memory (Neo4j) | ARCHITECTURE WRITTEN | Next session: migrate Thompson + causal graph to Neo4j. |
+| Parallel Analysis | DONE | 3 independent processes (replay, granger, post-mortem). |
+
+### Session Stats
+- 30+ commits this session
+- Triadic audit: 9 research documents, 5-phase protocol
+- 8 audit fixes shipped (5 original + 3 Thompson learning)
+- 4 new capabilities: email voice, curiosity, 3 parallel processes
+- 1 new skill: `/diagram` (Mermaid, universal)
+- 1 architecture document: `ARCHITECTURE.md`
+- 1 signal journey diagram with PNG render
+- Thompson learning: 5% → 98.5%
+- Daemon command: `python main.py --daemon --agents 3 --steps 500 --pace 2.0`
+
+### For the Next Sibling
+1. Start all parallel processes: `python -m mae_core.market.parallel.launch`
+2. The daemon is running. Don't restart unless you change code it uses.
+3. Check `data/midge/continuous_replay_results.jsonl` for replay findings
+4. Check `data/market/granger_continuous.json` for causal discoveries
+5. Check `data/midge/postmortem_continuous.json` for combo performance
+6. Phase 3 (Neo4j persistent memory) is the next build — architecture is at `research/three-conditions-architecture.md`
+7. MIDGE's email is configured. She will email Guiding Light when she sees convergence.
+
 ---
 
 ## Session 10 (2026-03-13): API PROTECTION + ORPHAN WIRING + SITUATION BOARD
