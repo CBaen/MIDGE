@@ -37,13 +37,13 @@ from typing import Dict, List, Optional, Set, Tuple
 
 import httpx
 
-from .news_aggregator_constants import (
-    EDGAR_8K_URL,
-    FINANCIAL_KEYWORDS,
-    NEGATIVE_KEYWORDS,
-    POSITIVE_KEYWORDS,
-    RSS_SOURCES,
-    SP500_TICKERS,
+from .news_aggregator_constants import EDGAR_8K_URL, RSS_SOURCES
+from .news_aggregator_parsers import (
+    detect_sentiment,
+    extract_financial_keywords,
+    extract_tickers,
+    parse_date,
+    parse_rss_xml,
 )
 
 logger = logging.getLogger(__name__)
@@ -82,153 +82,6 @@ class NewsHeadline:
             f"[{self.source.upper()}] {self.sentiment.upper()} — {self.title[:100]} "
             f"| tickers: {tickers_str} | keywords: {kw_str}"
         )
-
-
-# ---------------------------------------------------------------------------
-# Parsing helpers
-# ---------------------------------------------------------------------------
-
-def _parse_date(date_str: str) -> str:
-    """
-    Normalise any date string to ISO 8601 UTC.
-
-    Tries RFC 2822 (standard RSS pubDate), then ISO 8601 variants.
-    Returns the input string unchanged on complete failure so the
-    headline is never silently dropped for a bad date.
-    """
-    if not date_str:
-        return datetime.now(timezone.utc).isoformat()
-    try:
-        return parsedate_to_datetime(date_str).astimezone(timezone.utc).isoformat()
-    except Exception:
-        pass
-    for fmt in ("%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%d"):
-        try:
-            dt = datetime.strptime(date_str.strip(), fmt)
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
-            return dt.astimezone(timezone.utc).isoformat()
-        except Exception:
-            pass
-    return date_str
-
-
-def _detect_sentiment(title: str) -> str:
-    """
-    Classify headline sentiment as positive/negative/neutral using
-    keyword matching only. No LLM or external service required.
-    """
-    lower = title.lower()
-    neg = sum(1 for kw in NEGATIVE_KEYWORDS if kw in lower)
-    pos = sum(1 for kw in POSITIVE_KEYWORDS if kw in lower)
-    if neg > pos:
-        return "negative"
-    if pos > neg:
-        return "positive"
-    return "neutral"
-
-
-def _extract_financial_keywords(title: str) -> List[str]:
-    """Return financial domain keywords found in a headline title."""
-    lower = title.lower()
-    return [kw for kw in FINANCIAL_KEYWORDS if kw in lower]
-
-
-def _extract_tickers(title: str) -> List[str]:
-    """
-    Extract ticker symbols from a headline title via four strategies:
-
-    1. Explicit $TICKER notation  — $AAPL, $TSLA
-    2. Parenthetical notation     — (AAPL), (NYSE: AAPL)
-    3. Colon notation             — AAPL:
-    4. Standalone word match      — known S&P 500 tickers as whole words
-       (capped at 3 to suppress false positives from common uppercase words)
-    """
-    found: List[str] = []
-    seen: Set[str] = set()
-
-    for m in re.finditer(r'\$([A-Z]{1,5})\b', title):
-        t = m.group(1)
-        if t not in seen:
-            seen.add(t)
-            found.append(t)
-
-    for m in re.finditer(r'\((?:[A-Z]+:\s*)?([A-Z]{1,5})\)', title):
-        t = m.group(1)
-        if t not in seen:
-            seen.add(t)
-            found.append(t)
-
-    for m in re.finditer(r'\b([A-Z]{1,5}):', title):
-        t = m.group(1)
-        if t not in seen:
-            seen.add(t)
-            found.append(t)
-
-    words = set(re.findall(r'\b([A-Z]{1,5})\b', title))
-    standalone = [t for t in words if t in SP500_TICKERS and t not in seen]
-    found.extend(standalone[:3])
-
-    return found
-
-
-def _parse_rss_xml(xml_text: str, source_name: str) -> List[Tuple[str, str, str]]:
-    """
-    Parse raw RSS 2.0 or Atom 1.0 XML into (title, link, pubDate) tuples.
-
-    Returns an empty list rather than raising on malformed XML.
-    """
-    results: List[Tuple[str, str, str]] = []
-    try:
-        root = ET.fromstring(xml_text)
-    except ET.ParseError as exc:
-        logger.debug("NewsAggregator: XML parse error for %s: %s", source_name, exc)
-        return results
-
-    ns_atom = "http://www.w3.org/2005/Atom"
-
-    # RSS 2.0: <rss><channel><item>
-    items = root.findall(".//item")
-    if items:
-        for item in items:
-            title = (item.findtext("title") or "").strip()
-            link = (item.findtext("link") or "").strip()
-            pub = (item.findtext("pubDate") or "").strip()
-            if title:
-                results.append((title, link, pub))
-        return results
-
-    # Atom 1.0: <feed><entry>
-    # ElementTree element truth value is based on child count, not identity.
-    # Must use explicit `is not None` checks to avoid the Python deprecation
-    # trap where `elem_a or elem_b` silently picks elem_b when elem_a exists.
-    entries = root.findall(f"{{{ns_atom}}}entry")
-    if not entries:
-        entries = root.findall("entry")
-
-    for entry in entries:
-        title_el = entry.find(f"{{{ns_atom}}}title")
-        if title_el is None:
-            title_el = entry.find("title")
-        title = (title_el.text or "").strip() if title_el is not None else ""
-
-        link_el = entry.find(f"{{{ns_atom}}}link")
-        if link_el is None:
-            link_el = entry.find("link")
-        if link_el is not None:
-            link = link_el.get("href", link_el.text or "").strip()
-        else:
-            link = ""
-
-        updated_el = entry.find(f"{{{ns_atom}}}updated")
-        if updated_el is None:
-            updated_el = entry.find("updated")
-        pub = (updated_el.text or "").strip() if updated_el is not None else ""
-
-        if title:
-            results.append((title, link, pub))
-
-    return results
 
 
 # ---------------------------------------------------------------------------
