@@ -1,7 +1,79 @@
 # MIDGE Handoff
 
-**Last updated:** 2026-03-15
+**Last updated:** 2026-03-15 (Session 12 — Ecosystem Evolution)
 **For session history:** `git log --oneline`
+
+---
+
+## Session 12 (2026-03-15): ORGANISM → ECOSYSTEM
+
+**Guiding Light's directive:** "She is not an organism; she is an ecosystem." Transform MIDGE from a single daemon into a multi-process ecosystem of independent living systems.
+
+### What Changed
+
+**Ecosystem Infrastructure:**
+- `mae_core/market/ecosystem/supervisor.py` — process supervisor: one command starts/watches/restarts all MIDGE processes
+- `mae_core/market/ecosystem/process_registry.py` — defines 6 processes (daemon + 5 independent)
+- Start all: `python -m mae_core.market.ecosystem.supervisor`
+- Start without daemon: `python -m mae_core.market.ecosystem.supervisor --exclude daemon`
+- Check status: `python -m mae_core.market.ecosystem.supervisor --status`
+
+**6 Ecosystem Processes (all independently restartable):**
+| Process | Tier | Module | What It Does |
+|---------|------|--------|-------------|
+| midge-daemon | core | `main` | The organism heartbeat (5 agents, 500 steps/round) |
+| midge-replay | analysis | `mae_core.market.parallel.continuous_replay` | 4-worker historical replay |
+| midge-granger | analysis | `mae_core.market.parallel.continuous_granger` | Domain-level causal discovery |
+| midge-postmortem | analysis | `mae_core.market.parallel.continuous_postmortem` | Combo win rate analysis |
+| midge-raw-miner | mining | `mae_core.market.parallel.raw_data_miner` | DuckDB extraction from raw SQLite |
+| midge-cross-market | analysis | `mae_core.market.parallel.cross_market_hunter` | Cross-market anomaly detection |
+
+**New Data Sources (39 total, was 35):**
+- `cboe_options_client.py` — VVIX, VIX9D, OVX, GVZ (free, no key). 13th convergence domain: "options"
+- `crypto_fear_greed_client.py` — Crypto Fear & Greed Index contrarian signal (free)
+- `edgar_xbrl_client.py` — SEC fundamental data: revenue, debt, cash flow, earnings quality (free)
+- `news_aggregator_client.py` — RSS headlines: Reuters, CNBC, MarketWatch, Fed, SEC 8-K (free)
+
+**Bug Fixes:**
+- Raw data miner: OpenInsider `LIKE '%buy%'` → `= 'P - Purchase'` (41 signals unlocked from existing data)
+- Raw data miner: FinViz squeeze query handles missing table gracefully
+- USDA client: constructor TypeError at boot (provider kwarg mismatch) — fixed
+- Job tracker: raw data only persisted on hiring blitz, not every call — fixed
+
+**Bio System Repurposing:**
+- VestibularSystem → Regime Shift Early Warning: CH_VERTIGO triggers immediate RegimeClassifier re-evaluation (~400 steps faster)
+
+**Bridge File Ingestion:**
+- `_ingest_jsonl_bridge()` generic bridge reader for any ecosystem process
+- Wired for: `raw_miner_signals.jsonl` and `cross_market_signals.jsonl`
+- Both fire every 200 steps alongside Granger/replay bridges
+
+**Narrative Voice Enriched:**
+- Daily letter now includes cross-market anomaly discoveries
+- Daily letter now includes Crypto Fear & Greed reading
+
+**Other:**
+- Default agents: 3→5 (Rule of 3/5 compliance, odd for consensus)
+- Outcome windows: convergence_combo/pattern_stack 14d→21d (MIDGE self-reported 15 moves after window)
+
+### How to Start the Ecosystem
+
+```bash
+# Start everything (recommended)
+python -m mae_core.market.ecosystem.supervisor
+
+# Or start daemon separately + analysis processes
+python main.py --daemon --agents 5 --steps 500 --pace 1.5
+python -m mae_core.market.ecosystem.supervisor --exclude daemon
+```
+
+### Next Priorities
+1. Add Redis Streams as inter-process message bus (currently file-based bridges)
+2. Repurpose more bio systems: DigestiveSystem → signal quality, EnergyReserve → API budget
+3. Add BLS labor data client (free, most important missing government source)
+4. Build real-time convergence alert dispatcher (email immediately on high-confidence, don't wait for daily)
+5. Wire Neo4j dual-write for knowledge graph persistence
+6. Add more ecosystem processes: web crawler, sentiment deep-analyzer, execution monitor
 
 ---
 
