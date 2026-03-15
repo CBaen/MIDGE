@@ -643,14 +643,14 @@ def analyze_overall(graded: List[dict]) -> dict:
 # Main analysis runner
 # ---------------------------------------------------------------------------
 
-def run_analysis(logger: logging.Logger) -> dict:
+def run_analysis(logger: logging.Logger, lookback_days: int = LOOKBACK_DAYS) -> dict:
     """Load data, run all analyses, return the full report dict."""
     logger.info("Loading predictions from %s", PREDICTIONS_PATH)
-    predictions = _load_jsonl(PREDICTIONS_PATH, lookback_days=LOOKBACK_DAYS)
+    predictions = _load_jsonl(PREDICTIONS_PATH, lookback_days=lookback_days)
     logger.info("Loaded %d prediction records", len(predictions))
 
     logger.info("Loading outcomes from %s", OUTCOMES_PATH)
-    outcomes = _load_jsonl(OUTCOMES_PATH, lookback_days=LOOKBACK_DAYS)
+    outcomes = _load_jsonl(OUTCOMES_PATH, lookback_days=lookback_days)
     logger.info("Loaded %d outcome records", len(outcomes))
 
     # Merge predictions into outcomes to recover extra fields
@@ -674,7 +674,7 @@ def run_analysis(logger: logging.Logger) -> dict:
                 "total_outcomes":       len(outcomes),
                 "total_graded":         0,
                 "total_ungraded":       ungraded_count,
-                "lookback_days":        LOOKBACK_DAYS,
+                "lookback_days":        lookback_days,
             },
             "message": "No graded outcomes yet. Outcomes become graded when the "
                        "OutcomeCollector evaluates predictions against actual price moves.",
@@ -704,7 +704,7 @@ def run_analysis(logger: logging.Logger) -> dict:
             "total_outcomes":       len(outcomes),
             "total_graded":         len(graded),
             "total_ungraded":       ungraded_count,
-            "lookback_days":        LOOKBACK_DAYS,
+            "lookback_days":        lookback_days,
             "graded_rate_pct":      f"{len(graded) / len(outcomes) * 100:.1f}%"
                                     if outcomes else "N/A",
         },
@@ -793,7 +793,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    global LOOKBACK_DAYS
+    global LOOKBACK_DAYS  # noqa: PLW0603
     LOOKBACK_DAYS = args.lookback
 
     logger = _setup_logging(LOG_PATH)
