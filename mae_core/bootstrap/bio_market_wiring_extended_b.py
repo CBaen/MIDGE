@@ -171,26 +171,19 @@ def _wire_vestibular(ctx: SimpleNamespace, bus: Any) -> int:
 def _wire_proprioception(ctx: SimpleNamespace, bus: Any) -> int:
     """ProprioceptionSystem: market system positions in body map.
 
-    Update the body map with market organ health and activity levels.
-    Convergence alerts show the alerter is active and healthy.
     Prediction results show the outcome tracker's health (wins=healthy).
+
+    NOTE: CH_CONVERGENCE subscription REMOVED (2026-03-14, triadic audit P1).
+    ProprioceptionSystem's convergence callback called update_position() to
+    record alerter activity/health, but body-position state is not read by any
+    market decision pathway. Confirmed inert by triadic audit. Prediction
+    outcome callback retained as it tracks the outcome tracker's health signal.
     """
     proprio = getattr(ctx, "proprioception", None)
     if proprio is None:
         return 0
 
-    from mae_core.market.channels import CH_CONVERGENCE, CH_PREDICTION_RESULT
-
-    def _on_convergence(channel, data):
-        msg = _parse(data)
-        strength = msg.get("strength", 0.5)
-        confidence = msg.get("confidence", 0.5)
-        try:
-            proprio.update_position(
-                "convergence_alerter", activity=strength, health=confidence,
-            )
-        except Exception:
-            pass
+    from mae_core.market.channels import CH_PREDICTION_RESULT
 
     def _on_prediction(channel, data):
         msg = _parse(data)
@@ -205,7 +198,6 @@ def _wire_proprioception(ctx: SimpleNamespace, bus: Any) -> int:
             except Exception:
                 pass
 
-    bus.register_callback(CH_CONVERGENCE, _on_convergence)
     bus.register_callback(CH_PREDICTION_RESULT, _on_prediction)
     return 1
 
@@ -249,42 +241,18 @@ def _wire_energy_reserve(ctx: SimpleNamespace, bus: Any) -> int:
 def _wire_predictive_field(ctx: SimpleNamespace, bus: Any) -> int:
     """PredictiveField: aggregate market predictions into spatial field.
 
-    Convergence alerts update the field with market activity. Agents
-    can read the field gradient to find coordination opportunities
-    and avoid duplicating work on the same tickers.
+    NOTE: CH_CONVERGENCE subscription REMOVED (2026-03-14, triadic audit P1).
+    PredictiveField's convergence callback called update_agent_state() to
+    record ticker positions in the spatial field, but the field gradient is
+    not read by any market decision pathway — agents in oracle shutdown don't
+    query it for coordination. Confirmed inert by triadic audit.
+
+    System remains bootstrapped for organism compatibility. No market channel
+    subscriptions are needed until agents are re-enabled to query the field.
     """
     field = getattr(ctx, "predictive_field", None)
     if field is None:
         return 0
 
-    from mae_core.market.channels import CH_CONVERGENCE
-
-    def _ticker_position(ticker: str) -> tuple[float, float]:
-        """Deterministic 2D position from ticker string."""
-        h = hash(ticker) & 0xFFFFFFFF
-        return ((h >> 16) / 65535.0, (h & 0xFFFF) / 65535.0)
-
-    # Stable integer ID for the convergence alerter "virtual agent"
-    _ALERTER_AGENT_ID = hash("convergence_alerter") & 0x7FFFFFFF
-
-    def _on_convergence(channel, data):
-        msg = _parse(data)
-        ticker = msg.get("ticker", "")
-        direction = msg.get("direction", "neutral")
-        confidence = msg.get("confidence", 0.5)
-        if not ticker:
-            return
-        try:
-            pos = _ticker_position(ticker)
-            field.update_agent_state(
-                agent_id=_ALERTER_AGENT_ID,
-                position=pos,
-                velocity=(0.0, 0.0),
-                intention=direction,
-                confidence=confidence,
-            )
-        except Exception:
-            pass
-
-    bus.register_callback(CH_CONVERGENCE, _on_convergence)
+    # No subscriptions — see note above.
     return 1
