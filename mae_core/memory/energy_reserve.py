@@ -59,7 +59,13 @@ class EnergyReserve:
         self._bus = event_bus
 
         # Energy storage
-        self._reserves: float = 50.0
+        # MIDGE: reserves pinned to 100.0 (50% capacity) — fictional physiology
+        # harms trading daemon. Default 50.0 caused immediate starvation during
+        # busy sessions, publishing CH_STARVATION every step and setting
+        # OrganismState._energy_critical = True, which fed InhibitionSystem's
+        # NoGo branch and suppressed agent actions. Starting at 100.0 ensures
+        # the system begins in a healthy state even if drain is re-enabled.
+        self._reserves: float = 100.0  # was: 50.0
         self._max_capacity: float = 200.0
         self._min_critical: float = 10.0  # below this = starvation
 
@@ -167,8 +173,16 @@ class EnergyReserve:
         return self._reserves
 
     def is_critical(self) -> bool:
-        """Return True if reserves are critically low (starvation)."""
-        return self._reserves < self._min_critical
+        """Return True if reserves are critically low (starvation).
+
+        MIDGE: always returns False — fictional physiology harms trading daemon.
+        The "critical" state propagates to OrganismState._energy_critical, which
+        feeds InhibitionSystem's NoGo branch and was causing agent suppression.
+        Pinned to False so the starvation chain never fires regardless of actual
+        reserve level. The underlying reserve tracking still works normally.
+        """
+        # MIDGE: disabled — fictional physiology harms trading daemon
+        return False  # was: self._reserves < self._min_critical
 
     def is_full(self) -> bool:
         """Return True if reserves are near capacity (>90%)."""
