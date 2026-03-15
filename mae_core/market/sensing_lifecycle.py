@@ -26,8 +26,16 @@ def enrich_signal(
     velocity_detector: Any,
     filing_analyzer: Any,
     form8k_sentiment: Any,
+    thompson_sampler: Any = None,
 ) -> None:
-    """Apply velocity and filing-time modifiers to a signal (mutates in place)."""
+    """Apply velocity, filing-time, and Thompson-derived confidence to a signal (mutates in place).
+
+    Thompson override: replaces hardcoded adapter confidence values with empirical
+    reliability learned by the ThompsonSampler.  Only overrides when Thompson has
+    >= 5 samples for this source (immature distributions keep the adapter default).
+    A floor of 0.35 is enforced so no source poisons the geometric mean below a
+    useful contribution threshold.
+    """
     # Populate velocity via VelocityDetector
     if velocity_detector is not None:
         try:
@@ -66,6 +74,25 @@ def enrich_signal(
                 sig.metadata["ollama_raw"] = result.raw_response[:200]
         except Exception:
             pass
+
+    # Override confidence with Thompson empirical mean (the core fix for hardcoded values).
+    # Signal adapters emit placeholder confidence values (0.15, 0.50, etc.) that do not
+    # reflect measured reliability. Thompson has learned the actual hit rate for each
+    # source. Use that learned value instead, with a floor of 0.35 to prevent any
+    # single source from becoming a geometric mean poison pill.
+    if thompson_sampler is not None:
+        try:
+            dist = thompson_sampler.get_distribution(sig.source)
+            if dist.samples >= 5:  # Only override when distribution is mature
+                thompson_mean = dist.mean
+                # Floor at 0.35: prevents weak-but-known sources from poisoning convergence
+                empirical_confidence = max(0.35, thompson_mean)
+                sig.confidence = empirical_confidence
+                sig.metadata["thompson_confidence_source"] = sig.source
+                sig.metadata["thompson_mean"] = round(thompson_mean, 4)
+                sig.metadata["thompson_samples"] = dist.samples
+        except Exception:
+            pass  # Never crash enrichment — fall back to adapter default
 
 
 def store_signals(signals: list, memory: Any) -> None:
