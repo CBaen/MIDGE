@@ -85,29 +85,18 @@ def _wire_emotional_system(ctx: SimpleNamespace, bus: Any) -> int:
 def _wire_homeostasis(ctx: SimpleNamespace, bus: Any) -> int:
     """HomeostasisRegulator: volatility balance detector.
 
-    Bearish convergence -> elevated threat_level setpoint.
     Velocity anomaly -> elevated processing_load setpoint.
-    Bullish convergence -> lower threat, higher energy.
+
+    NOTE: CH_CONVERGENCE subscription REMOVED (2026-03-14, triadic audit P1).
+    HomeostasisRegulator's convergence callback updated internal threat_level /
+    energy_level variables that nothing market-relevant reads — confirmed inert
+    by triadic audit. Velocity anomaly callback retained (legitimate load signal).
     """
     homeo = getattr(ctx, "homeostasis_regulator", None)
     if homeo is None:
         return 0
 
-    from mae_core.market.channels import CH_CONVERGENCE, CH_VELOCITY_ANOMALY
-
-    def _on_convergence(channel, data):
-        msg = _parse(data)
-        direction = msg.get("direction", "neutral")
-        strength = msg.get("strength", 0.0)
-        if direction == "bearish" and strength > 0.5:
-            homeo.update_current_value("threat_level", min(0.8, strength * 0.7))
-        elif direction == "bullish" and strength > 0.5:
-            homeo.update_current_value(
-                "threat_level", max(0.05, 0.1 - strength * 0.05)
-            )
-            homeo.update_current_value(
-                "energy_level", min(1.0, 0.7 + strength * 0.2)
-            )
+    from mae_core.market.channels import CH_VELOCITY_ANOMALY
 
     def _on_velocity(channel, data):
         msg = _parse(data)
@@ -117,7 +106,6 @@ def _wire_homeostasis(ctx: SimpleNamespace, bus: Any) -> int:
                 "processing_load", min(0.9, magnitude * 0.15)
             )
 
-    bus.register_callback(CH_CONVERGENCE, _on_convergence)
     bus.register_callback(CH_VELOCITY_ANOMALY, _on_velocity)
     return 1
 
