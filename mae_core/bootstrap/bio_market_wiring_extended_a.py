@@ -230,12 +230,20 @@ def _wire_senescence(ctx: SimpleNamespace, bus: Any) -> int:
     Register key market systems on wiring, then report activity
     whenever they fire. Systems that stop firing accumulate wear.
     High wear triggers rejuvenation or retirement.
+
+    NOTE: CH_CONVERGENCE subscription REMOVED (2026-03-14, triadic audit P1).
+    SenescenceManager's convergence callback reported activity for the
+    convergence_alerter, but wear/senescence state is not read by any market
+    decision pathway. Confirmed inert by triadic audit. Prediction outcome
+    callback retained as an activity signal that keeps wear tracking meaningful.
+    System registrations retained — SenescenceManager records market system
+    lifecycles even if wear thresholds don't trigger any market action.
     """
     senescence = getattr(ctx, "senescence", None)
     if senescence is None:
         return 0
 
-    from mae_core.market.channels import CH_CONVERGENCE, CH_PREDICTION_RESULT
+    from mae_core.market.channels import CH_PREDICTION_RESULT
 
     # Register market systems for wear tracking
     market_systems = [
@@ -245,19 +253,12 @@ def _wire_senescence(ctx: SimpleNamespace, bus: Any) -> int:
     for name in market_systems:
         senescence.register_system(name, creation_step=0)
 
-    def _on_convergence(channel, data):
-        try:
-            senescence.report_activity("convergence_alerter", active=True)
-        except Exception:
-            pass
-
     def _on_prediction(channel, data):
         try:
             senescence.report_activity("outcome_tracker", active=True)
         except Exception:
             pass
 
-    bus.register_callback(CH_CONVERGENCE, _on_convergence)
     bus.register_callback(CH_PREDICTION_RESULT, _on_prediction)
     return 1
 

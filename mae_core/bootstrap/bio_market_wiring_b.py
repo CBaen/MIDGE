@@ -138,7 +138,7 @@ def _wire_haven(ctx: SimpleNamespace, bus: Any) -> int:
         source = msg.get("source", "unknown")
         severity = msg.get("severity", 0.3)
         flags = ctx._haven_market_flags
-        flags[source] = flags.get(source, 0.0) + severity
+        flags[source] = min(1.0, flags.get(source, 0.0) + severity)
 
     def _on_prediction_success(channel, data):
         msg = _parse(data)

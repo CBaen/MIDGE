@@ -523,7 +523,10 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
             _run_active_tracker_check(ctx)
 
         # Synergy detection: convergence alerts + pattern stacks on same ticker
-        _run_synergy_detection(ctx)
+        # Gated to every 10 steps — pattern stacks only refresh every 10 steps,
+        # so running every step produces identical results with no benefit.
+        if step % 10 == 0:
+            _run_synergy_detection(ctx)
 
     ctx.model.add_step_hook(_sensing_step_with_advisory)
 

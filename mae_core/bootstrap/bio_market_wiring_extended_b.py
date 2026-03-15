@@ -108,24 +108,19 @@ def _wire_respiratory(ctx: SimpleNamespace, bus: Any) -> int:
 def _wire_thermoregulation(ctx: SimpleNamespace, bus: Any) -> int:
     """ThermoregulationSystem: computational load as temperature.
 
-    Convergence = heat from processing. Velocity anomaly = spike.
-    Overheating (too many signals at once) triggers sweating
-    (shedding low-priority tasks). Cold = idle market = shivering
-    (increase scanning to find signals).
+    Velocity anomaly = processing spike / heat event.
+
+    NOTE: CH_CONVERGENCE subscription REMOVED (2026-03-14, triadic audit P1).
+    ThermoregulationSystem's convergence callback called report_activity(), but
+    temperature/thermal state is not read by any market decision pathway.
+    Confirmed inert by triadic audit. Velocity anomaly callback retained as a
+    load signal that keeps the thermal model calibrated during anomaly bursts.
     """
     thermo = getattr(ctx, "thermoregulation", None)
     if thermo is None:
         return 0
 
-    from mae_core.market.channels import CH_CONVERGENCE, CH_VELOCITY_ANOMALY
-
-    def _on_convergence(channel, data):
-        msg = _parse(data)
-        strength = msg.get("strength", 0.5)
-        try:
-            thermo.report_activity("market_convergence", min(1.0, strength))
-        except Exception:
-            pass
+    from mae_core.market.channels import CH_VELOCITY_ANOMALY
 
     def _on_velocity(channel, data):
         msg = _parse(data)
@@ -135,7 +130,6 @@ def _wire_thermoregulation(ctx: SimpleNamespace, bus: Any) -> int:
         except Exception:
             pass
 
-    bus.register_callback(CH_CONVERGENCE, _on_convergence)
     bus.register_callback(CH_VELOCITY_ANOMALY, _on_velocity)
     return 1
 
@@ -143,23 +137,21 @@ def _wire_thermoregulation(ctx: SimpleNamespace, bus: Any) -> int:
 def _wire_vestibular(ctx: SimpleNamespace, bus: Any) -> int:
     """VestibularSystem: detect instability in market sensing.
 
-    Track rolling convergence rate and prediction accuracy. If either
-    changes rapidly (spike or crash), the vestibular system fires
-    vertigo — alerting other systems that market sensing is unstable.
+    Track rolling prediction accuracy. If accuracy changes rapidly
+    (spike or crash), vestibular fires vertigo — alerting other systems.
+
+    NOTE: CH_CONVERGENCE subscription REMOVED (2026-03-14, triadic audit P1).
+    VestibularSystem's convergence callback called report_metric("convergence_rate"),
+    but vertigo/stability state feeds a reflex condition that is permanently
+    disabled (returns None unconditionally). Confirmed inert by triadic audit.
+    Prediction outcome callback retained as it provides the accuracy signal
+    that the vestibular model uses to track stability.
     """
     vestibular = getattr(ctx, "vestibular_system", None)
     if vestibular is None:
         return 0
 
-    from mae_core.market.channels import CH_CONVERGENCE, CH_PREDICTION_RESULT
-
-    def _on_convergence(channel, data):
-        msg = _parse(data)
-        domain_count = msg.get("domain_count", 3)
-        try:
-            vestibular.report_metric("convergence_rate", domain_count / 12.0)
-        except Exception:
-            pass
+    from mae_core.market.channels import CH_PREDICTION_RESULT
 
     def _on_prediction(channel, data):
         msg = _parse(data)
@@ -172,7 +164,6 @@ def _wire_vestibular(ctx: SimpleNamespace, bus: Any) -> int:
             except Exception:
                 pass
 
-    bus.register_callback(CH_CONVERGENCE, _on_convergence)
     bus.register_callback(CH_PREDICTION_RESULT, _on_prediction)
     return 1
 
