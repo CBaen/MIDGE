@@ -849,9 +849,9 @@ def _run_slow_cadence_ops(ctx: SimpleNamespace, step: int, _shm, _timer) -> None
                 except Exception:
                     logger.debug("Excavation daemon step failed", exc_info=True)
 
-    # ── Daily narrative letter ─────────────────────────────────────
+    # ── Daily narrative letter + stats dashboard ──────────────────
     # Check once every 100 steps whether we've crossed into a new calendar day.
-    # If so, generate the morning letter and email it to Guiding Light.
+    # If so, generate the morning letter and stats dashboard.
     if step % 100 == 0:
         try:
             today_str = datetime.now().strftime("%Y-%m-%d")
@@ -877,5 +877,16 @@ def _run_slow_cadence_ops(ctx: SimpleNamespace, step: int, _shm, _timer) -> None
                         logger.info("Daily narrative ready (no email notifier configured)")
                 except Exception:
                     logger.debug("Daily narrative generation failed", exc_info=True)
+
+                # Daily stats dashboard (Mermaid charts)
+                try:
+                    from mae_core.market.intelligence.daily_stats import (
+                        generate_daily_stats,
+                    )
+                    stats_path = generate_daily_stats(today_str)
+                    if stats_path:
+                        logger.info("Daily stats dashboard written: %s", stats_path)
+                except Exception:
+                    logger.debug("Daily stats generation failed", exc_info=True)
         except Exception:
             logger.debug("Daily narrative date check failed", exc_info=True)
