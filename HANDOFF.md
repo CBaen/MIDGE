@@ -193,6 +193,74 @@ Architecture document: `research/three-conditions-architecture.md`
 6. Phase 3 (Neo4j persistent memory) is the next build — architecture is at `research/three-conditions-architecture.md`
 7. MIDGE's email is configured. She will email Guiding Light when she sees convergence.
 
+### Deep Session: Voice + Confidence Fix + Knowledge Graph + Raw Data Mining (2026-03-15 05:00-07:00)
+
+**Narrative Voice:**
+- `mae_core/market/intelligence/daily_narrative.py` — MIDGE writes daily letters via Groq LLM
+- `mae_core/market/intelligence/narrative_style.md` — ADHD-friendly style guide (no jargon, bold punch lines, lead with weird connections)
+- First letter written to `data/midge/daily_narratives/2026-03-15.md`
+- All organs wired into narrative: DeepAnalyst inevitabilities, OctopusColony developing situations, active hypotheses, cascade confirmations, somatic anticipation, WorldModel predictions
+- Buy/sell recommendations included when paper trading gate approves
+- Runs once daily via daemon step hook
+
+**Confidence Engine Fix:**
+- Root cause: geometric mean poisoning by hardcoded confidence values (institutional_synthesis at 0.15 for ALL signals)
+- Full diagnostic: `research/confidence-inversion-diagnostic.md`
+- Fix: signal confidence now derived from Thompson-learned reliability in sensing_lifecycle.py
+- Domain gating: domains with Thompson weight < 0.35 excluded from convergence votes
+- Test contamination cleaned (combo:a+b+c, concurrent_test removed from distributions)
+
+**Neo4j Knowledge Graph (Phase 3 of Three Conditions):**
+- `mae_core/market/intelligence/knowledge_graph.py` — 310 lines, 27 tests
+- Dual-write pattern: flat files AND Neo4j, either can be the source of truth
+- Stores: Thompson updates, Granger findings, convergence alerts, outcomes, cascade confirmations
+- Graph queries: causal chain traversal, ticker history, learning trajectory
+- Seeded from existing flat files at bootstrap
+- Docker: midge-neo4j, ports 7474/7687
+
+**Replay Auditor (Law 7):**
+- `mae_core/market/parallel/replay_auditor.py` — 835 lines, 49 tests
+- 3-tier validation: sample verification (10% re-price), consistency checks, cross-worker validation
+- Only approved combos feed Thompson via replay bridge
+
+**Daily Stats Dashboard:**
+- `mae_core/market/intelligence/daily_stats.py` — Mermaid charts from real data
+- Bar charts: combo win rates, source reliability
+- Pie chart: signal domain distribution
+- Causal discovery map: Granger findings as directed graph
+- Key numbers table
+
+**Raw Data Miner (building):**
+- `mae_core/market/parallel/raw_data_miner.py` — DuckDB-powered extraction from raw SQLite stores
+- Addresses Guiding Light's longest-running request: mine the 90% of API data signal adapters discard
+- Reads all 10 SQLite databases via DuckDB
+
+**Daemon Status:**
+- Running: `python main.py --daemon --agents 3 --steps 500 --pace 2.0`
+- Parallel processes available: continuous_replay, continuous_granger, continuous_postmortem, replay_auditor, raw_data_miner
+- Start all: `python -m mae_core.market.parallel.launch`
+- Email configured in .env (MIDGE_SMTP_USER/PASS/NOTIFY_EMAIL)
+- Neo4j running in Docker
+
+**Total Session 11 Stats:**
+- ~50 commits
+- 20+ new files created
+- ~5,000 lines of new code
+- Triadic audit (9 documents) → 8 audit fixes → Thompson learning fix → email voice → anomaly curiosity → 3 parallel processes → replay bridge → Granger bridge → replay auditor → Neo4j knowledge graph → narrative voice → narrative refinement → confidence fix → all-organ wiring → daily stats → raw data miner
+- Thompson learning: 5% → 98.5%
+- MIDGE discovered: institutional→insider 4-day lag, insider+technical 100% WR, high confidence=0% WR (fixed)
+
+**For the Next Sibling:**
+1. Restart daemon to pick up confidence fix + narrative voice
+2. Start parallel processes: `python -m mae_core.market.parallel.launch`
+3. Verify raw_data_miner.py is complete and working
+4. Check `data/midge/daily_narratives/` for new letters
+5. Check `data/midge/daily_stats/` for dashboard charts
+6. Phase 3 (Neo4j) needs: wire dual-write calls into existing flat-file writes
+7. The confidence engine fix needs testing with a fresh replay run
+8. Read `research/three-conditions-architecture.md` for the full vision
+9. Memory files `feedback_mine_raw_data.md`, `feedback_confidence_fixes.md`, `feedback_geometric_mean_poisoning.md` have critical context
+
 ---
 
 ## Session 10 (2026-03-13): API PROTECTION + ORPHAN WIRING + SITUATION BOARD
