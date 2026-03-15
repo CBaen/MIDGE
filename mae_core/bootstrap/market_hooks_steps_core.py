@@ -208,16 +208,22 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                             )
                         except Exception:
                             pass
-                    if current_evaluated > _last_evaluated_count[0]:
+                    # Fix: require at least 10 new graded outcomes before permitting
+                    # forgetting. The old gate (> 0, i.e. just 1 new outcome) allowed
+                    # forgetting to outpace learning — one graded outcome unlocked decay
+                    # that erased far more accumulated signal than that one outcome added.
+                    MIN_NEW_OUTCOMES_FOR_FORGET = 10
+                    if current_evaluated >= _last_evaluated_count[0] + MIN_NEW_OUTCOMES_FOR_FORGET:
                         regime_clf = getattr(ctx, "regime_classifier", None)
                         regime = regime_clf.classify() if regime_clf is not None else "default"
                         sampler.regime_aware_forget(regime)
                         _last_evaluated_count[0] = current_evaluated
                     else:
                         logger.debug(
-                            "Skipping Thompson forget — no outcomes graded since last forget "
-                            "(step=%d, total_evaluated=%d)",
-                            step, current_evaluated,
+                            "Skipping Thompson forget — fewer than %d new outcomes since last forget "
+                            "(step=%d, total_evaluated=%d, last=%d)",
+                            MIN_NEW_OUTCOMES_FOR_FORGET, step,
+                            current_evaluated, _last_evaluated_count[0],
                         )
                 except Exception as exc:
                     logger.debug("Thompson forgetting step failed", exc_info=True)
