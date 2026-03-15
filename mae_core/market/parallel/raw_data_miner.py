@@ -57,6 +57,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 import duckdb
+from datetime import timedelta
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
