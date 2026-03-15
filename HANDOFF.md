@@ -114,6 +114,38 @@ Daemon is running and stepping normally.
 
 **Before any new building:** Keep the daemon running. Watch convergence alert rate with 3 agents vs prior 12-agent baseline.
 
+### Late Session: Thompson Learning Fix + Vision
+
+## Thompson Learning Critical Fix (2026-03-15 03:00)
+
+MIDGE was learning at 5% capacity. 164/173 Thompson distributions at prior (2.0, 2.0). Root cause diagnosed:
+
+1. **Forgetting outpaced learning 10:1** — forgetting fired every 75 steps, outcomes graded rarely (45-90 day windows). Gate required only 1 new outcome. Fixed: gate raised to 10 minimum.
+2. **Distributions file wiped on restart** — replay_from_history() cleared state incorrectly. Rebuilt from 19,000 history entries. Result: 67/68 distributions now reflect real learning (98.5%).
+3. **803 predictions stuck in infinite retry** — price fetcher returning None for obscure tickers. Fixed: expire after 5 failed lookups.
+
+Commits: 54e7d5c (forgetting gate), 6f5d173 (distribution rebuild), plus outcome_tracker edit.
+
+After fix: MIDGE knows EIA energy is 70% reliable, FINRA short is 38%, insider+MACD combo in bear markets is 87.5% accurate. Convergence confidence now uses REAL learned weights, not 50/50 priors.
+
+## Guiding Light's Vision: Three Conditions for Inevitability
+
+Guiding Light directed: "There are no rules and no laws. There is only a goal." The goal is creating conditions where inevitability surfaces on its own.
+
+Three conditions identified as necessary and sufficient:
+
+1. **Persistent Memory** — Thompson distributions, learned relationships, and accumulated knowledge must survive restarts perfectly. Flat files get wiped. Neo4j (already installed, Docker running) should be the persistent knowledge store. Every confirmed cascade link, every Thompson update, every Granger finding persists as graph edges.
+
+2. **A Voice That Reaches Guiding Light** — MIDGE writes to JSONL files nobody reads. She needs a delivery mechanism: Discord webhook, email, SMS, or a simple web dashboard. The gap between seeing and sharing must close.
+
+3. **Curiosity** — MIDGE currently only investigates partial convergences (2 domains, needs 3rd). She should investigate anomalies with zero domains converging. OctopusColony needs permission to wander, not just react. Additionally, she has Groq/Mistral/DeepSeek wired for agent tasks — these should be used for market reasoning ("what's the causal story here?").
+
+### Status at Session End
+- Daemon running: `python main.py --daemon --agents 3 --steps 500 --pace 2.0`
+- Thompson: 98.5% of distributions reflect real learning
+- Learning loop: fixed (forgetting gate raised, stuck predictions expire)
+- Next: Architect the three conditions (persistent memory, voice, curiosity)
+
 ---
 
 ## Session 10 (2026-03-13): API PROTECTION + ORPHAN WIRING + SITUATION BOARD
