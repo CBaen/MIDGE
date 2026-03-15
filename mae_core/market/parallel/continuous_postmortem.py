@@ -44,7 +44,7 @@ from typing import Dict, List, Optional, Tuple
 # ---------------------------------------------------------------------------
 
 _THIS_FILE = Path(__file__).resolve()
-_PROJECT_ROOT = _THIS_FILE.parents[4]   # .../mae_core/market/parallel/ → project root
+_PROJECT_ROOT = _THIS_FILE.parents[3]   # .../mae_core/market/parallel/ → project root
 
 PREDICTIONS_PATH = _PROJECT_ROOT / "data" / "market" / "predictions.jsonl"
 OUTCOMES_PATH    = _PROJECT_ROOT / "data" / "market" / "outcomes.jsonl"
