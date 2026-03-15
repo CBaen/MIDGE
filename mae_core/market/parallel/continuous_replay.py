@@ -585,9 +585,9 @@ def _run_cycle(
     outcome_window_days: int,
     dry_run: bool,
 ) -> dict:
-    """Run a complete pass over the archive. Returns summary stats."""
+    """Run a complete pass over the archive using parallel workers. Returns summary stats."""
     logger.info("=" * 60)
-    logger.info("Cycle %d starting", cycle_num)
+    logger.info("Cycle %d starting (parallel, %d workers)", cycle_num, NUM_WORKERS)
 
     all_dates = _discover_archive_dates()
     if not all_dates:
@@ -599,11 +599,11 @@ def _run_cycle(
         all_dates = [d for d in all_dates if d >= start_date]
 
     logger.info(
-        "Archive: %d days (%s → %s)",
+        "Archive: %d days (%s to %s)",
         len(all_dates), all_dates[0], all_dates[-1]
     )
 
-    # Load state to resume from last processed day
+    # Load state to resume from last completed day
     state = _load_state()
     last_completed = state.get("last_completed_day")
 
@@ -612,28 +612,38 @@ def _run_cycle(
             resume_after = date.fromisoformat(last_completed)
             remaining = [d for d in all_dates if d > resume_after]
             if not remaining:
-                logger.info("All days already processed this cycle — resetting to oldest")
+                logger.info("All days already processed this cycle -- resetting to oldest")
                 remaining = all_dates
             else:
-                logger.info("Resuming from %s (%d days remaining)", resume_after, len(remaining))
+                logger.info(
+                    "Resuming from %s (%d days remaining)",
+                    resume_after, len(remaining)
+                )
             dates_to_process = remaining
         except ValueError:
             dates_to_process = all_dates
     else:
         dates_to_process = all_dates
 
-    # Build alerter (loads current Thompson weights from disk)
-    alerter, ca_module = _build_alerter(min_domains, use_thompson)
-    original_datetime  = ca_module.datetime
+    # Split dates into chunks -- one per worker
+    chunks = _split_into_chunks([d.isoformat() for d in dates_to_process], NUM_WORKERS)
+    # Drop empty chunks (when archive has fewer days than workers)
+    chunks = [c for c in chunks if c]
 
-    # Load price fetcher once per cycle
-    price_fetcher = None
-    if not dry_run:
-        try:
-            from mae_core.market.apis.price_fetcher import PriceFetcher
-            price_fetcher = PriceFetcher()
-        except Exception as exc:
-            logger.warning("PriceFetcher unavailable — alerts will be ungraded: %s", exc)
+    logger.info(
+        "Splitting %d days into %d chunks: %s",
+        len(dates_to_process),
+        len(chunks),
+        [len(c) for c in chunks],
+    )
+
+    # Per-worker temp output files -- avoids cross-process file locking
+    tmp_dir = RESULTS_JSONL.parent
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    tmp_paths = [
+        str(tmp_dir / f"_replay_worker_{cycle_num}_{wid}.tmp")
+        for wid in range(len(chunks))
+    ]
 
     stats: dict = {
         "cycle": cycle_num,
@@ -646,78 +656,78 @@ def _run_cycle(
         "alerts_ungraded": 0,
         "successes":      0,
         "failures":       0,
+        "workers":        len(chunks),
     }
 
-    try:
-        for i, day in enumerate(dates_to_process):
-            day_signals = _load_day_signals(day)
-            n_signals   = len(day_signals)
-            stats["total_signals"] += n_signals
+    # Submit workers.  On Windows, ProcessPoolExecutor uses the 'spawn' start
+    # method, so _worker_process_chunk must be a top-level picklable function.
+    futures = {}
+    with ProcessPoolExecutor(max_workers=NUM_WORKERS) as pool:
+        for wid, (chunk, tmp_path) in enumerate(zip(chunks, tmp_paths)):
+            future = pool.submit(
+                _worker_process_chunk,
+                wid,
+                chunk,
+                min_domains,
+                use_thompson,
+                outcome_window_days,
+                dry_run,
+                tmp_path,
+                str(SIGNALS_DIR),
+                str(_PROJECT_ROOT),
+            )
+            futures[future] = wid
 
-            alerts = _replay_day(day, alerter, ca_module, original_datetime, use_thompson)
-
-            for ad in alerts:
-                # Attempt grading
-                if price_fetcher and not dry_run:
-                    _grade_alert(ad, price_fetcher, outcome_window_days)
-                else:
-                    ad["grade"] = "dry_run" if dry_run else "ungraded"
-
-                grade = ad.get("grade", "ungraded")
-                if grade == "success":
-                    stats["successes"] += 1
-                    stats["alerts_graded"] += 1
-                elif grade == "failure":
-                    stats["failures"] += 1
-                    stats["alerts_graded"] += 1
-                elif grade == "pending":
-                    stats["alerts_pending"] += 1
-                else:
-                    stats["alerts_ungraded"] += 1
-
-                stats["alerts_found"] += 1
-
-                if not dry_run:
-                    _append_result(ad)
-
+        # Collect results as workers finish
+        for future in as_completed(futures):
+            wid = futures[future]
+            try:
+                worker_stats = future.result()
+                for key in ("days_processed", "total_signals", "alerts_found",
+                            "alerts_graded", "alerts_pending", "alerts_ungraded",
+                            "successes", "failures"):
+                    stats[key] += worker_stats.get(key, 0)
                 logger.info(
-                    "  ALERT %s %s | conf=%.2f str=%.2f | %s | grade=%s | sym=%s",
-                    day.isoformat(),
-                    ad.get("direction", "?").upper(),
-                    ad.get("confidence", 0),
-                    ad.get("strength", 0),
-                    "+".join(ad.get("domains", [])),
-                    ad.get("grade", "?"),
-                    ad.get("primary_symbol", "?"),
+                    "Worker %d finished: %d days, %d alerts, %d graded",
+                    wid,
+                    worker_stats.get("days_processed", 0),
+                    worker_stats.get("alerts_found", 0),
+                    worker_stats.get("alerts_graded", 0),
                 )
+            except Exception as exc:
+                logger.exception("Worker %d raised an exception: %s", wid, exc)
 
-            stats["days_processed"] += 1
+    # Merge worker temp files into the shared results JSONL
+    all_records: List[dict] = []
+    for tmp_path in tmp_paths:
+        p = Path(tmp_path)
+        if p.exists():
+            try:
+                with open(p, encoding="utf-8") as fh:
+                    for line in fh:
+                        line = line.strip()
+                        if line:
+                            try:
+                                all_records.append(json.loads(line))
+                            except json.JSONDecodeError:
+                                pass
+                p.unlink()  # clean up temp file
+            except Exception as exc:
+                logger.warning("Could not read/clean temp file %s: %s", tmp_path, exc)
 
-            # Save progress after each day
-            _save_state({
-                "last_completed_day": day.isoformat(),
-                "cycle": cycle_num,
-                "updated_at": datetime.utcnow().isoformat(),
-            })
+    if not dry_run:
+        _append_results_bulk(all_records)
 
-            if (i + 1) % 30 == 0:
-                graded_total = stats["alerts_graded"]
-                win_rate = (
-                    stats["successes"] / graded_total * 100
-                    if graded_total > 0 else 0.0
-                )
-                logger.info(
-                    "  Progress: %d/%d days | %d alerts | WR=%.1f%% (%d/%d graded)",
-                    i + 1, len(dates_to_process),
-                    stats["alerts_found"], win_rate,
-                    stats["successes"], graded_total,
-                )
-
-            time.sleep(DAY_SLEEP_SECONDS)
-
-    finally:
-        # ALWAYS restore the real datetime
-        ca_module.datetime = original_datetime
+    # Save state: mark the last day of the last chunk as completed
+    if dates_to_process:
+        last_day = dates_to_process[-1]
+        _save_state({
+            "last_completed_day": last_day.isoformat(),
+            "cycle": cycle_num,
+            "updated_at": datetime.utcnow().isoformat(),
+            "workers": len(chunks),
+            "chunk_sizes": [len(c) for c in chunks],
+        })
 
     stats["finished_at"] = datetime.utcnow().isoformat()
 
