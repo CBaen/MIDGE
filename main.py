@@ -1041,7 +1041,14 @@ def _write_alerts() -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="MIDGE - Market Intelligence Driven by Generative Exploration")
-    parser.add_argument("--agents", type=int, default=5, help="Number of agents (min 3)")
+    # Experiment (2026-03-14, triadic audit P5): Reduce default agent count.
+    # Triadic audit found market intelligence flows through step hooks and is
+    # independent of agent count. Increasing from 5 to 12 added CPU without
+    # improving alert quality. Reducing to 3 (the minimum for triadic consensus)
+    # to measure whether alert quality, frequency, or confidence changes.
+    # If it doesn't, the case for keeping agents minimal becomes concrete.
+    # If it does, the specific mechanism can be identified and preserved.
+    parser.add_argument("--agents", type=int, default=3, help="Number of agents (min 3)")
     parser.add_argument("--steps", type=int, default=100, help="Simulation steps")
     parser.add_argument("--cycle", type=int, default=100, help="Circadian cycle length")
     parser.add_argument("--rounds", type=int, default=1, help="Number of rounds (state persists between rounds)")

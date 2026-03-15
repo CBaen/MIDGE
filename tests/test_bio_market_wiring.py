@@ -260,6 +260,8 @@ class TestQuorumWiring:
 
 
 class TestCircadianWiring:
+    @pytest.mark.skip(reason="CircadianRhythm activity pinned to 1.0 — "
+                             "triadic audit (2026-03-14) confirmed phase-based throttling harms market sensing")
     def test_phase_change_sets_ctx_activity(self):
         bus, _ = _make_bus()
         circadian = SimpleNamespace(get_activity_multiplier=lambda: 0.5)
