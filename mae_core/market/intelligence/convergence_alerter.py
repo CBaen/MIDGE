@@ -243,6 +243,8 @@ class ConvergenceAlerter(ConvergenceConfidenceMixin, ConvergenceDetectionMixin):
             "energy": "fundamental",
             # Causal chain — synthetic signals from confirmed cascade dominoes (Law 2)
             "cascade": "causal",
+            # Options domain — CBOE VIX family + put/call ratio (13th domain)
+            "options": "market",
         }
 
         self._alert_counter = 0
