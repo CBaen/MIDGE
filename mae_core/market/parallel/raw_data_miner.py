@@ -140,6 +140,29 @@ def _setup_logging() -> logging.Logger:
     return logger
 
 
+# ── Date helpers ───────────────────────────────────────────────────────────────
+
+def _cutoff_date(lookback_days: int) -> str:
+    """Return ISO date string N days ago, e.g. '2026-03-08'.
+
+    All raw store timestamps/dates are stored as VARCHAR in SQLite.
+    DuckDB cannot compare VARCHAR against CURRENT_DATE/CURRENT_TIMESTAMP without
+    an explicit cast. String comparison works correctly for ISO-format dates
+    because YYYY-MM-DD lexicographic order == chronological order.
+    """
+    return (datetime.now(timezone.utc) - timedelta(days=lookback_days)).strftime("%Y-%m-%d")
+
+
+def _cutoff_datetime(lookback_days: int) -> str:
+    """Return ISO datetime string N days ago, e.g. '2026-03-08T06:50:00'.
+
+    Used for columns storing full ISO timestamps as VARCHAR.
+    """
+    return (datetime.now(timezone.utc) - timedelta(days=lookback_days)).strftime(
+        "%Y-%m-%dT%H:%M:%S"
+    )
+
+
 # ── DuckDB connection factory ───────────────────────────────────────────────────
 
 def _open_duckdb() -> duckdb.DuckDBPyConnection:
@@ -246,6 +269,7 @@ def _mine_prices(
     if not _attach_db(con, "prices", "prices"):
         return signals
 
+    cutoff = _cutoff_datetime(lookback_days)
     try:
         rows = con.execute(f"""
             SELECT
@@ -258,7 +282,7 @@ def _mine_prices(
                 info_json,
                 ingested_at
             FROM prices.price_snapshots
-            WHERE ingested_at >= (CURRENT_TIMESTAMP - INTERVAL '{lookback_days} days')
+            WHERE ingested_at >= '{cutoff}'
               AND price > 0
               AND fifty_two_week_high IS NOT NULL
               AND fifty_two_week_high > 0
@@ -414,6 +438,7 @@ def _mine_cot(
     if not _attach_db(con, "cot", "cot"):
         return signals
 
+    cutoff = _cutoff_date(lookback_days)
     try:
         # Get last 2 weeks for each contract to compute change
         rows = con.execute(f"""
@@ -430,7 +455,7 @@ def _mine_cot(
                         PARTITION BY contract_name ORDER BY report_date DESC
                     ) AS rn
                 FROM cot.cot_weekly
-                WHERE report_date >= (CURRENT_DATE - INTERVAL '{lookback_days} days')
+                WHERE report_date >= '{cutoff}'
             )
             SELECT
                 contract_name,
@@ -606,6 +631,7 @@ def _mine_openinsider(
     if not _attach_db(con, "openinsider", "openinsider"):
         return signals
 
+    cutoff = _cutoff_date(lookback_days)
     try:
         # Cluster detection: 3+ insiders buying same ticker within window
         cluster_rows = con.execute(f"""
@@ -618,7 +644,7 @@ def _mine_openinsider(
                 LIST(insider_name) AS insider_names,
                 LIST(title) AS titles
             FROM openinsider.insider_purchases
-            WHERE trade_date >= (CURRENT_DATE - INTERVAL '{lookback_days} days')
+            WHERE trade_date >= '{cutoff}'
               AND LOWER(trade_type) LIKE '%buy%'
               AND value > 10000
             GROUP BY ticker
@@ -674,7 +700,7 @@ def _mine_openinsider(
                 delta_owned_pct,
                 trade_date
             FROM openinsider.insider_purchases
-            WHERE trade_date >= (CURRENT_DATE - INTERVAL '{lookback_days} days')
+            WHERE trade_date >= '{cutoff}'
               AND LOWER(trade_type) LIKE '%buy%'
               AND (
                   UPPER(title) LIKE '%CEO%'
@@ -730,7 +756,7 @@ def _mine_openinsider(
         stake_rows = con.execute(f"""
             SELECT ticker, insider_name, title, value, delta_owned_pct, trade_date
             FROM openinsider.insider_purchases
-            WHERE trade_date >= (CURRENT_DATE - INTERVAL '{lookback_days} days')
+            WHERE trade_date >= '{cutoff}'
               AND LOWER(trade_type) LIKE '%buy%'
               AND delta_owned_pct >= 50
               AND COALESCE(value, 0) > 10000
@@ -794,11 +820,12 @@ def _mine_fred(
     if not _attach_db(con, "fred", "fred"):
         return signals
 
+    cutoff = _cutoff_date(lookback_days)
     try:
         rows = con.execute(f"""
             SELECT series_id, date, value
             FROM fred.fred_observations
-            WHERE date >= (CURRENT_DATE - INTERVAL '{lookback_days} days')
+            WHERE date >= '{cutoff}'
               AND value IS NOT NULL
             ORDER BY series_id, date ASC
         """).fetchall()
