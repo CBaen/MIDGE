@@ -92,6 +92,8 @@ class TestEmotionalSystemWiring:
 
 
 class TestHomeostasisWiring:
+    @pytest.mark.skip(reason="HomeostasisRegulator unsubscribed from CH_CONVERGENCE — "
+                             "triadic audit (2026-03-14) confirmed it produces no market output")
     def test_bearish_raises_threat_level(self):
         bus, _ = _make_bus()
         homeo = MagicMock()
