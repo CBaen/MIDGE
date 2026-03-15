@@ -155,6 +155,7 @@ def _build_sensing_infrastructure(ctx: SimpleNamespace):
         hook._cboe_options_client = getattr(ctx, "cboe_options_client", None)
         hook._crypto_fear_greed_client = getattr(ctx, "crypto_fear_greed_client", None)
         hook._edgar_xbrl_client = getattr(ctx, "edgar_xbrl_client", None)
+        hook._news_aggregator_client = getattr(ctx, "news_aggregator_client", None)
 
     return outcome_collector, memory, form8k_sentiment, market_clock, tiered_alerters, hook
 

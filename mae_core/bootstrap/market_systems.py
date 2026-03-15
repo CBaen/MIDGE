@@ -37,6 +37,7 @@ def _instantiate_wave2_3_clients(ctx: SimpleNamespace) -> None:
         ("cboe_options_client", "mae_core.market.apis.cboe_options_client", "CBOEOptionsClient"),
         ("crypto_fear_greed_client", "mae_core.market.apis.crypto_fear_greed_client", "CryptoFearGreedClient"),
         ("edgar_xbrl_client", "mae_core.market.apis.edgar_xbrl_client", "EdgarXBRLClient"),
+        ("news_aggregator_client", "mae_core.market.apis.news_aggregator_client", "NewsAggregatorClient"),
     ]:
         try:
             klass = getattr(importlib.import_module(mod_path), cls)

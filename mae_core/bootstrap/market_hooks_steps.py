@@ -616,6 +616,18 @@ def _run_slow_cadence_ops(ctx: SimpleNamespace, step: int, _shm, _timer) -> None
         except Exception:
             logger.debug("_ingest_replay_bridge failed", exc_info=True)
 
+        # --- Raw data miner bridge: ingest signals from DuckDB-powered extraction ---
+        try:
+            _ingest_jsonl_bridge(ctx, "raw_miner_signals")
+        except Exception:
+            logger.debug("_ingest_jsonl_bridge(raw_miner) failed", exc_info=True)
+
+        # --- Cross-market hunter bridge: ingest cross-market anomaly signals ---
+        try:
+            _ingest_jsonl_bridge(ctx, "cross_market_signals")
+        except Exception:
+            logger.debug("_ingest_jsonl_bridge(cross_market) failed", exc_info=True)
+
         post_mortem = getattr(ctx, "post_mortem_reviewer", None)
         if post_mortem is not None:
             try:

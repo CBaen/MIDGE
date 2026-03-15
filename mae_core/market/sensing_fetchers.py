@@ -52,6 +52,7 @@ from mae_core.market.fetchers_social import (
     fetch_yahoo_rss,
     fetch_finnhub,
     fetch_finnhub_extras,
+    fetch_news_headlines,
 )
 from mae_core.market.fetchers_crypto import (
     fetch_crypto_prices,
@@ -104,4 +105,5 @@ __all__ = [
     "fetch_cboe_options",
     "fetch_crypto_fear_greed",
     "fetch_edgar_xbrl",
+    "fetch_news_headlines",
 ]
