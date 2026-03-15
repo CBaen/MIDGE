@@ -1056,6 +1056,7 @@ def _mine_massive(
     if not _attach_db(con, "massive", "massive"):
         return signals
 
+    cutoff = _cutoff_date(lookback_days)
     try:
         rows = con.execute(f"""
             WITH consecutive AS (
@@ -1073,7 +1074,7 @@ def _mine_massive(
                     LAG(volume) OVER (PARTITION BY ticker ORDER BY date) AS prev_volume,
                     ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY date DESC) AS rn
                 FROM massive.daily_bars
-                WHERE date >= (CURRENT_DATE - INTERVAL '{lookback_days} days')
+                WHERE date >= '{cutoff}'
                   AND volume > 0
                   AND close > 0
             )
@@ -1271,6 +1272,7 @@ def _mine_finra(
     if not _attach_db(con, "finra", "finra"):
         return signals
 
+    cutoff = _cutoff_date(lookback_days)
     try:
         rows = con.execute(f"""
             SELECT
@@ -1281,7 +1283,7 @@ def _mine_finra(
                 short_ratio,
                 speculative_short_ratio
             FROM finra.finra_short_volume
-            WHERE date >= (CURRENT_DATE - INTERVAL '{lookback_days} days')
+            WHERE date >= '{cutoff}'
               AND total_volume > 0
             ORDER BY symbol, date ASC
         """).fetchall()
@@ -1298,7 +1300,7 @@ def _mine_finra(
         by_symbol[sym].append(row)
 
     for symbol, sym_rows in by_symbol.items():
-        if len(sym_rows) < 2:
+        if not sym_rows:
             continue
 
         latest = sym_rows[-1]
@@ -1396,13 +1398,16 @@ def _mine_finnhub_ticks(
     if not _attach_db(con, "finnhub", "finnhub"):
         return signals
 
+    cutoff_ms = int(
+        (datetime.now(timezone.utc) - timedelta(days=lookback_days)).timestamp() * 1000
+    )
     try:
         rows = con.execute(f"""
             WITH hourly AS (
                 SELECT
                     symbol,
                     STRFTIME(
-                        TO_TIMESTAMP(timestamp_ms / 1000),
+                        TO_TIMESTAMP(CAST(timestamp_ms AS BIGINT) / 1000),
                         '%Y-%m-%d %H:00'
                     ) AS hour_bucket,
                     COUNT(*) AS tick_count,
@@ -1410,7 +1415,7 @@ def _mine_finnhub_ticks(
                     MAX(price) AS max_price,
                     MIN(price) AS min_price
                 FROM finnhub.finnhub_ticks
-                WHERE timestamp_ms >= EPOCH_MS(NOW()) - {lookback_days * 86400 * 1000}
+                WHERE CAST(timestamp_ms AS BIGINT) >= {cutoff_ms}
                 GROUP BY symbol, hour_bucket
             ),
             ranked AS (
