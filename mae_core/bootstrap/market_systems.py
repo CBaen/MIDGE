@@ -518,6 +518,14 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         logger.debug("Market: situation_board failed", exc_info=True)
         ctx.situation_board = None
 
+    # --- Email notifier (MIDGE → Guiding Light outbound alerts) ---
+    try:
+        from mae_core.market.notifications.email_notifier import EmailNotifier
+        ctx.email_notifier = EmailNotifier()
+    except Exception:
+        logger.debug("Market: email_notifier failed to construct", exc_info=True)
+        ctx.email_notifier = None
+
     logger.info(
         "Layer 33a - Market systems: %d instantiated (%d failures)", 59 - failures, failures,
     )

@@ -292,6 +292,15 @@ def _run_paper_trading_gate(ctx: SimpleNamespace, alerts: list, step: int) -> No
             )
             _write_paper_trade(alert, ctx)
             _translate_and_log_executable_signal(alert, ctx)
+
+            # Notify Guiding Light — MIDGE speaks when she sees something real
+            _notifier = getattr(ctx, "email_notifier", None)
+            if _notifier is not None:
+                try:
+                    _alert_dict = alert.to_dict() if hasattr(alert, "to_dict") else {}
+                    _notifier.send_convergence_alert(_alert_dict)
+                except Exception:
+                    logger.debug("Email notification for paper trade failed", exc_info=True)
     except Exception:
         logger.debug("Paper trading gate failed", exc_info=True)
 

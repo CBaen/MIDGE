@@ -502,6 +502,156 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
 
     ctx.bus.register_callback("market.intel.drift_detected", _on_drift_detected)
 
+    # --- Phase 2 Three Conditions: Curiosity — anomaly-driven OctopusColony investigation ---
+    # When VelocityDetector, MotifDetector, or StreamingAnomalyDetector flags unusual
+    # behaviour on a ticker that ALSO has signals in at least one other domain, MIDGE
+    # investigates proactively — not waiting for 2-domain partial convergence.
+    #
+    # Rate limit: _curiosity_step_budget resets every 100 steps, allows 5 investigations.
+    # The investigation result (if a high-win-rate template is found) feeds back into
+    # the convergence alerter via the existing _on_octopus_investigation wire (d39e101).
+    #
+    # Three channels are wired:
+    #   CH_VELOCITY_ANOMALY  — no ticker in payload; we poll vd.states for anomalous tickers
+    #   "market.intel.motif_detected"     — carries symbol directly (discord/motif)
+    #   "market.intel.streaming_anomaly"  — carries symbol directly
+
+    # Step-budget state stored on ctx so multiple handlers share the counter.
+    ctx._curiosity_budget = 5           # replenished every 100 steps externally via _run_curiosity_reset
+    ctx._curiosity_step_counter = 0     # tracks steps for local reset fallback
+
+    _CURIOSITY_MAGNITUDE_FLOOR = 2.0    # z-score / anomaly score threshold
+    _CURIOSITY_BUDGET_REFILL = 5        # max investigations per 100-step window
+    _CURIOSITY_STEP_WINDOW = 100        # reset window in steps
+
+    def _domains_for_ticker(alerter, ticker: str):
+        """Return list of domains that have at least one recent signal for this ticker."""
+        found = []
+        try:
+            for domain, sigs in alerter.signals.items():
+                for sig in sigs:
+                    sym = ""
+                    try:
+                        sym = sig.metadata.get("symbol", "") if hasattr(sig.metadata, "get") else ""
+                    except Exception:
+                        pass
+                    if sym == ticker:
+                        found.append(domain)
+                        break
+        except Exception:
+            pass
+        return found
+
+    def _submit_curiosity_investigation(ticker: str, anomaly_source: str, magnitude: float):
+        """Core curiosity logic: ticker + anomaly → investigate if ≥1 domain signal exists."""
+        try:
+            if not ticker:
+                return
+
+            # Refill budget on step rollover (fallback — also replenished in step hook)
+            ctx._curiosity_step_counter += 1
+            if ctx._curiosity_step_counter >= _CURIOSITY_STEP_WINDOW:
+                ctx._curiosity_budget = _CURIOSITY_BUDGET_REFILL
+                ctx._curiosity_step_counter = 0
+
+            if ctx._curiosity_budget <= 0:
+                return
+
+            alerter = getattr(ctx, "convergence_alerter", None)
+            if alerter is None:
+                return
+
+            domains_with_signal = _domains_for_ticker(alerter, ticker)
+            if len(domains_with_signal) < 1:
+                return
+
+            colony = getattr(ctx, "octopus_colony", None)
+            if colony is None:
+                return
+
+            ctx._curiosity_budget -= 1
+
+            colony.submit_task(
+                {
+                    "ticker": ticker,
+                    "direction": "neutral",
+                    "domains_seen": domains_with_signal,
+                    "missing_domains": [],
+                    "anomaly_source": anomaly_source,
+                    "magnitude": round(magnitude, 3),
+                    "source": "curiosity",
+                },
+                "investigate_partial",
+            )
+            logger.info(
+                "Curiosity: %s anomaly + %d domain signal(s) %s → investigation submitted (budget=%d)",
+                ticker, len(domains_with_signal), domains_with_signal, ctx._curiosity_budget,
+            )
+        except Exception:
+            logger.debug("Curiosity investigation dispatch failed for %s", ticker, exc_info=True)
+
+    def _on_velocity_anomaly_curiosity(channel, data):
+        """Velocity anomaly → check which tickers are anomalous and have domain signals."""
+        try:
+            vd = getattr(ctx, "velocity_detector", None)
+            if vd is None:
+                return
+            anomalies = vd.detect_velocity_anomalies()
+            for signal_id, state in anomalies[:10]:
+                if abs(state.velocity_zscore) < _CURIOSITY_MAGNITUDE_FLOOR:
+                    continue
+                # signal_ids have forms like "ta_rsi:AAPL:..." or "sec_form4_AAPL"
+                # Extract ticker from the second colon-delimited segment, or last _-segment.
+                ticker = ""
+                if ":" in signal_id:
+                    parts = signal_id.split(":")
+                    if len(parts) >= 2:
+                        ticker = parts[1].strip()
+                elif "_" in signal_id:
+                    # e.g. "insider_buys_AAPL" — take last non-empty segment
+                    parts = signal_id.rsplit("_", 1)
+                    if len(parts) == 2 and parts[1].isupper():
+                        ticker = parts[1].strip()
+                if ticker:
+                    _submit_curiosity_investigation(
+                        ticker, "velocity_anomaly", abs(state.velocity_zscore)
+                    )
+        except Exception:
+            logger.debug("_on_velocity_anomaly_curiosity failed", exc_info=True)
+
+    def _on_motif_anomaly_curiosity(channel, data):
+        """Motif/discord detection → investigate if ticker has other domain signals."""
+        try:
+            msg = (json.loads(data) if isinstance(data, str) else data) if data else {}
+            ticker = msg.get("symbol", "")
+            strength = float(msg.get("strength", 0.0))
+            if not ticker or strength < (_CURIOSITY_MAGNITUDE_FLOOR / 10.0):  # motif strength is 0-1
+                return
+            _submit_curiosity_investigation(ticker, channel, strength)
+        except Exception:
+            logger.debug("_on_motif_anomaly_curiosity failed", exc_info=True)
+
+    def _on_streaming_anomaly_curiosity(channel, data):
+        """StreamingAnomalyDetector score → investigate if ticker has other domain signals."""
+        try:
+            msg = (json.loads(data) if isinstance(data, str) else data) if data else {}
+            ticker = msg.get("symbol", "")
+            score = float(msg.get("score", 0.0))
+            if not ticker or score < _CURIOSITY_MAGNITUDE_FLOOR:
+                return
+            _submit_curiosity_investigation(ticker, "streaming_anomaly", score)
+        except Exception:
+            logger.debug("_on_streaming_anomaly_curiosity failed", exc_info=True)
+
+    from mae_core.market.channels import CH_VELOCITY_ANOMALY
+    ctx.bus.register_callback(CH_VELOCITY_ANOMALY, _on_velocity_anomaly_curiosity)
+    ctx.bus.register_callback("market.intel.motif_detected", _on_motif_anomaly_curiosity)
+    ctx.bus.register_callback("market.intel.streaming_anomaly", _on_streaming_anomaly_curiosity)
+    logger.info(
+        "Layer 33f - Curiosity: anomaly-driven OctopusColony investigation wired "
+        "(velocity + motif + streaming_anomaly → investigate_partial)"
+    )
+
     # Wire granger findings → hypothesis generator
     def _on_granger_finding(channel, data):
         msg = (json.loads(data) if isinstance(data, str) else data) if data else {}
