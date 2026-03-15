@@ -242,6 +242,29 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
                 pass  # Never block signal ingestion
 
         ctx.bus.register_callback(CH_SIGNAL_INGESTED, _on_signal_causal_watch)
+
+    # --- VestibularSystem vertigo → immediate regime re-classification ---
+    # VestibularSystem tracks rolling prediction accuracy via CH_PREDICTION_RESULT.
+    # When accuracy swings violently (stability < 0.3), it fires CH_VERTIGO.
+    # That's a regime-shift signal: don't wait for the 500-step cadence — reclassify now.
+    rc = getattr(ctx, "regime_classifier", None)
+    if rc is not None:
+        from mae_core.coordination.vestibular_system import CH_VERTIGO
+
+        def _on_vertigo(channel, data):
+            try:
+                # Bust the day-cache so classify() runs _detect() immediately
+                rc._cache_date = None
+                new_regime = rc.classify()
+                logger.info(
+                    "VestibularSystem detected regime shift — "
+                    "fast-tracking regime re-classification → %s",
+                    new_regime,
+                )
+            except Exception:
+                logger.debug("Vestibular-triggered regime reclassification failed", exc_info=True)
+
+        ctx.bus.register_callback(CH_VERTIGO, _on_vertigo)
         logger.info("Layer 33f - Causal watch: signal → WorldModel → downstream + backward root-cause wired")
 
     # --- Cascade tracking: watch dominoes fall, confirm chain links ---
