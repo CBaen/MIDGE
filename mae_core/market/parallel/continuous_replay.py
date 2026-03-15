@@ -770,9 +770,9 @@ def run_forever(
 ) -> None:
     """Main loop — runs forever, cycling through the archive."""
     logger.info("=" * 60)
-    logger.info("MIDGE Continuous Replay — starting")
-    logger.info("  min_domains=%d | thompson=%s | outcome_window=%dd",
-                min_domains, use_thompson, outcome_window_days)
+    logger.info("MIDGE Continuous Replay -- starting (parallel mode)")
+    logger.info("  min_domains=%d | thompson=%s | outcome_window=%dd | workers=%d",
+                min_domains, use_thompson, outcome_window_days, NUM_WORKERS)
     logger.info("  results → %s", RESULTS_JSONL)
     logger.info("  state   → %s", STATE_PATH)
     logger.info("  log     → %s", LOG_PATH)
@@ -813,7 +813,7 @@ def run_forever(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="MIDGE continuous historical replay — runs forever",
+        description="MIDGE continuous historical replay -- runs forever (parallel mode)",
     )
     parser.add_argument(
         "--min-domains", type=int, default=3,
