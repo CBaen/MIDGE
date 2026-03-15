@@ -753,7 +753,7 @@ def run_cycle(logger: logging.Logger) -> dict:
         "by_type":             {},
     }
 
-    logger.info("── Cycle start ─────────────────────────────────────────")
+    logger.info("-- Cycle start ---------------------------------------------")
 
     # 1. Load archive
     records = load_signal_archive(LOOKBACK_DAYS, logger)
