@@ -229,22 +229,17 @@ class RealtimeDispatcher:
     def dispatch_cross_market_anomaly(self, discovery) -> bool:
         """Send when cross-market hunter finds an anomaly with strength >= 0.70."""
         try:
-            if hasattr(discovery, "__dict__"):
-                discovery = discovery.__dict__
-            elif hasattr(discovery, "_asdict"):
-                discovery = discovery._asdict()
-
+            if hasattr(discovery, "__dict__"): discovery = discovery.__dict__
+            elif hasattr(discovery, "_asdict"): discovery = discovery._asdict()
             strength = float(discovery.get("strength", 0.0))
             if strength < _CROSS_MARKET_MIN_STRENGTH:
                 return False
-
             d_id      = discovery.get("discovery_id", "")
             d_type    = discovery.get("discovery_type", "anomaly")
             domains   = discovery.get("affected_domains", [])
             dedup_key = f"cross:{d_type}:{d_id[:12] if d_id else 'unknown'}"
             if not self._gate(dedup_key):
                 return False
-
             domain_str = "+".join(domains[:2]) if domains else "cross-market"
             subject    = f"MIDGE: Something weird across {domain_str} — worth watching"
             body       = _fmt_cross_market(discovery)
