@@ -119,6 +119,11 @@ def enrich_ticker(signal_dict: dict) -> List[dict]:
         # No mapping — preserve original so it still feeds global convergence.
         return [signal_dict]
 
+    # All copies from this original signal share the same enrichment_group.
+    # The convergence engine uses this to count them as ONE domain contribution,
+    # not multiple — preventing a single event from satisfying convergence alone.
+    enrichment_group = signal_dict.get("signal_id", "")
+
     enriched: List[dict] = []
     for ticker in tickers:
         copy_ = copy.deepcopy(signal_dict)
@@ -126,7 +131,8 @@ def enrich_ticker(signal_dict: dict) -> List[dict]:
         # Inject ticker into metadata.
         copy_["metadata"] = {**metadata, "symbol": ticker,
                              "enriched_from": "domain_ticker_map",
-                             "original_source": source or domain}
+                             "original_source": source or domain,
+                             "enrichment_group": enrichment_group}
 
         # Apply confidence haircut — inferred association, not a direct signal.
         original_confidence = copy_.get("confidence", 0.5)

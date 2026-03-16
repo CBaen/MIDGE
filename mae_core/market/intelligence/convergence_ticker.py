@@ -74,10 +74,24 @@ class ConvergenceTickerMixin:
                 domains_seen = set()
                 categories_seen = set()
 
+                # Track seen enrichment groups to prevent a single fanned-out
+                # event from counting as multiple domain contributions.
+                seen_enrichment_groups: set = set()
+
                 for domain, sigs in domain_signals.items():
                     matching = [s for s in sigs if s.direction == direction]
                     if matching:
                         strongest = max(matching, key=lambda s: s.strength)
+                        # If this signal is an enriched copy, check the group.
+                        eg = strongest.metadata.get("enrichment_group", "")
+                        if eg and eg in seen_enrichment_groups:
+                            logger.debug(
+                                "Ticker %s: skipping domain [%s] — enrichment_group "
+                                "%s already counted", ticker, domain, eg[:20],
+                            )
+                            continue
+                        if eg:
+                            seen_enrichment_groups.add(eg)
                         converging.append(strongest)
                         domains_seen.add(domain)
                         categories_seen.add(self.domain_categories.get(domain, domain))

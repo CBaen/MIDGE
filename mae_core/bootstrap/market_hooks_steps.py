@@ -749,13 +749,30 @@ def _run_slow_cadence_ops(ctx: SimpleNamespace, step: int, _shm, _timer) -> None
                         pm_summary.get("combos_analyzed", 0),
                         pm_summary.get("sequences_analyzed", 0),
                     )
-                    # FIX 2: FailureExplainer — explain recent failed predictions
+                    # FailureExplainer — explain recent failed predictions.
+                    # Bug fix: was passing (outcome, outcome) as the pair — outcome dicts
+                    # don't have a "confidence" field, so every failure was misclassified.
+                    # Now joins predictions.jsonl by prediction_id so the explainer receives
+                    # (prediction_dict, outcome_dict) as intended.
                     _fe = getattr(ctx, "failure_explainer", None)
                     if _fe is not None:
                         try:
                             import json as _jfe
                             from pathlib import Path as _Pfe
+                            _pred_path = _Pfe("data/market/predictions.jsonl")
                             _out_path = _Pfe("data/market/outcomes.jsonl")
+                            # Build prediction lookup: prediction_id -> prediction_dict
+                            _pred_lookup: dict = {}
+                            if _pred_path.exists():
+                                with open(_pred_path, "r") as _f:
+                                    for _ln in _f:
+                                        try:
+                                            _p = _jfe.loads(_ln)
+                                            _pid = _p.get("prediction_id") or _p.get("id", "")
+                                            if _pid:
+                                                _pred_lookup[_pid] = _p
+                                        except Exception:
+                                            pass
                             _failed_pairs: list = []
                             if _out_path.exists():
                                 with open(_out_path, "r") as _f:
@@ -763,7 +780,12 @@ def _run_slow_cadence_ops(ctx: SimpleNamespace, step: int, _shm, _timer) -> None
                                         try:
                                             _o = _jfe.loads(_ln)
                                             if not _o.get("success", True):
-                                                _failed_pairs.append((_o, _o))
+                                                _pid = _o.get("prediction_id", "")
+                                                _pred = _pred_lookup.get(_pid)
+                                                # Pass (prediction_dict, outcome_dict).
+                                                # If prediction not found, pass None so
+                                                # explainer can handle gracefully.
+                                                _failed_pairs.append((_pred, _o))
                                         except Exception:
                                             pass
                             if _failed_pairs:

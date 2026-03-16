@@ -16,6 +16,24 @@ Usage (called at the end of generate_daily_narrative):
     feedback.feed_back(insights)
 """
 
+# ── Narrative-sourced WorldModel edge limits ──────────────────────────────────
+# LLM outputs can hallucinate causal claims. To prevent flooding the WorldModel
+# with bad edges, narrative-sourced edges are:
+#   1. Validated against MIDGE's recognised domain list
+#   2. Weighted at 5% EMA (vs 20% for Granger/lag edges)
+#   3. Capped at 3 new narrative edges per call to feed_back()
+_NARRATIVE_EMA_WEIGHT = 0.05   # vs default 0.20 in add_discovered_edge
+_NARRATIVE_EDGE_CAP   = 3      # max edges written per feed_back() call
+
+# Recognised domains — both cause and effect must be in this set for the edge
+# to be accepted. Free-form LLM phrases that don't map to these are rejected.
+_VALID_DOMAINS = {
+    "insider", "macro", "technical", "events", "positioning", "government",
+    "contracts", "sentiment", "fundamentals", "institutional", "crypto",
+    "energy", "volatility", "cascade", "options", "momentum", "earnings",
+    "economic", "geopolitical",
+}
+
 from __future__ import annotations
 
 import json

@@ -33,37 +33,42 @@ _DEFAULT_PATH = Path(__file__).resolve().parents[4] / "data" / "midge" / "episod
 
 @dataclass
 class Episode:
-    """A single episodic memory — one specific situation MIDGE observed."""
+    """A single episodic memory — one specific situation MIDGE observed.
 
-    episode_id: str          # Unique ID (uuid4 hex)
-    event_type: str          # "convergence" | "cascade" | "anomaly" | "pattern_stack" | "failure"
-    timestamp: str           # ISO-8601 when it started
-    resolved_at: str         # ISO-8601 when outcome was known (empty = pending)
+    All fields have defaults so Episode() can be constructed with partial info
+    and filled in later. This prevents TypeError in call sites that only supply
+    the fields known at signal time.
+    """
+
+    episode_id: str = ""           # Unique ID (uuid4 hex)
+    event_type: str = "convergence"  # "convergence" | "cascade" | "anomaly" | "pattern_stack" | "failure"
+    timestamp: str = ""            # ISO-8601 when it started
+    resolved_at: str = ""          # ISO-8601 when outcome was known (empty = pending)
 
     # What happened
-    tickers: List[str]       # Involved tickers
-    domains: List[str]       # Involved domains
-    direction: str           # "bullish" | "bearish" | "neutral"
-    confidence: float        # MIDGE's confidence at signal time
+    tickers: List[str] = field(default_factory=list)    # Involved tickers
+    domains: List[str] = field(default_factory=list)    # Involved domains
+    direction: str = ""            # "bullish" | "bearish" | "neutral"
+    confidence: float = 0.0        # MIDGE's confidence at signal time
 
     # Context at the time
-    regime: str              # Market regime: "bull" | "bear" | "volatile" | "sideways"
-    concurrent_events: List[str]  # episode_ids active at the same time
-    macro_context: str       # Brief free-text macro state
+    regime: str = ""               # Market regime: "bull" | "bear" | "volatile" | "sideways"
+    concurrent_events: List[str] = field(default_factory=list)  # episode_ids active at the same time
+    macro_context: str = ""        # Brief free-text macro state
 
     # What MIDGE did
-    action_taken: str        # "paper_trade" | "alert_sent" | "watched" | "ignored"
+    action_taken: str = "watched"  # "paper_trade" | "alert_sent" | "watched" | "ignored"
 
     # Resolution (empty until resolved)
-    outcome: str             # "correct" | "wrong" | "partially_correct" | "expired" | "pending"
-    outcome_details: str     # Plain-text description of what actually happened
-    price_at_signal: float   # Price when signal fired (0.0 = not recorded)
-    price_at_resolution: float  # Price at outcome check (0.0 = pending)
-    move_pct: float          # Actual price move % (positive = up, negative = down)
+    outcome: str = "pending"       # "correct" | "wrong" | "partially_correct" | "expired" | "pending"
+    outcome_details: str = ""      # Plain-text description of what actually happened
+    price_at_signal: float = 0.0   # Price when signal fired (0.0 = not recorded)
+    price_at_resolution: float = 0.0  # Price at outcome check (0.0 = pending)
+    move_pct: float = 0.0          # Actual price move % (positive = up, negative = down)
 
     # Learning
-    lessons: List[str]       # What was learned from this episode
-    similar_episodes: List[str]  # episode_ids of similar past episodes
+    lessons: List[str] = field(default_factory=list)          # What was learned from this episode
+    similar_episodes: List[str] = field(default_factory=list) # episode_ids of similar past episodes
 
     def to_dict(self) -> dict:
         return asdict(self)
