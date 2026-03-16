@@ -563,6 +563,22 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         logger.debug("Market: realtime_dispatcher failed to construct", exc_info=True)
         ctx.realtime_dispatcher = None
 
+    # --- Episodic memory (MIDGE's autobiography) ---
+    try:
+        from mae_core.market.intelligence.episodic_memory import EpisodicMemory
+        ctx.episodic_memory = EpisodicMemory()
+    except Exception:
+        logger.debug("Market: episodic_memory failed to construct", exc_info=True)
+        ctx.episodic_memory = None
+
+    # --- Failure explainer (WHY things go wrong) ---
+    try:
+        from mae_core.market.intelligence.failure_explainer import FailureExplainer
+        ctx.failure_explainer = FailureExplainer()
+    except Exception:
+        logger.debug("Market: failure_explainer failed to construct", exc_info=True)
+        ctx.failure_explainer = None
+
     logger.info(
         "Layer 33a - Market systems: %d instantiated (%d failures)", 59 - failures, failures,
     )

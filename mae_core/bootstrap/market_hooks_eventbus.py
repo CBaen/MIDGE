@@ -520,6 +520,7 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
         rc = getattr(ctx, "regime_classifier", None)
         if rc is not None:
             try:
+                rc._cache_date = None  # FIX 1: bust stale cache so classify() runs _detect() immediately
                 rc.classify()
             except Exception:
                 pass
