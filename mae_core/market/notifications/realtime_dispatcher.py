@@ -1,15 +1,13 @@
 """Real-time alert dispatcher — MIDGE's immediate voice.
 
-Fires email alerts immediately for high-confidence events, without waiting
-for the daily letter. Three trigger types:
-  - Convergence alerts: confidence >= 0.65 AND 4+ domains
-  - Causal cascade confirmations: any confirmed domino
-  - Cross-market anomalies: strength >= 0.70
+Fires email alerts immediately for high-confidence events (no waiting for daily letter):
+  - Convergence: confidence >= 0.65 AND 4+ domains
+  - Cascade confirmation: any domino confirm on CH_CASCADE_CONFIRMED
+  - Cross-market anomaly: strength >= 0.70 from cross_market_hunter
 
-Deduplication per ticker+direction: 4-hour window, persisted across restarts
-to data/midge/realtime_dispatch_state.json (last 100 entries).
-Rate limit: 5 real-time alerts per hour (separate budget from daily emails).
-All sends are wrapped in try/except — never crashes the daemon.
+Dedup: 4-hour window per ticker+direction, persisted to
+data/midge/realtime_dispatch_state.json. Rate limit: 5/hr separate from daily.
+All sends wrapped in try/except — never crashes the daemon.
 """
 
 from __future__ import annotations
@@ -33,8 +31,6 @@ _STATE_MAX_ENTRIES          = 100
 _ROOT       = Path(__file__).resolve().parents[4]
 _STATE_FILE = _ROOT / "data" / "midge" / "realtime_dispatch_state.json"
 _LOG_FILE   = _ROOT / "data" / "midge" / "realtime_alerts.jsonl"
-
-# ── Plain-language helpers ──────────────────────────────────────────
 
 def _confidence_phrase(c: float) -> str:
     if c > 0.80: return "I'm very confident"
