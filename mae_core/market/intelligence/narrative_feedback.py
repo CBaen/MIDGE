@@ -194,6 +194,10 @@ class NarrativeFeedback:
         for sentence in sentences:
             if not sentence:
                 continue
+            # Skip pure section headings (## ...) — these are navigation markers,
+            # not content sentences, and confuse the extraction patterns.
+            if re.match(r"^#{1,3}\s+", sentence):
+                continue
             # Find sentence position in original text for section lookup
             pos = narrative_text.find(sentence)
             section = _current_section(pos, section_spans)
