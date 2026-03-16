@@ -1081,9 +1081,17 @@ def _translate_jargon(text: str) -> str:
         return text
 
     # ── Step 1: Direct phrase replacement (longest first to avoid partials) ──
+    # Use word boundaries for all replacements to avoid partial-word collisions
+    # (e.g. "government" should not match inside "government borrowing costs" after
+    # that phrase was already translated by a longer key).
     for jargon, plain in sorted(_JARGON_MAP.items(), key=lambda x: -len(x[0])):
-        # Case-insensitive replacement preserving surrounding text
-        text = _re.sub(_re.escape(jargon), plain, text, flags=_re.IGNORECASE)
+        # Build pattern: word-boundary anchored, case-insensitive
+        pattern = r'\b' + _re.escape(jargon) + r'\b'
+        try:
+            text = _re.sub(pattern, plain, text, flags=_re.IGNORECASE)
+        except _re.error:
+            # Fallback for patterns that can't take word boundaries (e.g. "p<")
+            text = _re.sub(_re.escape(jargon), plain, text, flags=_re.IGNORECASE)
 
     # ── Step 2: "X% of the time / calls / predictions" → qualitative ──
     def _pct_to_qual(m: _re.Match) -> str:
@@ -1179,7 +1187,7 @@ def _build_llm_prompt(summary: dict) -> str:
     # Regime
     regime = summary.get("regime", "unknown")
     regime_plain = _regime_plain(regime)
-    lines.append(f"CURRENT MARKET REGIME: {regime_plain}.")
+    lines.append(f"WHAT THE MARKET IS DOING RIGHT NOW: {regime_plain}.")
 
     # Macro alignment
     macro_align = summary.get("macro_alignment", {})
@@ -1215,11 +1223,11 @@ def _build_llm_prompt(summary: dict) -> str:
             lines.append(f"  - {plain_name}: {direction_plain}.")
 
     lines.append(
-        "  INSTRUCTION for Big Picture: Lead with what the regime means in plain English. "
-        "Are macro signals agreeing with the regime or fighting it? "
-        "Example: 'We're in a bear market right now — and most of my economic signals agree. "
-        "Bond yields are behaving like investors are worried.' "
-        "Keep this section 2-4 bullets. Don't go into individual stocks yet."
+        "  INSTRUCTION for Big Picture: Lead with what the market mood means in plain English. "
+        "Are big-picture signals agreeing or fighting each other? "
+        "Example: 'Things are generally falling right now — and most of what I'm watching agrees. "
+        "The signals from government borrowing costs are behaving like investors are worried.' "
+        "Keep this section 2-4 bullets. Don't go into individual stocks yet. NO financial terms."
     )
 
     lines.append("")
@@ -1347,16 +1355,36 @@ def _build_llm_prompt(summary: dict) -> str:
     # Major coin prices and movements
     crypto_coins = summary.get("crypto_coins", [])
     if crypto_coins:
-        lines.append("MAJOR CRYPTO COINS RIGHT NOW:")
+        lines.append("MAJOR CRYPTO COINS — HOW THEY'RE MOVING:")
         for coin in crypto_coins:
             sym = coin["symbol"]
-            price = coin.get("price_usd")
             ch24 = coin.get("change_24h_pct")
             ch7d = coin.get("change_7d_pct")
-            price_note = f" Price: ${price:,.0f}." if price is not None else ""
-            ch24_note = f" 24h: {ch24:+.1f}%." if ch24 is not None else ""
-            ch7d_note = f" 7 days: {ch7d:+.1f}%." if ch7d is not None else ""
-            lines.append(f"  - {sym}:{price_note}{ch24_note}{ch7d_note}")
+            if ch24 is not None:
+                abs_c = abs(ch24)
+                direction_ch = "up" if ch24 > 0 else "down"
+                if abs_c >= 10:
+                    ch24_note = f" sharply {direction_ch} today"
+                elif abs_c >= 3:
+                    ch24_note = f" noticeably {direction_ch} today"
+                elif abs_c >= 0.5:
+                    ch24_note = f" slightly {direction_ch} today"
+                else:
+                    ch24_note = " barely moved today"
+            else:
+                ch24_note = ""
+            if ch7d is not None:
+                abs_w = abs(ch7d)
+                direction_w = "up" if ch7d > 0 else "down"
+                if abs_w >= 20:
+                    ch7d_note = f", sharply {direction_w} this week"
+                elif abs_w >= 5:
+                    ch7d_note = f", noticeably {direction_w} this week"
+                else:
+                    ch7d_note = ""
+            else:
+                ch7d_note = ""
+            lines.append(f"  - {sym}:{ch24_note}{ch7d_note}.")
         # Are coins moving together or diverging?
         directions = [c.get("direction", "neutral") for c in crypto_coins]
         all_same = len(set(directions)) == 1
@@ -1366,8 +1394,7 @@ def _build_llm_prompt(summary: dict) -> str:
         lines.append(
             "  INSTRUCTION: For the Crypto section, note whether the whole crypto market is "
             "moving together (all going up or all going down) or diverging (some up, some down). "
-            "If BTC is up but altcoins are down, that's a specific and interesting signal — "
-            "say 'Bitcoin is climbing but the smaller coins aren't following.' "
+            "If BTC is up but smaller coins are down, say 'Bitcoin is climbing but the smaller coins aren't following.' "
             "Don't list every coin — just tell the story of what crypto is doing as a whole."
         )
     else:
@@ -1765,7 +1792,7 @@ def _template_narrative(summary: dict, date_str: str) -> str:
     # Regime
     regime = summary.get("regime", "unknown")
     regime_plain = _regime_plain(regime)
-    lines.append(f"- **Markets are {regime_plain} right now.**")
+    lines.append(f"- **Right now, {regime_plain}.**")
 
     # Macro alignment
     macro_align = summary.get("macro_alignment", {})
@@ -1796,9 +1823,8 @@ def _template_narrative(summary: dict, date_str: str) -> str:
     for ind in macro_indicators[:2]:
         plain_name = _MACRO_PLAIN_TMPL.get(ind["series_id"], ind.get("name", ind["series_id"]))
         direction = ind.get("direction", "neutral")
-        value = ind.get("value")
-        value_note = f" ({value:.2f})" if value is not None else ""
-        lines.append(f"- {plain_name}: pointing **{direction}**{value_note}.")
+        direction_plain = "up" if direction == "bullish" else ("down" if direction == "bearish" else "neutral")
+        lines.append(f"- {plain_name}: pointing **{direction_plain}**.")
 
     # Cross-market anomalies
     cross_market = summary.get("cross_market_anomalies", [])
