@@ -332,7 +332,7 @@ class FailureExplainer:
         if len(domains) >= _OVERCROWDED_DOMAIN_COUNT:
             return (
                 "overcrowded",
-                0.65,
+                0.72,
                 f"This failed because {len(domains)} independent domains all agreed "
                 f"on the same direction. When the trade is this obvious, "
                 f"smart money has already positioned — reversal risk is elevated.",

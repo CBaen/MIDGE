@@ -169,12 +169,28 @@ def test_explain_failure_correlated_domains(explainer):
 
 
 def test_explain_failure_overcrowded(explainer):
-    # 5+ independent domains
+    # 5+ domains that do NOT form any correlated pair and no congressional (stale)
+    # pairs: insider+institutional, macro+technical, sentiment+technical, institutional+insider
+    # Safe: insider, government, contracts, events, sentiment, energy — no correlated pair among these
     pred = _pred(signals=[
-        "technical_rsi", "insider_form4", "fred", "congressional",
-        "stocktwits", "sec_13f",
+        "insider_form4",      # insider
+        "hiring",             # events
+        "sam_gov",            # contracts
+        "stocktwits",         # sentiment
+        "eia",                # energy
+        "usa_spending",       # contracts (second — domain still contracts, 5 distinct domains)
+        "sec_form8k",         # events again — so use google_trends for a 6th distinct domain
     ])
     outcome = _outcome()
+    # Manually set signals to 6 clearly distinct non-correlated domains
+    pred["contributing_signals"] = [
+        "insider_form4",   # insider
+        "sec_form8k",      # events
+        "sam_gov",         # contracts
+        "stocktwits",      # sentiment
+        "eia",             # energy
+        "coingecko",       # crypto
+    ]
     result = explainer.explain_failure(pred, outcome)
     assert result.category == "overcrowded"
     assert "domain" in result.evidence[0]
