@@ -133,6 +133,18 @@ class SensingSchedulerMixin:
             if source in boosted_sources:
                 score = min(1.0, score * 2.0)
 
+            # Weekend/overnight: crypto is the only live market — boost 3x
+            try:
+                _mc = getattr(self, "_market_clock", None)
+                if _mc is not None:
+                    _session = _mc.get_session()
+                    if _session in ("weekend", "overnight", "pre_market"):
+                        _crypto_sources = {"crypto_prices", "crypto_exchange", "binance_funding", "crypto_fear_greed"}
+                        if source in _crypto_sources:
+                            score = min(1.0, score * 3.0)
+            except Exception:
+                pass
+
             scored.append((score, source))
 
         # Sort descending by score, pick top N

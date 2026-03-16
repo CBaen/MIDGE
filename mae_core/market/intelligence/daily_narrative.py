@@ -925,6 +925,12 @@ _JARGON_MAP: dict[str, str] = {
     "VIXCLS": "the market's fear reading",
     "sector_rotation": "big money moving from one industry to another",
     "sector rotation": "big money moving from one industry to another",
+    # Crypto-specific jargon
+    "fear/greed index": "how scared or greedy crypto traders are feeling",
+    "fear/greed score": "how scared or greedy crypto traders are feeling",
+    "fear and greed": "how scared or greedy traders are feeling",
+    "extreme fear": "traders are extremely scared",
+    "extreme greed": "traders are extremely greedy",
     # LLM-output safety net: phrases the LLM might write despite instructions
     "government bond yields": "government borrowing costs",
     "bond yields": "government borrowing costs",
