@@ -923,6 +923,41 @@ _JARGON_MAP: dict[str, str] = {
     "DFF": "the rate banks charge each other overnight",
     "VIXCLS": "the market's fear reading",
     "sector_rotation": "big money moving from one industry to another",
+    "sector rotation": "big money moving from one industry to another",
+    # LLM-output safety net: phrases the LLM might write despite instructions
+    "government bond yields": "government borrowing costs",
+    "bond yields": "government borrowing costs",
+    "bond yield": "government borrowing costs",
+    "10-year yield": "long-term government borrowing costs",
+    "2-year yield": "short-term government borrowing costs",
+    "yield inversion": "a recession warning signal",
+    "inverted yield": "a recession warning signal",
+    "interest rates": "borrowing costs",
+    "rate hike": "an increase in borrowing costs",
+    "rate cut": "a decrease in borrowing costs",
+    "monetary policy": "what the central bank is doing",
+    "quantitative easing": "the central bank printing money",
+    "quantitative tightening": "the central bank pulling money back",
+    "federal reserve": "the central bank",
+    "Federal Reserve": "the central bank",
+    "the Fed": "the central bank",
+    "FOMC": "the central bank's decision-making committee",
+    "basis point": "a tiny fraction of a percent",
+    "market cap": "the company's total value on the stock market",
+    "P/E ratio": "how expensive the stock is relative to its earnings",
+    "earnings per share": "how much money the company makes per stock unit",
+    "short squeeze": "a situation where traders betting against a stock get forced to buy",
+    "short selling": "betting that a stock will fall",
+    "put options": "insurance-like contracts that pay off if a stock falls",
+    "call options": "contracts that pay off if a stock rises",
+    "implied volatility": "how much the market expects prices to swing",
+    "risk-off": "investors moving to safety",
+    "risk-on": "investors taking more chances",
+    "flight to safety": "investors moving money into safer assets",
+    "safe haven": "a safer asset investors run to during uncertainty",
+    "liquidity": "how easy it is to buy and sell",
+    "credit spread": "how much extra investors demand to lend to riskier borrowers",
+    "overnight rate": "the rate banks charge each other for short-term loans",
     "short_float": "how many traders are betting a company's stock will fall",
     "put_call": "the balance between protective and aggressive bets",
     "put/call ratio": "the balance between protective and aggressive bets",
@@ -949,19 +984,12 @@ _JARGON_MAP: dict[str, str] = {
     "bull market": "a market where things are generally rising",
     "bearish": "pointing down",
     "bullish": "pointing up",
-    "institutional": "big funds and banks",
-    "insider": "company executives and board members",
-    "macro": "big-picture economy",
-    "technical": "price chart patterns",
-    "positioning": "how professional traders are placed",
-    "sentiment": "crowd mood",
-    "fundamental": "company financial health",
-    "events": "company news and announcements",
-    "options": "insurance-like contracts on stocks",
-    "energy": "oil, gas, and power markets",
-    "government": "political and regulatory actions",
-    "contracts": "government spending and hiring data",
-    "crypto": "cryptocurrency",
+    # Domain names — only translate them as standalone labels (word-boundary-matched)
+    # These are the same values as in _domain_plain() for the post-generation scrubber
+    "cot positioning": "what the biggest professional traders are doing",
+    # Note: very short domain words (insider, macro, technical, events, etc.) are intentionally
+    # NOT in this map to avoid corrupting plain-English sentences the LLM already wrote correctly.
+    # They are translated at the data-building layer via _domain_plain() before the LLM sees them.
     "cascade": "a chain reaction I predicted",
     "pattern_stack": "multiple historical patterns lining up",
     "convergence_building": "signals starting to agree",
@@ -1096,16 +1124,18 @@ def _translate_jargon(text: str) -> str:
     # ── Step 2: "X% of the time / calls / predictions" → qualitative ──
     def _pct_to_qual(m: _re.Match) -> str:
         pct = float(m.group(1))
-        noun = m.group(2).lower()
+        noun = m.group(2).lower().strip()
+        # Avoid repeating "the time" — just say "more often than not"
+        noun_suffix = "" if "time" in noun else f" ({noun})"
         if pct >= 90:
-            return f"almost always ({noun})"
+            return f"almost always{noun_suffix}"
         if pct >= 70:
-            return f"more often than not ({noun})"
+            return f"more often than not{noun_suffix}"
         if pct >= 50:
-            return f"about half the time ({noun})"
+            return f"about half the time{noun_suffix}"
         if pct >= 30:
-            return f"sometimes ({noun})"
-        return f"rarely ({noun})"
+            return f"sometimes{noun_suffix}"
+        return f"rarely{noun_suffix}"
     text = _BARE_PCT_PATTERN.sub(_pct_to_qual, text)
 
     # ── Step 3: "X correct out of Y" → "X out of Y calls" ──
