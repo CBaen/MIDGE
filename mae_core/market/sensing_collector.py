@@ -9,6 +9,8 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 
+from mae_core.market.intelligence.signal_enricher import enrich_ticker
+
 logger = logging.getLogger("midge.market.sensing")
 
 
@@ -61,9 +63,11 @@ class SensingCollectorMixin:
 
         # Signals arrive pre-enriched from background thread (_fetch_source)
 
-        # Feed into convergence engine (global + tiered)
+        # Feed into convergence engine (global + tiered).
+        # Ticker-less signals (symbol="") are expanded into per-ticker copies
+        # by enrich_ticker() so they participate in per-ticker convergence.
         for sig in signals:
-            sig_kwargs = dict(
+            base_kwargs = dict(
                 signal_id=sig.signal_id,
                 strength=sig.strength,
                 domain=sig.domain,
@@ -74,20 +78,24 @@ class SensingCollectorMixin:
                 metadata={**sig.metadata, "symbol": sig.symbol},
                 source=sig.source,
             )
-            # Global alerter
-            if self._convergence_alerter is not None:
-                try:
-                    self._convergence_alerter.record_signal(**sig_kwargs)
-                except Exception:
-                    logger.debug("Failed to feed signal to global alerter", exc_info=True)
+            # Expand ticker-less signals; direct-ticker signals pass through unchanged.
+            expanded = enrich_ticker(base_kwargs)
 
-            # Feed all tiered alerters (tactical/strategic/thematic) so each
-            # accumulates its own cross-domain convergence window.
-            for _tier_name, _tier_alerter in self._tiered_alerters.items():
-                try:
-                    _tier_alerter.record_signal(**sig_kwargs)
-                except Exception:
-                    logger.debug("Failed to feed signal to %s alerter", _tier_name, exc_info=True)
+            for sig_kwargs in expanded:
+                # Global alerter
+                if self._convergence_alerter is not None:
+                    try:
+                        self._convergence_alerter.record_signal(**sig_kwargs)
+                    except Exception:
+                        logger.debug("Failed to feed signal to global alerter", exc_info=True)
+
+                # Feed all tiered alerters (tactical/strategic/thematic) so each
+                # accumulates its own cross-domain convergence window.
+                for _tier_name, _tier_alerter in self._tiered_alerters.items():
+                    try:
+                        _tier_alerter.record_signal(**sig_kwargs)
+                    except Exception:
+                        logger.debug("Failed to feed signal to %s alerter", _tier_name, exc_info=True)
 
         # Track per-ticker signal domains for archetype scanning (Gift 8)
         for sig in signals:

@@ -43,7 +43,7 @@ _NARRATIVES_DIR = _DATA_MIDGE / "daily_narratives"
 
 _GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 _GROQ_MODEL = "llama-3.3-70b-versatile"
-_MAX_TOKENS = 900  # Slightly above 500 words to give the model breathing room
+_MAX_TOKENS = 1100  # Slightly above 600 words to give the model breathing room
 
 
 _SYSTEM_PROMPT = """\
@@ -93,39 +93,63 @@ WHAT'S NOT INTERESTING:
 - System internals (never mention what your components are called)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-LETTER STRUCTURE
+LETTER STRUCTURE — LAYERS (always in this order)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+IMPORTANT: Think in layers. Big picture first. Specific tickers LAST. \
+You are NOT a stock screener. You watch everything — stocks, crypto, commodities, \
+futures, forex, macro. The reader wants to understand FLOWS, not a ticker list.
 
 Start with: Subject: MIDGE Daily Letter — [DATE]
 
-Then optionally a 1-sentence hook — the single strangest thing you noticed today.
+Then a 1-sentence hook — the single strangest or most striking thing across ALL markets today.
 
-Five sections (use exactly these headers):
+Six sections (use exactly these headers):
 
-## WHAT I'M WATCHING
-3 situations max. 3-4 bullets each. Use plain English for the direction \
-("looks like it might rise" not "bullish").
+## THE BIG PICTURE
+What regime are we in (bull / bear / volatile / sideways)? \
+What are macro signals saying — are they aligned or contradicting each other? \
+Any cross-market anomalies (unrelated markets moving together)? \
+What's the energy picture (oil inventories, production)? \
+2-4 bullets. Lead with the most unusual macro observation.
 
-## WHAT CONFIRMED
-1-2 items. What you predicted that came true. What you predicted that didn't.
+## CRYPTO
+Always present — MIDGE watches crypto 24/7. \
+What's the fear/greed reading and what does it mean from a contrarian angle? \
+Are the major coins (BTC, ETH, SOL etc) moving in the same direction or diverging? \
+Any crypto-specific pattern forming? \
+2-3 bullets. Skip if absolutely nothing to say (say "Nothing unusual in crypto today").
+
+## COMMODITIES & FUTURES
+Oil, gold, index futures (S&P, Nasdaq), forex pairs. \
+COT positioning shifts (are big traders piling in or bailing out?). \
+Only mention if something is interesting — skip the section if flat. \
+2-3 bullets max.
+
+## STOCKS — THE INTERESTING ONES
+NOT a ticker list. Lead with the WEIRDEST convergence. Tell the story. \
+"What's strange: three completely unrelated signals all pointing at the same stock." \
+"The interesting part isn't the ticker — it's how this connected to that." \
+3 situations max. Focus on the WHY, not just the ticker and direction. \
+If a causal chain is unfolding (domino effects), this is where it belongs. \
+If paper trades were placed, say so here.
 
 ## WHAT I LEARNED
-2-3 bullets. Keep each to one sentence. If you found a weird causal relationship, \
-THIS is where it goes — and it should be in bold.
-
-## WHAT I'M UNCERTAIN ABOUT
-Honest. Short. What's murky, what's missing.
+2-3 bullets. One sentence each. \
+If you found a weird causal relationship between domains, put it here in bold. \
+Granger findings go here. Source reliability updates go here. \
+"When X happens, Y tends to follow N days later" — that's the gold.
 
 ## WHAT I GOT WRONG
 1-2 items. Direct and honest. "I thought X. I was wrong. Here's why."
 
-If you have a paper trade recommendation, add a section:
+If you have a paper trade recommendation, add before the footer:
 
 ## WHAT I THINK YOU SHOULD LOOK AT
 For each recommendation:
 - **"I placed a paper trade on [TICKER]"** or **"I think you should look at [direction] [TICKER]"**
 - One sentence on WHY: "because [plain English reason]"
-- The market: "This is a US stock" or "This is a futures contract"
+- The market: "This is a US stock" or "This is a futures contract" or "This is crypto"
 - Timing: "Based on history, this kind of move typically happens within [N] days"
 - Risk: "If I'm wrong, the typical loss is about [N]%"
 
@@ -141,11 +165,11 @@ Futures and forex (watching, not yet trading) · Prediction markets (coming soon
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CRITICAL REMINDERS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- Under 400 words total. One page. Coffee-length.
+- Under 600 words total. Lean, layered, never a list of tickers.
 - Never hallucinate. Only write what the data below actually shows.
 - If a section has nothing real to say, be honest: "Nothing notable here today."
 - The BEST letter makes Guiding Light say: "Wait, that's connected? How did she see that?"
-- The WORST letter makes Guiding Light say: "I don't understand any of this."
+- The WORST letter makes Guiding Light say: "Why is this just a list of stock tickers?"
 """
 
 
@@ -235,6 +259,183 @@ def _read_recent_jsonl(path: Path, days: int = 1, max_lines: int = 50) -> list[d
 def _gather_data(date_str: str) -> dict:
     """Collect all relevant data into a structured summary dict."""
     summary: dict = {"date": date_str}
+
+    # ── Layer 0: Market Regime ─────────────────────────────────────
+    # Primary: convergence_state.json has a 'regime' key
+    # Fallback: regime_classifier state if it exists
+    try:
+        _conv_state = _safe_read_json(_DATA_MIDGE / "convergence_state.json")
+        if _conv_state and isinstance(_conv_state, dict):
+            summary["regime"] = _conv_state.get("regime", "unknown")
+            _global = _conv_state.get("global", {})
+            summary["regime_direction"] = _global.get("direction", "")
+            summary["regime_domains"] = _global.get("domains", [])
+        else:
+            summary["regime"] = "unknown"
+            summary["regime_direction"] = ""
+            summary["regime_domains"] = []
+    except Exception:
+        logger.debug("Could not read regime from convergence_state", exc_info=True)
+        summary["regime"] = "unknown"
+        summary["regime_direction"] = ""
+        summary["regime_domains"] = []
+
+    # ── Layer 0: Macro Indicators from signal buffer ───────────────
+    # Parse FRED/macro signals to surface yield curve, VIX, inflation data
+    try:
+        _buf = _safe_read_json(_DATA_MARKET / "signal_buffer.json")
+        if _buf and isinstance(_buf, dict):
+            macro_signals = _buf.get("macro", [])
+            energy_signals = _buf.get("energy", [])
+            positioning_signals = _buf.get("positioning", [])
+            crypto_signals = _buf.get("crypto", [])
+
+            # ── Macro: extract key FRED series ──────────────────
+            _macro_indicators: list[dict] = []
+            _seen_series: set[str] = set()
+            for sig in macro_signals:
+                if not isinstance(sig, dict):
+                    continue
+                meta = sig.get("metadata", {})
+                series_id = meta.get("series_id", "")
+                series_name = meta.get("series_name", "")
+                if series_id and series_id not in _seen_series:
+                    _seen_series.add(series_id)
+                    value = meta.get("value")
+                    signal_type = meta.get("signal_type", "")
+                    direction = sig.get("direction", "neutral")
+                    _macro_indicators.append({
+                        "series_id": series_id,
+                        "name": series_name,
+                        "value": value,
+                        "signal_type": signal_type,
+                        "direction": direction,
+                        "strength": round(float(sig.get("strength", 0)), 3),
+                    })
+            # Sort by strength (most deviated from neutral first)
+            _macro_indicators.sort(key=lambda x: x["strength"], reverse=True)
+            summary["macro_indicators"] = _macro_indicators[:6]
+
+            # ── Macro: dominant direction ────────────────────────
+            if macro_signals:
+                _bull = sum(1 for s in macro_signals if s.get("direction") == "bullish")
+                _bear = sum(1 for s in macro_signals if s.get("direction") == "bearish")
+                _total_mac = _bull + _bear
+                if _total_mac > 0:
+                    summary["macro_alignment"] = {
+                        "bullish_count": _bull,
+                        "bearish_count": _bear,
+                        "dominant": "bullish" if _bull > _bear else ("bearish" if _bear > _bull else "mixed"),
+                        "divergent": abs(_bull - _bear) < (_total_mac * 0.3),  # True if <30% gap
+                    }
+                else:
+                    summary["macro_alignment"] = {}
+            else:
+                summary["macro_alignment"] = {}
+
+            # ── Energy: extract EIA key readings ─────────────────
+            _energy_readings: list[dict] = []
+            _seen_energy: set[str] = set()
+            for sig in energy_signals:
+                if not isinstance(sig, dict):
+                    continue
+                meta = sig.get("metadata", {})
+                series_key = meta.get("series_key", "")
+                if series_key and series_key not in _seen_energy:
+                    _seen_energy.add(series_key)
+                    _energy_readings.append({
+                        "series_key": series_key,
+                        "name": meta.get("series_name", series_key),
+                        "value": meta.get("value"),
+                        "change_pct": meta.get("change_pct"),
+                        "direction": sig.get("direction", "neutral"),
+                        "affected_tickers": meta.get("affected_tickers", [])[:3],
+                    })
+            summary["energy_readings"] = _energy_readings[:4]
+
+            # ── Positioning: COT direction summary ───────────────
+            if positioning_signals:
+                _pos_bull = sum(1 for s in positioning_signals if s.get("direction") == "bullish")
+                _pos_bear = sum(1 for s in positioning_signals if s.get("direction") == "bearish")
+                summary["cot_positioning"] = {
+                    "bullish_count": _pos_bull,
+                    "bearish_count": _pos_bear,
+                    "dominant": "bullish" if _pos_bull > _pos_bear else (
+                        "bearish" if _pos_bear > _pos_bull else "mixed"
+                    ),
+                }
+            else:
+                summary["cot_positioning"] = {}
+
+            # ── Crypto: summarize major coins from buffer ─────────
+            _crypto_coins: dict[str, dict] = {}
+            for sig in crypto_signals:
+                if not isinstance(sig, dict):
+                    continue
+                meta = sig.get("metadata", {})
+                symbol = meta.get("symbol", "")
+                if symbol and symbol not in _crypto_coins:
+                    _crypto_coins[symbol] = {
+                        "symbol": symbol,
+                        "price_usd": meta.get("price_usd"),
+                        "change_24h_pct": meta.get("change_24h_pct"),
+                        "change_7d_pct": meta.get("change_7d_pct"),
+                        "direction": sig.get("direction", "neutral"),
+                    }
+            # Major coins first
+            _major_order = ["BTC", "ETH", "SOL", "XRP", "ADA", "BNB"]
+            _sorted_crypto = sorted(
+                _crypto_coins.values(),
+                key=lambda x: (_major_order.index(x["symbol"]) if x["symbol"] in _major_order else 99)
+            )
+            summary["crypto_coins"] = _sorted_crypto[:6]
+
+        else:
+            summary["macro_indicators"] = []
+            summary["macro_alignment"] = {}
+            summary["energy_readings"] = []
+            summary["cot_positioning"] = {}
+            summary["crypto_coins"] = []
+    except Exception:
+        logger.debug("Could not parse signal buffer for macro/energy/crypto layers", exc_info=True)
+        summary["macro_indicators"] = []
+        summary["macro_alignment"] = {}
+        summary["energy_readings"] = []
+        summary["cot_positioning"] = {}
+        summary["crypto_coins"] = []
+
+    # ── Layer 0: Futures/Forex from somatic state ──────────────────
+    # Extract futures and forex symbols from somatic ticker states
+    try:
+        _somatic_raw = _safe_read_json(_DATA_MARKET / "somatic_state.json")
+        if _somatic_raw and isinstance(_somatic_raw, dict):
+            _ticker_states = _somatic_raw.get("ticker_states", {})
+            _futures_data: list[dict] = []
+            _futures_symbols = {"GC=F": "Gold", "CL=F": "Oil", "NQ=F": "Nasdaq futures",
+                                "ES=F": "S&P 500 futures", "EURUSD=X": "EUR/USD",
+                                "GBPUSD=X": "GBP/USD", "USDJPY=X": "USD/JPY"}
+            for sym, friendly_name in _futures_symbols.items():
+                ts = _ticker_states.get(sym, {})
+                if not ts:
+                    continue
+                directions = ts.get("directions", {})
+                dom_dir = max(directions, key=lambda d: directions[d], default="neutral") if directions else "neutral"
+                domains_active = ts.get("domains_active", [])
+                signal_count = ts.get("signal_count", 0)
+                if signal_count >= 3:  # Only report if there's meaningful activity
+                    _futures_data.append({
+                        "symbol": sym,
+                        "friendly_name": friendly_name,
+                        "dominant_direction": dom_dir,
+                        "signal_count": signal_count,
+                        "domains": domains_active[:3],
+                    })
+            summary["futures_activity"] = _futures_data
+        else:
+            summary["futures_activity"] = []
+    except Exception:
+        logger.debug("Could not extract futures activity from somatic state", exc_info=True)
+        summary["futures_activity"] = []
 
     # ── Developing situations ──────────────────────────────────────
     situation_board = _safe_read_json(_DATA_MIDGE / "situation_board.json")
