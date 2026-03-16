@@ -1404,42 +1404,208 @@ def _build_llm_prompt(summary: dict) -> str:
 def _template_narrative(summary: dict, date_str: str) -> str:
     """Template fallback when no LLM is available.
 
-    Short, punchy, jargon-free. Matches the style guide: bold punch lines,
-    bullets, plain English, lead with the weird thing.
+    Short, punchy, jargon-free. Layered structure: Big Picture → Crypto →
+    Commodities & Futures → Stocks → Learned → Wrong.
     """
     lines = [
         f"Subject: MIDGE Daily Letter — {date_str}",
         "",
     ]
 
-    # ── Lead hook — Granger weirdness first ───────────────────────
+    # ── Lead hook — Granger weirdness or regime first ─────────────
     granger = summary.get("granger", [])
     if granger:
         g = granger[0]
         lines.append(f"**Here's something strange I noticed: {g['story']}**")
         lines.append("")
 
-    # ── WHAT I'M WATCHING ─────────────────────────────────────────
-    lines.append("## WHAT I'M WATCHING")
+    # ══════════════════════════════════════════════════════════════
+    # THE BIG PICTURE
+    # ══════════════════════════════════════════════════════════════
+    lines.append("## THE BIG PICTURE")
     lines.append("")
-    devs = summary.get("developing", [])
-    if devs:
-        for d in devs[:3]:
-            direction_plain = _direction_words(d["direction"])
-            confidence_plain = _confidence_words(d["confidence"])
-            sources_plain = _domain_plain(d["domains"])
-            lines.append(f"**{d['ticker']}** — {direction_plain}.")
-            lines.append(f"- I am {confidence_plain}.")
-            lines.append(f"- Evidence is coming from: {sources_plain}.")
-            lines.append("")
+
+    # Regime
+    regime = summary.get("regime", "unknown")
+    regime_plain = _regime_plain(regime)
+    lines.append(f"- **Markets are {regime_plain} right now.**")
+
+    # Macro alignment
+    macro_align = summary.get("macro_alignment", {})
+    if macro_align and macro_align.get("dominant"):
+        dominant = macro_align["dominant"]
+        divergent = macro_align.get("divergent", False)
+        bull_c = macro_align.get("bullish_count", 0)
+        bear_c = macro_align.get("bearish_count", 0)
+        if divergent:
+            lines.append(
+                f"- Economic signals are mixed ({bull_c} pointing up, {bear_c} pointing down) — "
+                "they're not agreeing with each other."
+            )
+        else:
+            lines.append(
+                f"- Economic signals are mostly pointing **{dominant}** "
+                f"({bull_c} up vs {bear_c} down)."
+            )
+
+    # Key macro indicators (most deviated)
+    macro_indicators = summary.get("macro_indicators", [])
+    _MACRO_PLAIN_TMPL = {
+        "T10Y2Y": "10-year vs 2-year bond yield gap",
+        "T10Y3M": "10-year vs 3-month bond yield gap (recession signal)",
+        "T5YIE": "expected inflation (5-year)",
+        "DGS2": "2-year government bond rate",
+        "DGS10": "10-year government bond rate",
+        "DFF": "Federal Reserve overnight rate",
+        "VIXCLS": "market fear gauge (VIX)",
+    }
+    for ind in macro_indicators[:2]:
+        plain_name = _MACRO_PLAIN_TMPL.get(ind["series_id"], ind.get("name", ind["series_id"]))
+        direction = ind.get("direction", "neutral")
+        value = ind.get("value")
+        value_note = f" ({value:.2f})" if value is not None else ""
+        lines.append(f"- {plain_name}: pointing **{direction}**{value_note}.")
+
+    # Cross-market anomalies
+    cross_market = summary.get("cross_market_anomalies", [])
+    if cross_market:
+        top_cm = cross_market[0]
+        tickers_note = f" ({', '.join(top_cm['tickers'][:4])})" if top_cm.get("tickers") else ""
+        lines.append(
+            f"- *Something weird across markets: "
+            f"{top_cm.get('description', top_cm.get('type', 'unusual pattern'))}"
+            f"{tickers_note}. When unrelated markets move together, something is flowing underneath.*"
+        )
+
+    # Energy picture
+    energy_readings = summary.get("energy_readings", [])
+    if energy_readings:
+        _ENERGY_PLAIN_TMPL = {
+            "crude_production": "US oil production",
+            "crude_inventory": "US oil stockpiles",
+            "natural_gas_storage": "US natural gas storage",
+        }
+        notable_energy = [er for er in energy_readings if er.get("direction") != "neutral"]
+        if notable_energy:
+            er = notable_energy[0]
+            plain_name = _ENERGY_PLAIN_TMPL.get(er["series_key"], er.get("name", er["series_key"]))
+            direction = er.get("direction", "neutral")
+            change = er.get("change_pct")
+            change_note = f" ({change:+.1f}%)" if change is not None else ""
+            lines.append(f"- Energy: {plain_name} is **{direction}**{change_note}.")
+
+    lines.append("")
+
+    # ══════════════════════════════════════════════════════════════
+    # CRYPTO
+    # ══════════════════════════════════════════════════════════════
+    lines.append("## CRYPTO")
+    lines.append("")
+
+    fg = summary.get("crypto_fear_greed", {})
+    if fg and fg.get("value") is not None:
+        fg_value = int(fg["value"])
+        fg_class = fg.get("classification", "")
+        fg_trend = fg.get("trend", "")
+        trend_note = f" It's been {fg_trend}." if fg_trend else ""
+        if fg_value <= 25:
+            lines.append(
+                f"- **Crypto markets are terrified right now** (fear score: {fg_value}, {fg_class}).{trend_note}"
+            )
+            lines.append("- *Historically this is when the quiet buyers step in.*")
+        elif fg_value >= 75:
+            lines.append(
+                f"- **Everyone in crypto is euphoric** (greed score: {fg_value}, {fg_class}).{trend_note}"
+            )
+            lines.append("- *This is exactly when corrections tend to hit.*")
+        else:
+            lines.append(f"- Crypto sentiment is neutral (score: {fg_value}, {fg_class}).{trend_note}")
     else:
-        lines.append("Nothing with strong evidence right now. Watching broadly.")
+        lines.append("- No crypto sentiment data available.")
+
+    # Major coin movements
+    crypto_coins = summary.get("crypto_coins", [])
+    if crypto_coins:
+        # Summarize as a group
+        rising = [c for c in crypto_coins if (c.get("change_24h_pct") or 0) > 1.0]
+        falling = [c for c in crypto_coins if (c.get("change_24h_pct") or 0) < -1.0]
+        if len(rising) > len(falling):
+            movers = ", ".join(c["symbol"] for c in rising[:4])
+            lines.append(f"- Major coins mostly rising today: **{movers}** all up in the last 24 hours.")
+        elif len(falling) > len(rising):
+            movers = ", ".join(c["symbol"] for c in falling[:4])
+            lines.append(f"- Major coins mostly falling today: **{movers}** all down in the last 24 hours.")
+        else:
+            lines.append("- Crypto is mixed — some coins up, some down. No clear trend.")
+
+        # BTC vs altcoins divergence check
+        btc = next((c for c in crypto_coins if c["symbol"] == "BTC"), None)
+        alts = [c for c in crypto_coins if c["symbol"] != "BTC"]
+        if btc and alts:
+            btc_ch = btc.get("change_24h_pct") or 0
+            alt_avg = sum(c.get("change_24h_pct") or 0 for c in alts) / len(alts)
+            if btc_ch > 1 and alt_avg < 0:
+                lines.append("- *Bitcoin is climbing but smaller coins aren't following — a divergence worth watching.*")
+            elif btc_ch < -1 and alt_avg > 1:
+                lines.append("- *Bitcoin is falling while smaller coins are rising — an unusual split.*")
+
+    lines.append("")
+
+    # ══════════════════════════════════════════════════════════════
+    # COMMODITIES & FUTURES
+    # ══════════════════════════════════════════════════════════════
+    futures_activity = summary.get("futures_activity", [])
+    cot = summary.get("cot_positioning", {})
+
+    if futures_activity or (cot and cot.get("dominant") and cot.get("dominant") != "mixed"):
+        lines.append("## COMMODITIES & FUTURES")
         lines.append("")
 
-    # ── Inevitabilities (inject into WHAT I'M WATCHING if present) ──
+        if futures_activity:
+            for fut in futures_activity:
+                direction_plain = _direction_words(fut["dominant_direction"])
+                lines.append(
+                    f"- **{fut['friendly_name']}**: signals {direction_plain}. "
+                    f"({fut['signal_count']} signals across {', '.join(_domain_plain(fut['domains']).split(', ')[:2])})"
+                )
+
+        if cot and cot.get("dominant") and cot.get("dominant") != "mixed":
+            dominant_cot = cot["dominant"]
+            bull_c = cot.get("bullish_count", 0)
+            bear_c = cot.get("bearish_count", 0)
+            lines.append(
+                f"- Large professional traders are positioned **{dominant_cot}** overall "
+                f"({bull_c} bullish vs {bear_c} bearish signals)."
+            )
+        lines.append("")
+
+    # ══════════════════════════════════════════════════════════════
+    # STOCKS — THE INTERESTING ONES
+    # ══════════════════════════════════════════════════════════════
+    lines.append("## STOCKS — THE INTERESTING ONES")
+    lines.append("")
+
+    # Lead with inevitabilities (most converged)
     inevitabilities = summary.get("inevitabilities", [])
-    if inevitabilities and not devs:
-        # Only use inevitabilities as fallback if situation_board is empty
+    devs = summary.get("developing", [])
+    cascade = summary.get("cascade_status", {})
+    notable_chains = cascade.get("notable_chains", [])
+
+    # Cascade chains first (most dramatic)
+    for _ch in notable_chains[:1]:
+        _confirmed = _ch.get("confirmed_count", 0)
+        _total = _ch.get("total_links", 0)
+        _trigger = _ch.get("trigger", "?")
+        _next = _ch.get("next_dominoes", [])
+        if _confirmed > 0 and _total > 1:
+            _next_note = f" Watching for: {', '.join(_next[:2])}." if _next else ""
+            lines.append(
+                f"- **A chain starting from {_trigger} is unfolding: "
+                f"{_confirmed} of {_total} dominoes confirmed.**{_next_note}"
+            )
+            lines.append("")
+
+    if inevitabilities:
         for inv in inevitabilities[:3]:
             direction_plain = _direction_words(inv["direction"])
             confidence_plain = _confidence_words(inv["score"])
@@ -1450,13 +1616,25 @@ def _template_narrative(summary: dict, date_str: str) -> str:
             chain_note = ""
             if chain_raw and chain_raw != "None":
                 _chain_clean_tmpl = chain_raw.strip("[]").replace("'", "")
-                chain_note = f"\n- Causal chain: {_chain_clean_tmpl}"
+                chain_note = f"\n- Connected through: {_chain_clean_tmpl}"
             lines.append(f"**{inv['ticker']}** — {direction_plain}.{window_note}")
             lines.append(f"- I am {confidence_plain}.")
-            lines.append(f"- Evidence from: {sources_plain}.{chain_note}")
+            lines.append(f"- What's interesting: evidence from {sources_plain} all converging.{chain_note}")
             lines.append("")
+    elif devs:
+        for d in devs[:3]:
+            direction_plain = _direction_words(d["direction"])
+            confidence_plain = _confidence_words(d["confidence"])
+            sources_plain = _domain_plain(d["domains"])
+            lines.append(f"**{d['ticker']}** — {direction_plain}.")
+            lines.append(f"- I am {confidence_plain}.")
+            lines.append(f"- Evidence coming from: {sources_plain}.")
+            lines.append("")
+    else:
+        lines.append("Nothing notable in stocks today. Watching broadly.")
+        lines.append("")
 
-    # ── Developing situations ─────────────────────────────────────
+    # Developing investigations
     dev_sits = summary.get("developing_situations", [])
     if dev_sits:
         lines.append("**Also watching (not ready yet):**")
@@ -1470,88 +1648,38 @@ def _template_narrative(summary: dict, date_str: str) -> str:
             )
         lines.append("")
 
-    # ── Somatic building ──────────────────────────────────────────
+    # Somatic building (stocks only)
     somatic = summary.get("somatic_building", [])
-    if somatic:
-        top_s = somatic[0]
+    _crypto_syms_tmpl = {"BTC", "ETH", "SOL", "XRP", "ADA", "BNB", "DOGE", "AVAX"}
+    _futures_syms_tmpl = {"GC=F", "CL=F", "NQ=F", "ES=F", "EURUSD=X", "GBPUSD=X", "USDJPY=X"}
+    somatic_stocks = [
+        s for s in somatic
+        if s["ticker"] not in _crypto_syms_tmpl and s["ticker"] not in _futures_syms_tmpl
+    ]
+    if somatic_stocks:
+        top_s = somatic_stocks[0]
         direction_plain = _direction_words(top_s["dominant_direction"])
-        domain_plain = _domain_plain(top_s["domains"])
+        domain_plain_txt = _domain_plain(top_s["domains"])
         lines.append(
-            f"*Sensing something in {top_s['ticker']} — "
+            f"*My attention keeps going back to {top_s['ticker']} — "
             f"{top_s['domain_count']} sources pointing {direction_plain} "
-            f"({domain_plain}). Not ready to call it yet.*"
+            f"({domain_plain_txt}). Not ready to call it yet.*"
         )
         lines.append("")
 
-    # ── Cross-market anomalies ─────────────────────────────────────
-    cross_market = summary.get("cross_market_anomalies", [])
-    if cross_market:
-        top_cm = cross_market[0]
-        tickers_note = f" ({', '.join(top_cm['tickers'][:4])})" if top_cm.get("tickers") else ""
-        lines.append(
-            f"*Here's something weird across markets: "
-            f"{top_cm.get('description', top_cm.get('type', 'unusual pattern'))}"
-            f"{tickers_note}. When unrelated markets move together like this, something is flowing underneath.*"
-        )
-        lines.append("")
-
-    # ── Crypto Fear & Greed ───────────────────────────────────────
-    fg = summary.get("crypto_fear_greed", {})
-    if fg and fg.get("value") is not None:
-        fg_value = int(fg["value"])
-        fg_class = fg.get("classification", "")
-        fg_trend = fg.get("trend", "")
-        trend_note = f" It's been {fg_trend}." if fg_trend else ""
-        if fg_value <= 25:
-            lines.append(
-                f"*Crypto markets are terrified right now (sentiment score: {fg_value}, {fg_class}).{trend_note} "
-                "Historically this is when smart money quietly buys.*"
-            )
-            lines.append("")
-        elif fg_value >= 75:
-            lines.append(
-                f"*Everyone in crypto is euphoric right now (sentiment score: {fg_value}, {fg_class}).{trend_note} "
-                "This is exactly when corrections tend to hit.*"
-            )
-            lines.append("")
-
-    # ── Alerts sent today (follow-up) ─────────────────────────────
+    # Alerts sent today
     today_alerts = summary.get("recent_alerts", [])
     if today_alerts:
         tickers_sent = [a["ticker"] for a in today_alerts]
         lines.append(
             f"*I sent you {len(today_alerts)} alert(s) today "
-            f"about {', '.join(tickers_sent[:6])}. "
-            "Checking back on those moves.*"
+            f"about {', '.join(tickers_sent[:6])}. Checking back on those moves.*"
         )
         lines.append("")
 
-    # ── WHAT CONFIRMED ────────────────────────────────────────────
-    lines.append("## WHAT CONFIRMED")
-    lines.append("")
-    oc = summary.get("outcomes", {})
-    total = oc.get("total", 0)
-    wins = oc.get("wins", 0)
-    losses = oc.get("losses", 0)
-    if total > 0:
-        win_examples = oc.get("win_examples", [])
-        loss_examples = oc.get("loss_examples", [])
-        lines.append(
-            f"I checked {total} of my recent calls — **{wins} were right, {losses} were wrong.**"
-        )
-        if win_examples:
-            lines.append(
-                "- Right: " + ", ".join(f"{e['symbol']} moved {e['pct']}%" for e in win_examples)
-            )
-        if loss_examples:
-            lines.append(
-                "- Wrong: " + ", ".join(f"{e['symbol']} moved {e['pct']}%" for e in loss_examples)
-            )
-    else:
-        lines.append("No recent calls have been checked yet.")
-    lines.append("")
-
-    # ── WHAT I LEARNED ────────────────────────────────────────────
+    # ══════════════════════════════════════════════════════════════
+    # WHAT I LEARNED
+    # ══════════════════════════════════════════════════════════════
     lines.append("## WHAT I LEARNED")
     lines.append("")
     pm = summary.get("postmortem", {})
@@ -1575,19 +1703,17 @@ def _template_narrative(summary: dict, date_str: str) -> str:
     distrusted = th.get("distrusted", [])
     if trusted:
         lines.append(
-            f"- **{len(trusted)} of my information source(s) are proving consistently reliable** "
+            f"- **{len(trusted)} information source(s) are proving consistently reliable** "
             "based on what I've seen so far."
         )
         learned_any = True
     if distrusted:
         lines.append(
-            f"- {len(distrusted)} source(s) are not doing well — I'm trusting them less."
+            f"- {len(distrusted)} source(s) are underperforming — I'm giving them less weight."
         )
         learned_any = True
 
-    # ── Cascade learning ─────────────────────────────────────────
-    cascade = summary.get("cascade_status", {})
-    notable_chains = cascade.get("notable_chains", [])
+    # Cascade learning
     for _ch in notable_chains[:1]:
         _confirmed = _ch.get("confirmed_count", 0)
         _total = _ch.get("total_links", 0)
@@ -1596,12 +1722,11 @@ def _template_narrative(summary: dict, date_str: str) -> str:
         if _confirmed > 0 and _total > 1:
             _next_note = f" Watching for: {', '.join(_next[:2])}." if _next else ""
             lines.append(
-                f"- **A chain I predicted from {_trigger} is unfolding: "
-                f"{_confirmed} of {_total} dominoes confirmed.**{_next_note}"
+                f"- **A chain I predicted from {_trigger} has {_confirmed} of {_total} dominoes confirmed.**{_next_note}"
             )
             learned_any = True
 
-    # ── Active hypothesis insight ─────────────────────────────────
+    # Best active hypothesis
     active_hyps = summary.get("active_hypotheses", [])
     best_hyp = next(
         (h for h in active_hyps if h["status"] == "active" and h.get("win_rate_pct") and h["win_rate_pct"] > 50),
@@ -1609,7 +1734,7 @@ def _template_narrative(summary: dict, date_str: str) -> str:
     )
     if best_hyp:
         lines.append(
-            f"- **My theory '{best_hyp['name']}' is holding up: "
+            f"- **Theory '{best_hyp['name']}' is holding up: "
             f"{best_hyp['win_rate_pct']}% accuracy over {best_hyp['observations']} checks.**"
         )
         learned_any = True
@@ -1618,40 +1743,25 @@ def _template_narrative(summary: dict, date_str: str) -> str:
         lines.append("- Not enough graded data yet to say something concrete.")
     lines.append("")
 
-    # ── WHAT I'M UNCERTAIN ABOUT ─────────────────────────────────
-    lines.append("## WHAT I'M UNCERTAIN ABOUT")
-    lines.append("")
-    pm_grade = pm.get("grade", "")
-    if pm_graded < 30:
-        lines.append(
-            "Most of my calls are still within their evaluation window. "
-            "I don't have enough checked results yet to know which patterns are truly reliable."
-        )
-    elif pm_grade in ("WEAK", "POOR"):
-        lines.append(
-            "**My hit rate is lower than I'd like.** "
-            "The signal combinations that work are not consistent enough yet."
-        )
-    else:
-        lines.append("My timing is often off — moves are happening, but outside the windows I expected.")
-
-    pm_timing = pm.get("timing_insight", "")
-    if pm_timing:
-        lines.append(f"- {pm_timing}")
-    lines.append("")
-
-    # ── WHAT I GOT WRONG ─────────────────────────────────────────
+    # ══════════════════════════════════════════════════════════════
+    # WHAT I GOT WRONG
+    # ══════════════════════════════════════════════════════════════
     lines.append("## WHAT I GOT WRONG")
     lines.append("")
+    oc = summary.get("outcomes", {})
     loss_examples = oc.get("loss_examples", [])
-    if loss_examples:
-        for e in loss_examples[:2]:
-            lines.append(
-                f"- **{e['symbol']}**: I thought it would move the other way. "
-                f"It moved {e['pct']}%."
-            )
+    wins = oc.get("wins", 0)
+    losses = oc.get("losses", 0)
+    total = oc.get("total", 0)
+    if total > 0:
+        lines.append(f"I checked {total} recent calls — **{wins} right, {losses} wrong.**")
+        if loss_examples:
+            for e in loss_examples[:2]:
+                lines.append(
+                    f"- **{e['symbol']}**: I thought it would move the other way. It moved {e['pct']}%."
+                )
     else:
-        lines.append("Nothing specific to report yet — not enough graded calls.")
+        lines.append("Nothing graded yet — calls are still within their evaluation window.")
     lines.append("")
 
     # ── PAPER TRADE RECOMMENDATION (when applicable) ──────────────
