@@ -93,6 +93,22 @@ class SensingSchedulerMixin:
         except Exception:
             logger.debug("Priority boost computation failed", exc_info=True)
 
+        # Forced exploration: every 10 cycles, guarantee 2 slots for sources
+        # that haven't been fetched recently (starvation prevention for new sources)
+        _forced: list = []
+        _fetch_counts = getattr(self, "_source_fetch_counts", {})
+        if not hasattr(self, "_source_fetch_counts"):
+            self._source_fetch_counts = {}
+            _fetch_counts = self._source_fetch_counts
+        _min_fetches = min(_fetch_counts.get(s, 0) for s in eligible) if eligible else 0
+        _starved = [s for s in eligible if _fetch_counts.get(s, 0) <= _min_fetches]
+        if _starved and slots >= 4:
+            import random as _rng
+            _rng.shuffle(_starved)
+            _forced = _starved[:2]  # Reserve 2 slots for least-fetched sources
+            eligible = [s for s in eligible if s not in _forced]
+            slots -= len(_forced)
+
         # Draw from each source's Beta distribution
         scored = []
         for source in eligible:
