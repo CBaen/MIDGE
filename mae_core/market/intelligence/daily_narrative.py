@@ -873,6 +873,87 @@ def _build_llm_prompt(summary: dict) -> str:
 
     lines.append("")
 
+    # ── Cross-market anomalies ─────────────────────────────────────
+    cross_market = summary.get("cross_market_anomalies", [])
+    if cross_market:
+        lines.append("CROSS-MARKET ANOMALIES (weird things happening across unrelated markets):")
+        for cm in cross_market[:3]:
+            tickers_note = f" Tickers involved: {', '.join(cm['tickers'][:4])}." if cm.get("tickers") else ""
+            domains_note = f" Areas: {_domain_plain(cm.get('domains', []))}." if cm.get("domains") else ""
+            lines.append(f"  - {cm.get('description', cm.get('type', 'unknown'))}.{tickers_note}{domains_note}")
+        lines.append(
+            "  INSTRUCTION: If there are any cross-market anomalies, mention the most interesting one. "
+            "Lead with what's weird about it. "
+            "Example: 'Three completely unrelated stocks all spiked in volume on the same day — "
+            "TPL (energy), DASH (tech), GD (defense). When unrelated sectors move together, "
+            "something is flowing underneath that I can't see yet.' "
+            "Don't list all of them — pick the one with the strangest combination."
+        )
+    else:
+        lines.append("CROSS-MARKET ANOMALIES: Nothing unusual across markets today.")
+
+    lines.append("")
+
+    # ── Crypto Fear & Greed ───────────────────────────────────────
+    fg = summary.get("crypto_fear_greed", {})
+    if fg and fg.get("value") is not None:
+        fg_value = int(fg["value"])
+        fg_class = fg.get("classification", "")
+        fg_direction = fg.get("direction", "")
+        fg_trend = fg.get("trend", "")
+        trend_note = f" It's been {fg_trend}." if fg_trend else ""
+        lines.append(
+            f"CRYPTO SENTIMENT RIGHT NOW: The crypto fear/greed index is at {fg_value} ({fg_class}). "
+            f"The market mood is {fg_direction}.{trend_note}"
+        )
+        if fg_value <= 25:
+            lines.append(
+                "  INSTRUCTION: This is extreme fear territory. Use contrarian language: "
+                "'Crypto markets are terrified right now — which historically is when smart money "
+                "is quietly buying while everyone else panics.' "
+                "Don't be alarmist — be the calm observer who sees the pattern."
+            )
+        elif fg_value >= 75:
+            lines.append(
+                "  INSTRUCTION: This is extreme greed territory. Use contrarian language: "
+                "'Everyone in crypto is euphoric right now — which is exactly when corrections tend to hit. "
+                "The crowd is never right at the extremes.' "
+                "Don't be preachy — just note the pattern calmly."
+            )
+        else:
+            lines.append(
+                "  INSTRUCTION: Crypto sentiment is in the neutral zone — "
+                "only mention it if it adds context to another signal."
+            )
+    else:
+        lines.append("CRYPTO SENTIMENT: No fear/greed data available today.")
+
+    lines.append("")
+
+    # ── Alerts sent today (with follow-up framing) ────────────────
+    today_alerts = summary.get("recent_alerts", [])
+    if today_alerts:
+        tickers_sent = [a["ticker"] for a in today_alerts]
+        lines.append(
+            f"ALERTS I SENT YOU TODAY ({len(today_alerts)} alert(s) about "
+            f"{', '.join(tickers_sent[:6])}):"
+        )
+        for a in today_alerts:
+            direction_plain = _direction_words(a["direction"])
+            confidence_plain = _confidence_words(a["confidence"])
+            lines.append(f"  - {a['ticker']}: I said it {direction_plain}. I was {confidence_plain}.")
+        lines.append(
+            "  INSTRUCTION: Tell Guiding Light how many alerts you sent and which tickers. "
+            "Then briefly say what happened since — did the move start? Is it still forming? "
+            "Did anything contradict the call? "
+            "Use language like: 'I sent you [N] alerts today about [tickers]. Here's what happened since I sent them.' "
+            "If outcomes data is available for any of these tickers, cross-reference it here."
+        )
+    else:
+        lines.append("ALERTS SENT TODAY: No alerts fired today.")
+
+    lines.append("")
+
     # ── Outcomes (recent graded predictions) ─────────────────────
     oc = summary.get("outcomes", {})
     total = oc.get("total", 0)
