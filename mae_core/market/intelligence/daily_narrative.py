@@ -1019,6 +1019,7 @@ _JARGON_MAP: dict[str, str] = {
     "beta": "a measure of how reliable something is",
     "standard deviation": "how far from normal",
     "forex": "currency markets",
+    "crude oil": "oil",
     "crude": "oil",
     "equity": "stock",
     "equities": "stocks",
@@ -1029,8 +1030,6 @@ _JARGON_MAP: dict[str, str] = {
 }
 
 # Patterns for numeric jargon (applied via regex in _translate_jargon)
-import re as _re
-
 # Signal count ranges: translate "96 signals" → qualitative
 _SIGNAL_COUNT_RANGES = [
     (_re.compile(r'\b([5-9][0-9]|[1-9][0-9]{2,})\s*(signals?|readings?|indicators?)\b', _re.IGNORECASE), "almost everything"),
