@@ -800,11 +800,33 @@ def run_forever(
             time.sleep(60.0)
             continue
 
-        logger.info(
-            "Cycle %d done. Resting %.0f seconds before next cycle.",
-            cycle, CYCLE_REST_SECONDS,
-        )
-        time.sleep(CYCLE_REST_SECONDS)
+        # If this cycle produced no alerts AND all archive days were already
+        # processed (exhaustion), rest 1 hour instead of 60 seconds — the
+        # archive won't change meaningfully within 60 seconds.
+        # Read the state file that _run_cycle writes to check results.
+        _cycle_stats = {}
+        try:
+            import json as _json_replay
+            if STATE_PATH.exists():
+                _cycle_stats = _json_replay.loads(STATE_PATH.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+        _alerts_this_cycle = _cycle_stats.get("alerts_found", -1)
+        _days_this_cycle = _cycle_stats.get("days_processed", 0)
+        if _alerts_this_cycle == 0 and _days_this_cycle > 0:
+            _rest = 3600.0
+            logger.info(
+                "Cycle %d: 0 alerts on %d days — archive exhausted. "
+                "Resting %.0f seconds before next cycle.",
+                cycle, _days_this_cycle, _rest,
+            )
+        else:
+            _rest = CYCLE_REST_SECONDS
+            logger.info(
+                "Cycle %d done. Resting %.0f seconds before next cycle.",
+                cycle, _rest,
+            )
+        time.sleep(_rest)
 
 
 # ---------------------------------------------------------------------------

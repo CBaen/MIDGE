@@ -64,7 +64,7 @@ from typing import Dict, List, Optional, Set, Tuple
 # ---------------------------------------------------------------------------
 
 _THIS_FILE = Path(__file__).resolve()
-_PROJECT_ROOT = _THIS_FILE.parents[4]  # .../mae_core/market/parallel/ → project root
+_PROJECT_ROOT = _THIS_FILE.parents[3]  # .../mae_core/market/parallel/ → project root
 
 PREDICTIONS_PATH  = _PROJECT_ROOT / "data" / "market" / "predictions.jsonl"
 OUTCOMES_PATH     = _PROJECT_ROOT / "data" / "market" / "outcomes.jsonl"
@@ -167,6 +167,10 @@ def _load_pending_predictions(
                 continue
             try:
                 ts = datetime.fromisoformat(ts_str)
+                # Strip timezone info for naive comparison — we only care about elapsed days,
+                # not sub-second UTC offsets, and predictions.jsonl mixes aware/naive formats.
+                if ts.tzinfo is not None:
+                    ts = ts.replace(tzinfo=None)
             except ValueError:
                 logger.debug("Unparseable timestamp: %s", ts_str)
                 continue
