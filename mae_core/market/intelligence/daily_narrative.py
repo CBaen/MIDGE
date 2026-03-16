@@ -594,12 +594,28 @@ def _gather_data(date_str: str) -> dict:
     granger = _safe_read_json(_DATA_MARKET / "granger_continuous.json")
     if granger and isinstance(granger, dict):
         findings = granger.get("findings", [])[:5]
+        _DOMAIN_PLAIN_GRANGER = {
+            "insider": "insider buying reports",
+            "macro": "big-picture economic data",
+            "technical": "price chart patterns",
+            "events": "company announcements",
+            "positioning": "what professional traders are doing",
+            "government": "government contracts and congressional trades",
+            "contracts": "government contract awards",
+            "sentiment": "social media mood",
+            "fundamental": "company financials",
+            "institutional": "big fund movements",
+            "crypto": "crypto market signals",
+            "energy": "energy supply and demand data",
+            "causal": "confirmed cause-and-effect chains",
+            "cascade": "domino-effect chain confirmations",
+        }
         summary["granger"] = [
             {
                 "story": (
-                    f"{f['cause_domain']} leads {f['effect_domain']} "
-                    f"by ~{f.get('best_lag', '?')} days "
-                    f"(p<{f.get('p_value', 1):.3f})"
+                    f"When {_DOMAIN_PLAIN_GRANGER.get(f.get('cause_domain',''), f.get('cause_domain','?'))} change, "
+                    f"{_DOMAIN_PLAIN_GRANGER.get(f.get('effect_domain',''), f.get('effect_domain','?'))} tend to follow "
+                    f"about {f.get('best_lag', '?')} days later"
                 )
             }
             for f in findings if isinstance(f, dict)
@@ -1180,13 +1196,13 @@ def _build_llm_prompt(summary: dict) -> str:
     # Key macro indicators
     macro_indicators = summary.get("macro_indicators", [])
     _MACRO_PLAIN = {
-        "T10Y2Y": "the gap between 10-year and 2-year US government bond yields",
-        "T10Y3M": "the gap between 10-year and 3-month US bond yields (recession signal)",
-        "T5YIE": "what the market expects inflation to be over the next 5 years",
-        "DGS2": "2-year US government bond interest rate",
-        "DGS10": "10-year US government bond interest rate",
-        "DFF": "the US Federal Reserve's overnight interest rate",
-        "VIXCLS": "the stock market's fear gauge (VIX)",
+        "T10Y2Y": "a key recession warning signal (how governments borrow at different time horizons)",
+        "T10Y3M": "a key recession warning signal",
+        "T5YIE": "where the market thinks prices will be in five years",
+        "DGS2": "short-term government borrowing costs",
+        "DGS10": "long-term government borrowing costs",
+        "DFF": "the overnight rate banks charge each other",
+        "VIXCLS": "the market's fear reading",
     }
     if macro_indicators:
         lines.append("KEY ECONOMIC READINGS:")
@@ -1284,30 +1300,33 @@ def _build_llm_prompt(summary: dict) -> str:
     fg = summary.get("crypto_fear_greed", {})
     if fg and fg.get("value") is not None:
         fg_value = int(fg["value"])
-        fg_class = fg.get("classification", "")
         fg_trend = fg.get("trend", "")
         trend_note = f" It's been {fg_trend}." if fg_trend else ""
-        lines.append(
-            f"CRYPTO FEAR/GREED: Score is {fg_value} out of 100 ({fg_class}).{trend_note}"
-        )
         if fg_value <= 25:
-            lines.append(
-                "  INSTRUCTION: Extreme fear. Contrarian note: "
-                "'Crypto is terrified right now — which historically is when the quiet buyers step in.' "
-                "Calm observer tone, not alarmist."
+            fg_plain = "crypto traders are extremely scared right now"
+            fg_instruction = (
+                "Extreme fear. Say: 'Crypto traders are scared right now — "
+                "and historically, that's when the quiet buyers show up.' Calm tone."
             )
-        elif fg_value >= 75:
-            lines.append(
-                "  INSTRUCTION: Extreme greed. Contrarian note: "
-                "'Everyone in crypto is euphoric — which is exactly when corrections tend to hit.' "
-                "Don't be preachy — just note the historical pattern."
-            )
+        elif fg_value <= 45:
+            fg_plain = "crypto traders are worried"
+            fg_instruction = "Below-neutral mood. Mention briefly — 'There's some nervousness in crypto.'"
+        elif fg_value <= 55:
+            fg_plain = "crypto traders are feeling neutral"
+            fg_instruction = "Neutral zone. Mention briefly as context, don't dwell on it."
+        elif fg_value <= 75:
+            fg_plain = "crypto traders are feeling optimistic"
+            fg_instruction = "Above-neutral mood. Mention briefly — 'Crypto is feeling good right now.'"
         else:
-            lines.append(
-                "  INSTRUCTION: Neutral zone. Mention it briefly as context, don't dwell on it."
+            fg_plain = "crypto traders are extremely greedy / euphoric"
+            fg_instruction = (
+                "Extreme greed. Say: 'Everyone in crypto is feeling great right now — "
+                "and that's historically when things cool off.' Don't be preachy."
             )
+        lines.append(f"CRYPTO MOOD: {fg_plain}.{trend_note}")
+        lines.append(f"  INSTRUCTION: {fg_instruction}")
     else:
-        lines.append("CRYPTO FEAR/GREED: No data available.")
+        lines.append("CRYPTO MOOD: No data available.")
 
     lines.append("")
 
@@ -1676,11 +1695,13 @@ def _build_llm_prompt(summary: dict) -> str:
     lines.append(
         "Now write the daily letter following the LAYERED STRUCTURE precisely: "
         "Big Picture → Crypto → Commodities & Futures → Stocks → Learned → Wrong. "
-        "Bold the punch lines, use bullets, no jargon. "
+        "Bold the punch lines, use bullets, no jargon — remember the 12-year-old rule. "
         "Under 600 words. Sign it '— MIDGE'."
     )
 
-    return "\n".join(lines)
+    # Translate every data line so the LLM never sees raw jargon or field names
+    translated_lines = [_translate_jargon(line) for line in lines]
+    return "\n".join(translated_lines)
 
 
 def _template_narrative(summary: dict, date_str: str) -> str:
@@ -1733,13 +1754,13 @@ def _template_narrative(summary: dict, date_str: str) -> str:
     # Key macro indicators (most deviated)
     macro_indicators = summary.get("macro_indicators", [])
     _MACRO_PLAIN_TMPL = {
-        "T10Y2Y": "10-year vs 2-year bond yield gap",
-        "T10Y3M": "10-year vs 3-month bond yield gap (recession signal)",
-        "T5YIE": "expected inflation (5-year)",
-        "DGS2": "2-year government bond rate",
-        "DGS10": "10-year government bond rate",
-        "DFF": "Federal Reserve overnight rate",
-        "VIXCLS": "market fear gauge (VIX)",
+        "T10Y2Y": "a key recession warning signal",
+        "T10Y3M": "a key recession warning signal",
+        "T5YIE": "where the market thinks prices will be in five years",
+        "DGS2": "short-term government borrowing costs",
+        "DGS10": "long-term government borrowing costs",
+        "DFF": "the overnight rate banks charge each other",
+        "VIXCLS": "the market's fear reading",
     }
     for ind in macro_indicators[:2]:
         plain_name = _MACRO_PLAIN_TMPL.get(ind["series_id"], ind.get("name", ind["series_id"]))
@@ -2143,6 +2164,8 @@ def generate_daily_narrative(date_str: Optional[str] = None) -> str:
                         f"Subject: MIDGE Daily Letter — {date_str}\n\n"
                         + narrative_body
                     )
+                # Post-generation safety net: catch any jargon the LLM still wrote
+                narrative_body = _translate_jargon(narrative_body)
                 logger.info("Daily narrative generated via Groq (%d chars)", len(narrative_body))
             else:
                 logger.info("Groq call returned nothing — falling back to template")
@@ -2150,6 +2173,8 @@ def generate_daily_narrative(date_str: Optional[str] = None) -> str:
         if not narrative_body:
             # Template fallback
             narrative_body = _template_narrative(summary, date_str)
+            # Apply jargon scrubber to template output too
+            narrative_body = _translate_jargon(narrative_body)
             logger.info("Daily narrative generated via template (%d chars)", len(narrative_body))
 
         # Archive to daily_narratives/
