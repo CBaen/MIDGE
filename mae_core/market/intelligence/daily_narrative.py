@@ -1848,6 +1848,15 @@ def generate_daily_narrative(date_str: Optional[str] = None) -> str:
         except Exception:
             logger.debug("Could not archive narrative to file", exc_info=True)
 
+        # Narrative feedback loop — extract insights and feed back into learning systems
+        try:
+            from mae_core.market.intelligence.narrative_feedback import NarrativeFeedback
+            _nf = NarrativeFeedback()  # No live systems at generation time; persists to JSONL
+            _insights = _nf.extract_insights(narrative_body)
+            _nf.feed_back(_insights)
+        except Exception:
+            logger.debug("Narrative feedback extraction failed", exc_info=True)
+
         return narrative_body
 
     except Exception:
