@@ -880,11 +880,259 @@ def _domain_plain(domains: list[str]) -> str:
 def _regime_plain(regime: str) -> str:
     """Translate regime codes to plain English."""
     return {
-        "bull": "bullish (things are generally rising)",
-        "bear": "bearish (things are generally falling)",
-        "volatile": "volatile (big swings, hard to read)",
-        "sideways": "sideways (not much happening)",
+        "bull": "things are generally rising",
+        "bear": "things are generally falling",
+        "volatile": "unpredictable — big swings in both directions",
+        "sideways": "stuck — not going anywhere in particular",
     }.get(regime.lower() if regime else "", regime or "unclear")
+
+
+# ── Jargon Elimination ───────────────────────────────────────────────
+
+# Every raw field name, system concept, and financial term that must never
+# reach the human reader. Applied to ALL data before the LLM sees it, and
+# again as a post-generation safety net on the LLM's output.
+_JARGON_MAP: dict[str, str] = {
+    # Internal system names that leak into data fields
+    "ai_capex_surge": "a wave of companies spending heavily on AI",
+    "port_strike": "a port workers' strike disrupting shipping",
+    "yield_curve": "a key recession warning signal",
+    "yield_spread": "a gap in government borrowing costs",
+    "yield curve": "a key recession warning signal",
+    "T10Y2Y": "the gap between short-term and long-term government borrowing costs",
+    "T10Y3M": "a key recession warning signal",
+    "T5YIE": "where the market expects prices to be in five years",
+    "DGS2": "short-term government borrowing costs",
+    "DGS10": "long-term government borrowing costs",
+    "DFF": "the rate banks charge each other overnight",
+    "VIXCLS": "the market's fear reading",
+    "sector_rotation": "big money moving from one industry to another",
+    "short_float": "how many traders are betting a company's stock will fall",
+    "put_call": "the balance between protective and aggressive bets",
+    "put/call ratio": "the balance between protective and aggressive bets",
+    "funding_rate": "how much it costs traders to hold leveraged crypto positions",
+    "COT": "what the biggest professional traders are doing",
+    "cot_positioning": "how the biggest professional traders are positioned",
+    "13f_filing": "required reports showing what big funds own",
+    "form_4": "insider buying and selling reports",
+    "sec_form4": "insider buying and selling reports",
+    "sec_form8k": "company announcements about major events",
+    "sec_efts": "SEC filing keyword searches",
+    "FRED": "economic data from the US Federal Reserve",
+    "fred_macro": "big-picture economic signals",
+    "EIA": "energy inventory data",
+    "eia_energy": "energy supply and demand data",
+    "thompson": "what I've learned about which sources to trust",
+    "Thompson": "what I've learned about which sources to trust",
+    "Thompson distribution": "what I've learned about which sources to trust",
+    "convergence": "signals from different places agreeing",
+    "Granger causality": "a timing connection between two things",
+    "granger": "timing connections I've discovered",
+    "regime": "the market's overall mood",
+    "bear market": "a market where things are generally falling",
+    "bull market": "a market where things are generally rising",
+    "bearish": "pointing down",
+    "bullish": "pointing up",
+    "institutional": "big funds and banks",
+    "insider": "company executives and board members",
+    "macro": "big-picture economy",
+    "technical": "price chart patterns",
+    "positioning": "how professional traders are placed",
+    "sentiment": "crowd mood",
+    "fundamental": "company financial health",
+    "events": "company news and announcements",
+    "options": "insurance-like contracts on stocks",
+    "energy": "oil, gas, and power markets",
+    "government": "political and regulatory actions",
+    "contracts": "government spending and hiring data",
+    "crypto": "cryptocurrency",
+    "cascade": "a chain reaction I predicted",
+    "pattern_stack": "multiple historical patterns lining up",
+    "convergence_building": "signals starting to agree",
+    "outcome_window": "the time I give a prediction to play out",
+    "drawdown": "losses from the peak",
+    "ATR": "the typical daily price swing",
+    "RSI": "whether something is overbought or oversold",
+    "MACD": "price momentum direction",
+    "Bollinger": "whether a price is stretched unusually far",
+    "VIX": "the market's fear reading",
+    "VVIX": "how uncertain the fear reading itself is",
+    "domain": "type of signal source",
+    "domains": "signal sources",
+    "overbought": "risen unusually fast",
+    "oversold": "fallen unusually fast",
+    "momentum": "how fast something is moving",
+    "volatility": "how much prices are swinging",
+    "contango": "an unusual pricing pattern in futures",
+    "backwardation": "an unusual pricing pattern in futures",
+    "basis points": "tiny fractions of a percent",
+    "inversion": "an unusual reversal of the normal pattern",
+    "F-stat": "a measure of how strong the connection is",
+    "p-value": "how confident I am this isn't a coincidence",
+    "p<": "with high confidence",
+    "alpha": "a measure of how much something has learned",
+    "beta": "a measure of how reliable something is",
+    "standard deviation": "how far from normal",
+    "forex": "currency markets",
+    "crude": "oil",
+    "equity": "stock",
+    "equities": "stocks",
+    "performing below chance": "haven't been reliable lately",
+    "below chance": "less reliable than random guessing",
+    "weighting them less": "trusting them less right now",
+    "weighting": "how much I trust",
+}
+
+# Patterns for numeric jargon (applied via regex in _translate_jargon)
+import re as _re
+
+# Signal count ranges: translate "96 signals" → qualitative
+_SIGNAL_COUNT_RANGES = [
+    (_re.compile(r'\b([5-9][0-9]|[1-9][0-9]{2,})\s*(signals?|readings?|indicators?)\b', _re.IGNORECASE), "almost everything"),
+    (_re.compile(r'\b([2-4][0-9])\s*(signals?|readings?|indicators?)\b', _re.IGNORECASE), "many signals"),
+    (_re.compile(r'\b([6-9]|1[0-9]|20)\s*(signals?|readings?|indicators?)\b', _re.IGNORECASE), "several signals"),
+    (_re.compile(r'\b([1-5])\s*(signals?|readings?)\b', _re.IGNORECASE), "a few signals"),
+]
+
+# "X out of Y" / "X correct out of Y" patterns
+_OUT_OF_PATTERN = _re.compile(
+    r'\b(\d+)\s*(?:correct\s+)?out\s+of\s+(\d+)\s*(?:checked|graded|total)?\b',
+    _re.IGNORECASE,
+)
+
+# Percentage patterns that are NOT price changes (no +/- prefix)
+_BARE_PCT_PATTERN = _re.compile(r'(?<![+-])\b(\d+(?:\.\d+)?)\s*%\s*of\s*(the\s+time|predictions?|calls?|cases?|checks?|observations?)\b', _re.IGNORECASE)
+
+# "confidence 0.xx" / "score: 0.xx" / raw decimal confidence
+_CONF_DECIMAL_PATTERN = _re.compile(r'\b(?:confidence|score|weight|strength)\s*[:\s]+0\.(\d+)\b', _re.IGNORECASE)
+
+# All-uppercase acronyms that aren't known ticker symbols (3-5 chars, all caps)
+# We keep known tickers; strip others
+_KNOWN_TICKERS = {
+    "BTC", "ETH", "SOL", "XRP", "ADA", "BNB", "DOGE", "AVAX",
+    "SPY", "QQQ", "GLD", "USO", "TLT", "IWM",
+    "NVDA", "AAPL", "MSFT", "AMZN", "GOOGL", "META", "TSLA",
+    "US", "UK", "EU", "USD", "EUR", "GBP", "JPY",
+    "MIDGE", "NYSE", "SEC", "NFP", "CPI", "GDP", "FED",
+}
+_UNKNOWN_ACRONYM = _re.compile(r'\b([A-Z]{2,6})\b')
+
+
+def _confidence_pct_to_words(pct: float) -> str:
+    """Convert a 0-100 or 0-1 confidence number to plain English."""
+    if pct > 1:  # already in 0-100 scale
+        if pct > 80:
+            return "very confident"
+        if pct > 60:
+            return "fairly sure"
+        if pct >= 45:
+            return "something forming — need more"
+        return "early, still watching"
+    else:  # 0-1 scale
+        if pct > 0.80:
+            return "very confident"
+        if pct > 0.60:
+            return "fairly sure"
+        if pct >= 0.45:
+            return "something forming — need more"
+        return "early, still watching"
+
+
+def _signal_count_to_words(n: int) -> str:
+    """Convert a raw signal count to a qualitative description."""
+    if n >= 50:
+        return "almost everything"
+    if n >= 21:
+        return "many signals"
+    if n >= 6:
+        return "several signals"
+    if n >= 1:
+        return "a few signals"
+    return "no signals"
+
+
+def _translate_jargon(text: str) -> str:
+    """Replace ALL financial jargon and system internals in a text string.
+
+    Applied to:
+    1. Every data line before it enters the LLM prompt.
+    2. The final LLM output as a post-generation safety net.
+
+    Order matters: longer/more specific phrases are replaced before shorter
+    ones to avoid partial-match corruption.
+    """
+    if not text:
+        return text
+
+    # ── Step 1: Direct phrase replacement (longest first to avoid partials) ──
+    for jargon, plain in sorted(_JARGON_MAP.items(), key=lambda x: -len(x[0])):
+        # Case-insensitive replacement preserving surrounding text
+        text = _re.sub(_re.escape(jargon), plain, text, flags=_re.IGNORECASE)
+
+    # ── Step 2: "X% of the time / calls / predictions" → qualitative ──
+    def _pct_to_qual(m: _re.Match) -> str:
+        pct = float(m.group(1))
+        noun = m.group(2).lower()
+        if pct >= 90:
+            return f"almost always ({noun})"
+        if pct >= 70:
+            return f"more often than not ({noun})"
+        if pct >= 50:
+            return f"about half the time ({noun})"
+        if pct >= 30:
+            return f"sometimes ({noun})"
+        return f"rarely ({noun})"
+    text = _BARE_PCT_PATTERN.sub(_pct_to_qual, text)
+
+    # ── Step 3: "X correct out of Y" → "X out of Y calls" ──
+    def _out_of(m: _re.Match) -> str:
+        wins = int(m.group(1))
+        total = int(m.group(2))
+        if total == 0:
+            return "no calls checked yet"
+        pct = wins / total
+        if pct >= 0.75:
+            return f"{wins} out of {total} — most of them right"
+        if pct >= 0.5:
+            return f"{wins} out of {total} — about half right"
+        return f"{wins} out of {total} — still learning"
+    text = _OUT_OF_PATTERN.sub(_out_of, text)
+
+    # ── Step 4: "confidence/score/weight 0.xx" → plain words ──
+    def _conf_decimal(m: _re.Match) -> str:
+        digits = m.group(1)
+        val = float(f"0.{digits}")
+        return _confidence_pct_to_words(val)
+    text = _CONF_DECIMAL_PATTERN.sub(_conf_decimal, text)
+
+    # ── Step 5: Remove stray decimal confidence numbers like "(0.72)" ──
+    text = _re.sub(r'\(0\.\d+\)', '', text)
+
+    # ── Step 6: "±2.3%" change notes → qualitative ──
+    def _change_pct(m: _re.Match) -> str:
+        val = float(m.group(1))
+        sign = m.group(0)[0]  # '+' or '-' or digit
+        direction = "up" if ('+' in m.group(0) or val > 0) else "down"
+        if abs(val) >= 10:
+            return f"sharply {direction}"
+        if abs(val) >= 3:
+            return f"noticeably {direction}"
+        if abs(val) >= 0.5:
+            return f"slightly {direction}"
+        return "barely moved"
+    # Only apply to explicit change_pct annotations like "(changed +2.3%)" or "changed -5.1%"
+    text = _re.sub(
+        r'\(changed\s*([+-]?\d+(?:\.\d+)?)\s*%\)',
+        lambda m: f"({_change_pct(m)})",
+        text,
+        flags=_re.IGNORECASE,
+    )
+
+    # ── Step 7: Standalone "(N.NN)" numeric values — remove if they look like raw decimals ──
+    # e.g. "(4.52)" after a series name
+    text = _re.sub(r'\s*\(\d+\.\d{2,}\)\s*', ' ', text)
+
+    return text
 
 
 def _build_llm_prompt(summary: dict) -> str:
