@@ -71,6 +71,7 @@ _BEARISH_WORDS = re.compile(
 
 # ── Ticker pattern: 1–5 uppercase letters, not a common English word ──────────
 _COMMON_WORDS = {
+    # Core conjunctions, prepositions, pronouns
     "A", "I", "THE", "AND", "OR", "FOR", "IN", "ON", "AT", "TO", "BE", "IS",
     "IT", "BY", "AN", "AS", "US", "AM", "MY", "UP", "OK", "NO", "DO", "GO",
     "ALL", "BUT", "NOT", "NEW", "OUT", "NOW", "HOW", "WHO", "WHY", "WHEN",
@@ -79,6 +80,11 @@ _COMMON_WORDS = {
     "BOTH", "INTO", "OVER", "EACH", "MOST", "ONLY", "VERY", "LIKE", "WELL",
     "STILL", "ABOUT", "AFTER", "WHICH", "COULD", "THOSE", "THEIR", "THESE",
     "MIDGE", "SUBJECT", "LAYER", "WHAT", "THINGS",
+    # Real NYSE/NASDAQ tickers that are common English words and will always be
+    # false positives when extracted from narrative text.
+    "AI", "ALL", "IT", "AT", "ARE", "BE", "BY", "DO", "GO",
+    "HE", "IF", "IN", "IS", "ME", "MY", "NO", "OF", "OK", "ON",
+    "OR", "SO", "TO", "UP", "US", "WE",
 }
 _TICKER_RE = re.compile(r"\b([A-Z]{1,5})\b")
 
@@ -321,24 +327,45 @@ class NarrativeFeedback:
         """Push insights into learning systems and persist to JSONL.
 
         - ticker_calls + watching → SharedAttention.update_hot_ticker()
-        - causal_claims (confidence > 0.6) → WorldModel.add_discovered_edge()
+        - causal_claims (confidence > 0.6, both domains valid) → WorldModel.add_discovered_edge()
         - All insights → narrative_insights.jsonl
+
+        Narrative-sourced WorldModel edges are rate-limited to _NARRATIVE_EDGE_CAP
+        per call to prevent LLM hallucinations from flooding the causal graph.
         """
         if not insights:
             return
+
+        _narrative_edge_count = 0
 
         for insight in insights:
             try:
                 if insight.insight_type in ("ticker_call", "watching") and insight.ticker:
                     self._push_to_shared_attention(insight)
-                elif insight.insight_type == "causal_claim" and insight.confidence > 0.60:
-                    self._push_to_world_model(insight)
+                elif (
+                    insight.insight_type == "causal_claim"
+                    and insight.confidence > 0.60
+                    and _narrative_edge_count < _NARRATIVE_EDGE_CAP
+                ):
+                    pushed = self._push_to_world_model(insight)
+                    if pushed:
+                        _narrative_edge_count += 1
             except Exception:
                 logger.debug(
                     "NarrativeFeedback feed_back error for insight %s",
                     insight.insight_type,
                     exc_info=True,
                 )
+
+        if _narrative_edge_count > 0:
+            logger.info(
+                "NarrativeFeedback: added %d/%d narrative edge(s) to WorldModel "
+                "(cap=%d, EMA weight=%.0f%%)",
+                _narrative_edge_count,
+                sum(1 for i in insights if i.insight_type == "causal_claim"),
+                _NARRATIVE_EDGE_CAP,
+                _NARRATIVE_EMA_WEIGHT * 100,
+            )
 
         self._persist(insights)
 
@@ -362,8 +389,15 @@ class NarrativeFeedback:
             insight.confidence,
         )
 
-    def _push_to_world_model(self, insight: NarrativeInsight) -> None:
+    def _push_to_world_model(self, insight: NarrativeInsight) -> bool:
         """Parse causal claim text and add a discovered edge to WorldModel.
+
+        Returns True if an edge was written, False if rejected.
+
+        Validation gates (prevent LLM hallucinations entering the causal graph):
+          1. Both cause and effect must be in _VALID_DOMAINS.
+          2. Evidence is always set to "narrative_synthesis" (never "granger").
+          3. EMA weight is _NARRATIVE_EMA_WEIGHT (5%) instead of the default 20%.
 
         Handles patterns like:
           "X leads Y by N days"
@@ -371,51 +405,58 @@ class NarrativeFeedback:
           "when X happens, Y follows"
         """
         if self._wm is None:
-            return
+            return False
 
         text = insight.content
+
+        def _write_edge(cause: str, effect: str, lag: float) -> bool:
+            """Validate and write one edge. Returns True if written."""
+            # Normalise to bare domain name (strip spaces/underscores/common suffixes).
+            cause_key = cause.strip().lower().replace(" ", "_").replace("_domain", "").replace("_signal", "")[:60]
+            effect_key = effect.strip().lower().replace(" ", "_").replace("_domain", "").replace("_signal", "")[:60]
+
+            # Gate: both must be recognised domains.
+            if cause_key not in _VALID_DOMAINS or effect_key not in _VALID_DOMAINS:
+                logger.debug(
+                    "WorldModel narrative edge rejected (unknown domain): %s → %s",
+                    cause_key, effect_key,
+                )
+                return False
+
+            # Use reduced EMA weight so narrative edges update slowly.
+            # add_discovered_edge uses 0.2 for the EMA update; we scale down by
+            # pre-weighting the strength: effective_weight = strength * ratio.
+            weighted_strength = insight.confidence * _NARRATIVE_EMA_WEIGHT / 0.2
+
+            self._wm.add_discovered_edge(
+                cause=cause_key,
+                effect=effect_key,
+                strength=weighted_strength,
+                lag_days=lag,
+                direction="neutral",
+                evidence="narrative_synthesis",
+            )
+            logger.debug(
+                "WorldModel narrative edge: %s → %s (lag=%.1fd, strength=%.3f, ema_weight=%.0f%%)",
+                cause_key, effect_key, lag, weighted_strength, _NARRATIVE_EMA_WEIGHT * 100,
+            )
+            return True
 
         # Try lag-bearing patterns first
         for cpat in _CAUSAL_PATTERNS[:2]:
             m = cpat.search(text)
             if m:
-                cause = m.group(1).strip().lower().replace(" ", "_")
-                effect = m.group(2).strip().lower().replace(" ", "_")
+                cause = m.group(1)
+                effect = m.group(2)
                 lag = float(m.group(3)) if m.lastindex and m.lastindex >= 3 else 5.0
-                # Trim to reasonable domain-level strings
-                cause = cause[:60]
-                effect = effect[:60]
-                self._wm.add_discovered_edge(
-                    cause=cause,
-                    effect=effect,
-                    strength=insight.confidence,
-                    lag_days=lag,
-                    direction="neutral",
-                    evidence="narrative_synthesis",
-                )
-                logger.debug(
-                    "WorldModel edge added: %s → %s (lag=%.1fd, strength=%.2f)",
-                    cause, effect, lag, insight.confidence,
-                )
-                return
+                return _write_edge(cause, effect, lag)
 
         # Fallback: "when X, Y follows" — no lag info, use default 5d
         m = _CAUSAL_PATTERNS[2].search(text)
         if m:
-            cause = m.group(1).strip().lower().replace(" ", "_")[:60]
-            effect = m.group(2).strip().lower().replace(" ", "_")[:60]
-            self._wm.add_discovered_edge(
-                cause=cause,
-                effect=effect,
-                strength=insight.confidence,
-                lag_days=5.0,
-                direction="neutral",
-                evidence="narrative_synthesis",
-            )
-            logger.debug(
-                "WorldModel edge added (no-lag): %s → %s (strength=%.2f)",
-                cause, effect, insight.confidence,
-            )
+            return _write_edge(m.group(1), m.group(2), 5.0)
+
+        return False
 
     # ── Persistence ──────────────────────────────────────────────────────────
 

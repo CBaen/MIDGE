@@ -88,9 +88,22 @@ class SharedAttention:
     # ── Public update methods ─────────────────────────────────────────────────
 
     def update_hot_ticker(
-        self, ticker: str, reason: str, confidence: float, domains: int
+        self,
+        ticker: str,
+        reason: str,
+        confidence: float,
+        domains: int,
+        ttl_hours: float = 24.0,
     ) -> None:
-        """Add or refresh a hot ticker entry."""
+        """Add or refresh a hot ticker entry.
+
+        Args:
+            ttl_hours: How long this entry stays valid. Entries older than
+                       ttl_hours are excluded from get_hot_tickers() queries.
+                       Default is 24 hours — narrative-sourced entries use the
+                       same default; callers can pass shorter values for signals
+                       that expire quickly (e.g. intraday alerts).
+        """
         state = self.read()
         hot = state.setdefault("hot_tickers", {})
         hot[ticker] = {
@@ -98,6 +111,7 @@ class SharedAttention:
             "confidence": round(float(confidence), 4),
             "domains": int(domains),
             "updated": _now_iso(),
+            "ttl_hours": float(ttl_hours),
         }
         self._write(state)
 
@@ -200,13 +214,33 @@ class SharedAttention:
     # ── Query methods ─────────────────────────────────────────────────────────
 
     def get_hot_tickers(self, min_confidence: float = 0.5) -> list[tuple[str, dict]]:
-        """Return list of (ticker, info) for tickers above min_confidence threshold."""
+        """Return list of (ticker, info) for tickers above min_confidence threshold.
+
+        Entries whose TTL has expired are excluded from results. Expired entries
+        are left in the file — a periodic sweep can clean them; excluding here
+        is safe because the file is not mutated on read.
+        """
         state = self.read()
-        return [
-            (ticker, info)
-            for ticker, info in state.get("hot_tickers", {}).items()
-            if info.get("confidence", 0.0) >= min_confidence
-        ]
+        now = datetime.now(timezone.utc)
+        results = []
+        for ticker, info in state.get("hot_tickers", {}).items():
+            if info.get("confidence", 0.0) < min_confidence:
+                continue
+            # TTL check: exclude stale entries.
+            updated_str = info.get("updated", "")
+            ttl_hours = float(info.get("ttl_hours", 24.0))
+            if updated_str:
+                try:
+                    updated_dt = datetime.fromisoformat(updated_str)
+                    if updated_dt.tzinfo is None:
+                        updated_dt = updated_dt.replace(tzinfo=timezone.utc)
+                    age_hours = (now - updated_dt).total_seconds() / 3600.0
+                    if age_hours > ttl_hours:
+                        continue  # expired — skip without mutating file
+                except Exception:
+                    pass  # if timestamp is unparseable, include the entry
+            results.append((ticker, info))
+        return results
 
     def get_stale_processes(self, max_age_seconds: int = 600) -> list[str]:
         """Return process names that haven't sent a heartbeat within max_age_seconds."""
