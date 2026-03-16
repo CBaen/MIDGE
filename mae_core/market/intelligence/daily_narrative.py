@@ -1121,6 +1121,49 @@ def _template_narrative(summary: dict, date_str: str) -> str:
         )
         lines.append("")
 
+    # ── Cross-market anomalies ─────────────────────────────────────
+    cross_market = summary.get("cross_market_anomalies", [])
+    if cross_market:
+        top_cm = cross_market[0]
+        tickers_note = f" ({', '.join(top_cm['tickers'][:4])})" if top_cm.get("tickers") else ""
+        lines.append(
+            f"*Here's something weird across markets: "
+            f"{top_cm.get('description', top_cm.get('type', 'unusual pattern'))}"
+            f"{tickers_note}. When unrelated markets move together like this, something is flowing underneath.*"
+        )
+        lines.append("")
+
+    # ── Crypto Fear & Greed ───────────────────────────────────────
+    fg = summary.get("crypto_fear_greed", {})
+    if fg and fg.get("value") is not None:
+        fg_value = int(fg["value"])
+        fg_class = fg.get("classification", "")
+        fg_trend = fg.get("trend", "")
+        trend_note = f" It's been {fg_trend}." if fg_trend else ""
+        if fg_value <= 25:
+            lines.append(
+                f"*Crypto markets are terrified right now (sentiment score: {fg_value}, {fg_class}).{trend_note} "
+                "Historically this is when smart money quietly buys.*"
+            )
+            lines.append("")
+        elif fg_value >= 75:
+            lines.append(
+                f"*Everyone in crypto is euphoric right now (sentiment score: {fg_value}, {fg_class}).{trend_note} "
+                "This is exactly when corrections tend to hit.*"
+            )
+            lines.append("")
+
+    # ── Alerts sent today (follow-up) ─────────────────────────────
+    today_alerts = summary.get("recent_alerts", [])
+    if today_alerts:
+        tickers_sent = [a["ticker"] for a in today_alerts]
+        lines.append(
+            f"*I sent you {len(today_alerts)} alert(s) today "
+            f"about {', '.join(tickers_sent[:6])}. "
+            "Checking back on those moves.*"
+        )
+        lines.append("")
+
     # ── WHAT CONFIRMED ────────────────────────────────────────────
     lines.append("## WHAT CONFIRMED")
     lines.append("")
