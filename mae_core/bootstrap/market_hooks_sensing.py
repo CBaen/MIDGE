@@ -514,6 +514,26 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
 
             _run_paper_trading_gate(ctx, alerts, step)
 
+            # Record episodes for every convergence alert
+            _em = getattr(ctx, "episodic_memory", None)
+            if _em is not None:
+                for alert in alerts:
+                    try:
+                        from mae_core.market.intelligence.episodic_memory import Episode
+                        _ticker = getattr(alert, "primary_ticker", "") or ""
+                        _em.record_episode(Episode(
+                            episode_id=f"conv_{_ticker}_{step}",
+                            event_type="convergence",
+                            tickers=[_ticker] if _ticker else [],
+                            domains=list(getattr(alert, "domains", {}).keys()) if hasattr(alert, "domains") else [],
+                            direction=getattr(alert, "direction", ""),
+                            confidence=getattr(alert, "confidence", 0.0),
+                            regime=getattr(ctx, "_cached_regime", ("unknown",))[0] if hasattr(ctx, "_cached_regime") else "unknown",
+                            action_taken="alert_generated",
+                        ))
+                    except Exception:
+                        logger.debug("Episodic memory record failed", exc_info=True)
+
         # Every 10 steps: query tiered alerters
         if step % 10 == 0 and ctx._tiered_alerters:
             for tier_name, tier_alerter in ctx._tiered_alerters.items():
