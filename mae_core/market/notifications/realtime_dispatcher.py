@@ -74,46 +74,35 @@ def _fmt_convergence(alert: dict, plain_text: Optional[str], confidence: float) 
     domains   = alert.get("domains_converging", [])
     timing    = alert.get("expected_move_window_days") or alert.get("window_days")
     win_rate  = alert.get("template_win_rate") or alert.get("win_rate")
-    ripples   = alert.get("ripple_effects", [])
     stop_pct  = alert.get("stop_loss_pct")
     domain_list = ", ".join(_domain_plain(d) for d in domains[:5]) if domains else "multiple areas"
 
-    lines: List[str] = []
-
-    # What I see
+    # What I see: prefer first line of pre-computed plain text over generic fallback
+    what = f"{ticker} looks like it's going {_direction_word(direction)}."
     if plain_text:
-        pl_lines = [l for l in plain_text.splitlines()
-                    if l.strip() and not any(l.startswith(s) for s in ("HISTORY","TIMING","ACTION","TRACKING"))]
-        lines.append(f"What I see: {pl_lines[0].strip()}" if pl_lines
-                     else f"What I see: {ticker} looks like it's going {_direction_word(direction)}.")
-    else:
-        lines.append(f"What I see: {ticker} looks like it's going {_direction_word(direction)}.")
-    lines.append("")
+        pl = [l for l in plain_text.splitlines()
+              if l.strip() and not any(l.startswith(s) for s in ("HISTORY","TIMING","ACTION","TRACKING"))]
+        if pl:
+            what = pl[0].strip()
 
-    # Why confident
-    lines.append(f"Why I'm confident: {_confidence_phrase(confidence)} — {domain_list} are all pointing the same way.")
+    lines = [f"What I see: {what}", "",
+             f"Why I'm confident: {_confidence_phrase(confidence)} -- {domain_list} are all pointing the same way."]
     if win_rate and float(win_rate) > 0:
         lines.append(f"When this combination appeared before, it worked {int(round(float(win_rate)*100))}% of the time.")
     if len(domains) >= 5:
         lines.append(f"That's {len(domains)} independent areas of evidence, which is unusually high.")
     lines.append("")
-
-    # What I'd do
     if confidence >= 0.75:
         action = "buying" if direction in ("bullish","up","buy") else "selling"
         lines.append(f"What I'd do: I think you should look at {action} {ticker}.")
-
     if timing:
         lines.append(f"Timing: Based on history, this move typically happens within {int(timing)} days.")
     if stop_pct:
         lines.append(f"Risk: If I'm wrong, the typical loss is about {stop_pct:.1f}%.")
-
-    # Ripple preview
-    watchable_ripples = [r for r in ripples[:2] if isinstance(r, dict)]
-    if watchable_ripples:
-        parts = [f"{r.get('ticker','?')} (~{r.get('lag_days',0):.0f}d later)" for r in watchable_ripples]
+    ripples = [r for r in alert.get("ripple_effects", [])[:2] if isinstance(r, dict)]
+    if ripples:
+        parts = [f"{r.get('ticker','?')} (~{r.get('lag_days',0):.0f}d later)" for r in ripples]
         lines += ["", f"If this plays out: watch for {' and '.join(parts)} to follow."]
-
     lines += ["", "---", "This is what I see, not financial advice. Do your own research."]
     return "\n".join(lines)
 

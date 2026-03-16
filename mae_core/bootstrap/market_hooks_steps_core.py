@@ -36,6 +36,18 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
     # Bug 3 fix: track last evaluated outcome count so forgetting gate can compare.
     _last_evaluated_count = [0]
 
+    # Shared ecosystem whiteboard — lazy singleton so import errors don't break boot
+    _shared_attention = [None]
+
+    def _get_shared_attention():
+        if _shared_attention[0] is None:
+            try:
+                from mae_core.market.ecosystem.shared_attention import SharedAttention
+                _shared_attention[0] = SharedAttention()
+            except Exception:
+                logger.debug("SharedAttention unavailable", exc_info=True)
+        return _shared_attention[0]
+
     def _get_regime():
         """Get current market regime (cached daily, essentially free)."""
         rc = getattr(ctx, "regime_classifier", None)
@@ -119,6 +131,18 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                             _oc.register_convergence_alert(ta, _sym)
                         except Exception:
                             pass
+                    # Whiteboard: advertise hot ticker to other processes
+                    _sa = _get_shared_attention()
+                    if _sa is not None and _sym:
+                        try:
+                            _sa.update_hot_ticker(
+                                ticker=_sym,
+                                reason="convergence_building",
+                                confidence=ta_dict.get("confidence", 0.0),
+                                domains=len(ta_dict.get("domains_converging", [])),
+                            )
+                        except Exception:
+                            logger.debug("SharedAttention hot ticker update failed", exc_info=True)
             except Exception:
                 logger.debug("Per-ticker convergence failed", exc_info=True)
 
@@ -230,6 +254,15 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                     if _shm:
                         _shm.record_error("thompson", exc)
             _write_convergence_heartbeat(ctx, step)
+            # Whiteboard: daemon heartbeat so parallel processes know main loop is alive
+            _sa = _get_shared_attention()
+            if _sa is not None:
+                try:
+                    _rc = getattr(ctx, "regime_classifier", None)
+                    _regime = _rc.classify() if _rc is not None else "unknown"
+                    _sa.heartbeat("daemon", last_step=step, regime=_regime)
+                except Exception:
+                    logger.debug("SharedAttention daemon heartbeat failed", exc_info=True)
 
         # Every 20 steps: OctopusColony coordination + investigation dispatch
         if step % 20 == 0:
