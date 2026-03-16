@@ -655,6 +655,20 @@ def _run_slow_cadence_ops(ctx: SimpleNamespace, step: int, _shm, _timer) -> None
                         "WorldModel: auto-discovered %d edges from Granger",
                         len(g_findings),
                     )
+                # FIX 7b: KnowledgeGraph — persist Granger findings to Neo4j
+                _kg = getattr(ctx, "knowledge_graph", None)
+                if _kg is not None:
+                    try:
+                        for _gf in g_findings:
+                            _kg.store_granger_finding(
+                                cause_domain=_gf.cause_source,
+                                effect_domain=_gf.effect_source,
+                                lag=int(_gf.best_lag),
+                                f_stat=float(getattr(_gf, "f_statistic", 1.0)),
+                                p_value=float(_gf.p_value),
+                            )
+                    except Exception:
+                        logger.debug("KnowledgeGraph Granger write failed", exc_info=True)
             except Exception:
                 logger.debug("Granger causality step failed", exc_info=True)
 
