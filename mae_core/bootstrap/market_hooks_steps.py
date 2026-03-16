@@ -352,6 +352,9 @@ def _ingest_jsonl_bridge(ctx: SimpleNamespace, bridge_name: str) -> None:
                     continue
                 try:
                     sig = json.loads(line)
+                    # Quality gate: skip neutral/low-confidence signals from bridge files
+                    if sig.get("direction", "") == "neutral" and sig.get("confidence", 0) < 0.5:
+                        continue
                     alerter.record_signal(
                         signal_id=sig.get("signal_id", f"{bridge_name}_{injected}"),
                         strength=sig.get("strength", 0.5),

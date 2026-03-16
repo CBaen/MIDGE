@@ -72,6 +72,14 @@ ECOSYSTEM_PROCESSES: List[ProcessSpec] = [
         "restart_delay": 30,
         "critical": False,
     },
+    {
+        "name": "midge-grader",
+        "module": "mae_core.market.parallel.continuous_grader",
+        "args": [],
+        "tier": "analysis",
+        "restart_delay": 15,
+        "critical": True,   # Without grading, Thompson never learns — treat as critical
+    },
 ]
 
 # All valid tier names — used for --only filtering

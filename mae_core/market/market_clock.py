@@ -54,6 +54,16 @@ ALWAYS_AVAILABLE: Set[str] = {
     "economic_calendar",   # Hardcoded calendar, always available
     "eia_energy",          # EIA API serves historical data anytime
     "congress_legislation",  # Congress.gov API serves data anytime
+    "binance_funding",       # Binance funding rates — crypto runs 24/7
+    "crypto_fear_greed",     # Fear & Greed index — always available
+    "kalshi_market",         # Kalshi prediction markets — always available
+    "yahoo_rss",             # Yahoo Finance RSS feeds — always available
+    "fred_yields",           # FRED yield curve data — always available
+    "usda_agriculture",      # USDA agricultural data — always available
+    "news_headlines",        # News headline feeds — always available
+    "edgar_xbrl",            # SEC EDGAR XBRL data — always available
+    "cboe_options",          # CBOE options data — always available
+    "social_text",           # Social text analysis — always available
 }
 
 # Requires CME Globex futures session (Sun 6PM – Fri 5PM ET, daily halt 5–6 PM Mon–Thu)

@@ -35,6 +35,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import logging
 import logging.handlers
@@ -73,6 +74,11 @@ VOLUME_CLUSTER_MIN     = 3     # Minimum tickers needed to call it a cluster
 SILENCE_NORMAL_FLOOR   = 50    # Signals/day below this = silence threshold
 SILENCE_THRESHOLD      = 10    # Signals/day below this = domain silence alert
 MAX_BRIDGE_SIGNALS     = 500   # Safety cap per cycle
+
+# Dedup cache: (content_hash → timestamp) — prevents writing identical bridge signals
+# within a 24-hour window. Cleared of stale entries at each write call.
+_BRIDGE_SIGNAL_SEEN: Dict[str, datetime] = {}
+_BRIDGE_DEDUP_WINDOW_HOURS: float = 24.0
 
 # Domain pairs to correlate (both directions checked)
 DOMAIN_CORRELATION_PAIRS: List[Tuple[str, str]] = [
@@ -693,14 +699,33 @@ def _write_bridge_signals(
         signals = signals[:MAX_BRIDGE_SIGNALS]
         logger.warning("Bridge cap hit — kept top %d signals", MAX_BRIDGE_SIGNALS)
 
+    # Purge stale dedup entries older than the window
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(hours=_BRIDGE_DEDUP_WINDOW_HOURS)
+    stale = [h for h, ts in _BRIDGE_SIGNAL_SEEN.items() if ts < cutoff]
+    for h in stale:
+        del _BRIDGE_SIGNAL_SEEN[h]
+
     written = 0
+    skipped = 0
     try:
         with open(BRIDGE_FILE, "a", encoding="utf-8") as fh:
             for sig in signals:
+                # Content hash: discovery_type + sorted tickers + direction
+                _raw = sig.get("metadata", {}).get("discovery_type", "") \
+                    + str(sorted(sig.get("metadata", {}).get("affected_tickers", []))) \
+                    + sig.get("direction", "")
+                _content_hash = hashlib.sha256(_raw.encode()).hexdigest()[:16]
+                if _content_hash in _BRIDGE_SIGNAL_SEEN:
+                    skipped += 1
+                    continue
+                _BRIDGE_SIGNAL_SEEN[_content_hash] = now
                 fh.write(json.dumps(sig, default=str) + "\n")
                 written += 1
     except OSError as exc:
         logger.error("Failed to write bridge signals: %s", exc)
+    if skipped:
+        logger.debug("Bridge dedup: skipped %d duplicate signals", skipped)
     return written
 
 
