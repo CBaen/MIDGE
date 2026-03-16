@@ -843,8 +843,21 @@ def _domain_plain(domains: list[str]) -> str:
     return ", ".join(translated) if translated else "multiple sources"
 
 
+def _regime_plain(regime: str) -> str:
+    """Translate regime codes to plain English."""
+    return {
+        "bull": "bullish (things are generally rising)",
+        "bear": "bearish (things are generally falling)",
+        "volatile": "volatile (big swings, hard to read)",
+        "sideways": "sideways (not much happening)",
+    }.get(regime.lower() if regime else "", regime or "unclear")
+
+
 def _build_llm_prompt(summary: dict) -> str:
     """Build the plain-English data context to hand to the LLM.
+
+    Data is presented in the LAYERED ORDER the letter should follow:
+    Big picture → Crypto → Commodities/Futures → Stocks → Learned/Wrong.
 
     All technical terms are translated here so the LLM never sees jargon
     it might echo back. The LLM's job is ONLY to write the letter in MIDGE's
@@ -853,32 +866,313 @@ def _build_llm_prompt(summary: dict) -> str:
     lines = [
         f"Today is {summary['date']}. Here is everything I know right now.",
         "Write the daily letter using this data. Follow all style rules exactly.",
+        "CRITICAL: Follow the LAYERED structure — big picture FIRST, specific stock tickers LAST.",
+        "You are NOT a stock screener. You watch everything — stocks, crypto, commodities, futures, macro.",
         "",
     ]
 
-    # ── LEAD: Granger causal discoveries (the "weird" thing) ──────────
-    # These go FIRST in the prompt so the LLM treats them as the most
-    # important input and leads the letter with them.
+    # ══════════════════════════════════════════════════════════════════
+    # LAYER 1: THE BIG PICTURE
+    # ══════════════════════════════════════════════════════════════════
+    lines.append("━━━ LAYER 1: THE BIG PICTURE ━━━")
+    lines.append("(Use this data for the ## THE BIG PICTURE section)")
+    lines.append("")
+
+    # Regime
+    regime = summary.get("regime", "unknown")
+    regime_plain = _regime_plain(regime)
+    lines.append(f"CURRENT MARKET REGIME: {regime_plain}.")
+
+    # Macro alignment
+    macro_align = summary.get("macro_alignment", {})
+    if macro_align:
+        dominant = macro_align.get("dominant", "mixed")
+        bull_c = macro_align.get("bullish_count", 0)
+        bear_c = macro_align.get("bearish_count", 0)
+        divergent = macro_align.get("divergent", False)
+        align_note = "diverging in different directions" if divergent else f"mostly pointing {dominant}"
+        lines.append(
+            f"MACRO SIGNALS: {bull_c} signals pointing up, {bear_c} pointing down — {align_note}."
+        )
+
+    # Key macro indicators
+    macro_indicators = summary.get("macro_indicators", [])
+    _MACRO_PLAIN = {
+        "T10Y2Y": "the gap between 10-year and 2-year US government bond yields",
+        "T10Y3M": "the gap between 10-year and 3-month US bond yields (recession signal)",
+        "T5YIE": "what the market expects inflation to be over the next 5 years",
+        "DGS2": "2-year US government bond interest rate",
+        "DGS10": "10-year US government bond interest rate",
+        "DFF": "the US Federal Reserve's overnight interest rate",
+        "VIXCLS": "the stock market's fear gauge (VIX)",
+    }
+    if macro_indicators:
+        lines.append("KEY ECONOMIC READINGS:")
+        for ind in macro_indicators[:4]:
+            plain_name = _MACRO_PLAIN.get(ind["series_id"], ind.get("name", ind["series_id"]))
+            value = ind.get("value")
+            direction = ind.get("direction", "neutral")
+            value_note = f" Currently at {value:.2f}." if value is not None else ""
+            lines.append(f"  - {plain_name}: pointing {direction}.{value_note}")
+
+    lines.append(
+        "  INSTRUCTION for Big Picture: Lead with what the regime means in plain English. "
+        "Are macro signals agreeing with the regime or fighting it? "
+        "Example: 'We're in a bear market right now — and most of my economic signals agree. "
+        "Bond yields are behaving like investors are worried.' "
+        "Keep this section 2-4 bullets. Don't go into individual stocks yet."
+    )
+
+    lines.append("")
+
+    # Cross-market anomalies (belongs in Big Picture)
+    cross_market = summary.get("cross_market_anomalies", [])
+    if cross_market:
+        lines.append("CROSS-MARKET ANOMALIES (weird things happening across unrelated markets):")
+        for cm in cross_market[:3]:
+            tickers_note = f" Tickers involved: {', '.join(cm['tickers'][:4])}." if cm.get("tickers") else ""
+            domains_note = f" Areas: {_domain_plain(cm.get('domains', []))}." if cm.get("domains") else ""
+            lines.append(f"  - {cm.get('description', cm.get('type', 'unknown'))}.{tickers_note}{domains_note}")
+        lines.append(
+            "  INSTRUCTION: If anything here is genuinely weird (unrelated markets moving together), "
+            "add it to the Big Picture section. Example: 'Three completely unrelated sectors all moved "
+            "the same direction on the same day — energy, tech defense. Something is flowing underneath.' "
+            "This is the kind of thing Guiding Light loves most."
+        )
+    else:
+        lines.append("CROSS-MARKET ANOMALIES: Nothing unusual across unrelated markets today.")
+
+    lines.append("")
+
+    # ── Granger causal discoveries (also Big Picture level) ────────
     granger = summary.get("granger", [])
     if granger:
-        lines.append("STRANGE CAUSAL DISCOVERIES (LEAD WITH THESE — most interesting to Guiding Light):")
+        lines.append("STRANGE CAUSAL DISCOVERIES (put the best one in Big Picture as the hook):")
         for g in granger[:3]:
             lines.append(f"  - {g['story']}")
         lines.append(
-            "  INSTRUCTION: These are the weirdest things I've found. "
-            "The first thing in the letter body should reference the most surprising one "
-            "in plain English. Example: 'Here's something strange I noticed: when [X] happens, "
-            "[Y] tends to follow about [N] days later. Like clockwork.'"
+            "  INSTRUCTION: The single weirdest Granger finding should be the 1-sentence hook "
+            "at the very top of the letter — before any sections. "
+            "Example: 'Here's something strange I noticed: when energy inventory data changes, "
+            "defense stocks tend to follow about 3 days later.' "
+            "Plain English only — translate domain names."
         )
     else:
         lines.append("CAUSAL DISCOVERIES: None new to report.")
 
     lines.append("")
 
-    # ── Developing situations ──────────────────────────────────────
+    # Energy (also Big Picture)
+    energy_readings = summary.get("energy_readings", [])
+    if energy_readings:
+        lines.append("ENERGY PICTURE (oil/gas/production data):")
+        _ENERGY_PLAIN = {
+            "crude_production": "US crude oil production",
+            "crude_inventory": "US crude oil stockpiles",
+            "gasoline_inventory": "US gasoline stockpiles",
+            "natural_gas_storage": "US natural gas storage",
+            "crude_imports": "US crude oil imports",
+        }
+        for er in energy_readings:
+            plain_name = _ENERGY_PLAIN.get(er["series_key"], er.get("name", er["series_key"]))
+            change = er.get("change_pct")
+            change_note = f" (changed {change:+.1f}%)" if change is not None else ""
+            direction = er.get("direction", "neutral")
+            tickers = er.get("affected_tickers", [])
+            ticker_note = f" Affects: {', '.join(tickers)}." if tickers else ""
+            lines.append(f"  - {plain_name}: {direction}.{change_note}{ticker_note}")
+        lines.append(
+            "  INSTRUCTION: Mention the energy picture in the Big Picture section only if "
+            "something is genuinely notable — a big inventory surprise or a sharp production shift. "
+            "Don't list all readings — pick the one that changes the story."
+        )
+    else:
+        lines.append("ENERGY PICTURE: No EIA data available today.")
+
+    lines.append("")
+
+    # ══════════════════════════════════════════════════════════════════
+    # LAYER 2: CRYPTO
+    # ══════════════════════════════════════════════════════════════════
+    lines.append("━━━ LAYER 2: CRYPTO ━━━")
+    lines.append("(Use this data for the ## CRYPTO section — always include this section)")
+    lines.append("")
+
+    # Fear & Greed
+    fg = summary.get("crypto_fear_greed", {})
+    if fg and fg.get("value") is not None:
+        fg_value = int(fg["value"])
+        fg_class = fg.get("classification", "")
+        fg_trend = fg.get("trend", "")
+        trend_note = f" It's been {fg_trend}." if fg_trend else ""
+        lines.append(
+            f"CRYPTO FEAR/GREED: Score is {fg_value} out of 100 ({fg_class}).{trend_note}"
+        )
+        if fg_value <= 25:
+            lines.append(
+                "  INSTRUCTION: Extreme fear. Contrarian note: "
+                "'Crypto is terrified right now — which historically is when the quiet buyers step in.' "
+                "Calm observer tone, not alarmist."
+            )
+        elif fg_value >= 75:
+            lines.append(
+                "  INSTRUCTION: Extreme greed. Contrarian note: "
+                "'Everyone in crypto is euphoric — which is exactly when corrections tend to hit.' "
+                "Don't be preachy — just note the historical pattern."
+            )
+        else:
+            lines.append(
+                "  INSTRUCTION: Neutral zone. Mention it briefly as context, don't dwell on it."
+            )
+    else:
+        lines.append("CRYPTO FEAR/GREED: No data available.")
+
+    lines.append("")
+
+    # Major coin prices and movements
+    crypto_coins = summary.get("crypto_coins", [])
+    if crypto_coins:
+        lines.append("MAJOR CRYPTO COINS RIGHT NOW:")
+        for coin in crypto_coins:
+            sym = coin["symbol"]
+            price = coin.get("price_usd")
+            ch24 = coin.get("change_24h_pct")
+            ch7d = coin.get("change_7d_pct")
+            price_note = f" Price: ${price:,.0f}." if price is not None else ""
+            ch24_note = f" 24h: {ch24:+.1f}%." if ch24 is not None else ""
+            ch7d_note = f" 7 days: {ch7d:+.1f}%." if ch7d is not None else ""
+            lines.append(f"  - {sym}:{price_note}{ch24_note}{ch7d_note}")
+        # Are coins moving together or diverging?
+        directions = [c.get("direction", "neutral") for c in crypto_coins]
+        all_same = len(set(directions)) == 1
+        lines.append(
+            f"  All major coins are {'moving in the same direction' if all_same else 'moving in different directions'} today."
+        )
+        lines.append(
+            "  INSTRUCTION: For the Crypto section, note whether the whole crypto market is "
+            "moving together (all going up or all going down) or diverging (some up, some down). "
+            "If BTC is up but altcoins are down, that's a specific and interesting signal — "
+            "say 'Bitcoin is climbing but the smaller coins aren't following.' "
+            "Don't list every coin — just tell the story of what crypto is doing as a whole."
+        )
+    else:
+        lines.append("CRYPTO COINS: No coin data available.")
+
+    lines.append("")
+
+    # ══════════════════════════════════════════════════════════════════
+    # LAYER 3: COMMODITIES & FUTURES
+    # ══════════════════════════════════════════════════════════════════
+    lines.append("━━━ LAYER 3: COMMODITIES & FUTURES ━━━")
+    lines.append("(Use this data for the ## COMMODITIES & FUTURES section — skip if flat)")
+    lines.append("")
+
+    futures_activity = summary.get("futures_activity", [])
+    cot = summary.get("cot_positioning", {})
+
+    if futures_activity:
+        lines.append("FUTURES AND FOREX ACTIVITY (only instruments with meaningful signals):")
+        for fut in futures_activity:
+            direction_plain = _direction_words(fut["dominant_direction"])
+            domains_plain = _domain_plain(fut["domains"])
+            lines.append(
+                f"  - {fut['friendly_name']} ({fut['symbol']}): "
+                f"signals pointing {direction_plain}. "
+                f"Sources: {domains_plain}. ({fut['signal_count']} signals)"
+            )
+        lines.append(
+            "  INSTRUCTION: For the Commodities & Futures section, focus on what's interesting "
+            "about the big-ticket instruments — gold, oil, index futures. "
+            "Example: 'Gold and oil are moving in opposite directions today, which is unusual — "
+            "they normally track each other when fear is high.' "
+            "If nothing is notable, say 'Futures are quiet today' and keep it one line."
+        )
+    else:
+        lines.append("FUTURES/FOREX: No meaningful futures activity to report (below signal threshold).")
+
+    if cot and cot.get("dominant"):
+        dominant_cot = cot["dominant"]
+        bull_c = cot.get("bullish_count", 0)
+        bear_c = cot.get("bearish_count", 0)
+        lines.append(
+            f"LARGE TRADER POSITIONING: The big professional traders are positioned "
+            f"{dominant_cot} overall ({bull_c} bullish signals vs {bear_c} bearish)."
+        )
+        lines.append(
+            "  INSTRUCTION: If COT data is notable (strongly one-directional), mention it: "
+            "'The big professional traders are heavily positioned [direction] right now — "
+            "which is either a smart bet or a crowded trade that could snap back.' "
+            "Skip if mixed or flat."
+        )
+    else:
+        lines.append("LARGE TRADER POSITIONING: No strong positioning signal today.")
+
+    lines.append("")
+
+    # ══════════════════════════════════════════════════════════════════
+    # LAYER 4: STOCKS — THE INTERESTING ONES
+    # ══════════════════════════════════════════════════════════════════
+    lines.append("━━━ LAYER 4: STOCKS — THE INTERESTING ONES ━━━")
+    lines.append("(Use this data for the ## STOCKS — THE INTERESTING ONES section)")
+    lines.append("CRITICAL: Don't lead with ticker symbols. Lead with WHAT IS INTERESTING about them.")
+    lines.append("")
+
+    # Paper trades
+    n_trades = summary.get("paper_trades_today", 0)
+    top_trade = summary.get("top_trade")
+    if n_trades > 0 and top_trade:
+        direction_plain = _direction_words(top_trade["direction"])
+        confidence_plain = _confidence_words(top_trade["confidence"])
+        lines.append(
+            f"PAPER TRADES PLACED TODAY: {n_trades} trade(s). "
+            f"Strongest: {top_trade['asset']} ({direction_plain}, I am {confidence_plain})."
+        )
+        lines.append(
+            "  INSTRUCTION: Include a '## WHAT I THINK YOU SHOULD LOOK AT' section after stocks. "
+            "Say 'I placed a paper trade on [TICKER]' in bold. Explain why in one plain sentence. "
+            "State the market (US stock, futures, crypto, etc). Give timing and risk estimates."
+        )
+    else:
+        lines.append("PAPER TRADES TODAY: None placed.")
+
+    lines.append("")
+
+    # Inevitabilities (stock convergence)
+    inevitabilities = summary.get("inevitabilities", [])
+    if inevitabilities:
+        lines.append("SITUATIONS I THINK ARE MOST INEVITABLE (stocks/instruments with converging signals):")
+        for inv in inevitabilities:
+            direction_plain = _direction_words(inv["direction"])
+            sources_plain = _domain_plain(inv["domains"])
+            window = inv.get("expected_window_days")
+            chain_raw = inv.get("world_model_chain", "")
+            chain_note = ""
+            if chain_raw and chain_raw != "None":
+                _chain_clean = chain_raw.strip("[]").replace("'", "")
+                chain_note = f" Causal chain: {_chain_clean}"
+            window_note = f" Expected timing: within {window} days." if window else ""
+            lines.append(
+                f"  - {inv['ticker']}: {direction_plain}. "
+                f"Evidence from: {sources_plain}.{window_note}{chain_note}"
+            )
+        lines.append(
+            "  INSTRUCTION: Lead with the WEIRDEST convergence, not the highest confidence. "
+            "Tell the story of WHY it's interesting. "
+            "Example: 'Here's what's strange about [TICKER]: three completely unrelated signals "
+            "all arrived at the same conclusion — insider buying reports, economic data, AND "
+            "government contract data. That combination is unusual.' "
+            "If a causal chain exists, mention it: 'What's interesting is this connects through "
+            "[X] all the way to [Y].' Max 3 stocks. Skip tickers that are just technical signals."
+        )
+    else:
+        lines.append("INEVITABLE SITUATIONS: Nothing stands out strongly in stocks today.")
+
+    lines.append("")
+
+    # Developing situations
     devs = summary.get("developing", [])
     if devs:
-        lines.append("DEVELOPING SITUATIONS (what I'm actively watching):")
+        lines.append("DEVELOPING STOCK SITUATIONS (what I'm actively watching):")
         for d in devs:
             direction_plain = _direction_words(d["direction"])
             confidence_plain = _confidence_words(d["confidence"])
@@ -893,130 +1187,15 @@ def _build_llm_prompt(summary: dict) -> str:
                 f"Evidence comes from: {sources_plain}."
             )
     else:
-        lines.append("DEVELOPING SITUATIONS: None with strong evidence right now.")
+        lines.append("DEVELOPING STOCK SITUATIONS: None with strong evidence right now.")
 
     lines.append("")
 
-    # ── Recent convergence alerts ──────────────────────────────────
-    alerts = summary.get("recent_alerts", [])
-    if alerts:
-        lines.append("SIGNALS THAT FIRED IN THE LAST 24 HOURS:")
-        for a in alerts:
-            direction_plain = _direction_words(a["direction"])
-            confidence_plain = _confidence_words(a["confidence"])
-            lines.append(f"  - {a['ticker']}: {direction_plain}. I am {confidence_plain}.")
-    else:
-        lines.append("SIGNALS LAST 24H: None.")
-
-    lines.append("")
-
-    # ── Paper trades ────────────────────────────────────────────────
-    n_trades = summary.get("paper_trades_today", 0)
-    top_trade = summary.get("top_trade")
-    if n_trades > 0 and top_trade:
-        direction_plain = _direction_words(top_trade["direction"])
-        confidence_plain = _confidence_words(top_trade["confidence"])
-        lines.append(
-            f"PAPER TRADES PLACED TODAY: {n_trades} trade(s). "
-            f"Strongest: {top_trade['asset']} ({direction_plain}, I am {confidence_plain})."
-        )
-        lines.append(
-            "  INSTRUCTION: Include a 'WHAT I THINK YOU SHOULD LOOK AT' section. "
-            "Say 'I placed a paper trade on [TICKER]' in bold. Explain why in one plain sentence. "
-            "State the market (US stock, futures, crypto, etc). Give timing and risk estimates."
-        )
-    else:
-        lines.append("PAPER TRADES TODAY: None placed.")
-
-    lines.append("")
-
-    # ── DeepAnalyst inevitabilities ────────────────────────────────
-    inevitabilities = summary.get("inevitabilities", [])
-    if inevitabilities:
-        lines.append("SITUATIONS I THINK ARE MOST INEVITABLE RIGHT NOW (ranked by structural convergence):")
-        for inv in inevitabilities:
-            direction_plain = _direction_words(inv["direction"])
-            sources_plain = _domain_plain(inv["domains"])
-            window = inv.get("expected_window_days")
-            chain_raw = inv.get("world_model_chain", "")
-            chain_note = ""
-            if chain_raw and chain_raw != "None":
-                # Strip list brackets and quote chars for readability
-                _chain_clean = chain_raw.strip("[]").replace("'", "")
-                chain_note = f" Causal chain: {_chain_clean}"
-            window_note = f" Expected timing: within {window} days." if window else ""
-            lines.append(
-                f"  - {inv['ticker']}: {direction_plain}. "
-                f"Evidence from: {sources_plain}.{window_note}{chain_note}"
-            )
-        lines.append(
-            "  INSTRUCTION: These are the situations where multiple independent forces "
-            "converge toward the same outcome. Use plain English. "
-            "Example: 'NVDA has insider buying, company news, and price patterns all pointing up "
-            "— three separate sources arriving at the same conclusion.' "
-            "If a causal chain exists, mention it conversationally: "
-            "'What's interesting: this connects through [X] all the way to [Y].'"
-        )
-    else:
-        lines.append("MOST INEVITABLE SITUATIONS: Nothing stands out strongly today.")
-
-    lines.append("")
-
-    # ── Developing situations (OctopusColony partial convergences) ──
-    dev_sits = summary.get("developing_situations", [])
-    if dev_sits:
-        lines.append("SITUATIONS I'M INVESTIGATING (not ready yet — something is building):")
-        for s in dev_sits:
-            domains_seen_plain = _domain_plain(s["domains_seen"])
-            missing_plain = _domain_plain(s["missing_domains"]) if s.get("missing_domains") else ""
-            direction_plain = _direction_words(s["direction"])
-            missing_note = f" Missing confirmation from: {missing_plain}." if missing_plain else ""
-            inv_notes = s.get("investigation_results", [])
-            inv_note = ""
-            if inv_notes:
-                inv_note = f" Investigation hint: {str(inv_notes[0])[:100]}."
-            lines.append(
-                f"  - {s['ticker']}: {direction_plain}. "
-                f"Evidence so far: {domains_seen_plain}.{missing_note}{inv_note}"
-            )
-        lines.append(
-            "  INSTRUCTION: These are situations where I've seen 2 of 3 required signals — "
-            "not enough to be sure yet. Use language like 'I'm watching' or "
-            "'something is starting to form' — not definitive."
-        )
-    else:
-        lines.append("DEVELOPING INVESTIGATIONS: Nothing partial in progress right now.")
-
-    lines.append("")
-
-    # ── Active hypotheses ──────────────────────────────────────────
-    active_hyps = summary.get("active_hypotheses", [])
-    if active_hyps:
-        lines.append("THEORIES I'M ACTIVELY TESTING (market hypotheses I track):")
-        for h in active_hyps:
-            wr = h.get("win_rate_pct")
-            wr_note = f" So far: {wr}% of the time it works ({h['observations']} checks)." if wr is not None else ""
-            story = h.get("causal_story", "")[:150]
-            lines.append(
-                f"  - {h['name']}: {story}{wr_note}"
-            )
-        lines.append(
-            "  INSTRUCTION: These are testable theories MIDGE is watching. "
-            "Translate the theory name into plain language. "
-            "Example: 'I have a theory: when crude oil futures get swept at session lows, "
-            "they often bounce. I've tested this 44 times. It works 52% of the time.' "
-            "Do NOT repeat technical names like 'CL=F' or 'DSR'."
-        )
-    else:
-        lines.append("ACTIVE THEORIES: No hypotheses with enough data yet.")
-
-    lines.append("")
-
-    # ── Cascade status (causal chains unfolding) ───────────────────
+    # Cascade chains (unfolding domino effects)
     cascade = summary.get("cascade_status", {})
     notable_chains = cascade.get("notable_chains", [])
     if notable_chains:
-        lines.append("CAUSAL CHAINS CURRENTLY UNFOLDING (domino effects in progress):")
+        lines.append("CAUSAL CHAINS UNFOLDING (domino effects in progress — goes in the Stocks section):")
         for ch in notable_chains:
             confirmed = ch.get("confirmed_count", 0)
             total = ch.get("total_links", 0)
@@ -1038,106 +1217,71 @@ def _build_llm_prompt(summary: dict) -> str:
                 f"{confirmed} of {total} dominoes confirmed.{confirmed_note}{next_note}{energy_note}"
             )
         lines.append(
-            "  INSTRUCTION: These are multi-step causal chains MIDGE predicted. "
-            "The dramatic framing is: 'I predicted A would trigger B would trigger C. "
-            "A happened. B just happened. Now I'm watching for C.' "
-            "Use domino/chain language. If energy ratio > 1, say the chain is accelerating."
+            "  INSTRUCTION: Domino chains are the most dramatic thing MIDGE can report in stocks. "
+            "Use: 'I predicted A would trigger B would trigger C. A happened. B just happened. "
+            "Now I'm watching for C.' If energy ratio > 1, say 'the chain is accelerating.'"
         )
     elif cascade.get("active_chains", 0) > 0:
         lines.append(
             f"CAUSAL CHAINS: {cascade['active_chains']} active chains tracking — "
             "none have confirmed dominoes yet."
         )
-    else:
-        lines.append("CAUSAL CHAINS: No active chains tracking right now.")
 
     lines.append("")
 
-    # ── Somatic anticipation (pre-convergence building) ────────────
+    # Developing investigations (partial convergences)
+    dev_sits = summary.get("developing_situations", [])
+    if dev_sits:
+        lines.append("STOCK SITUATIONS I'M STILL INVESTIGATING (not ready yet):")
+        for s in dev_sits[:3]:
+            domains_seen_plain = _domain_plain(s["domains_seen"])
+            missing_plain = _domain_plain(s["missing_domains"]) if s.get("missing_domains") else ""
+            direction_plain = _direction_words(s["direction"])
+            missing_note = f" Missing: {missing_plain}." if missing_plain else ""
+            lines.append(
+                f"  - {s['ticker']}: {direction_plain}. "
+                f"Evidence so far: {domains_seen_plain}.{missing_note}"
+            )
+        lines.append(
+            "  INSTRUCTION: These are 'something is starting to form' situations. "
+            "Only mention 1-2 in the Stocks section if they're genuinely interesting. "
+            "Use 'I'm watching' or 'I noticed something early' language."
+        )
+
+    lines.append("")
+
+    # Somatic building (pre-convergence)
     somatic = summary.get("somatic_building", [])
-    if somatic:
-        lines.append("WHERE MY ATTENTION IS BUILDING (signals accumulating, not yet enough for a call):")
-        for s in somatic:
-            domain_plain = _domain_plain(s["domains"])
-            direction_plain = _direction_words(s["dominant_direction"])
-            lines.append(
-                f"  - {s['ticker']}: {s['domain_count']} information sources pointing "
-                f"{direction_plain}. Sources: {domain_plain}. ({s['signal_count']} signals so far.)"
-            )
+    # Filter to stocks only (exclude crypto and futures symbols)
+    _crypto_syms = {"BTC", "ETH", "SOL", "XRP", "ADA", "BNB", "DOGE", "AVAX"}
+    _futures_syms = {"GC=F", "CL=F", "NQ=F", "ES=F", "EURUSD=X", "GBPUSD=X", "USDJPY=X"}
+    somatic_stocks = [
+        s for s in somatic
+        if s["ticker"] not in _crypto_syms and s["ticker"] not in _futures_syms
+    ]
+    if somatic_stocks:
+        top_s = somatic_stocks[0]
+        direction_plain = _direction_words(top_s["dominant_direction"])
+        domain_plain_txt = _domain_plain(top_s["domains"])
         lines.append(
-            "  INSTRUCTION: These are tickers where signals are piling up but haven't reached "
-            "the threshold for a formal call. Use language like 'I'm sensing something', "
-            "'my attention keeps going back to', 'not ready to say anything definitive but'. "
-            "Pick the 1-2 most interesting ones — don't list all of them."
+            f"BUILDING SIGNALS (not a call yet): {top_s['ticker']} has "
+            f"{top_s['domain_count']} information sources pointing {direction_plain} "
+            f"({domain_plain_txt}). {top_s['signal_count']} signals accumulated."
         )
-    else:
-        lines.append("PRE-CONVERGENCE SENSING: Nothing accumulating strongly right now.")
+        lines.append(
+            "  INSTRUCTION: Only use this if the ticker is genuinely interesting. "
+            "Use 'my attention keeps coming back to' or 'something is forming but I'm not ready to call it yet.' "
+            "Do NOT list all of them — just the most interesting one."
+        )
 
     lines.append("")
 
-    # ── Cross-market anomalies ─────────────────────────────────────
-    cross_market = summary.get("cross_market_anomalies", [])
-    if cross_market:
-        lines.append("CROSS-MARKET ANOMALIES (weird things happening across unrelated markets):")
-        for cm in cross_market[:3]:
-            tickers_note = f" Tickers involved: {', '.join(cm['tickers'][:4])}." if cm.get("tickers") else ""
-            domains_note = f" Areas: {_domain_plain(cm.get('domains', []))}." if cm.get("domains") else ""
-            lines.append(f"  - {cm.get('description', cm.get('type', 'unknown'))}.{tickers_note}{domains_note}")
-        lines.append(
-            "  INSTRUCTION: If there are any cross-market anomalies, mention the most interesting one. "
-            "Lead with what's weird about it. "
-            "Example: 'Three completely unrelated stocks all spiked in volume on the same day — "
-            "TPL (energy), DASH (tech), GD (defense). When unrelated sectors move together, "
-            "something is flowing underneath that I can't see yet.' "
-            "Don't list all of them — pick the one with the strangest combination."
-        )
-    else:
-        lines.append("CROSS-MARKET ANOMALIES: Nothing unusual across markets today.")
-
-    lines.append("")
-
-    # ── Crypto Fear & Greed ───────────────────────────────────────
-    fg = summary.get("crypto_fear_greed", {})
-    if fg and fg.get("value") is not None:
-        fg_value = int(fg["value"])
-        fg_class = fg.get("classification", "")
-        fg_direction = fg.get("direction", "")
-        fg_trend = fg.get("trend", "")
-        trend_note = f" It's been {fg_trend}." if fg_trend else ""
-        lines.append(
-            f"CRYPTO SENTIMENT RIGHT NOW: The crypto fear/greed index is at {fg_value} ({fg_class}). "
-            f"The market mood is {fg_direction}.{trend_note}"
-        )
-        if fg_value <= 25:
-            lines.append(
-                "  INSTRUCTION: This is extreme fear territory. Use contrarian language: "
-                "'Crypto markets are terrified right now — which historically is when smart money "
-                "is quietly buying while everyone else panics.' "
-                "Don't be alarmist — be the calm observer who sees the pattern."
-            )
-        elif fg_value >= 75:
-            lines.append(
-                "  INSTRUCTION: This is extreme greed territory. Use contrarian language: "
-                "'Everyone in crypto is euphoric right now — which is exactly when corrections tend to hit. "
-                "The crowd is never right at the extremes.' "
-                "Don't be preachy — just note the pattern calmly."
-            )
-        else:
-            lines.append(
-                "  INSTRUCTION: Crypto sentiment is in the neutral zone — "
-                "only mention it if it adds context to another signal."
-            )
-    else:
-        lines.append("CRYPTO SENTIMENT: No fear/greed data available today.")
-
-    lines.append("")
-
-    # ── Alerts sent today (with follow-up framing) ────────────────
+    # Recent alerts follow-up
     today_alerts = summary.get("recent_alerts", [])
     if today_alerts:
         tickers_sent = [a["ticker"] for a in today_alerts]
         lines.append(
-            f"ALERTS I SENT YOU TODAY ({len(today_alerts)} alert(s) about "
+            f"ALERTS I SENT TODAY ({len(today_alerts)} alert(s) about "
             f"{', '.join(tickers_sent[:6])}):"
         )
         for a in today_alerts:
@@ -1145,18 +1289,16 @@ def _build_llm_prompt(summary: dict) -> str:
             confidence_plain = _confidence_words(a["confidence"])
             lines.append(f"  - {a['ticker']}: I said it {direction_plain}. I was {confidence_plain}.")
         lines.append(
-            "  INSTRUCTION: Tell Guiding Light how many alerts you sent and which tickers. "
-            "Then briefly say what happened since — did the move start? Is it still forming? "
-            "Did anything contradict the call? "
-            "Use language like: 'I sent you [N] alerts today about [tickers]. Here's what happened since I sent them.' "
-            "If outcomes data is available for any of these tickers, cross-reference it here."
+            "  INSTRUCTION: If you sent alerts today, put a brief follow-up in the Stocks section. "
+            "'I sent you [N] alerts today. Here's what happened since.' "
+            "Cross-reference with outcomes data if available."
         )
     else:
-        lines.append("ALERTS SENT TODAY: No alerts fired today.")
+        lines.append("ALERTS SENT TODAY: None.")
 
     lines.append("")
 
-    # ── Outcomes (recent graded predictions) ─────────────────────
+    # Outcomes
     oc = summary.get("outcomes", {})
     total = oc.get("total", 0)
     wins = oc.get("wins", 0)
@@ -1168,74 +1310,92 @@ def _build_llm_prompt(summary: dict) -> str:
         )
         if oc.get("win_examples"):
             lines.append(
-                "  What moved the right way: "
+                "  Right: "
                 + ", ".join(f"{e['symbol']} moved {e['pct']}%" for e in oc["win_examples"])
             )
         if oc.get("loss_examples"):
             lines.append(
-                "  What I got wrong: "
+                "  Wrong: "
                 + ", ".join(f"{e['symbol']} moved {e['pct']}%" for e in oc["loss_examples"])
             )
     else:
-        lines.append("RECENT PREDICTION RESULTS: No predictions have been graded yet this week.")
+        lines.append("RECENT PREDICTION RESULTS: Nothing graded yet this week.")
 
     lines.append("")
 
-    # ── Post-mortem learning ───────────────────────────────────────
+    # ══════════════════════════════════════════════════════════════════
+    # LAYER 5: WHAT I LEARNED / WHAT I GOT WRONG
+    # ══════════════════════════════════════════════════════════════════
+    lines.append("━━━ LAYER 5: WHAT I LEARNED / WHAT I GOT WRONG ━━━")
+    lines.append("")
+
+    # Post-mortem learning
     pm = summary.get("postmortem", {})
     if pm and pm.get("total_graded", 0) > 0:
         pm_wr = pm.get("overall_win_rate_pct", "?")
         pm_grade = pm.get("grade", "")
         lines.append(
-            f"OVERALL TRACK RECORD: {pm_wr} of predictions have been correct "
-            f"({pm.get('total_graded', 0)} total checked so far, grade: {pm_grade})."
+            f"OVERALL TRACK RECORD: {pm_wr} of predictions correct "
+            f"({pm.get('total_graded', 0)} total checked, grade: {pm_grade})."
         )
         if pm.get("best_combos"):
-            # Translate combo keys into plain language note
             lines.append(
-                f"  Signal combinations that work best: "
-                f"{'; '.join(pm['best_combos'][:2])}"
+                f"  Best signal combinations: {'; '.join(pm['best_combos'][:2])}"
             )
             lines.append(
-                "  INSTRUCTION: Do NOT repeat the combo keys verbatim. "
-                "Describe them in plain language, e.g. 'when company news, economic data, and "
-                "price patterns all agree' — not the raw source names."
+                "  INSTRUCTION: Translate combo keys to plain language. "
+                "'When company news, economic data, and price patterns all agree' — "
+                "not the raw source names."
             )
         if pm.get("timing_insight"):
-            lines.append(f"  Timing observation: {pm['timing_insight']}")
+            lines.append(f"  Timing note: {pm['timing_insight']}")
     else:
         lines.append("OVERALL TRACK RECORD: Not enough graded data yet.")
 
     lines.append("")
 
-    # ── Source reliability ─────────────────────────────────────────
+    # Active hypotheses
+    active_hyps = summary.get("active_hypotheses", [])
+    if active_hyps:
+        lines.append("THEORIES I'M TESTING:")
+        for h in active_hyps[:3]:
+            wr = h.get("win_rate_pct")
+            wr_note = f" Works {wr}% of the time ({h['observations']} checks)." if wr is not None else ""
+            story = h.get("causal_story", "")[:150]
+            lines.append(f"  - {h['name']}: {story}{wr_note}")
+        lines.append(
+            "  INSTRUCTION: Put the most interesting theory in the 'What I Learned' section. "
+            "Translate to plain English. 'I have a theory: when [plain description] happens, "
+            "[outcome] tends to follow.' Don't use technical indicator names."
+        )
+
+    lines.append("")
+
+    # Source reliability
     th = summary.get("thompson", {})
     trusted = th.get("trusted", [])
     distrusted = th.get("distrusted", [])
     if trusted or distrusted:
-        lines.append("WHAT I'VE LEARNED ABOUT MY OWN SOURCES:")
         if trusted:
-            # Avoid printing internal source names — just describe how reliable
             lines.append(
-                f"  {len(trusted)} source(s) have proven consistently reliable "
-                f"(correct more than 55% of the time based on what I've learned)."
+                f"SOURCE RELIABILITY: {len(trusted)} information source(s) are consistently reliable "
+                f"(correct more than 55% of the time)."
             )
         if distrusted:
             lines.append(
-                f"  {len(distrusted)} source(s) are performing below chance — "
-                "I'm giving them less weight."
+                f"  {len(distrusted)} source(s) are performing below chance — I'm weighting them less."
             )
         lines.append(
-            "  INSTRUCTION: Do NOT name the sources by their technical names. "
-            "Describe them by what they measure: 'insider buying reports' not 'sec_form4'."
+            "  INSTRUCTION: Describe sources by what they measure, not their technical names. "
+            "'insider buying reports' not 'sec_form4'. Goes in 'What I Learned'."
         )
 
     lines.append("")
     lines.append(
-        "Now write the daily letter. Follow the style rules precisely: "
-        "bold the punch lines, use bullets, lead with the weird causal discovery, "
-        "no jargon, translate everything to plain English. "
-        "Under 400 words. Sign it '— MIDGE'."
+        "Now write the daily letter following the LAYERED STRUCTURE precisely: "
+        "Big Picture → Crypto → Commodities & Futures → Stocks → Learned → Wrong. "
+        "Bold the punch lines, use bullets, no jargon. "
+        "Under 600 words. Sign it '— MIDGE'."
     )
 
     return "\n".join(lines)
