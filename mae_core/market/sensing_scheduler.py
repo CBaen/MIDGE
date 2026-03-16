@@ -137,11 +137,14 @@ class SensingSchedulerMixin:
 
         # Sort descending by score, pick top N
         scored.sort(reverse=True)
+        # Prepend forced-exploration sources so they always get dispatched
+        _selected = [(1.0, s) for s in _forced] + scored[:slots]
         _cb = getattr(self, "_circuit_breaker", None)
-        for _, source in scored[:slots]:
+        for _, source in _selected:
             if _cb is not None and not _cb.can_call(source):
                 continue  # Circuit breaker blocking this source
             self._total_fetches += 1
+            _fetch_counts[source] = _fetch_counts.get(source, 0) + 1
             logger.info(
                 "Market sensing: Thompson-guided fetch [%s] (cycle %d)",
                 source, self._total_fetches,

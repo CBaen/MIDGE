@@ -143,6 +143,12 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                             )
                         except Exception:
                             logger.debug("SharedAttention hot ticker update failed", exc_info=True)
+                # Route ticker alerts through the paper trade gate — they fire on
+                # specific symbols but were never added to _cached_alerts, so the
+                # gate in market_hooks_sensing.py never saw them.
+                if ticker_alerts:
+                    existing = ctx._cached_alerts[0] or []
+                    ctx._cached_alerts[0] = existing + ticker_alerts
             except Exception:
                 logger.debug("Per-ticker convergence failed", exc_info=True)
 
