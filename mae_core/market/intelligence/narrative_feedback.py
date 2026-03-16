@@ -199,20 +199,18 @@ class NarrativeFeedback:
             section = _current_section(pos, section_spans)
 
             # ── 1. Causal claims ─────────────────────────────────────────
-            for cpat in _CAUSAL_PATTERNS:
-                cm = cpat.search(sentence)
-                if cm:
-                    confidence = _detect_confidence(sentence)
-                    insights.append(NarrativeInsight(
-                        insight_type="causal_claim",
-                        content=sentence,
-                        ticker="",
-                        direction="",
-                        confidence=confidence,
-                        source_section=section,
-                        extracted_at=now_iso,
-                    ))
-                    break  # One causal insight per sentence
+            _is_causal = any(cpat.search(sentence) for cpat in _CAUSAL_PATTERNS)
+            if _is_causal:
+                confidence = _detect_confidence(sentence)
+                insights.append(NarrativeInsight(
+                    insight_type="causal_claim",
+                    content=sentence,
+                    ticker="",
+                    direction="",
+                    confidence=confidence,
+                    source_section=section,
+                    extracted_at=now_iso,
+                ))
 
             # ── 2. Watching items ────────────────────────────────────────
             elif _WATCHING_MARKERS.search(sentence):

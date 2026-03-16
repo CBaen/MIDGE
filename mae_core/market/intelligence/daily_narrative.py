@@ -1760,6 +1760,38 @@ def _template_narrative(summary: dict, date_str: str) -> str:
                 lines.append(
                     f"- **{e['symbol']}**: I thought it would move the other way. It moved {e['pct']}%."
                 )
+        # ── Failure explanation layer ──────────────────────────────────
+        try:
+            import json as _json
+            from pathlib import Path as _Path
+            _fsummary_path = _Path("data/midge/failure_summary.json")
+            if _fsummary_path.exists():
+                with open(_fsummary_path, "r", encoding="utf-8") as _f:
+                    _fsummary = _json.load(_f)
+                _top = _fsummary.get("top_category", "")
+                _counts = _fsummary.get("category_counts", {})
+                _examples = _fsummary.get("category_examples", {})
+                _total_explained = _fsummary.get("total_explained", 0)
+                if _top and _total_explained > 0:
+                    _top_pct = round(_counts.get(_top, 0) / _total_explained * 100)
+                    _top_example = _examples.get(_top, "")
+                    _top_label = _top.replace("_", " ")
+                    lines.append(
+                        f"\n**Most common failure reason ({_top_pct}% of losses): {_top_label}.**"
+                    )
+                    if _top_example:
+                        lines.append(f"Example: {_top_example[:100]}")
+                    if len(_counts) > 1:
+                        _ranked = sorted(_counts.items(), key=lambda x: x[1], reverse=True)[:3]
+                        lines.append(
+                            "Breakdown: "
+                            + " | ".join(
+                                f"{cat.replace('_', ' ')} ({cnt})"
+                                for cat, cnt in _ranked
+                            )
+                        )
+        except Exception:
+            pass
     else:
         lines.append("Nothing graded yet — calls are still within their evaluation window.")
     lines.append("")
