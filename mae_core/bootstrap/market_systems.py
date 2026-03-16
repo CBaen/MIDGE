@@ -555,6 +555,14 @@ def _instantiate_market_systems(ctx: SimpleNamespace) -> None:
         logger.debug("Market: email_notifier failed to construct", exc_info=True)
         ctx.email_notifier = None
 
+    # --- Realtime dispatcher (immediate high-confidence alerts) ---
+    try:
+        from mae_core.market.notifications.realtime_dispatcher import RealtimeDispatcher
+        ctx.realtime_dispatcher = RealtimeDispatcher(email_notifier=ctx.email_notifier)
+    except Exception:
+        logger.debug("Market: realtime_dispatcher failed to construct", exc_info=True)
+        ctx.realtime_dispatcher = None
+
     logger.info(
         "Layer 33a - Market systems: %d instantiated (%d failures)", 59 - failures, failures,
     )

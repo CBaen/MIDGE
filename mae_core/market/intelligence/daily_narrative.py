@@ -7,15 +7,16 @@ Falls back to a template-based format when no LLM is available.
 The letter is written once per calendar day, archived to data/midge/daily_narratives/,
 and optionally emailed via the EmailNotifier.
 
-Five sections:
-  WHAT I'M WATCHING    — developing situations with causal reasoning
-  WHAT CONFIRMED       — situations that played out (or didn't)
-  WHAT I LEARNED       — Thompson movements, combo wins/losses, Granger discoveries
-  WHAT I'M UNCERTAIN ABOUT — mixed evidence, missing data
+Letter structure (layered — big picture first, specific tickers last):
+  THE BIG PICTURE      — market regime + macro indicators + cross-market anomalies
+  CRYPTO               — fear/greed reading + 24/7 crypto signals
+  COMMODITIES & FUTURES — oil, gold, index futures, COT positioning
+  STOCKS               — convergence stories (the interesting ones only)
+  WHAT I LEARNED       — Thompson movements, Granger discoveries, pattern learnings
   WHAT I GOT WRONG     — honest post-mortem on failed predictions
 
 Design constraints:
-  - Max 500 words output
+  - Max 600 words output (slightly higher to accommodate the broader scope)
   - Must never crash the daemon — everything wrapped in try/except
   - Must never hallucinate — only narrates what MIDGE's own data shows
   - One LLM call per day max (guarded by date check in caller)
