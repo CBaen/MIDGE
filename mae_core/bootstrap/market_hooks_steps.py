@@ -658,6 +658,34 @@ def _run_slow_cadence_ops(ctx: SimpleNamespace, step: int, _shm, _timer) -> None
             except Exception:
                 logger.debug("Granger causality step failed", exc_info=True)
 
+        # FIX 5: CorrelationTracker cross-domain anomalies → convergence alerter
+        _ct_tracker = getattr(ctx, "correlation_tracker", None)
+        _alerter_ct = getattr(ctx, "convergence_alerter", None)
+        if _ct_tracker is not None and _alerter_ct is not None:
+            try:
+                _ct_anomalies = _ct_tracker.detect_cross_domain_anomalies()
+                for _pair, _domain_a, _domain_b in _ct_anomalies[:10]:
+                    _ticker = getattr(_pair, "signal_a", "").split(":")[-1] if ":" in getattr(_pair, "signal_a", "") else ""
+                    _direction = "neutral"
+                    _corr = getattr(_pair, "correlation", 0.0)
+                    _strength = min(1.0, abs(_corr))
+                    _alerter_ct.record_signal(
+                        signal_id=f"corr_anomaly_{_pair.signal_a}_{_pair.signal_b}",
+                        strength=_strength,
+                        domain=_domain_a,
+                        direction=_direction,
+                        confidence=_strength * 0.7,
+                        metadata={"signal_a": _pair.signal_a, "signal_b": _pair.signal_b,
+                                  "domain_a": _domain_a, "domain_b": _domain_b,
+                                  "correlation": round(_corr, 4),
+                                  "symbol": _ticker},
+                        source="correlation_tracker",
+                    )
+                if _ct_anomalies:
+                    logger.info("CorrelationTracker: %d cross-domain anomalies → convergence", len(_ct_anomalies))
+            except Exception:
+                logger.debug("CorrelationTracker anomaly injection failed", exc_info=True)
+
         # --- Continuous Granger bridge: inject domain-level edges from parallel process ---
         # The parallel continuous_granger.py discovers domain-level causal relationships
         # (e.g. institutional → insider, macro → institutional) from the full 874K signal

@@ -280,6 +280,16 @@ def _run_paper_trading_gate(ctx: SimpleNamespace, alerts: list, step: int) -> No
                             _validator_names.append("memory_precedent")
                 except Exception:
                     pass
+            # FIX 4: Validator 6: SituationBoard — analyst findings for this ticker/direction
+            _sb = getattr(ctx, "situation_board", None)
+            if _sb is not None:
+                try:
+                    findings = _sb.get_findings(ticker=_ticker, direction=_direction)
+                    if findings:
+                        _validators += 1
+                        _validator_names.append("situation_board")
+                except Exception:
+                    pass
             if _validators < 3:
                 logger.info(
                     "Paper trade DEFERRED — Law 7: %d/3 validators (%s) for %s %s",

@@ -75,18 +75,18 @@ def fetch_usda(usda_client: Any, converter: Callable) -> list:
 
 
 def fetch_cot(cot_client: Any, watchlist: dict, converter: Callable) -> list:
-    """Fetch CFTC Commitments of Traders for futures watchlist."""
+    """Fetch CFTC Commitments of Traders for all mapped contracts (FIX 6: full sweep).
+
+    Previously limited to watchlist futures — now fetches ALL TICKER_TO_CFTC mapped
+    contracts so no CFTC positioning data is missed. The client caches for 24h so
+    this is cheap to call.
+    """
     if cot_client is None:
         return []
 
     signals = []
-    # COT is futures-only — use futures tickers from watchlist or defaults
-    futures_tickers = [t for t in watchlist.get("tickers", []) if t.endswith("=F")]
-    if not futures_tickers:
-        futures_tickers = ["ES=F", "NQ=F", "GC=F", "CL=F"]
-
     try:
-        positions = cot_client.get_latest_positions(futures_tickers)
+        positions = cot_client.get_latest_positions(symbols=None)  # FIX 6: all mapped contracts
         for pos in positions:
             try:
                 signals.append(converter(pos))
