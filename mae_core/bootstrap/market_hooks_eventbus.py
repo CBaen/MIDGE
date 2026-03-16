@@ -527,6 +527,35 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
 
     ctx.bus.register_callback("market.intel.drift_detected", _on_drift_detected)
 
+    # FIX 3: PatternCompletionEngine — wire CH_PATTERN_COMPLETED → convergence alerter
+    from mae_core.market.channels import CH_PATTERN_COMPLETED
+
+    def _on_pattern_completed(channel, data):
+        _alerter = getattr(ctx, "convergence_alerter", None)
+        if _alerter is None:
+            return
+        try:
+            msg = (json.loads(data) if isinstance(data, str) else data) if data else {}
+            ticker = msg.get("ticker", "") or msg.get("symbol", "")
+            direction = msg.get("direction", "neutral")
+            base_confidence = float(msg.get("confidence", 0.5))
+            if ticker and direction in ("bullish", "bearish"):
+                _alerter.record_signal(
+                    signal_id=f"pattern_completion_{ticker}_{direction}",
+                    strength=float(msg.get("strength", 0.6)),
+                    domain="pattern_completion",
+                    direction=direction,
+                    confidence=min(1.0, base_confidence + 0.15),
+                    metadata={"symbol": ticker, "pattern_id": msg.get("pattern_id", "")},
+                    source="pattern_completion_engine",
+                )
+                logger.debug("PatternCompletion: injected signal for %s %s", ticker, direction)
+        except Exception:
+            logger.debug("_on_pattern_completed handler failed", exc_info=True)
+
+    ctx.bus.register_callback(CH_PATTERN_COMPLETED, _on_pattern_completed)
+    logger.info("Layer 33f - PatternCompletionEngine: CH_PATTERN_COMPLETED → convergence alerter wired")
+
     # --- Phase 2 Three Conditions: Curiosity — anomaly-driven OctopusColony investigation ---
     # When VelocityDetector, MotifDetector, or StreamingAnomalyDetector flags unusual
     # behaviour on a ticker that ALSO has signals in at least one other domain, MIDGE

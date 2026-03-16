@@ -707,6 +707,28 @@ def _run_slow_cadence_ops(ctx: SimpleNamespace, step: int, _shm, _timer) -> None
                         pm_summary.get("combos_analyzed", 0),
                         pm_summary.get("sequences_analyzed", 0),
                     )
+                    # FIX 2: FailureExplainer — explain recent failed predictions
+                    _fe = getattr(ctx, "failure_explainer", None)
+                    if _fe is not None:
+                        try:
+                            import json as _jfe
+                            from pathlib import Path as _Pfe
+                            _out_path = _Pfe("data/market/outcomes.jsonl")
+                            _failed_pairs: list = []
+                            if _out_path.exists():
+                                with open(_out_path, "r") as _f:
+                                    for _ln in _f:
+                                        try:
+                                            _o = _jfe.loads(_ln)
+                                            if not _o.get("success", True):
+                                                _failed_pairs.append((_o, _o))
+                                        except Exception:
+                                            pass
+                            if _failed_pairs:
+                                _fe.batch_explain(_failed_pairs[-50:])  # cap at 50 per cycle
+                                logger.debug("FailureExplainer: explained %d failures", len(_failed_pairs[-50:]))
+                        except Exception:
+                            logger.debug("FailureExplainer batch_explain failed", exc_info=True)
                 if _shm:
                     _shm.record_success("post_mortem")
             except Exception as exc:
