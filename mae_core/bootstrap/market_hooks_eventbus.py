@@ -768,6 +768,29 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
 
     ctx.bus.register_callback(CH_PREDICTION_RESULT, _on_prediction_result_track_record)
 
+    # FIX 7a: KnowledgeGraph — persist outcomes to Neo4j on each graded prediction
+    def _on_prediction_result_kg(channel, data):
+        _kg = getattr(ctx, "knowledge_graph", None)
+        if _kg is None:
+            return
+        try:
+            msg = (json.loads(data) if isinstance(data, str) else data) if data else {}
+            _ticker_kg = msg.get("ticker", "")
+            _won_kg = msg.get("won", False)
+            _pct_kg = float(msg.get("pct_change", 0.0))
+            _pred_id_kg = msg.get("source", "unknown")
+            if _ticker_kg:
+                _kg.store_outcome(
+                    prediction_id=_pred_id_kg,
+                    ticker=_ticker_kg,
+                    won=_won_kg,
+                    return_pct=_pct_kg,
+                )
+        except Exception:
+            logger.debug("KnowledgeGraph outcome write failed", exc_info=True)
+
+    ctx.bus.register_callback(CH_PREDICTION_RESULT, _on_prediction_result_kg)
+
     # --- DeepAnalyst results subscriber ---
     # Logs when DeepAnalyst produces inevitability rankings so the output is
     # visible in logs without needing to tail data/midge/inevitabilities.jsonl.

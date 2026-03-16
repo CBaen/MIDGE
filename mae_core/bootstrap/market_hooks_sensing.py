@@ -522,6 +522,23 @@ def _wire_sensing_hook(ctx: SimpleNamespace) -> None:
             except Exception:
                 logger.debug("Advisory bridge failed", exc_info=True)
 
+            # FIX 7c: KnowledgeGraph — persist convergence alerts to Neo4j
+            _kg_ca = getattr(ctx, "knowledge_graph", None)
+            if _kg_ca is not None:
+                for _alert in alerts:
+                    try:
+                        _ticker_ca = getattr(_alert, "ticker", "") or ""
+                        if _ticker_ca:
+                            _kg_ca.store_convergence_alert(
+                                alert_id=getattr(_alert, "alert_id", str(step)),
+                                ticker=_ticker_ca,
+                                direction=getattr(_alert, "direction", "neutral"),
+                                confidence=getattr(_alert, "confidence", 0.0),
+                                domains=list(getattr(_alert, "domains_converging", [])),
+                            )
+                    except Exception:
+                        logger.debug("KnowledgeGraph convergence alert write failed", exc_info=True)
+
             _run_paper_trading_gate(ctx, alerts, step)
 
             # Record episodes for every convergence alert
