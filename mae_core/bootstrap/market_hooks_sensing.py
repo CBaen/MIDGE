@@ -232,7 +232,14 @@ def _run_paper_trading_gate(ctx: SimpleNamespace, alerts: list, step: int) -> No
                     continue
             # --- Law 7: Rule of 3 validators ---
             # Count independent validators that agree on this trade.
+            # Prefer alert.ticker (global alerts), fall back to signals metadata
+            # (ticker alerts — ConvergenceAlert has no .ticker attribute).
             _ticker = getattr(alert, "ticker", "") or ""
+            if not _ticker:
+                for _sig in getattr(alert, "signals", []):
+                    _ticker = getattr(_sig, "metadata", {}).get("symbol", "") or ""
+                    if _ticker:
+                        break
             _direction = getattr(alert, "direction", "") or ""
             _validators = 1  # Convergence alert itself = 1
             _validator_names = ["convergence"]
