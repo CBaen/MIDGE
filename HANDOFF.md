@@ -1,13 +1,25 @@
 # MIDGE Handoff
 
-**Last updated:** 2026-03-15 (Session 12 — Ecosystem Evolution)
+**Last updated:** 2026-03-16 (Session 12 — Ecosystem Evolution + Triadic Review)
 **For session history:** `git log --oneline`
 
 ---
 
-## Session 12 (2026-03-15): ORGANISM → ECOSYSTEM
+## Session 12 (2026-03-15/16): ORGANISM → ECOSYSTEM
 
 **Guiding Light's directive:** "She is not an organism; she is an ecosystem." Transform MIDGE from a single daemon into a multi-process ecosystem of independent living systems.
+
+### Triadic Review (Phase 2 of session)
+Three independent reviewers (convergence integrity, user experience, adversarial) found 7 bugs in the new code. All 7 fixed:
+1. Signal enricher fabricated false convergence (fan-out 5→2 tickers, enrichment_group dedup in convergence gate)
+2. Episodic memory constructor silently crashed (defaults added to all Episode fields)
+3. Failure explainer got wrong data — `(outcome, outcome)` → `(prediction, outcome)` with proper join
+4. LLM hallucinations became WorldModel edges (validation gate: domain check, 5% EMA, 3/day cap)
+5. SharedAttention hot_tickers had no TTL (24h expiry added)
+6. Phantom ticker extraction (common English words excluded: AI, ALL, IT, AT, etc.)
+7. Enriched signals produced duplicate emails (enrichment_group in dedup key)
+
+Research: `research/session12-triadic-review/` (lead/alpha/beta findings)
 
 ### What Changed
 

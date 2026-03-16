@@ -16,6 +16,20 @@ Usage (called at the end of generate_daily_narrative):
     feedback.feed_back(insights)
 """
 
+from __future__ import annotations
+
+import json
+import logging
+import re
+from dataclasses import asdict, dataclass
+from datetime import datetime
+from pathlib import Path
+from typing import Optional
+
+logger = logging.getLogger("midge.narrative_feedback")
+
+_INSIGHTS_PATH = Path("data/midge/narrative_insights.jsonl")
+
 # ── Narrative-sourced WorldModel edge limits ──────────────────────────────────
 # LLM outputs can hallucinate causal claims. To prevent flooding the WorldModel
 # with bad edges, narrative-sourced edges are:
@@ -33,20 +47,6 @@ _VALID_DOMAINS = {
     "energy", "volatility", "cascade", "options", "momentum", "earnings",
     "economic", "geopolitical",
 }
-
-from __future__ import annotations
-
-import json
-import logging
-import re
-from dataclasses import asdict, dataclass
-from datetime import datetime
-from pathlib import Path
-from typing import Optional
-
-logger = logging.getLogger("midge.narrative_feedback")
-
-_INSIGHTS_PATH = Path("data/midge/narrative_insights.jsonl")
 
 # ── Confidence language → numeric mapping ─────────────────────────────────────
 # Matches the _confidence_words() scale in daily_narrative.py (reversed here).

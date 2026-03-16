@@ -181,7 +181,12 @@ class RealtimeDispatcher:
     # ── Public API ──────────────────────────────────────────────────
 
     def dispatch_convergence(self, alert: dict, plain_language_text: Optional[str] = None) -> bool:
-        """Send immediately when convergence fires at confidence >= 0.65 AND 4+ domains."""
+        """Send immediately when convergence fires at confidence >= 0.65 AND 4+ domains.
+
+        Dedup key includes enrichment_group when present: if multiple alerts for
+        the same ticker are caused by copies of a single fanned-out signal (same
+        enrichment_group), only the first one sends an email.
+        """
         try:
             confidence = float(alert.get("confidence", 0.0))
             domains    = alert.get("domains_converging", [])
@@ -190,7 +195,23 @@ class RealtimeDispatcher:
 
             ticker    = _resolve_ticker(alert)
             direction = alert.get("direction", "neutral")
-            dedup_key = f"{ticker}:{direction}"
+
+            # Check for enrichment_group in any of the alert's signals' metadata.
+            # If found, include it in the dedup key so sibling enriched alerts are
+            # suppressed within the same dedup window.
+            enrichment_group = ""
+            for sig in alert.get("signals", []):
+                meta = sig.get("metadata", {}) if isinstance(sig, dict) else getattr(sig, "metadata", {})
+                eg = meta.get("enrichment_group", "")
+                if eg:
+                    enrichment_group = eg
+                    break
+
+            if enrichment_group:
+                dedup_key = f"{ticker}:{direction}:eg_{enrichment_group[:16]}"
+            else:
+                dedup_key = f"{ticker}:{direction}"
+
             if not self._gate(dedup_key):
                 return False
 
