@@ -800,19 +800,25 @@ def run_forever(
             time.sleep(60.0)
             continue
 
-        # If this cycle produced no alerts AND all archive days were already
-        # processed (exhaustion), rest 1 hour instead of 60 seconds — the
-        # archive won't change meaningfully within 60 seconds.
-        # Read the state file that _run_cycle writes to check results.
-        _cycle_stats = {}
+        # If every cycle is producing 0 alerts, the archive is exhausted.
+        # Sleep 1 hour instead of 60 seconds — new data arrives daily.
+        # Check the results file for recent wins/losses to detect emptiness.
+        _alerts_this_cycle = 0
+        _days_this_cycle = 1  # assume processed unless proven otherwise
         try:
-            import json as _json_replay
-            if STATE_PATH.exists():
-                _cycle_stats = _json_replay.loads(STATE_PATH.read_text(encoding="utf-8"))
+            if RESULTS_JSONL.exists():
+                _file_size = RESULTS_JSONL.stat().st_size
+                _prev_size = getattr(run_forever, "_prev_results_size", 0)
+                run_forever._prev_results_size = _file_size
+                if _file_size == _prev_size:
+                    # Results file didn't grow — no new alerts this cycle
+                    _alerts_this_cycle = 0
+                else:
+                    _alerts_this_cycle = 1  # something was written
+            else:
+                _alerts_this_cycle = 0
         except Exception:
             pass
-        _alerts_this_cycle = _cycle_stats.get("alerts_found", -1)
-        _days_this_cycle = _cycle_stats.get("days_processed", 0)
         if _alerts_this_cycle == 0 and _days_this_cycle > 0:
             _rest = 3600.0
             logger.info(
