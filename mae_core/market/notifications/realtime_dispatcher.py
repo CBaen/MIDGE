@@ -262,35 +262,27 @@ class RealtimeDispatcher:
         except Exception:
             logger.error("RealtimeDispatcher: notifier.send raised", exc_info=True)
             return False
-
     def _gate(self, key: str) -> bool:
         """Return True if dedup AND rate limit both pass."""
-        now = time.time()
+        now  = time.time()
         last = self._dedup.get(key)
         if last is not None and (now - last) / 3600.0 < _DEDUP_WINDOW_HOURS:
             logger.debug("RealtimeDispatcher dedup suppressed: %s", key)
             return False
-        cutoff = now - 3600.0
-        self._send_timestamps = [t for t in self._send_timestamps if t > cutoff]
+        self._send_timestamps = [t for t in self._send_timestamps if t > now - 3600.0]
         if len(self._send_timestamps) >= _MAX_ALERTS_PER_HOUR:
             logger.warning("RealtimeDispatcher: rate limit %d/hr reached", _MAX_ALERTS_PER_HOUR)
             return False
         return True
-
     def _record(self, dedup_key: str, event_type: str, ticker: str, direction: str, confidence: float) -> None:
         now = time.time()
         self._dedup[dedup_key] = now
         self._send_timestamps.append(now)
-        # Evict stale dedup entries
-        cutoff = now - (_DEDUP_WINDOW_HOURS * 3600)
-        self._dedup = {k: v for k, v in self._dedup.items() if v > cutoff}
+        self._dedup = {k: v for k, v in self._dedup.items() if v > now - _DEDUP_WINDOW_HOURS * 3600}
         self._save_state()
-        entry = {
-            "sent_at": datetime.now(timezone.utc).isoformat(),
-            "event_type": event_type, "ticker": ticker,
-            "direction": direction, "confidence": round(confidence, 4),
-            "dedup_key": dedup_key,
-        }
+        entry = {"sent_at": datetime.now(timezone.utc).isoformat(), "event_type": event_type,
+                 "ticker": ticker, "direction": direction, "confidence": round(confidence, 4),
+                 "dedup_key": dedup_key}
         try:
             _LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
             with _LOG_FILE.open("a", encoding="utf-8") as fh:

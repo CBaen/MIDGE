@@ -301,6 +301,14 @@ def _run_paper_trading_gate(ctx: SimpleNamespace, alerts: list, step: int) -> No
                     _notifier.send_convergence_alert(_alert_dict)
                 except Exception:
                     logger.debug("Email notification for paper trade failed", exc_info=True)
+
+            # Real-time dispatcher — immediate high-confidence alerts
+            _rt = getattr(ctx, "realtime_dispatcher", None)
+            if _rt is not None:
+                try:
+                    _rt.dispatch_convergence(alert)
+                except Exception:
+                    logger.debug("Realtime dispatch failed", exc_info=True)
     except Exception:
         logger.debug("Paper trading gate failed", exc_info=True)
 
