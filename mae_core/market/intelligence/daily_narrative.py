@@ -1210,10 +1210,9 @@ def _build_llm_prompt(summary: dict) -> str:
         lines.append("KEY ECONOMIC READINGS:")
         for ind in macro_indicators[:4]:
             plain_name = _MACRO_PLAIN.get(ind["series_id"], ind.get("name", ind["series_id"]))
-            value = ind.get("value")
             direction = ind.get("direction", "neutral")
-            value_note = f" Currently at {value:.2f}." if value is not None else ""
-            lines.append(f"  - {plain_name}: pointing {direction}.{value_note}")
+            direction_plain = "pointing up" if direction == "bullish" else ("pointing down" if direction == "bearish" else "neutral")
+            lines.append(f"  - {plain_name}: {direction_plain}.")
 
     lines.append(
         "  INSTRUCTION for Big Picture: Lead with what the regime means in plain English. "
@@ -1276,11 +1275,24 @@ def _build_llm_prompt(summary: dict) -> str:
         for er in energy_readings:
             plain_name = _ENERGY_PLAIN.get(er["series_key"], er.get("name", er["series_key"]))
             change = er.get("change_pct")
-            change_note = f" (changed {change:+.1f}%)" if change is not None else ""
+            if change is not None:
+                abs_c = abs(change)
+                direction_ch = "up" if change > 0 else "down"
+                if abs_c >= 10:
+                    change_note = f" (sharply {direction_ch})"
+                elif abs_c >= 3:
+                    change_note = f" (noticeably {direction_ch})"
+                elif abs_c >= 0.5:
+                    change_note = f" (slightly {direction_ch})"
+                else:
+                    change_note = " (barely moved)"
+            else:
+                change_note = ""
             direction = er.get("direction", "neutral")
+            direction_plain = "rising" if direction == "bullish" else ("falling" if direction == "bearish" else direction)
             tickers = er.get("affected_tickers", [])
             ticker_note = f" Affects: {', '.join(tickers)}." if tickers else ""
-            lines.append(f"  - {plain_name}: {direction}.{change_note}{ticker_note}")
+            lines.append(f"  - {plain_name}: {direction_plain}.{change_note}{ticker_note}")
         lines.append(
             "  INSTRUCTION: Mention the energy picture in the Big Picture section only if "
             "something is genuinely notable — a big inventory surprise or a sharp production shift. "
@@ -1378,10 +1390,11 @@ def _build_llm_prompt(summary: dict) -> str:
         for fut in futures_activity:
             direction_plain = _direction_words(fut["dominant_direction"])
             domains_plain = _domain_plain(fut["domains"])
+            activity_words = _signal_count_to_words(fut["signal_count"])
             lines.append(
-                f"  - {fut['friendly_name']} ({fut['symbol']}): "
-                f"signals pointing {direction_plain}. "
-                f"Sources: {domains_plain}. ({fut['signal_count']} signals)"
+                f"  - {fut['friendly_name']}: "
+                f"pointing {direction_plain}. "
+                f"Sources: {domains_plain}. ({activity_words} accumulated)"
             )
         lines.append(
             "  INSTRUCTION: For the Commodities & Futures section, focus on what's interesting "
@@ -1811,9 +1824,19 @@ def _template_narrative(summary: dict, date_str: str) -> str:
             er = notable_energy[0]
             plain_name = _ENERGY_PLAIN_TMPL.get(er["series_key"], er.get("name", er["series_key"]))
             direction = er.get("direction", "neutral")
+            direction_plain = "rising" if direction == "bullish" else ("falling" if direction == "bearish" else direction)
             change = er.get("change_pct")
-            change_note = f" ({change:+.1f}%)" if change is not None else ""
-            lines.append(f"- Energy: {plain_name} is **{direction}**{change_note}.")
+            if change is not None:
+                abs_c = abs(change)
+                if abs_c >= 10:
+                    change_note = " — a big shift"
+                elif abs_c >= 3:
+                    change_note = " — a noticeable shift"
+                else:
+                    change_note = " — a small shift"
+            else:
+                change_note = ""
+            lines.append(f"- Energy: {plain_name} is **{direction_plain}**{change_note}.")
 
     lines.append("")
 
@@ -1884,9 +1907,10 @@ def _template_narrative(summary: dict, date_str: str) -> str:
         if futures_activity:
             for fut in futures_activity:
                 direction_plain = _direction_words(fut["dominant_direction"])
+                domains_brief = ', '.join(_domain_plain(fut["domains"]).split(', ')[:2])
                 lines.append(
-                    f"- **{fut['friendly_name']}**: signals {direction_plain}. "
-                    f"({fut['signal_count']} signals across {', '.join(_domain_plain(fut['domains']).split(', ')[:2])})"
+                    f"- **{fut['friendly_name']}**: {direction_plain}. "
+                    f"(based on {domains_brief})"
                 )
 
         if cot and cot.get("dominant") and cot.get("dominant") != "mixed":
@@ -2089,7 +2113,7 @@ def _template_narrative(summary: dict, date_str: str) -> str:
         if loss_examples:
             for e in loss_examples[:2]:
                 lines.append(
-                    f"- **{e['symbol']}**: I thought it would move the other way. It moved {e['pct']}%."
+                    f"- **{e['symbol']}**: I thought it would move the other way — it didn't."
                 )
         # ── Failure explanation layer ──────────────────────────────────
         try:
