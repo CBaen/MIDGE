@@ -1605,22 +1605,22 @@ def _build_llm_prompt(summary: dict) -> str:
     wins = oc.get("wins", 0)
     losses = oc.get("losses", 0)
     if total > 0:
+        if wins >= losses:
+            track_note = "more right than wrong lately" if wins > losses else "about even"
+        else:
+            track_note = "more wrong than right lately — still learning"
         lines.append(
-            f"RECENT PREDICTION RESULTS (last 7 days): "
-            f"{wins} correct out of {total} checked."
+            f"HOW MY CALLS HAVE BEEN DOING (last 7 days): "
+            f"{wins} right, {losses} wrong — {track_note}."
         )
         if oc.get("win_examples"):
-            lines.append(
-                "  Right: "
-                + ", ".join(f"{e['symbol']} moved {e['pct']}%" for e in oc["win_examples"])
-            )
+            win_tickers = ", ".join(e["symbol"] for e in oc["win_examples"])
+            lines.append(f"  Called correctly: {win_tickers} — all moved the direction I expected.")
         if oc.get("loss_examples"):
-            lines.append(
-                "  Wrong: "
-                + ", ".join(f"{e['symbol']} moved {e['pct']}%" for e in oc["loss_examples"])
-            )
+            loss_tickers = ", ".join(e["symbol"] for e in oc["loss_examples"])
+            lines.append(f"  Got wrong: {loss_tickers} — moved the other way.")
     else:
-        lines.append("RECENT PREDICTION RESULTS: Nothing graded yet this week.")
+        lines.append("HOW MY CALLS HAVE BEEN DOING: Nothing checked yet this week.")
 
     lines.append("")
 
@@ -1633,41 +1633,59 @@ def _build_llm_prompt(summary: dict) -> str:
     # Post-mortem learning
     pm = summary.get("postmortem", {})
     if pm and pm.get("total_graded", 0) > 0:
-        pm_wr = pm.get("overall_win_rate_pct", "?")
+        pm_wr_raw = pm.get("overall_win_rate_pct", "")
         pm_grade = pm.get("grade", "")
+        pm_graded = pm.get("total_graded", 0)
+        # Convert raw win rate (may be "29.4%" string or float) to words
+        try:
+            pm_wr_float = float(str(pm_wr_raw).replace("%", "").strip())
+            pm_wr_words = "more often than not" if pm_wr_float >= 50 else "still learning"
+            if pm_wr_float >= 70:
+                pm_wr_words = "most of the time"
+            elif pm_wr_float < 30:
+                pm_wr_words = "not often enough yet"
+        except (ValueError, TypeError):
+            pm_wr_words = "some of the time"
         lines.append(
-            f"OVERALL TRACK RECORD: {pm_wr} of predictions correct "
-            f"({pm.get('total_graded', 0)} total checked, grade: {pm_grade})."
+            f"OVERALL HOW I'VE BEEN DOING: My calls have been right {pm_wr_words} "
+            f"(checked {pm_graded} total, grade: {pm_grade})."
         )
         if pm.get("best_combos"):
             lines.append(
-                f"  Best signal combinations: {'; '.join(pm['best_combos'][:2])}"
+                f"  Best combinations: {'; '.join(pm['best_combos'][:2])}"
             )
             lines.append(
-                "  INSTRUCTION: Translate combo keys to plain language. "
+                "  INSTRUCTION: Translate combination keys to plain language. "
                 "'When company news, economic data, and price patterns all agree' — "
-                "not the raw source names."
+                "never the raw source names."
             )
         if pm.get("timing_insight"):
             lines.append(f"  Timing note: {pm['timing_insight']}")
     else:
-        lines.append("OVERALL TRACK RECORD: Not enough graded data yet.")
+        lines.append("OVERALL HOW I'VE BEEN DOING: Not enough checked calls to say yet.")
 
     lines.append("")
 
     # Active hypotheses
     active_hyps = summary.get("active_hypotheses", [])
     if active_hyps:
-        lines.append("THEORIES I'M TESTING:")
+        lines.append("PATTERNS I'M TESTING (translate these to plain English — never use their raw names):")
         for h in active_hyps[:3]:
             wr = h.get("win_rate_pct")
-            wr_note = f" Works {wr}% of the time ({h['observations']} checks)." if wr is not None else ""
+            n_obs = h.get("observations", 0)
+            if wr is not None:
+                wr_words = "more often than not" if wr >= 50 else "sometimes"
+                if wr >= 75:
+                    wr_words = "most of the time"
+                wr_note = f" Has worked {wr_words} ({n_obs} times checked)."
+            else:
+                wr_note = ""
             story = h.get("causal_story", "")[:150]
-            lines.append(f"  - {h['name']}: {story}{wr_note}")
+            lines.append(f"  - {story}{wr_note}")
         lines.append(
-            "  INSTRUCTION: Put the most interesting theory in the 'What I Learned' section. "
+            "  INSTRUCTION: Put the most interesting theory in 'What I Learned'. "
             "Translate to plain English. 'I have a theory: when [plain description] happens, "
-            "[outcome] tends to follow.' Don't use technical indicator names."
+            "[outcome] tends to follow [N] days later.' Never use indicator names or system names."
         )
 
     lines.append("")
@@ -1991,11 +2009,20 @@ def _template_narrative(summary: dict, date_str: str) -> str:
             lines.append(f"- **{g['story']}**")
             learned_any = True
 
-    pm_wr = pm.get("overall_win_rate_pct", "")
+    pm_wr_raw = pm.get("overall_win_rate_pct", "")
     pm_graded = pm.get("total_graded", 0)
-    if pm_wr and pm_graded > 0:
+    if pm_wr_raw and pm_graded > 0:
+        try:
+            pm_wr_float = float(str(pm_wr_raw).replace("%", "").strip())
+            pm_wr_words = "more often than not" if pm_wr_float >= 50 else "still getting better"
+            if pm_wr_float >= 70:
+                pm_wr_words = "most of the time"
+            elif pm_wr_float < 30:
+                pm_wr_words = "not as often as I'd like yet"
+        except (ValueError, TypeError):
+            pm_wr_words = "some of the time"
         lines.append(
-            f"- Overall, **{pm_wr} of my calls have been correct** ({pm_graded} checked so far)."
+            f"- **My calls have been right {pm_wr_words}** ({pm_graded} checked so far)."
         )
         learned_any = True
 
@@ -2009,7 +2036,7 @@ def _template_narrative(summary: dict, date_str: str) -> str:
         learned_any = True
     if distrusted:
         lines.append(
-            f"- {len(distrusted)} source(s) are underperforming — I'm giving them less weight."
+            "- Some of my information sources haven't been reliable lately — I'm trusting them less right now."
         )
         learned_any = True
 
@@ -2033,9 +2060,13 @@ def _template_narrative(summary: dict, date_str: str) -> str:
         None,
     )
     if best_hyp:
+        wr = best_hyp["win_rate_pct"]
+        wr_words = "more often than not" if wr >= 50 else "sometimes"
+        if wr >= 75:
+            wr_words = "most of the time"
         lines.append(
-            f"- **Theory '{best_hyp['name']}' is holding up: "
-            f"{best_hyp['win_rate_pct']}% accuracy over {best_hyp['observations']} checks.**"
+            f"- **A theory I've been testing is working {wr_words} — "
+            f"checked {best_hyp['observations']} times so far.**"
         )
         learned_any = True
 
