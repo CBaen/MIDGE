@@ -1188,9 +1188,11 @@ def _build_llm_prompt(summary: dict) -> str:
         bull_c = macro_align.get("bullish_count", 0)
         bear_c = macro_align.get("bearish_count", 0)
         divergent = macro_align.get("divergent", False)
-        align_note = "diverging in different directions" if divergent else f"mostly pointing {dominant}"
+        up_words = _signal_count_to_words(bull_c)
+        down_words = _signal_count_to_words(bear_c)
+        align_note = "pulling in different directions" if divergent else f"mostly pointing {dominant.replace('bullish','up').replace('bearish','down')}"
         lines.append(
-            f"MACRO SIGNALS: {bull_c} signals pointing up, {bear_c} pointing down — {align_note}."
+            f"BIG-PICTURE ECONOMIC SIGNALS: {up_words} pointing up, {down_words} pointing down — {align_note}."
         )
 
     # Key macro indicators
@@ -1393,20 +1395,18 @@ def _build_llm_prompt(summary: dict) -> str:
 
     if cot and cot.get("dominant"):
         dominant_cot = cot["dominant"]
-        bull_c = cot.get("bullish_count", 0)
-        bear_c = cot.get("bearish_count", 0)
+        dominant_plain = "upward" if dominant_cot == "bullish" else ("downward" if dominant_cot == "bearish" else "in mixed directions")
         lines.append(
-            f"LARGE TRADER POSITIONING: The big professional traders are positioned "
-            f"{dominant_cot} overall ({bull_c} bullish signals vs {bear_c} bearish)."
+            f"WHAT PROFESSIONAL TRADERS ARE DOING: The biggest traders are mostly betting {dominant_plain} right now."
         )
         lines.append(
-            "  INSTRUCTION: If COT data is notable (strongly one-directional), mention it: "
-            "'The big professional traders are heavily positioned [direction] right now — "
-            "which is either a smart bet or a crowded trade that could snap back.' "
+            "  INSTRUCTION: If this is strongly one-directional, mention it: "
+            "'The biggest professional traders are heavily betting [up/down] right now — "
+            "which is either a smart move or a crowded bet that could snap back.' "
             "Skip if mixed or flat."
         )
     else:
-        lines.append("LARGE TRADER POSITIONING: No strong positioning signal today.")
+        lines.append("WHAT PROFESSIONAL TRADERS ARE DOING: No strong signal from the big traders today.")
 
     lines.append("")
 
@@ -1678,16 +1678,19 @@ def _build_llm_prompt(summary: dict) -> str:
     distrusted = th.get("distrusted", [])
     if trusted or distrusted:
         if trusted:
+            n_trusted = len(trusted)
             lines.append(
-                f"SOURCE RELIABILITY: {len(trusted)} information source(s) are consistently reliable "
-                f"(correct more than 55% of the time)."
+                f"SOURCE RELIABILITY: {_signal_count_to_words(n_trusted).replace(' signals', ' information source(s)')} "
+                f"have been right more often than not lately."
             )
         if distrusted:
+            n_distrusted = len(distrusted)
             lines.append(
-                f"  {len(distrusted)} source(s) are performing below chance — I'm weighting them less."
+                f"  {_signal_count_to_words(n_distrusted).replace(' signals', ' source(s)')} haven't been reliable lately — "
+                "I'm trusting them less right now."
             )
         lines.append(
-            "  INSTRUCTION: Describe sources by what they measure, not their technical names. "
+            "  INSTRUCTION: Describe sources by what they measure, not their names. "
             "'insider buying reports' not 'sec_form4'. Goes in 'What I Learned'."
         )
 
@@ -1738,17 +1741,14 @@ def _template_narrative(summary: dict, date_str: str) -> str:
     if macro_align and macro_align.get("dominant"):
         dominant = macro_align["dominant"]
         divergent = macro_align.get("divergent", False)
-        bull_c = macro_align.get("bullish_count", 0)
-        bear_c = macro_align.get("bearish_count", 0)
         if divergent:
             lines.append(
-                f"- Economic signals are mixed ({bull_c} pointing up, {bear_c} pointing down) — "
-                "they're not agreeing with each other."
+                "- Economic signals are pulling in different directions — they're not agreeing right now."
             )
         else:
+            dominant_plain = "up" if dominant == "bullish" else ("down" if dominant == "bearish" else dominant)
             lines.append(
-                f"- Economic signals are mostly pointing **{dominant}** "
-                f"({bull_c} up vs {bear_c} down)."
+                f"- **Big-picture economic signals are mostly pointing {dominant_plain}.**"
             )
 
     # Key macro indicators (most deviated)
@@ -1808,21 +1808,20 @@ def _template_narrative(summary: dict, date_str: str) -> str:
     fg = summary.get("crypto_fear_greed", {})
     if fg and fg.get("value") is not None:
         fg_value = int(fg["value"])
-        fg_class = fg.get("classification", "")
         fg_trend = fg.get("trend", "")
         trend_note = f" It's been {fg_trend}." if fg_trend else ""
         if fg_value <= 25:
-            lines.append(
-                f"- **Crypto markets are terrified right now** (fear score: {fg_value}, {fg_class}).{trend_note}"
-            )
+            lines.append(f"- **Crypto traders are extremely scared right now.**{trend_note}")
             lines.append("- *Historically this is when the quiet buyers step in.*")
-        elif fg_value >= 75:
-            lines.append(
-                f"- **Everyone in crypto is euphoric** (greed score: {fg_value}, {fg_class}).{trend_note}"
-            )
-            lines.append("- *This is exactly when corrections tend to hit.*")
+        elif fg_value <= 45:
+            lines.append(f"- Crypto traders are feeling a bit nervous.{trend_note}")
+        elif fg_value <= 55:
+            lines.append(f"- Crypto mood is neutral — nothing unusual.{trend_note}")
+        elif fg_value <= 75:
+            lines.append(f"- Crypto traders are feeling optimistic.{trend_note}")
         else:
-            lines.append(f"- Crypto sentiment is neutral (score: {fg_value}, {fg_class}).{trend_note}")
+            lines.append(f"- **Everyone in crypto is feeling great right now.**{trend_note}")
+            lines.append("- *Historically this is when things cool off.*")
     else:
         lines.append("- No crypto sentiment data available.")
 
@@ -1874,11 +1873,9 @@ def _template_narrative(summary: dict, date_str: str) -> str:
 
         if cot and cot.get("dominant") and cot.get("dominant") != "mixed":
             dominant_cot = cot["dominant"]
-            bull_c = cot.get("bullish_count", 0)
-            bear_c = cot.get("bearish_count", 0)
+            dominant_plain = "upward" if dominant_cot == "bullish" else ("downward" if dominant_cot == "bearish" else dominant_cot)
             lines.append(
-                f"- Large professional traders are positioned **{dominant_cot}** overall "
-                f"({bull_c} bullish vs {bear_c} bearish signals)."
+                f"- **The biggest professional traders are mostly betting {dominant_plain} right now.**"
             )
         lines.append("")
 
