@@ -31,21 +31,23 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 DOMAIN_TICKER_MAP: dict[str, list[str]] = {
     # ---- Macro (FRED, economic calendar) --------------------------------
-    "macro": ["SPY", "ES=F", "NQ=F", "QQQ", "DIA"],
-    "fred_macro": ["SPY", "ES=F", "NQ=F"],
+    # Narrow mapping: 2 tickers only. A single macro event must not fan out
+    # to 5 tickers and fabricate convergence by itself.
+    "macro": ["SPY", "ES=F"],
+    "fred_macro": ["SPY", "ES=F"],
     # Yield-curve signals map to bond ETFs
-    "fred_yields": ["TLT", "IEF", "SHY"],
+    "fred_yields": ["TLT", "IEF"],
 
     # ---- Energy (EIA: crude, natural gas, distillate) -------------------
-    "energy": ["XLE", "CL=F", "XOM", "CVX", "OXY"],
-    "eia_energy": ["CL=F", "XLE", "XOM", "CVX"],
+    "energy": ["CL=F", "XLE"],
+    "eia_energy": ["CL=F", "XLE"],
 
     # ---- Volatility / options -------------------------------------------
-    "volatility": ["SPY", "QQQ", "ES=F", "VXX"],
-    "options": ["SPY", "QQQ", "ES=F"],
+    "volatility": ["SPY", "VXX"],
+    "options": ["SPY", "QQQ"],
 
     # ---- Crypto (fear/greed, sector sentiment) --------------------------
-    "crypto": ["BTC-USD", "ETH-USD", "SOL-USD"],
+    "crypto": ["BTC-USD", "ETH-USD"],
     "crypto_fear_greed": ["BTC-USD", "ETH-USD"],
 
     # ---- Government / legislation (broad until ticker is parsed) --------
