@@ -314,6 +314,18 @@ class SensingReactiveMixin:
         elif source_name == "binance_derivatives":
             signals = fetch_binance_derivatives(getattr(self, "_binance_derivatives_client", None))
 
+        elif source_name == "kraken_futures":
+            from mae_core.market.fetchers_crypto import fetch_kraken_futures
+            signals = fetch_kraken_futures(getattr(self, "_kraken_futures_client", None))
+
+        elif source_name == "mempool_btc":
+            from mae_core.market.fetchers_crypto import fetch_mempool_btc
+            signals = fetch_mempool_btc(getattr(self, "_mempool_client", None))
+
+        elif source_name == "crypto_news":
+            from mae_core.market.fetchers_crypto import fetch_crypto_news
+            signals = fetch_crypto_news(getattr(self, "_crypto_news_client", None))
+
         elif source_name == "defillama":
             try:
                 from mae_core.market.apis.defillama_client import DefiLlamaClient
