@@ -172,6 +172,17 @@ def _run_paper_trading_gate(ctx: SimpleNamespace, alerts: list, step: int) -> No
         _pt_str = LEARNING_CONFIG.get("paper_trade_min_strength", 0.65)
         _pt_combo = LEARNING_CONFIG.get("paper_trade_min_combo_mean", 0.25)
         for alert in alerts:
+            # Extract ticker early — only ticker-specific alerts are tradeable.
+            # Global convergence alerts (no ticker) are informational only.
+            _alert_ticker = getattr(alert, "ticker", "") or ""
+            if not _alert_ticker:
+                for _sig in getattr(alert, "signals", []):
+                    _alert_ticker = getattr(_sig, "metadata", {}).get("symbol", "") or ""
+                    if _alert_ticker:
+                        break
+            if not _alert_ticker:
+                continue  # Skip untradeable ticker-less alerts
+
             if not (
                 hasattr(alert, "confidence")
                 and hasattr(alert, "strength")
@@ -232,14 +243,8 @@ def _run_paper_trading_gate(ctx: SimpleNamespace, alerts: list, step: int) -> No
                     continue
             # --- Law 7: Rule of 3 validators ---
             # Count independent validators that agree on this trade.
-            # Prefer alert.ticker (global alerts), fall back to signals metadata
-            # (ticker alerts — ConvergenceAlert has no .ticker attribute).
-            _ticker = getattr(alert, "ticker", "") or ""
-            if not _ticker:
-                for _sig in getattr(alert, "signals", []):
-                    _ticker = getattr(_sig, "metadata", {}).get("symbol", "") or ""
-                    if _ticker:
-                        break
+            # _alert_ticker was extracted at the top of the loop (Fix 3).
+            _ticker = _alert_ticker
             _direction = getattr(alert, "direction", "") or ""
             _validators = 1  # Convergence alert itself = 1
             _validator_names = ["convergence"]

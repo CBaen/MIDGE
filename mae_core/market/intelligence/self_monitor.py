@@ -284,6 +284,14 @@ class SelfMonitor:
                 "SelfMonitor: alerting SUPPRESSED — circuit breaker triggered by: %s",
                 ", ".join(_SUPPRESSION_TRIGGERS.intersection(new_flags)),
             )
+        # Auto-recover: if no suppression triggers are active, lift the circuit
+        # breaker. Previously suppression latched on permanently until manual
+        # reset, which blocked all paper trading indefinitely.
+        elif self._alerting_suppressed and not has_suppression_trigger:
+            self._alerting_suppressed = False
+            logger.info(
+                "SelfMonitor: suppression auto-cleared — anomaly resolved"
+            )
 
         # Update flag list
         self._anomaly_flags = new_flags

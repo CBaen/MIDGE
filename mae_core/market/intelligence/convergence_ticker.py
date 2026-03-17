@@ -14,16 +14,22 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List
 
 from mae_core.market.intelligence.convergence_models import ConvergenceAlert, Signal
 
 logger = logging.getLogger(__name__)
 
+# Minimum interval between ticker alerts for the same ticker+direction.
+_TICKER_DEDUP_HOURS = 1.0
+
 
 class ConvergenceTickerMixin:
     """Per-ticker convergence detection."""
+
+    # Populated on first use. Keyed by "TICKER:direction" → datetime.
+    _last_ticker_alert_times: Dict[str, datetime]
 
     def check_ticker_convergence_for(self, ticker: str) -> list:
         """Check convergence for a single ticker symbol."""
@@ -149,6 +155,21 @@ class ConvergenceTickerMixin:
                     urgency = "hours"
                 else:
                     urgency = "days"
+
+                # Dedup: suppress same ticker+direction within the dedup window.
+                if not hasattr(self, "_last_ticker_alert_times"):
+                    self._last_ticker_alert_times = {}
+                _dedup_key = f"{ticker}:{direction}"
+                _now = datetime.now()
+                _last_fire = self._last_ticker_alert_times.get(_dedup_key)
+                if _last_fire and (_now - _last_fire) < timedelta(hours=_TICKER_DEDUP_HOURS):
+                    logger.debug(
+                        "Ticker convergence dedup: %s suppressed (%.0fs remaining)",
+                        _dedup_key,
+                        (_last_fire + timedelta(hours=_TICKER_DEDUP_HOURS) - _now).total_seconds(),
+                    )
+                    continue
+                self._last_ticker_alert_times[_dedup_key] = _now
 
                 domain_list = ", ".join(sorted(domains_seen))
                 seq_note = f", seq={sequence_score:.2f}" if sequence_score != 1.0 else ""
