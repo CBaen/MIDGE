@@ -7,6 +7,7 @@ Mixed into MarketSensingHook via SensingReactiveMixin.
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 
 logger = logging.getLogger("midge.market.sensing")
 
