@@ -117,15 +117,25 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
                 for ta in ticker_alerts:
                     ta_dict = ta.to_dict() if hasattr(ta, "to_dict") else {}
                     ctx.bus.publish(CH_CONVERGENCE, ta_dict)
+                    # Extract ticker from alert_id (TCKR-{ticker}-...) or signals
+                    _ta_ticker = ""
+                    _aid = getattr(ta, "alert_id", "")
+                    if _aid.startswith("TCKR-"):
+                        _ta_ticker = _aid.split("-")[1] if len(_aid.split("-")) > 1 else ""
+                    if not _ta_ticker:
+                        for _s in getattr(ta, "signals", []):
+                            _ta_ticker = getattr(_s, "metadata", {}).get("symbol", "")
+                            if _ta_ticker:
+                                break
                     logger.info(
                         "TICKER CONVERGENCE: %s %s (%d domains, confidence=%.3f)",
-                        getattr(ta, "ticker", ta_dict.get("primary_ticker", "?")),
+                        _ta_ticker or "?",
                         ta_dict.get("direction", "?"),
-                        len(ta_dict.get("domains_converging", [])),
+                        len(ta_dict.get("domains", ta_dict.get("domains_converging", []))),
                         ta_dict.get("confidence", 0),
                     )
                     _oc = getattr(ctx, "outcome_collector", None)
-                    _sym = getattr(ta, "ticker", None) or ta_dict.get("primary_ticker", "")
+                    _sym = _ta_ticker or ta_dict.get("primary_ticker", "")
                     if _oc and _sym:
                         try:
                             _oc.register_convergence_alert(ta, _sym)

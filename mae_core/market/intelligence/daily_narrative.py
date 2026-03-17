@@ -1053,22 +1053,35 @@ def _extract_signal_detail(sig: dict, direction: str = "") -> str:
     return ""
 
 
-def _find_best_signal(buffer_data: dict, ticker: str, domain: str) -> dict:
-    """Find the best (strongest) signal for a ticker in a given domain."""
+def _find_best_signal(buffer_data: dict, ticker: str, domain: str,
+                      direction: str = "") -> dict:
+    """Find the best (strongest) signal for a ticker in a given domain.
+
+    When direction is specified, prefers direction-matching signals.
+    Falls back to any signal if no directional match found.
+    """
     if not buffer_data or not isinstance(buffer_data, dict):
         return {}
     signals = buffer_data.get(domain, [])
-    best = {}
-    best_strength = -1
+    best_dir = {}
+    best_dir_strength = -1
+    best_any = {}
+    best_any_strength = -1
     for sig in signals:
         if not isinstance(sig, dict):
             continue
         meta = sig.get("metadata", {})
         sym = meta.get("symbol", "")
-        if sym == ticker and float(sig.get("strength", 0)) > best_strength:
-            best = sig
-            best_strength = float(sig.get("strength", 0))
-    return best
+        if sym != ticker:
+            continue
+        s = float(sig.get("strength", 0))
+        if s > best_any_strength:
+            best_any = sig
+            best_any_strength = s
+        if direction and sig.get("direction", "").lower() == direction.lower() and s > best_dir_strength:
+            best_dir = sig
+            best_dir_strength = s
+    return best_dir if best_dir else best_any
 
 
 # ── Per-domain plain-English signal descriptions ─────────────────────
@@ -1209,7 +1222,7 @@ def _build_stack_description(ticker: str, direction: str, domains: list[str],
         # Try to extract a specific detail from the actual signal data
         detail = ""
         if buffer_data:
-            sig = _find_best_signal(buffer_data, ticker, domain)
+            sig = _find_best_signal(buffer_data, ticker, domain, direction)
             if sig:
                 detail = _extract_signal_detail(sig, direction)
         # Fall back to generic description if no specific detail
