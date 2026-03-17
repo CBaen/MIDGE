@@ -15,11 +15,10 @@ import httpx
 
 logger = logging.getLogger("midge.market.apis.crypto_news_client")
 
-CACHE_DURATION = 300  # 5 minutes (both feeds share one cache slot per source)
+CACHE_DURATION = 300          # 5 minutes
 VELOCITY_WINDOW_HOURS = 24
-VELOCITY_THRESHOLD = 5   # minimum headlines to emit a signal
-STRENGTH_MIN_COUNT = 5
-STRENGTH_MAX_COUNT = 20
+VELOCITY_THRESHOLD = 5        # minimum headlines to emit a signal
+STRENGTH_MIN_COUNT, STRENGTH_MAX_COUNT = 5, 20
 
 FEEDS = {
     "coindesk": "https://www.coindesk.com/arc/outboundfeeds/rss/",
@@ -41,7 +40,6 @@ BEARISH_KEYWORDS = frozenset({
     "ban", "banned", "sec", "lawsuit", "fraud", "scam", "collapse",
     "sell-off", "selloff", "losses", "dump", "rug pull",
 })
-
 BULLISH_KEYWORDS = frozenset({
     "surge", "rally", "adoption", "etf", "approval", "approved",
     "institutional", "record", "all-time high", "breakout", "gains",
@@ -51,9 +49,8 @@ BULLISH_KEYWORDS = frozenset({
 
 @dataclass
 class CryptoHeadline:
-    """A single headline from a crypto news RSS feed."""
     title: str
-    source: str               # "coindesk" or "cointelegraph"
+    source: str          # "coindesk" or "cointelegraph"
     published_at: datetime
     categories: List[str]
     url: str
@@ -100,7 +97,6 @@ class CryptoNewsClient:
 
     def __init__(self, raw_store=None):
         self._raw_store = raw_store
-        # {source_name: (List[CryptoHeadline], fetch_timestamp)}
         self._cache: Dict[str, tuple] = {}
         self._stats = {"fetches": 0, "errors": 0, "headlines_parsed": 0, "signals_emitted": 0}
 
@@ -118,7 +114,6 @@ class CryptoNewsClient:
                              headers={"User-Agent": "MIDGE Trading Research"})
             resp.raise_for_status()
             root = ET.fromstring(resp.text)
-            ns = {"atom": "http://www.w3.org/2005/Atom"}
             channel = root.find("channel")
             items_el = channel.findall("item") if channel is not None else root.findall(".//item")
             for item in items_el:
