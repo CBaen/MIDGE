@@ -53,6 +53,7 @@ class PrecursorSignal:
     lag_days: int           # Days before the move
     lag_bucket: str         # Categorized lag ("immediate", "short", etc.)
     signal_id: str = ""     # Original signal ID from archive
+    entity_metadata: dict = field(default_factory=dict)  # WHO: insider names, fund names, congress members
 
     def to_dict(self) -> dict:
         return {
@@ -63,6 +64,7 @@ class PrecursorSignal:
             "lag_days": self.lag_days,
             "lag_bucket": self.lag_bucket,
             "signal_id": self.signal_id,
+            "entity_metadata": self.entity_metadata,
         }
 
     @classmethod
@@ -75,6 +77,7 @@ class PrecursorSignal:
             lag_days=d.get("lag_days", 0),
             lag_bucket=d.get("lag_bucket", "immediate"),
             signal_id=d.get("signal_id", ""),
+            entity_metadata=d.get("entity_metadata", {}),
         )
 
 
