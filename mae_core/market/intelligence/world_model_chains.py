@@ -177,4 +177,45 @@ def _get_curated_chains() -> List[Tuple[str, str, dict]]:
     _add("recession_fear", "consumer_spending_down", 0.70, 14, "bearish")
     _add("recession_fear", "XLF", 0.70, 3, "bearish")
 
+    # === CRYPTO CHAINS ===
+    # BTC correlates with Nasdaq/risk assets — regime dependent
+
+    # Oil → macro → crypto: oil spikes = inflation fear = Fed hawkish = crypto down
+    _add("crude_price_spike", "inflation_expectation_up", 0.75, 3, "bearish")
+    _add("inflation_expectation_up", "fed_hawkish_signal", 0.70, 7, "bearish")
+    _add("fed_hawkish_signal", "BTC/USD", 0.70, 2, "bearish")
+    _add("fed_hawkish_signal", "ETH/USD", 0.65, 2, "bearish")
+
+    # Risk-off → crypto down (BTC moves with Nasdaq in correlated regime)
+    _add("risk_off_rotation", "BTC/USD", 0.70, 1, "bearish")
+    _add("risk_off_rotation", "ETH/USD", 0.65, 1, "bearish")
+
+    # VIX spike → crypto selloff (fear propagation)
+    _add("vix_spike", "BTC/USD", 0.65, 0, "bearish")
+
+    # Asian markets → crypto (Hong Kong BTC ETF linkage)
+    _add("asia_market_selloff", "BTC/USD", 0.60, 0.17, "bearish")  # 0.17 days = ~4 hours
+
+    # Crypto regulation events
+    _add("crypto_regulation_positive", "BTC/USD", 0.75, 3, "bullish")
+    _add("crypto_regulation_negative", "BTC/USD", 0.80, 1, "bearish")
+    _add("crypto_adoption_up", "BTC/USD", 0.70, 7, "bullish")
+    _add("crypto_selloff", "BTC/USD", 0.85, 0, "bearish")
+    _add("crypto_selloff", "ETH/USD", 0.85, 0, "bearish")
+
+    # Stablecoin flows → crypto direction
+    _add("stablecoin_minting", "BTC/USD", 0.65, 2, "bullish")
+    _add("stablecoin_burning", "BTC/USD", 0.65, 2, "bearish")
+
+    # DeFi capital flight → crypto bearish
+    _add("defi_tvl_drop", "ETH/USD", 0.70, 1, "bearish")
+    _add("defi_tvl_drop", "BTC/USD", 0.55, 2, "bearish")
+
+    # War/geopolitical → defense stocks + energy + crypto safe-haven narrative
+    _add("middle_east_conflict", "defense_spending_up", 0.80, 7, "bullish")
+    _add("defense_spending_up", "LMT", 0.80, 3, "bullish")
+    _add("defense_spending_up", "RTX", 0.80, 3, "bullish")
+    _add("defense_spending_up", "NOC", 0.75, 3, "bullish")
+    _add("middle_east_conflict", "BTC/USD", 0.45, 7, "bullish")  # weak safe-haven, regime dependent
+
     return edges
