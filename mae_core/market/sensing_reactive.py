@@ -313,6 +313,35 @@ class SensingReactiveMixin:
         elif source_name == "binance_derivatives":
             signals = fetch_binance_derivatives(getattr(self, "_binance_derivatives_client", None))
 
+        elif source_name == "defillama":
+            try:
+                from mae_core.market.apis.defillama_client import DefiLlamaClient
+                _dl = DefiLlamaClient()
+                _chain_to_ticker = {"Ethereum": "ETH", "Solana": "SOL", "Bitcoin": "BTC",
+                                    "Avalanche": "AVAX", "Cardano": "ADA"}
+                for defi_sig in _dl.get_tvl_changes() + _dl.get_stablecoin_flows():
+                    for _tk in defi_sig.affected_tickers:
+                        signals.append({
+                            "source": "defillama",
+                            "symbol": _tk,
+                            "asset_class": "crypto",
+                            "domain": "defi",
+                            "direction": defi_sig.direction,
+                            "strength": defi_sig.strength,
+                            "confidence": defi_sig.confidence,
+                            "timestamp": datetime.now().isoformat(),
+                            "metadata": {
+                                "symbol": _tk,
+                                "metric": defi_sig.metric,
+                                "chain": defi_sig.chain,
+                                "change_24h": defi_sig.change_24h,
+                                "change_7d": defi_sig.change_7d,
+                                "details": defi_sig.details,
+                            },
+                        })
+            except Exception:
+                logger.debug("DefiLlama fetch failed", exc_info=True)
+
         # Enrich in background thread (velocity, filing-time, Ollama sentiment)
         # Moved from _collect_results() so Ollama's 15s timeout doesn't block
         # the main step loop. Thread-safe: only mutates signal objects.
