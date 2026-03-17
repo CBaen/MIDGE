@@ -536,11 +536,18 @@ def _gather_data(date_str: str) -> dict:
 
     # ── Post-mortem (overall performance) ─────────────────────────
     postmortem = _safe_read_json(_DATA_MIDGE / "postmortem_continuous.json")
+    _combo_stats: dict = {}  # kept for stack enrichment below
     if postmortem and isinstance(postmortem, dict):
         overall = postmortem.get("overall", {})
         best_combos = postmortem.get("top_5_best_combos", [])[:3]
         worst_combos = postmortem.get("top_5_worst_combos", [])[:2]
         timing = postmortem.get("timing", {})
+        # Flatten combo_stats for _build_stack_description lookup
+        raw_combo_stats = postmortem.get("combo_stats", {})
+        if isinstance(raw_combo_stats, dict):
+            for _ckey, _cval in raw_combo_stats.items():
+                if isinstance(_cval, dict):
+                    _combo_stats[_ckey] = _cval
         summary["postmortem"] = {
             "overall_win_rate_pct": overall.get("overall_win_rate_pct", "?"),
             "grade": overall.get("grade", "?"),
@@ -856,6 +863,180 @@ def _confidence_words(pct: int) -> str:
     if pct >= 45:
         return "forming — need more"
     return "early / still watching"
+
+
+# ── Per-domain plain-English signal descriptions ─────────────────────
+# Each domain gets a one-sentence description of WHAT was observed.
+# Used to build the stack narrative so the LLM (and template) can show
+# each independent pillar rather than just listing domain names.
+_DOMAIN_WHAT_SEEN: dict[str, str] = {
+    "insider": "People inside the company are buying or selling their own stock",
+    "macro": "Big-picture economic data (government spending, borrowing costs, inflation) is signalling a shift",
+    "technical": "The price chart has triggered a recognisable pattern that traders watch for",
+    "events": "The company has made announcements or filed reports that suggest something is changing",
+    "positioning": "The biggest professional traders have moved their bets in this direction",
+    "government": "Government contract data or congressional trading shows activity in this direction",
+    "contracts": "Government contract awards are shifting toward or away from this company",
+    "sentiment": "Social media chatter about this company has turned strongly in one direction",
+    "fundamental": "The company's own financial numbers are pointing this way",
+    "institutional": "Large investment funds have been quietly moving money in this direction",
+    "crypto": "Crypto market signals are aligning with this outcome",
+    "energy": "Energy supply and demand data is reinforcing this direction",
+    "causal": "A confirmed cause-and-effect chain is pointing here",
+    "cascade": "A predicted domino chain has confirmed links pointing this way",
+}
+
+# Pre-written independence notes for common domain pair combinations.
+# These explain WHY two domains being independent makes their agreement meaningful.
+_INDEPENDENCE_NOTES: dict[frozenset, str] = {
+    frozenset({"insider", "technical"}): "Insiders read company secrets — not price charts. When both agree, that's two completely different worlds reaching the same conclusion.",
+    frozenset({"insider", "macro"}): "People inside a company don't set government economic policy. When insider selling aligns with macro warnings, the risk is coming from two independent directions.",
+    frozenset({"insider", "events"}): "Filing reports and trading your own shares are separate actions — one is public disclosure, the other is private conviction with money behind it.",
+    frozenset({"insider", "government"}): "Congressional trades and corporate insider trades are reported independently. When both point the same direction, it crosses two completely separate information silos.",
+    frozenset({"insider", "sentiment"}): "Social media doesn't know what insiders are doing (insider trades can take days to be reported). Two independent awareness channels agreeing is a strong signal.",
+    frozenset({"technical", "macro"}): "Price chart patterns are blind to macro policy. When charts and economic data agree, that's the market's internal momentum matching the external environment.",
+    frozenset({"technical", "events"}): "Charts reflect collective trader behaviour; company announcements are raw facts. When both align, the story and the market reaction are pointing the same way.",
+    frozenset({"technical", "government"}): "Price patterns and government contract data come from entirely separate worlds. Agreement across them is unusual and meaningful.",
+    frozenset({"events", "macro"}): "Company-specific announcements and broad economic trends are independent. When a company's own news aligns with the macro environment, the pressure comes from both inside and outside.",
+    frozenset({"events", "government"}): "What a company announces publicly and what government contracts show are separate data streams. When they converge, the situation is confirming from official and private sources simultaneously.",
+    frozenset({"institutional", "insider"}): "Big funds and company insiders have completely different information pipelines. When both are moving the same way, money is flowing from two unconnected sources of conviction.",
+    frozenset({"institutional", "technical"}): "Institutional positioning and price chart patterns are measured differently and by different people. Agreement means both the smart money and the chart-readers see the same thing.",
+    frozenset({"government", "technical"}): "Government contract data and price charts have nothing to do with each other. Convergence here is genuinely unusual.",
+    frozenset({"sentiment", "technical"}): "Social media mood and chart patterns are generated by different populations — retail chatter vs. price action. When they align, broad market psychology is consistent with the money flow.",
+    frozenset({"energy", "macro"}): "Energy inventory data and broad economic signals are measured independently by different agencies. When both point the same way, real-world supply meets financial policy.",
+}
+
+
+def _get_independence_note(domains: list[str]) -> str:
+    """Return the most illustrative independence note for a set of domains.
+
+    Checks all pairs in the list. Returns the first matching pair note,
+    prioritising pairs that involve the most 'surprising' combinations
+    (insider+technical > everything else, then government combos).
+    """
+    _PRIORITY_PAIRS = [
+        frozenset({"insider", "technical"}),
+        frozenset({"insider", "government"}),
+        frozenset({"government", "technical"}),
+        frozenset({"institutional", "insider"}),
+        frozenset({"insider", "macro"}),
+        frozenset({"technical", "macro"}),
+        frozenset({"events", "government"}),
+        frozenset({"institutional", "technical"}),
+        frozenset({"insider", "events"}),
+        frozenset({"energy", "macro"}),
+        frozenset({"technical", "events"}),
+        frozenset({"events", "macro"}),
+        frozenset({"insider", "sentiment"}),
+        frozenset({"sentiment", "technical"}),
+        frozenset({"technical", "government"}),
+    ]
+    domain_set = {d.lower() for d in domains}
+    for pair in _PRIORITY_PAIRS:
+        if pair.issubset(domain_set):
+            note = _INDEPENDENCE_NOTES.get(pair)
+            if note:
+                return note
+    return (
+        "These signals come from completely separate information sources — "
+        "they have no way of knowing about each other. That's what makes their agreement meaningful."
+    )
+
+
+def _combo_win_rate(domains: list[str], combo_stats: dict) -> str | None:
+    """Look up the historical win rate for a domain combination in the postmortem.
+
+    combo_stats keys are like 'insider+technical'. We try the exact sorted combo
+    first, then fall back to the best matching subset.
+    Returns a plain-English string or None if no data.
+    """
+    if not combo_stats or not domains:
+        return None
+    sorted_key = "+".join(sorted(d.lower() for d in domains))
+    # Exact match
+    if sorted_key in combo_stats:
+        stat = combo_stats[sorted_key]
+        wr = stat.get("win_rate", 0)
+        n = stat.get("n", 0)
+        if n >= 3:
+            if wr >= 0.80:
+                return f"This exact combination has worked most of the time ({n} past cases)"
+            if wr >= 0.60:
+                return f"This combination has worked more often than not ({n} past cases)"
+            if wr >= 0.40:
+                return f"This combination has worked about half the time ({n} past cases)"
+            return f"This combination has been unreliable so far ({n} past cases)"
+    # Try all sub-pairs (2-domain combos) for any partial match
+    for size in range(len(domains) - 1, 1, -1):
+        from itertools import combinations as _combos
+        for subset in _combos(sorted(domains), size):
+            sub_key = "+".join(subset)
+            if sub_key in combo_stats:
+                stat = combo_stats[sub_key]
+                wr = stat.get("win_rate", 0)
+                n = stat.get("n", 0)
+                if n >= 3 and wr >= 0.60:
+                    combo_desc = " and ".join(
+                        _DOMAIN_WHAT_SEEN.get(d, d).split(" ")[0:3] for d in subset  # type: ignore[arg-type]
+                    )
+                    return f"When similar signals aligned before, it worked more often than not ({n} past cases)"
+    return None
+
+
+def _build_stack_description(ticker: str, direction: str, domains: list[str],
+                              world_model_chain: str, combo_stats: dict) -> list[str]:
+    """Build a list of plain-English lines that narrate the full pattern stack.
+
+    Returns a list ready to be joined with newlines.  Each line is a bullet
+    explaining one independent pillar of the convergence.
+
+    This is the core of the fix — instead of giving the LLM "evidence from:
+    insider, technical, events", we give it a pre-written explanation of what
+    EACH pillar saw and WHY their agreement matters.
+    """
+    direction_verb = "pointing up" if "bull" in direction.lower() else ("pointing down" if "bear" in direction.lower() else "neutral")
+    n = len(domains)
+
+    result: list[str] = []
+    result.append(
+        f"{ticker} has {n} INDEPENDENT signals all {direction_verb} right now:"
+    )
+
+    for i, domain in enumerate(domains, 1):
+        what_seen = _DOMAIN_WHAT_SEEN.get(domain.lower(),
+                                          f"Signals from the '{domain}' area are aligned")
+        result.append(f"  {i}. {what_seen}  [{domain}]")
+
+    # Independence note
+    result.append(f"  → {_get_independence_note(domains)}")
+
+    # Historical win rate
+    wr_note = _combo_win_rate(domains, combo_stats)
+    if wr_note:
+        result.append(f"  → History: {wr_note}")
+
+    # World model causal chain
+    if world_model_chain and world_model_chain not in ("None", "[]", ""):
+        chain_clean = world_model_chain.strip("[]").replace("'", "").replace('"', "")
+        # Translate known jargon nodes to plain English
+        _CHAIN_NODE_MAP = {
+            "datacenter_demand": "demand for data centres",
+            "ai_capex_surge": "a wave of AI spending",
+            "defense_contract_awards": "defence contract awards",
+            "defense_spending_increase": "rising defence spending",
+            "geopolitical_tension_escalation": "escalating geopolitical tension",
+            "airline_fuel_costs": "airline fuel costs",
+            "crude_price_spike": "an oil price spike",
+            "oil_supply_disruption": "oil supply disruption",
+            "opec_production_cut": "OPEC production cuts",
+        }
+        chain_nodes = [n.strip() for n in chain_clean.split(",")]
+        chain_plain = " → ".join(
+            _CHAIN_NODE_MAP.get(n.strip(), n.strip()) for n in chain_nodes
+        )
+        result.append(f"  → Causal chain: {chain_plain}")
+
+    return result
 
 
 def _direction_words(direction: str) -> str:
