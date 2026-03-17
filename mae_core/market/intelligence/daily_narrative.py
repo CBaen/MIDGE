@@ -910,10 +910,148 @@ def _confidence_words(pct: int) -> str:
     return "early / still watching"
 
 
+# ── Signal detail extractor ────────────────────────────────────────
+# Pulls a specific, concrete detail from a signal's metadata instead of
+# using generic domain descriptions. This is what makes the difference
+# between "social media chatter has turned negative" and "StockTwits
+# sentiment for NVDA dropped sharply, with keywords: AI bubble, overvalued".
+
+
+def _extract_signal_detail(sig: dict, direction: str = "") -> str:
+    """Extract a plain-English detail from a signal's metadata.
+
+    Returns a specific, concrete sentence about what the signal actually
+    observed. Falls back to None if no meaningful detail can be extracted.
+    """
+    if not sig or not isinstance(sig, dict):
+        return ""
+    meta = sig.get("metadata", {})
+    source = sig.get("source", "")
+    d = direction or sig.get("direction", "")
+    d_word = "buying" if "bull" in d.lower() else "selling" if "bear" in d.lower() else "trading"
+
+    try:
+        # Insider trades — WHO and HOW MUCH
+        if "openinsider" in source or "form4" in source or source == "insider_cluster":
+            count = meta.get("insider_count", "")
+            value = meta.get("total_value", 0)
+            company = meta.get("company_name", "")
+            filer = meta.get("filer_name", "")
+            if count and value:
+                val_str = f"${abs(value):,.0f}" if abs(value) >= 1000 else f"${abs(value):.0f}"
+                who = filer or f"{count} insiders"
+                return f"{who} {d_word} {val_str} worth of stock" + (f" at {company}" if company else "")
+            if count:
+                return f"{count} company insiders are {d_word} their own shares"
+
+        # Technical — WHAT indicator and WHAT level
+        if "ta_" in source or "session_sweep" in source:
+            indicator = meta.get("indicator", "")
+            sweep_type = meta.get("sweep_type", "")
+            session = meta.get("session_swept", "")
+            level = meta.get("sweep_level", "")
+            quality = meta.get("quality_score", "")
+            rsi_val = meta.get("rsi_value", "")
+            macd_signal = meta.get("macd_signal", "")
+            if sweep_type and session:
+                return f"Price swept the {session} session {'high' if 'high' in sweep_type else 'low'}" + (f" at {level}" if level else "")
+            if indicator and rsi_val:
+                return f"RSI dropped to {rsi_val:.0f} (below 30 is extremely low)" if float(rsi_val) < 30 else f"RSI at {rsi_val:.0f}"
+            if indicator:
+                indicator_plain = {"rsi": "RSI momentum", "macd": "MACD trend", "bollinger": "Bollinger Band",
+                                   "structure": "market structure", "candle": "candlestick pattern"}.get(indicator, indicator)
+                return f"The {indicator_plain} indicator triggered on the price chart"
+
+        # Sentiment — WHICH platform and WHAT sentiment
+        if "stocktwits" in source:
+            score = meta.get("sentiment_score", meta.get("sentiment", ""))
+            trending = meta.get("is_trending", False)
+            detail = f"StockTwits sentiment is strongly {'positive' if 'bull' in d.lower() else 'negative'}"
+            if trending:
+                detail += " and the ticker is trending"
+            return detail
+        if "trends" in source or "google" in source:
+            interest = meta.get("interest_score", "")
+            delta = meta.get("interest_delta_7d", "")
+            queries = meta.get("related_queries", [])
+            if interest and delta:
+                direction_word = "spiked" if float(delta) > 20 else ("dropped" if float(delta) < -20 else "shifted")
+                detail = f"Google search interest {direction_word} (score: {interest})"
+                if queries and len(queries) > 0:
+                    top_q = [q for q in queries[:3] if isinstance(q, str)]
+                    if top_q:
+                        detail += f", people are searching: {', '.join(top_q)}"
+                return detail
+
+        # Crypto — price and movement
+        if "crypto" in source or "coingecko" in source or "coincap" in source:
+            price = meta.get("price_usd", "")
+            change_24h = meta.get("change_24h_pct", "")
+            change_7d = meta.get("change_7d_pct", "")
+            if price and change_24h:
+                return f"Price ${float(price):,.0f}, {'up' if float(change_24h) > 0 else 'down'} {abs(float(change_24h)):.1f}% in 24h" + (f", {abs(float(change_7d)):.1f}% in 7 days" if change_7d else "")
+
+        # Energy — WHAT indicator and HOW MUCH change
+        if "eia" in source or "energy" in source:
+            series_name = meta.get("series_name", "")
+            change_pct = meta.get("change_pct", "")
+            if series_name and change_pct:
+                return f"{series_name} {'rose' if float(change_pct) > 0 else 'fell'} {abs(float(change_pct)):.1f}%"
+
+        # Events — WHAT kind of filing
+        if "form8k" in source or "sec_efts" in source or "sec" in source:
+            filing_type = meta.get("filing_type", meta.get("form_type", ""))
+            keywords = meta.get("keywords", meta.get("keyword", ""))
+            if filing_type:
+                return f"SEC filing ({filing_type}) suggests something is changing"
+            if keywords:
+                kw = keywords if isinstance(keywords, str) else ", ".join(keywords[:3])
+                return f"SEC filing keyword matches: {kw}"
+
+        # Positioning — COT data
+        if "cot" in source:
+            return "The biggest professional traders have shifted their positions"
+
+        # Government — congressional trades
+        if "congress" in source or "house_stock" in source:
+            representative = meta.get("representative", "")
+            if representative:
+                return f"Congressional trade by {representative}"
+            return "Congressional stock trading activity detected"
+
+        # Institutional — 13F filings
+        if "13f" in source or "institutional" in source:
+            fund_name = meta.get("fund_name", "")
+            if fund_name:
+                return f"Large fund ({fund_name}) filing shows movement"
+
+    except (ValueError, TypeError, KeyError):
+        pass
+
+    return ""
+
+
+def _find_best_signal(buffer_data: dict, ticker: str, domain: str) -> dict:
+    """Find the best (strongest) signal for a ticker in a given domain."""
+    if not buffer_data or not isinstance(buffer_data, dict):
+        return {}
+    signals = buffer_data.get(domain, [])
+    best = {}
+    best_strength = -1
+    for sig in signals:
+        if not isinstance(sig, dict):
+            continue
+        meta = sig.get("metadata", {})
+        sym = meta.get("symbol", "")
+        if sym == ticker and float(sig.get("strength", 0)) > best_strength:
+            best = sig
+            best_strength = float(sig.get("strength", 0))
+    return best
+
+
 # ── Per-domain plain-English signal descriptions ─────────────────────
+# Fallback descriptions used when no specific signal detail is available.
 # Each domain gets a one-sentence description of WHAT was observed.
-# Used to build the stack narrative so the LLM (and template) can show
-# each independent pillar rather than just listing domain names.
 _DOMAIN_WHAT_SEEN: dict[str, str] = {
     "insider": "People inside the company are buying or selling their own stock",
     "macro": "Big-picture economic data (government spending, borrowing costs, inflation) is signalling a shift",
