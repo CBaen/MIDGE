@@ -194,6 +194,17 @@ class ConvergenceDetectionMixin(ConvergenceTickerMixin):
                     )
                     continue
 
+                # Absence signals are informational — they indicate a source went
+                # silent, not that evidence was found. They must NOT count toward
+                # the min_domains threshold for convergence.
+                _is_absence = getattr(strongest, "signal_id", "").startswith("absence:")
+                if _is_absence:
+                    logger.debug(
+                        "Convergence %s: domain [%s] is absence-only — not counting toward domains",
+                        direction, domain,
+                    )
+                    continue
+
                 max_eff = strongest.strength * self._compute_freshness(strongest, domain)
 
                 count = len(matching)
@@ -216,6 +227,11 @@ class ConvergenceDetectionMixin(ConvergenceTickerMixin):
                         "Convergence %s: neutral domain [%s] gated (confidence=%.3f < %.2f)",
                         direction, domain, strongest_neutral.confidence, _DOMAIN_CONFIDENCE_GATE,
                     )
+                    continue
+
+                # Absence signals do not count as evidence for convergence.
+                _is_absence_n = getattr(strongest_neutral, "signal_id", "").startswith("absence:")
+                if _is_absence_n:
                     continue
 
                 neutral_signals.append(strongest_neutral)
