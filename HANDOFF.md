@@ -1,18 +1,129 @@
 # MIDGE Handoff
 
-**Last updated:** 2026-03-17 (Session 12 — Ecosystem + Research Team)
+**Last updated:** 2026-03-17 (Session 12 — Ecosystem + Crypto + Pattern Stories)
 **Start ecosystem:** `python -m mae_core.market.ecosystem.supervisor`
 **Check status:** `python -m mae_core.market.ecosystem.supervisor --status`
 **For session history:** `git log --oneline`
 
 ---
 
-## Session 12 (2026-03-15/16): ORGANISM → ECOSYSTEM
+## Session 12 (2026-03-15/17): ORGANISM → ECOSYSTEM → CRYPTO
 
-**Guiding Light's directive:** "She is not an organism; she is an ecosystem." Transform MIDGE from a single daemon into a multi-process ecosystem of independent living systems.
+This was the most productive session in MIDGE's history. The directive shifted from "build features" to "make money." Guiding Light is temporarily homeless and employed. Every dollar matters.
 
-### Triadic Review (Phase 2 of session)
-Three independent reviewers (convergence integrity, user experience, adversarial) found 7 bugs in the new code. All 7 fixed:
+### Guiding Light's Directives (in order of priority)
+
+1. **MIDGE must make money.** Guiding Light's situation is urgent. This is not an academic project.
+2. **Crypto day/swing trading is the primary income path** — 24/7 market, no PDT rule, no minimum account balance.
+3. **Historical pattern mining is the FOUNDATION** — past is facts, not predictions. Constant, never-stopping.
+4. **MIDGE is an ecosystem, not an organism** — many independent processes, each with their own heartbeat.
+5. **Patterns are STORIES with characters, timelines, and connections** — not statistical labels.
+6. **Paper trading must prove MIDGE works before ANY real money is deployed.**
+
+### Critical Context Files (READ FIRST)
+
+| File | What It Contains |
+|------|-----------------|
+| `feedback_midge_must_make_money.md` | Guiding Light's situation. The urgency behind everything this session. |
+| `feedback_history_is_the_foundation.md` | Historical mining is primary, not secondary. Never treat it as a background task. |
+| `project_ecosystem_evolution.md` | Full ecosystem build details — what was built, why, how it fits. |
+| `project_ecosystem_phase3.md` | Operational fixes and new capabilities added in later phases. |
+
+---
+
+### What Was Built (Complete List)
+
+#### Ecosystem Infrastructure
+- **`mae_core/market/ecosystem/supervisor.py`** — OS-level process supervisor. One command starts, watches, and auto-restarts all MIDGE processes.
+- **`mae_core/market/ecosystem/process_registry.py`** — defines 10 processes across 4 tiers.
+
+**10 Ecosystem Processes (all independently restartable):**
+| Process | Tier | What It Does |
+|---------|------|-------------|
+| midge-daemon | core | Organism heartbeat (5 agents, 500 steps/round) |
+| midge-replay | analysis | 8-worker historical replay (was 4) |
+| midge-granger | analysis | 3 Granger instances for causal discovery |
+| midge-postmortem | analysis | Combo win rate + failure analysis |
+| midge-raw-miner | mining | DuckDB extraction from raw SQLite |
+| midge-cross-market | analysis | Cross-market anomaly detection |
+| midge-research | research | 5-worker historical research team |
+| midge-excavation | mining | Continuous pattern archaeology |
+| midge-narrative | research | Daily letter generation |
+| midge-grader | analysis | Continuous outcome grading |
+
+#### New Data Sources (43 total, was 35)
+| File | Domain | What It Fetches |
+|------|--------|----------------|
+| `cboe_options_client.py` | options | VVIX, VIX9D, OVX, GVZ (free) |
+| `crypto_fear_greed_client.py` | sentiment | Crypto Fear & Greed Index (free) |
+| `edgar_xbrl_client.py` | fundamental | Revenue, debt, cash flow, earnings quality (free) |
+| `news_aggregator_client.py` + parsers + constants | sentiment | Reuters, CNBC, MarketWatch, Fed, SEC 8-K RSS (free) |
+| `polymarket_client.py` | prediction_market | Prediction market probabilities (free) |
+| `defillama_client.py` | defi | TVL, DeFi protocol health (free) |
+| `binance_history_client.py` | crypto | FREE 8-year OHLCV for 600+ coins — no auth needed |
+| `binance_derivatives_client.py` | crypto_structure | OI, long/short ratio, liquidation orders, crowded trade score |
+| `web_investigator.py` + crawlers | all | Jina Reader web scraping (zero-install, via httpx) |
+
+#### 17 Convergence Domains (was 12)
+Added: `options`, `prediction_market`, `defi`, `crypto_structure`, `positioning` (derivatives).
+
+#### Memory Systems (4 total, was 1)
+| File | What It Does |
+|------|-------------|
+| `episodic_memory.py` | MIDGE's autobiography — stores every significant event |
+| `failure_explainer.py` | Analyzes WHY predictions fail, feeds findings back to alerter |
+| `narrative_feedback.py` | Daily letter conclusions feed back into lag_correlations |
+| Thompson Sampler | (existing) Bayesian signal reliability |
+
+#### Pattern Intelligence
+| File | What It Does |
+|------|-------------|
+| `pattern_story.py` + `pattern_story_builder.py` | Patterns as narratives with characters, timelines, plot arcs |
+| `pattern_sequence_tracker.py` | Template-to-template timing (how long between pattern stages) |
+| `entity_tracker.py` | Recurring actors across patterns (same insider, same fund) |
+| `pattern_auditor.py` | Trust scoring 0-100 per pattern (age, validation, source quality) |
+
+**Entity data is now carried through `PrecursorSignal` and `PatternTemplate`** — not thrown away at ingestion. This was a long-standing data loss.
+
+**Historical research team: 5 workers running continuously:**
+- reverse_engineer: finds historical moves, excavates what preceded them
+- cross_instrument: looks for same pattern in different instruments
+- temporal: analyzes timing distributions across pattern instances
+- stacker: finds domain combinations with highest stack scores
+- sequence_miner: discovers template-to-template transition timing
+
+#### Operational Fixes
+| Fix | Impact |
+|-----|--------|
+| Paper trade pipeline unblocked | Ticker alerts now actually reach the paper trading gate |
+| Continuous grader wired | 1,444+ outcomes graded (was 22 — this was a critical gap) |
+| Replay crash-loop fixed | Replay no longer dies on malformed signal records |
+| Weekend crypto boost | 3x priority for crypto sources when equity markets closed |
+| Source starvation fix | Forced exploration of new sources when primary sources go quiet |
+| Jargon scrubber | 115-entry translation map + post-generation filter for daily letters |
+| Pattern stacking visible in daily letters | Letters now show which patterns are stacking (not just alerts) |
+| Narrative restructured | macro → crypto → commodities → stocks order |
+| Signal enricher | Ticker-less signals fan out to natural tickers (without fabricating convergence — see triadic fix #1) |
+| 8 disconnected systems wired | DriftDetector, FailureExplainer, PatternCompletion, SituationBoard, CorrelationTracker, KnowledgeGraph, COT full sweep, web investigation → convergence |
+| 4 feedback loops closed | web→convergence, failure→alerter, episodic→Thompson, narrative→lag_correlations |
+| Scaling | 8 replay workers, 24 concurrent fetchers, 20 symbol excavation batch, 3 Granger instances |
+
+#### Crypto Capability (NEW)
+- **8 crypto pairs** in watchlist: BTC/USD, ETH/USD, DOGE/USD, AVAX/USD, LINK/USD, LTC/USD, UNI/USD, SHIB/USD
+- **Alpaca bridge crypto-enabled** — equity-only filter removed, crypto trades now submit
+- **3 global indices** added for macro context: ^HSI (Hang Seng), ^FTSE, ^N225 (Nikkei)
+- **12 WorldModel causal edges for crypto**: oil→inflation→Fed→BTC, VIX→BTC, Asia→BTC, DeFi→ETH
+- **Binance derivatives**: OI, L/S ratio, liquidation orders, crowded trade score — 5th crypto domain signal
+- **Binance history**: free 8-year OHLCV for 600+ coins — feeds pattern archaeology indefinitely
+- **BTC dominance edge detector** — alt season rotation signal
+
+#### Libraries Installed
+- `edgartools` — SEC EDGAR structured data
+- `ccxt` — unified crypto exchange API (Binance, Bitget, etc.)
+- `lppls` — Log-Periodic Power Law Singularity (bubble detection)
+- `quantstats` — portfolio performance reporting
+
+#### Triadic Review (7 bugs caught and fixed)
 1. Signal enricher fabricated false convergence (fan-out 5→2 tickers, enrichment_group dedup in convergence gate)
 2. Episodic memory constructor silently crashed (defaults added to all Episode fields)
 3. Failure explainer got wrong data — `(outcome, outcome)` → `(prediction, outcome)` with proper join
@@ -23,71 +134,49 @@ Three independent reviewers (convergence integrity, user experience, adversarial
 
 Research: `research/session12-triadic-review/` (lead/alpha/beta findings)
 
-### What Changed
+---
 
-**Ecosystem Infrastructure:**
-- `mae_core/market/ecosystem/supervisor.py` — process supervisor: one command starts/watches/restarts all MIDGE processes
-- `mae_core/market/ecosystem/process_registry.py` — defines 6 processes (daemon + 5 independent)
-- Start all: `python -m mae_core.market.ecosystem.supervisor`
-- Start without daemon: `python -m mae_core.market.ecosystem.supervisor --exclude daemon`
-- Check status: `python -m mae_core.market.ecosystem.supervisor --status`
+### Research Completed This Session
 
-**6 Ecosystem Processes (all independently restartable):**
-| Process | Tier | Module | What It Does |
-|---------|------|--------|-------------|
-| midge-daemon | core | `main` | The organism heartbeat (5 agents, 500 steps/round) |
-| midge-replay | analysis | `mae_core.market.parallel.continuous_replay` | 4-worker historical replay |
-| midge-granger | analysis | `mae_core.market.parallel.continuous_granger` | Domain-level causal discovery |
-| midge-postmortem | analysis | `mae_core.market.parallel.continuous_postmortem` | Combo win rate analysis |
-| midge-raw-miner | mining | `mae_core.market.parallel.raw_data_miner` | DuckDB extraction from raw SQLite |
-| midge-cross-market | analysis | `mae_core.market.parallel.cross_market_hunter` | Cross-market anomaly detection |
+| Topic | Key Finding |
+|-------|-------------|
+| Web scraping tools | Jina Reader (zero-install) chosen. Crawl4ai/Patchright deferred. |
+| Financial tools | ccxt, lppls, quantstats installed. OpenBB deferred (heavy). |
+| LLM market analysis | FinGPT, TradingAgents, Chronos-2 — deferred until paper trading validates |
+| Crypto edge | DefiLlama, Hyperliquid, Dune Analytics, Binance archive all assessed |
+| Competitive analysis | MIDGE's multi-domain convergence is unique at retail scale — no competitors do this |
+| Cost optimization | Most APIs are free. Only paid add worth considering: Unusual Whales ($48/mo) |
+| Money path | Crypto first (no PDT, no minimum) → Kalshi arb → equities → FTMO |
+| Crypto indicators | OI, L/S ratio, funding rate extremes, BTC dominance, crowded trade score — all wired |
 
-**New Data Sources (39 total, was 35):**
-- `cboe_options_client.py` — VVIX, VIX9D, OVX, GVZ (free, no key). 13th convergence domain: "options"
-- `crypto_fear_greed_client.py` — Crypto Fear & Greed Index contrarian signal (free)
-- `edgar_xbrl_client.py` — SEC fundamental data: revenue, debt, cash flow, earnings quality (free)
-- `news_aggregator_client.py` — RSS headlines: Reuters, CNBC, MarketWatch, Fed, SEC 8-K (free)
+---
 
-**Bug Fixes:**
-- Raw data miner: OpenInsider `LIKE '%buy%'` → `= 'P - Purchase'` (41 signals unlocked from existing data)
-- Raw data miner: FinViz squeeze query handles missing table gracefully
-- USDA client: constructor TypeError at boot (provider kwarg mismatch) — fixed
-- Job tracker: raw data only persisted on hiring blitz, not every call — fixed
-
-**Bio System Repurposing:**
-- VestibularSystem → Regime Shift Early Warning: CH_VERTIGO triggers immediate RegimeClassifier re-evaluation (~400 steps faster)
-
-**Bridge File Ingestion:**
-- `_ingest_jsonl_bridge()` generic bridge reader for any ecosystem process
-- Wired for: `raw_miner_signals.jsonl` and `cross_market_signals.jsonl`
-- Both fire every 200 steps alongside Granger/replay bridges
-
-**Narrative Voice Enriched:**
-- Daily letter now includes cross-market anomaly discoveries
-- Daily letter now includes Crypto Fear & Greed reading
-
-**Other:**
-- Default agents: 3→5 (Rule of 3/5 compliance, odd for consensus)
-- Outcome windows: convergence_combo/pattern_stack 14d→21d (MIDGE self-reported 15 moves after window)
-
-### How to Start the Ecosystem
+### How to Start
 
 ```bash
 # Start everything (recommended)
 python -m mae_core.market.ecosystem.supervisor
 
-# Or start daemon separately + analysis processes
-python main.py --daemon --agents 5 --steps 500 --pace 1.5
+# Check status
+python -m mae_core.market.ecosystem.supervisor --status
+
+# Start without daemon (if daemon already running separately)
 python -m mae_core.market.ecosystem.supervisor --exclude daemon
 ```
 
-### Next Priorities
-1. Add Redis Streams as inter-process message bus (currently file-based bridges)
-2. Repurpose more bio systems: DigestiveSystem → signal quality, EnergyReserve → API budget
-3. Add BLS labor data client (free, most important missing government source)
-4. Build real-time convergence alert dispatcher (email immediately on high-confidence, don't wait for daily)
-5. Wire Neo4j dual-write for knowledge graph persistence
-6. Add more ecosystem processes: web crawler, sentiment deep-analyzer, execution monitor
+---
+
+### Next Priorities (in order)
+
+1. **Let MIDGE paper trade crypto for 2-3 weeks.** Watch. Validate. Don't touch real money until she proves herself.
+2. **Codebase cleanup session.** This session built WIDE. Next session should build DEEP and CLEAN. Remove dead ends. Verify every wire actually fires.
+3. **Wire Binance history into pattern archaeology.** `binance_history_client.py` is built. ExcavationDaemon needs a crypto fetcher adapter. This gives MIDGE 8 years × 600 coins of pattern mining — essentially unlimited historical data.
+4. **Kalshi arbitrage scanner.** Mechanical income from prediction market price gaps. SDK installed (`kalshi-python-sync`), never wired as an arbitrage scanner.
+5. **When paper trading validates:** Switch to Binance/Bitget via CCXT for live crypto (10-25x lower fees than Alpaca). Deploy $100-200.
+6. **FTMO backtest.** Run the FTMO challenge simulator against MIDGE's track record. If it passes 3x historically, pay EUR 155 for $10K funded account.
+7. **Unusual Whales ($48/mo).** Only after paper trading shows returns that justify the cost.
+
+---
 
 ---
 

@@ -142,6 +142,7 @@ def _build_sensing_infrastructure(ctx: SimpleNamespace):
             cluster_detector=getattr(ctx, "cluster_detector", None),
             politician_tracker=getattr(ctx, "politician_tracker", None),
             contract_predictor=getattr(ctx, "contract_predictor", None),
+            binance_derivatives_client=getattr(ctx, "binance_derivatives_client", None),
         )
     except Exception:
         logger.warning(

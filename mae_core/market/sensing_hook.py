@@ -178,6 +178,7 @@ class MarketSensingHook(SensingSchedulerMixin, SensingCollectorMixin, SensingRea
         self._cluster_detector = cluster_detector
         self._politician_tracker = politician_tracker
         self._contract_predictor = contract_predictor
+        self._binance_derivatives_client = binance_derivatives_client
 
         # EventBus (injected by bootstrap for signal bridge)
         self._bus = None

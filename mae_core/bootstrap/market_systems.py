@@ -74,6 +74,8 @@ _MARKET_SOURCE_TRUST = [
     ("social_text", 0.40), ("finviz_insider", 0.55),
     ("binance_funding", 0.70),
     ("kalshi_market", 0.70),
+    ("crypto_rotation", 0.65),
+    ("binance_derivatives", 0.70),
 ]
 
 
