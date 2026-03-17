@@ -208,10 +208,18 @@ class ConvergenceAlerter(ConvergenceConfidenceMixin, ConvergenceDetectionMixin):
         # Per-domain convergence windows — slow-moving data sources need longer lookback.
         # Domains NOT listed here fall back to self.convergence_window (72h global default).
         self._domain_windows: Dict[str, timedelta] = {
+            # Equity domains — slow-moving data with long publication cycles
             "positioning": timedelta(hours=14 * 24),  # 14 days — COT is weekly data
             "government": timedelta(hours=7 * 24),    # 7 days — congressional trades
             "contracts": timedelta(hours=7 * 24),     # 7 days — contract awards
             "energy": timedelta(hours=7 * 24),        # 7 days — weekly EIA reports
+            # Crypto domains — fast-moving, 24/7 market. Stale data kills edge.
+            "crypto": timedelta(hours=6),             # 6h — crypto prices move fast
+            "derivatives": timedelta(hours=4),        # 4h — funding rates reset every 8h
+            "on_chain": timedelta(hours=6),           # 6h — mempool/fee data is ephemeral
+            "defi": timedelta(hours=12),              # 12h — TVL changes are daily-ish
+            "crypto_structure": timedelta(hours=24),  # 24h — BTC dominance shifts slowly
+            "news": timedelta(hours=6),               # 6h — headline velocity decays fast
         }
 
         # Recent signals by domain
