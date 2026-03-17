@@ -275,6 +275,55 @@ class WebInvestigator:
     def __init__(self, raw_store=None) -> None:
         self._raw_store = raw_store
 
+    @staticmethod
+    def read_url(url: str, timeout: float = 15.0) -> Optional[str]:
+        """Read ANY URL and return clean text via Jina Reader.
+
+        Jina Reader (r.jina.ai) converts any webpage to clean Markdown.
+        Zero install, zero API key, zero cost for basic use.
+        This is MIDGE's universal "read the web" capability.
+        """
+        try:
+            import httpx
+            jina_url = f"https://r.jina.ai/{url}"
+            resp = httpx.get(
+                jina_url,
+                headers={"Accept": "text/markdown"},
+                timeout=timeout,
+                follow_redirects=True,
+            )
+            if resp.status_code == 200 and len(resp.text) > 50:
+                return resp.text[:10000]  # Cap at 10k chars
+            logger.debug("Jina Reader returned %d for %s", resp.status_code, url)
+            return None
+        except Exception as exc:
+            logger.debug("Jina Reader failed for %s: %s", url, exc)
+            return None
+
+    @staticmethod
+    def search_web(query: str, limit: int = 5) -> list[dict]:
+        """Search the web via Jina Search and return results.
+
+        Returns list of {title, url, description} dicts.
+        """
+        try:
+            import httpx
+            resp = httpx.get(
+                f"https://s.jina.ai/{query}",
+                headers={"Accept": "application/json"},
+                timeout=15.0,
+            )
+            if resp.status_code == 200:
+                data = resp.json() if hasattr(resp, "json") else {}
+                results = data.get("data", [])[:limit]
+                return [
+                    {"title": r.get("title", ""), "url": r.get("url", ""), "description": r.get("description", "")}
+                    for r in results
+                ]
+        except Exception as exc:
+            logger.debug("Jina Search failed for %s: %s", query, exc)
+        return []
+
     def investigate_ticker(self, ticker: str, context: str = "") -> list[WebFinding]:
         """When MIDGE notices something about a ticker, investigate WHY.
 
