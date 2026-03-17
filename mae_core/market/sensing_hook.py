@@ -131,6 +131,7 @@ class MarketSensingHook(SensingSchedulerMixin, SensingCollectorMixin, SensingRea
         cluster_detector: Any = None,
         politician_tracker: Any = None,
         contract_predictor: Any = None,
+        binance_derivatives_client: Any = None,
     ):
         # API clients (all optional — graceful degradation)
         self._sec_client = sec_client

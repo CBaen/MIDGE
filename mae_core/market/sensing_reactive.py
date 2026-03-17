@@ -147,6 +147,8 @@ class SensingReactiveMixin:
             fetch_crypto_fear_greed,
             fetch_edgar_xbrl,
             fetch_news_headlines,
+            fetch_btc_dominance,
+            fetch_binance_derivatives,
         )
         from mae_core.market.sensing_lifecycle import enrich_signal
 
@@ -304,6 +306,12 @@ class SensingReactiveMixin:
 
         elif source_name == "news_headlines":
             signals = fetch_news_headlines(getattr(self, "_news_aggregator_client", None))
+
+        elif source_name == "crypto_rotation":
+            signals = fetch_btc_dominance(self._coingecko_client)
+
+        elif source_name == "binance_derivatives":
+            signals = fetch_binance_derivatives(getattr(self, "_binance_derivatives_client", None))
 
         # Enrich in background thread (velocity, filing-time, Ollama sentiment)
         # Moved from _collect_results() so Ollama's 15s timeout doesn't block

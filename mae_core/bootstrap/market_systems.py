@@ -21,6 +21,7 @@ def _instantiate_wave2_3_clients(ctx: SimpleNamespace) -> None:
         "coingecko_client", "coincap_client", "openinsider_client",
         "edgar_enhanced_client", "finviz_client", "finnhub_websocket",
         "massive_client", "binance_funding_client", "kalshi_client",
+        "binance_derivatives_client",
     }
 
     for attr, mod_path, cls in [
@@ -38,6 +39,8 @@ def _instantiate_wave2_3_clients(ctx: SimpleNamespace) -> None:
         ("crypto_fear_greed_client", "mae_core.market.apis.crypto_fear_greed_client", "CryptoFearGreedClient"),
         ("edgar_xbrl_client", "mae_core.market.apis.edgar_xbrl_client", "EdgarXBRLClient"),
         ("news_aggregator_client", "mae_core.market.apis.news_aggregator_client", "NewsAggregatorClient"),
+        ("binance_history_client", "mae_core.market.apis.binance_history_client", "BinanceCryptoHistoryClient"),
+        ("binance_derivatives_client", "mae_core.market.apis.binance_derivatives_client", "BinanceDerivativesClient"),
     ]:
         try:
             klass = getattr(importlib.import_module(mod_path), cls)
