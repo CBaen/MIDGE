@@ -249,6 +249,10 @@ class ConvergenceAlerter(ConvergenceConfidenceMixin, ConvergenceDetectionMixin):
             "prediction_market": "crowd_intelligence",
             # DefiLlama on-chain DeFi capital flows (15th domain)
             "defi": "on_chain",
+            # Kraken Futures crypto derivatives — funding rates, OI (16th domain)
+            "derivatives": "market",
+            # Bitcoin on-chain — mempool fee pressure, congestion (17th domain)
+            "on_chain": "crypto_structure",
         }
 
         self._alert_counter = 0
