@@ -705,16 +705,30 @@ def _worker_process_batch(
         # Symbol base for archive lookup (e.g. "BTCUSDT" → "BTC")
         symbol_base = symbol.replace("USDT", "")
 
-        # Fetch candle data
+        # Fetch candle data via yfinance (Binance API is geo-blocked in US)
         try:
-            if interval_str == "1d":
-                candles = client.get_daily_history(symbol, days=candle_count)
-            elif interval_str == "4h":
-                candles = client.get_4h_history(symbol, bars=candle_count)
-            elif interval_str == "1h":
-                candles = client.get_hourly_history(symbol, hours=candle_count)
-            else:
-                candles = client.get_daily_history(symbol, days=candle_count)
+            yf_symbol = symbol.replace("USDT", "-USD")  # BTCUSDT → BTC-USD
+            period_map = {"1d": "2y", "4h": "60d", "1h": "7d"}
+            interval_map = {"1d": "1d", "4h": "1h", "1h": "1h"}  # yfinance doesn't have 4h
+            df = yf.download(
+                yf_symbol,
+                period=period_map.get(interval_str, "2y"),
+                interval=interval_map.get(interval_str, "1d"),
+                progress=False,
+            )
+            if df.empty:
+                logger.debug("No yfinance data for %s", yf_symbol)
+                continue
+            candles = []
+            for idx_dt, row in df.iterrows():
+                candles.append({
+                    "date": str(idx_dt.date()) if hasattr(idx_dt, "date") else str(idx_dt)[:10],
+                    "open": float(row.get("Open", row.iloc[0])),
+                    "high": float(row.get("High", row.iloc[1])),
+                    "low": float(row.get("Low", row.iloc[2])),
+                    "close": float(row.get("Close", row.iloc[3])),
+                    "volume": float(row.get("Volume", row.iloc[4]) if len(row) > 4 else 0),
+                })
         except Exception as exc:
             logger.warning("Candle fetch failed for %s: %s", symbol, exc)
             continue
