@@ -65,8 +65,8 @@ DAY_SLEEP_SECONDS: float = 0.05
 # Short sleep: Thompson weights may have updated, so replay again quickly
 CYCLE_REST_SECONDS: float = 60.0
 
-# Number of parallel workers — 4 chunks processed simultaneously
-NUM_WORKERS: int = 4
+# Number of parallel workers — 8 chunks processed simultaneously
+NUM_WORKERS: int = 8
 
 # Price-lookup rate limit (yfinance)
 PRICE_LOOKUP_DELAY: float = 0.25
