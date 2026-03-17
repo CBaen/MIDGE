@@ -98,6 +98,12 @@ TIER_ROUTING: Dict[str, str] = {
     "crypto_rotation": "strategic",
     # Binance derivatives (OI + long/short ratio + crowded trade composite)
     "binance_derivatives": "tactical",
+    # Kraken Futures — crypto derivatives OI + funding (free, no key, US-accessible)
+    "kraken_futures": "tactical",
+    # Mempool.space — Bitcoin on-chain fee pressure / congestion (free, no key)
+    "mempool_btc": "strategic",
+    # Crypto news RSS — CoinDesk + Cointelegraph headline velocity (free, no key)
+    "crypto_news": "tactical",
 }
 
 # Source names for rotation — 35 sources, 8 concurrent per cadence tick
@@ -171,6 +177,12 @@ SOURCE_ROTATION: List[str] = [
     "crypto_rotation",
     # Binance derivatives — OI + long/short ratio + crowded trade composite (free, no key)
     "binance_derivatives",
+    # Kraken Futures — crypto derivatives (free, no key, US-accessible)
+    "kraken_futures",
+    # Mempool.space — Bitcoin on-chain data (free, no key)
+    "mempool_btc",
+    # Crypto news RSS — headline velocity (free, no key)
+    "crypto_news",
 ]
 
 # Map rotation source names → Thompson distribution keys for guided selection.
@@ -220,6 +232,9 @@ _ROTATION_TO_THOMPSON: Dict[str, str] = {
     "defillama": "defillama",
     "crypto_rotation": "crypto_rotation",
     "binance_derivatives": "binance_derivatives",
+    "kraken_futures": "kraken_futures",
+    "mempool_btc": "mempool_btc",
+    "crypto_news": "crypto_news",
 }
 
 # Map absence source names back to convergence domains
@@ -253,6 +268,9 @@ _ABSENCE_SOURCE_DOMAINS: Dict[str, str] = {
     "defillama": "defi",
     "crypto_rotation": "crypto_structure",
     "binance_derivatives": "positioning",
+    "kraken_futures": "derivatives",
+    "mempool_btc": "on_chain",
+    "crypto_news": "news",
 }
 
 

@@ -307,6 +307,60 @@ def fetch_binance_derivatives(binance_derivatives_client: Any) -> list:
     return signals
 
 
+def fetch_kraken_futures(kraken_client: Any) -> list:
+    """Fetch Kraken Futures derivatives data (funding rates, OI) — US-accessible."""
+    if kraken_client is None:
+        return []
+    signals = []
+    try:
+        data_list = kraken_client.get_derivatives_data()
+        for d in data_list:
+            if d.direction == "neutral":
+                continue
+            signals.append({
+                "source": "kraken_futures",
+                "symbol": d.symbol,
+                "asset_class": "crypto",
+                "domain": "derivatives",
+                "direction": d.direction,
+                "strength": d.strength,
+                "confidence": 0.65,
+                "timestamp": d.timestamp.isoformat() if hasattr(d.timestamp, "isoformat") else str(d.timestamp),
+                "metadata": {
+                    "symbol": d.symbol,
+                    "funding_rate": d.funding_rate,
+                    "open_interest": d.open_interest,
+                    "mark_price": d.mark_price,
+                    "volume_24h": d.volume_24h,
+                },
+            })
+    except Exception as e:
+        logger.debug("Kraken Futures fetch failed: %s", e)
+    return signals
+
+
+def fetch_mempool_btc(mempool_client: Any) -> list:
+    """Fetch Bitcoin on-chain signals from mempool.space."""
+    if mempool_client is None:
+        return []
+    try:
+        return mempool_client.get_on_chain_signals()
+    except Exception as e:
+        logger.debug("Mempool.space fetch failed: %s", e)
+        return []
+
+
+def fetch_crypto_news(crypto_news_client: Any) -> list:
+    """Fetch crypto news headline signals from CoinDesk + Cointelegraph RSS."""
+    if crypto_news_client is None:
+        return []
+    try:
+        return crypto_news_client.get_news_signals()
+    except Exception as e:
+        logger.debug("Crypto news fetch failed: %s", e)
+        return []
+
+
 def fetch_economic_calendar(calendar_client: Any, converter: Callable) -> list:
     """Fetch upcoming high-impact economic events as suppression signals."""
     if calendar_client is None:
