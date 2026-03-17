@@ -1,26 +1,14 @@
 """
 web_investigator.py — Web Investigation Engine for MIDGE
 
-When MIDGE notices something interesting — insider buying cluster, unusual
-convergence, cross-market anomaly — she crawls the open web to find out
-WHY. This module is the rabbit-hole follower.
+When MIDGE notices something interesting (insider buying cluster, unusual
+convergence, cross-market anomaly), she crawls the open web to find out WHY.
 
-Sources crawled (all free, no API key required):
-  - Yahoo Finance news page (per-ticker full article text)
-  - Google News RSS (query-based, returns recent headlines + links)
-  - SEC EDGAR full-text search (EFTS — filings mentioning a query)
-  - Reddit search JSON API (recent community discussion)
-  - Federal Register API (regulatory actions by keyword)
+Sources (all free, no API key):  Yahoo Finance news, Google News RSS,
+SEC EDGAR EFTS, Reddit, Federal Register.
 
-Source crawlers live in web_investigator_crawlers.py (one-per-source split
-to keep each file under the 500-line cap).
-
-Design rules:
-  - 2-second delay between outbound HTTP requests (courtesy rate limiting)
-  - 1-hour in-memory result cache per query
-  - Never crash on a single source failure — partial results are valuable
-  - raw_store is optional — works standalone
-  - trafilatura extracts clean text from HTML
+Source crawlers live in web_investigator_crawlers.py.
+Rate limit: 2 s between requests. Cache: 1 hour per query.
 """
 
 from __future__ import annotations
@@ -45,31 +33,24 @@ _LAST_REQUEST_TIME: list[float] = [0.0]
 _RESULT_CACHE: dict[str, tuple] = {}    # key → (findings, timestamp)
 
 # Common English words mistaken for tickers — skip in extraction
-_COMMON_WORDS = frozenset({
-    "A", "I", "AN", "AS", "AT", "BE", "BY", "DO", "GO", "IF", "IN",
-    "IS", "IT", "MY", "NO", "OF", "ON", "OR", "SO", "TO", "UP", "US",
-    "WE", "AI", "ALL", "AND", "ARE", "BUT", "CAN", "FOR", "GET", "HAD",
-    "HAS", "HIM", "HIS", "HOW", "ITS", "MAY", "NEW", "NOT", "NOW", "OUR",
-    "OUT", "SAY", "SHE", "THE", "TOO", "TWO", "WAS", "WAY", "WHO", "WHY",
-    "WITH", "WILL", "THIS", "THAT", "HAVE", "FROM", "THEY", "BEEN", "YOUR",
-    "ALSO", "INTO", "SAID", "OVER", "THAN", "THEN", "WHAT", "WHEN",
-    "MORE", "MUCH", "SOME", "SUCH", "EACH", "BOTH", "MANY", "GOOD", "WELL",
-    "ONLY", "LIKE", "JUST", "BACK", "LONG", "TIME", "HIGH", "NEXT", "EVEN",
-    "MOST", "LAST", "DOWN", "NEED", "PLAN", "MAKE", "TAKE", "YEAR", "SAYS",
-    "CALL", "COME", "CAME", "DOES", "DONE", "HELD", "HOLD", "HURT", "KEEP",
-    "LESS", "LOOK", "MADE", "MEAN", "MOVE", "MUST", "NEAR", "PART", "PAST",
-    "SELL", "STAY", "TELL", "THEM", "VERY", "WANT", "WERE", "FIND",
-})
+_COMMON_WORDS = frozenset(
+    "A I AN AS AT BE BY DO GO IF IN IS IT MY NO OF ON OR SO TO UP US WE "
+    "AI ALL AND ARE BUT CAN FOR GET HAD HAS HIM HIS HOW ITS MAY NEW NOT "
+    "NOW OUR OUT SAY SHE THE TOO TWO WAS WAY WHO WHY WITH WILL THIS THAT "
+    "HAVE FROM THEY BEEN YOUR ALSO INTO SAID OVER THAN THEN WHAT WHEN MORE "
+    "MUCH SOME SUCH EACH BOTH MANY GOOD WELL ONLY LIKE JUST BACK LONG TIME "
+    "HIGH NEXT EVEN MOST LAST DOWN NEED PLAN MAKE TAKE YEAR SAYS CALL COME "
+    "CAME DOES DONE HELD HOLD HURT KEEP LESS LOOK MADE MEAN MOVE MUST NEAR "
+    "PART PAST SELL STAY TELL THEM VERY WANT WERE FIND".split()
+)
 
-_FINANCIAL_SIGNALS = frozenset({
-    "earnings", "revenue", "guidance", "acquisition", "merger", "buyout",
-    "fda", "sec", "ceo", "cfo", "insider", "shares", "stock", "trade",
-    "lawsuit", "investigation", "subpoena", "probe", "recall", "layoff",
-    "contract", "agreement", "partnership", "deal", "quarter", "profit",
-    "loss", "forecast", "outlook", "upgrade", "downgrade", "short",
-    "squeeze", "catalyst", "breakout", "bankruptcy", "default",
-    "dividend", "buyback", "offering", "dilution", "patent", "approval",
-})
+_FINANCIAL_SIGNALS = frozenset(
+    "earnings revenue guidance acquisition merger buyout fda sec ceo cfo "
+    "insider shares stock trade lawsuit investigation subpoena probe recall "
+    "layoff contract agreement partnership deal quarter profit loss forecast "
+    "outlook upgrade downgrade short squeeze catalyst breakout bankruptcy "
+    "default dividend buyback offering dilution patent approval".split()
+)
 
 _PHRASE_STOPWORDS = frozenset({
     "the", "and", "for", "with", "this", "that", "from", "have", "been",
