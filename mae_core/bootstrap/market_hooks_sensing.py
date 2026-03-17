@@ -302,10 +302,14 @@ def _run_paper_trading_gate(ctx: SimpleNamespace, alerts: list, step: int) -> No
                         _validator_names.append("situation_board")
                 except Exception:
                     pass
-            if _validators < 3:
+            # Paper trading requires fewer validators to generate trade data.
+            # Convergence alone = 1 validator. Raise to 3 once paper trading
+            # proves convergence signals are profitable on their own.
+            _min_validators = 2
+            if _validators < _min_validators:
                 logger.info(
-                    "Paper trade DEFERRED — Law 7: %d/3 validators (%s) for %s %s",
-                    _validators, "+".join(_validator_names), _ticker, _direction,
+                    "Paper trade DEFERRED — Law 7: %d/%d validators (%s) for %s %s",
+                    _validators, _min_validators, "+".join(_validator_names), _ticker, _direction,
                 )
                 continue
             logger.info(
