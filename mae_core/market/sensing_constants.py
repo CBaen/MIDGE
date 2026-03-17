@@ -94,6 +94,10 @@ TIER_ROUTING: Dict[str, str] = {
     "polymarket": "strategic",
     # DefiLlama — DeFi TVL and stablecoin capital flows (free, no key)
     "defillama": "strategic",
+    # BTC dominance (crypto rotation / alt season structural signal)
+    "crypto_rotation": "strategic",
+    # Binance derivatives (OI + long/short ratio + crowded trade composite)
+    "binance_derivatives": "tactical",
 }
 
 # Source names for rotation — 35 sources, 8 concurrent per cadence tick
@@ -163,6 +167,10 @@ SOURCE_ROTATION: List[str] = [
     "polymarket",
     # DefiLlama — DeFi TVL and stablecoin capital flows (free, no key)
     "defillama",
+    # BTC dominance (crypto rotation / alt season structural signal, free via CoinGecko)
+    "crypto_rotation",
+    # Binance derivatives — OI + long/short ratio + crowded trade composite (free, no key)
+    "binance_derivatives",
 ]
 
 # Map rotation source names → Thompson distribution keys for guided selection.
@@ -210,6 +218,8 @@ _ROTATION_TO_THOMPSON: Dict[str, str] = {
     "news_headlines": "news_headlines",
     "polymarket": "polymarket",
     "defillama": "defillama",
+    "crypto_rotation": "crypto_rotation",
+    "binance_derivatives": "binance_derivatives",
 }
 
 # Map absence source names back to convergence domains
