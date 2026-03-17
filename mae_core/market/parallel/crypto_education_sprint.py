@@ -690,19 +690,8 @@ def _worker_process_batch(
     log_path = Path(LOG_PATH)
     logger = _configure_logging(log_path, worker_id=worker_id)
 
-    # Import here — only available inside subprocess after sys.path is set
-    try:
-        from mae_core.market.apis.binance_history_client import BinanceCryptoHistoryClient
-    except ImportError as exc:
-        return {
-            "worker_id": worker_id,
-            "symbols_done": [],
-            "fingerprints": [],
-            "templates": [],
-            "error": f"Import failed: {exc}",
-        }
-
-    client = BinanceCryptoHistoryClient()
+    # Use yfinance instead of Binance API (Binance geo-blocks US IPs)
+    import yfinance as yf
     signals_dir = Path(signals_dir_str)
     accumulator = _TemplateAccumulator()
 
