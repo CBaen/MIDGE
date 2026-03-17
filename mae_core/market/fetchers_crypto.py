@@ -159,32 +159,43 @@ def fetch_cboe_options(cboe_options_client: Any) -> list:
 
 
 def fetch_crypto_fear_greed(fear_greed_client: Any) -> list:
-    """Fetch Crypto Fear & Greed Index — contrarian sentiment signal."""
+    """Fetch Crypto Fear & Greed Index — contrarian sentiment signal.
+
+    The Fear & Greed index applies to the entire crypto market, not just BTC.
+    Emit signals for all major crypto tickers so they can build multi-domain
+    convergence (sentiment + crypto price + structure = 3 domains).
+    """
     if fear_greed_client is None:
         return []
     from datetime import datetime, timezone
     signals = []
+    # Major crypto tickers that the Fear & Greed index applies to.
+    _CRYPTO_TICKERS = ["BTC", "ETH", "SOL", "XRP", "ADA"]
     try:
         fg = fear_greed_client.get_fear_greed()
         if fg is not None and fg.direction != "neutral":
-            signals.append({
-                "source": "crypto_fear_greed",
-                "symbol": "BTC",
-                "asset_class": "crypto",
-                "domain": "sentiment",
-                "direction": fg.direction,
-                "strength": fg.strength,
-                "confidence": fg.confidence,
-                "decay_rate": fg.decay_rate,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "outcome_window_days": 7,
-                "metadata": {
-                    "value": fg.value,
-                    "classification": fg.classification,
-                    "trend": fg.trend,
-                    "signal_source": fg.signal_source,
-                },
-            })
+            _eg = f"crypto_fg_{datetime.now().strftime('%Y%m%d')}"
+            for _sym in _CRYPTO_TICKERS:
+                signals.append({
+                    "source": "crypto_fear_greed",
+                    "symbol": _sym,
+                    "asset_class": "crypto",
+                    "domain": "sentiment",
+                    "direction": fg.direction,
+                    "strength": fg.strength,
+                    "confidence": fg.confidence,
+                    "decay_rate": fg.decay_rate,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "outcome_window_days": 7,
+                    "metadata": {
+                        "value": fg.value,
+                        "classification": fg.classification,
+                        "trend": fg.trend,
+                        "signal_source": fg.signal_source,
+                        "symbol": _sym,
+                        "enrichment_group": _eg,
+                    },
+                })
     except Exception as e:
         logger.debug("Crypto Fear & Greed fetch failed: %s", e)
     return signals
