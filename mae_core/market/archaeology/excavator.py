@@ -231,6 +231,18 @@ class Excavator:
         if lag_days < 0 or lag_days > 60:  # Cap at 60 days (beyond extended bucket)
             return None
 
+        # Extract entity data from metadata — WHO is behind this signal
+        _meta = sig.get("metadata", {})
+        entity_metadata: dict = {}
+        for key in (
+            "insider_name", "filer_title", "filer_name", "representative",
+            "party", "committee", "fund_name", "delta_owned_pct",
+            "bill_title", "policy_area", "amount_range", "total_value",
+        ):
+            val = _meta.get(key)
+            if val is not None and val != "":
+                entity_metadata[key] = val
+
         return PrecursorSignal(
             source=sig.get("source", "unknown"),
             domain=sig_domain,
@@ -239,6 +251,7 @@ class Excavator:
             lag_days=lag_days,
             lag_bucket=lag_bucket_for_days(lag_days),
             signal_id=sig.get("signal_id", ""),
+            entity_metadata=entity_metadata,
         )
 
     def _register_template(self, fp: MoveFingerprint) -> None:

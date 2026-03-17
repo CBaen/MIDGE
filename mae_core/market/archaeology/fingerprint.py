@@ -248,6 +248,10 @@ class PatternTemplate:
     # Incremental stats
     _move_pct_sum: float = 0.0  # Sum of abs(move_pct) for incremental avg
 
+    # Entity intelligence — WHO keeps appearing in these patterns
+    recurring_entities: dict = field(default_factory=dict)  # {entity_name: {count, role, domains}}
+    entity_weight_factors: dict = field(default_factory=dict)  # CEO > director, committee chair > backbencher
+
     # Stats (updated as outcomes are graded)
     wins: int = 0
     losses: int = 0
@@ -333,6 +337,44 @@ class PatternTemplate:
     # Max instances to keep in memory/serialized (recent only — fingerprints are the archive)
     _MAX_INSTANCES = 200
 
+    # Entity role weight — higher-authority roles carry more weight
+    _ENTITY_ROLE_WEIGHTS = {
+        "insider_name": 1.0,    # base: insider
+        "filer_name": 0.9,      # institutional filer
+        "fund_name": 0.9,       # hedge fund
+        "representative": 0.8,  # congress member
+        "filer_title": 0.0,     # title, not a name — don't track as entity
+        "party": 0.0,
+        "committee": 0.5,       # committee association
+        "delta_owned_pct": 0.0,
+        "bill_title": 0.0,
+        "policy_area": 0.0,
+        "amount_range": 0.0,
+        "total_value": 0.0,
+    }
+
+    # Higher weights for CEO/Chairman vs director-level roles
+    _TITLE_WEIGHT_MAP = {
+        "ceo": 1.5, "chief executive": 1.5, "chairman": 1.4,
+        "cfo": 1.3, "chief financial": 1.3,
+        "coo": 1.2, "president": 1.2,
+        "director": 1.0, "officer": 1.0,
+        "vp": 0.9, "vice president": 0.9,
+        "10% owner": 1.1,
+    }
+
+    def _compute_entity_weight(self, entity_name: str, role_key: str, filer_title: str = "") -> float:
+        """Compute authority weight for an entity based on role and title."""
+        base = self._ENTITY_ROLE_WEIGHTS.get(role_key, 1.0)
+        if base == 0.0:
+            return 0.0
+        # Boost for high-authority titles
+        title_lower = filer_title.lower() if filer_title else ""
+        for keyword, multiplier in self._TITLE_WEIGHT_MAP.items():
+            if keyword in title_lower:
+                return base * multiplier
+        return base
+
     def add_instance(self, fingerprint: MoveFingerprint) -> None:
         """Register a new fingerprint observation for this template."""
         inst = TemplateInstance(
@@ -361,8 +403,46 @@ class PatternTemplate:
                 bucket: count / total
                 for bucket, count in self.lag_profile_raw.items()
             }
+        # Accumulate entity names from precursor signals
+        for precursor in fingerprint.precursor_signals:
+            em = precursor.entity_metadata
+            if not em:
+                continue
+            filer_title = str(em.get("filer_title", ""))
+            for key in ("insider_name", "representative", "filer_name", "fund_name"):
+                name = em.get(key)
+                if not name:
+                    continue
+                name = str(name).strip()
+                if not name:
+                    continue
+                weight = self._compute_entity_weight(name, key, filer_title)
+                if weight == 0.0:
+                    continue
+                if name not in self.recurring_entities:
+                    self.recurring_entities[name] = {
+                        "count": 0,
+                        "role": key,
+                        "domains": set(),
+                    }
+                self.recurring_entities[name]["count"] += 1
+                self.recurring_entities[name]["domains"].add(precursor.domain)
+                # Store highest weight seen for this entity
+                if name not in self.entity_weight_factors:
+                    self.entity_weight_factors[name] = weight
+                else:
+                    self.entity_weight_factors[name] = max(
+                        self.entity_weight_factors[name], weight
+                    )
 
     def to_dict(self) -> dict:
+        # Serialize recurring_entities: convert set to list for JSON
+        serialized_entities: dict = {}
+        for name, info in self.recurring_entities.items():
+            entry = dict(info)
+            if isinstance(entry.get("domains"), set):
+                entry["domains"] = sorted(entry["domains"])
+            serialized_entities[name] = entry
         return {
             "template_id": self.template_id,
             "direction": self.direction,
@@ -376,6 +456,8 @@ class PatternTemplate:
             "n_instances": self.n_instances,
             "avg_move_pct": self.avg_move_pct,
             "_move_pct_sum": self._move_pct_sum,
+            "recurring_entities": serialized_entities,
+            "entity_weight_factors": self.entity_weight_factors,
             "wins": self.wins,
             "losses": self.losses,
             "created_at": self.created_at,
@@ -390,6 +472,14 @@ class PatternTemplate:
         move_pct_sum = d.get("_move_pct_sum", 0.0)
         if move_pct_sum == 0.0 and n_instances > 0 and avg_move_pct > 0:
             move_pct_sum = avg_move_pct * n_instances
+        # Deserialize recurring_entities: restore domain lists as sets
+        raw_entities = d.get("recurring_entities", {})
+        recurring_entities: dict = {}
+        for name, info in raw_entities.items():
+            entry = dict(info)
+            domains = entry.get("domains", [])
+            entry["domains"] = set(domains) if isinstance(domains, list) else domains
+            recurring_entities[name] = entry
         return cls(
             template_id=d.get("template_id", ""),
             direction=d["direction"],
@@ -403,6 +493,8 @@ class PatternTemplate:
             n_instances=n_instances,
             avg_move_pct=avg_move_pct,
             _move_pct_sum=move_pct_sum,
+            recurring_entities=recurring_entities,
+            entity_weight_factors=d.get("entity_weight_factors", {}),
             wins=d.get("wins", 0),
             losses=d.get("losses", 0),
             created_at=d.get("created_at", ""),
