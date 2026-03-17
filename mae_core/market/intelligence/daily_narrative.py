@@ -162,10 +162,29 @@ Only mention if something is interesting — skip the section if flat. \
 2-3 bullets max. NO jargon — "oil" not "crude", "currency" not "forex".
 
 ## STOCKS — THE INTERESTING ONES
-NOT a ticker list. Lead with the WEIRDEST convergence. Tell the story. \
-"What's strange: three completely unrelated signals all pointing at the same stock." \
-"The interesting part isn't the ticker — it's how this connected to that." \
-3 situations max. Focus on the WHY, not just the ticker and direction. \
+NOT a ticker list. THE MOST IMPORTANT SECTION.
+
+RULE: For every ticker you mention, you MUST show the STACK. A stack means:
+  "TICKER has N completely independent signals all pointing the same direction."
+  Then list each signal as a separate bullet — what it saw, in plain English.
+  Then explain WHY it matters that they're independent.
+  Then state the historical track record if provided.
+
+EXAMPLE of a correct stack write-up:
+  Here's what's strange about NVDA right now: five completely unrelated sources are all
+  pointing down at the same time.
+  - People inside the company are selling their own shares
+  - Company announcements have turned negative
+  - The price chart shows a recognisable breakdown pattern
+  - Government contract data in their sector has shifted
+  - Social media chatter has turned nervous
+  Insiders don't read price charts. Government contracts have nothing to do with social media.
+  These five things are from completely different worlds — and they're all saying the same thing.
+  Based on history, when this combination appears, the stock falls more often than not.
+
+BANNED: "evidence from insider, technical, events" — this is a list of labels, not a story. \
+REQUIRED: Each signal gets its own bullet. Each bullet says WHAT was observed, not just the category name. \
+3 situations max. Skip tickers that have only one type of signal. \
 If a domino chain is unfolding (one thing triggering another), this is where it belongs. \
 If paper trades were placed, say so here. Use "looks like it might rise/fall" not "bullish/bearish".
 
@@ -1002,9 +1021,6 @@ def _combo_win_rate(domains: list[str], combo_stats: dict) -> str | None:
                 wr = stat.get("win_rate", 0)
                 n = stat.get("n", 0)
                 if n >= 3 and wr >= 0.60:
-                    combo_desc = " and ".join(
-                        _DOMAIN_WHAT_SEEN.get(d, d).split(" ")[0:3] for d in subset  # type: ignore[arg-type]
-                    )
                     return f"When similar signals aligned before, it worked more often than not ({n} past cases)"
     return None
 
@@ -2235,46 +2251,87 @@ def _template_narrative(summary: dict, date_str: str) -> str:
             )
             lines.append("")
 
+    # Helper: render a stack for one ticker in the template
+    def _render_stack(ticker: str, direction_plain: str, confidence_plain: str,
+                      stack_lines: list, window: int | None = None,
+                      world_model_chain: str = "") -> None:
+        window_note = f" — based on history, the move typically happens within {window} days" if window else ""
+        n_domains = max(
+            (int(stack_lines[0].split(" has ")[1].split(" INDEPENDENT")[0])
+             if stack_lines and " INDEPENDENT" in stack_lines[0] else 0),
+            1
+        )
+        lines.append(f"**{ticker}** — {direction_plain}.")
+        lines.append(f"- I am {confidence_plain}.{window_note}")
+        if stack_lines:
+            # stack_lines[0] is the header (e.g. "NVDA has 4 INDEPENDENT signals all pointing down:")
+            # Rewrite it in MIDGE's first-person voice
+            header = stack_lines[0]
+            # Convert "NVDA has N INDEPENDENT signals all pointing down right now:"
+            # → "Here's what's interesting: I'm watching N completely independent signals..."
+            if " INDEPENDENT" in header:
+                parts = header.split(" INDEPENDENT signals all ")
+                n_str = parts[0].split(" has ")[-1] if " has " in parts[0] else str(n_domains)
+                dirn = parts[1].rstrip(":") if len(parts) > 1 else direction_plain
+                lines.append(
+                    f"- **Here's what's interesting: I'm watching {n_str} completely independent signals all {dirn}:**"
+                )
+            else:
+                lines.append(f"- **{header}**")
+            # Individual pillars (lines starting with "  1.", "  2.", etc.)
+            for sl in stack_lines[1:]:
+                sl_stripped = sl.strip()
+                if sl_stripped.startswith(("1.", "2.", "3.", "4.", "5.", "6.")):
+                    # Format: "1. Plain description  [domain]" — strip the domain tag
+                    text_part = sl_stripped.split("  [")[0]
+                    lines.append(f"  - {text_part}")
+                elif sl_stripped.startswith("→ History:"):
+                    hist = sl_stripped.replace("→ History:", "").strip()
+                    lines.append(f"- *{hist}*")
+                elif sl_stripped.startswith("→ Causal chain:"):
+                    chain = sl_stripped.replace("→ Causal chain:", "").strip()
+                    lines.append(f"- Connected path: {chain}")
+                elif sl_stripped.startswith("→"):
+                    # Independence note
+                    note = sl_stripped.lstrip("→ ").strip()
+                    lines.append(f"- *(Why this matters: {note})*")
+        lines.append("")
+
     if inevitabilities:
         for inv in inevitabilities[:3]:
             direction_plain = _direction_words(inv["direction"])
             confidence_plain = _confidence_words(inv["score"])
-            sources_plain = _domain_plain(inv["domains"])
+            stack_lines_inv = inv.get("stack_lines", [])
             window = inv.get("expected_window_days")
-            window_note = f" (timing: ~{window} days)" if window else ""
             chain_raw = inv.get("world_model_chain", "")
-            chain_note = ""
-            if chain_raw and chain_raw != "None":
-                _chain_clean_tmpl = chain_raw.strip("[]").replace("'", "")
-                chain_note = f"\n- Connected through: {_chain_clean_tmpl}"
-            lines.append(f"**{inv['ticker']}** — {direction_plain}.{window_note}")
-            lines.append(f"- I am {confidence_plain}.")
-            lines.append(f"- What's interesting: evidence from {sources_plain} all converging.{chain_note}")
-            lines.append("")
+            _render_stack(
+                inv["ticker"], direction_plain, confidence_plain,
+                stack_lines_inv, window, chain_raw
+            )
     elif devs:
         for d in devs[:3]:
             direction_plain = _direction_words(d["direction"])
             confidence_plain = _confidence_words(d["confidence"])
-            sources_plain = _domain_plain(d["domains"])
-            lines.append(f"**{d['ticker']}** — {direction_plain}.")
-            lines.append(f"- I am {confidence_plain}.")
-            lines.append(f"- Evidence coming from: {sources_plain}.")
-            lines.append("")
+            stack_lines_dev = d.get("stack_lines", [])
+            _render_stack(
+                d["ticker"], direction_plain, confidence_plain,
+                stack_lines_dev
+            )
     else:
         lines.append("Nothing notable in stocks today. Watching broadly.")
         lines.append("")
 
-    # Developing investigations
+    # Developing investigations (partial stacks — fewer than 3 domains)
     dev_sits = summary.get("developing_situations", [])
     if dev_sits:
-        lines.append("**Also watching (not ready yet):**")
+        lines.append("**Also watching (not ready to call yet):**")
         for s in dev_sits[:2]:
             direction_plain = _direction_words(s["direction"])
             domains_seen_plain = _domain_plain(s["domains_seen"])
             missing_plain = _domain_plain(s.get("missing_domains", []))
-            missing_note = f" Waiting for: {missing_plain}." if missing_plain else ""
+            missing_note = f" Still waiting for: {missing_plain}." if missing_plain else ""
             lines.append(
-                f"- {s['ticker']}: {direction_plain}. {domains_seen_plain} seen.{missing_note}"
+                f"- {s['ticker']}: {direction_plain}. I've seen: {domains_seen_plain}.{missing_note}"
             )
         lines.append("")
 
