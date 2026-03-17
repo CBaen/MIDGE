@@ -814,4 +814,85 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
 
     ctx.bus.register_callback("market.intel.deep_analysis", _on_deep_analysis)
 
+    # --- Web Investigation: convergence alerts → background web crawl ---
+    # When a convergence alert fires with 3+ domains (a genuine inevitability
+    # signal), MIDGE crawls the open web to find out WHY it's happening.
+    # Runs in a background thread — never blocks the event loop.
+    # Findings are written to data/midge/investigations.jsonl and
+    # advertised to SharedAttention as a hot ticker.
+    _web_investigator_ref: list = [None]
+
+    def _get_web_investigator():
+        if _web_investigator_ref[0] is None:
+            try:
+                from mae_core.market.apis.web_investigator import WebInvestigator
+                _web_investigator_ref[0] = WebInvestigator(
+                    raw_store=getattr(ctx, "raw_store", None)
+                )
+            except Exception:
+                logger.debug("WebInvestigator unavailable", exc_info=True)
+        return _web_investigator_ref[0]
+
+    def _on_convergence_web_investigate(channel, data):
+        """Convergence alert → background web investigation."""
+        import threading
+
+        msg = (json.loads(data) if isinstance(data, str) else data) if data else {}
+        ticker = msg.get("ticker") or msg.get("primary_ticker", "")
+        direction = msg.get("direction", "neutral")
+        domains = msg.get("domains_converging", []) or msg.get("domains", [])
+        strength = float(msg.get("strength", 0.0))
+
+        # Only investigate genuine multi-domain convergences
+        if not ticker or len(domains) < 3:
+            return
+
+        wi = _get_web_investigator()
+        if wi is None:
+            return
+
+        context = f"{direction} convergence {'+'.join(domains[:4])}"
+
+        def _run_investigation():
+            try:
+                findings = wi.investigate_ticker(ticker, context)
+                if not findings:
+                    return
+
+                # Advertise to SharedAttention so parallel processes know
+                try:
+                    from mae_core.market.ecosystem.shared_attention import SharedAttention
+                    sa = SharedAttention()
+                    best = max(findings, key=lambda f: f.relevance)
+                    sa.update_hot_ticker(
+                        ticker=ticker,
+                        reason=f"web_investigation:{best.source}:{best.key_phrases[:2]}",
+                        confidence=min(strength + 0.1, 1.0),
+                        domains=len(domains),
+                        ttl_hours=6.0,  # investigations are fresh for 6 hours
+                    )
+                except Exception:
+                    logger.debug("WebInvestigator: SharedAttention update failed", exc_info=True)
+
+                logger.info(
+                    "WebInvestigator: %d findings for %s %s (top=%s relevance=%.2f)",
+                    len(findings), ticker, direction,
+                    findings[0].source, findings[0].relevance,
+                )
+            except Exception:
+                logger.debug(
+                    "WebInvestigator: background investigation failed for %s", ticker,
+                    exc_info=True,
+                )
+
+        t = threading.Thread(
+            target=_run_investigation,
+            name=f"web-investigate-{ticker}",
+            daemon=True,
+        )
+        t.start()
+
+    ctx.bus.register_callback(CH_CONVERGENCE, _on_convergence_web_investigate)
+    logger.info("Layer 33f - WebInvestigator: CH_CONVERGENCE → background web crawl wired")
+
     logger.info("Layer 33f - Market EventBus: convergence + hypothesis -> endocrine coupling wired")

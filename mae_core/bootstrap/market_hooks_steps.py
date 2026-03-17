@@ -167,6 +167,8 @@ def _run_octopus_dispatch(colony, step: int) -> None:  # noqa: C901
 
     Called every 20 steps from _market_sense_hook.
     Runs coordination cycles + submits investigate_partial / situation_check tasks.
+    New situations (check_count == 0) also get a background web investigation
+    when at least 1 domain signal is already seen.
     """
     try:
         for oct_id, oct in list(colony.octopuses.items()):
@@ -216,6 +218,16 @@ def _run_octopus_dispatch(colony, step: int) -> None:  # noqa: C901
             colony.submit_task(task_data_inv, "investigate_partial")
             task_budget -= 1
 
+            # Web investigation: fire once when a situation is first seen
+            # (check_count == 0) and has at least 1 domain signal.
+            # Background thread — never blocks the step loop.
+            if check_count == 0:
+                domains_seen = sit.get("domains_seen", [])
+                ticker = sit.get("ticker", "")
+                direction = sit.get("direction", "neutral")
+                if ticker and domains_seen:
+                    _dispatch_web_investigation(ticker, direction, domains_seen)
+
             if check_count > 0 and check_count % 5 == 0:
                 if task_budget > 0:
                     colony.submit_task(
@@ -225,6 +237,58 @@ def _run_octopus_dispatch(colony, step: int) -> None:  # noqa: C901
                     task_budget -= 1
     except Exception:
         logger.debug("Investigation dispatcher failed", exc_info=True)
+
+
+# Web investigator singleton — lazy-loaded, shared across dispatch calls
+_web_investigator_steps: list = [None]
+
+
+def _get_web_investigator_steps():
+    """Lazy-load WebInvestigator singleton for use in step hooks."""
+    if _web_investigator_steps[0] is None:
+        try:
+            from mae_core.market.apis.web_investigator import WebInvestigator
+            _web_investigator_steps[0] = WebInvestigator()
+        except Exception:
+            logger.debug("WebInvestigator unavailable in step hooks", exc_info=True)
+    return _web_investigator_steps[0]
+
+
+def _dispatch_web_investigation(
+    ticker: str,
+    direction: str,
+    domains_seen: list,
+) -> None:
+    """Fire-and-forget web investigation for a newly-seen partial convergence situation.
+
+    Background thread so the step loop is never blocked.
+    Results land in data/midge/investigations.jsonl.
+    """
+    import threading
+
+    wi = _get_web_investigator_steps()
+    if wi is None:
+        return
+
+    context = f"{direction} partial convergence {'+'.join(domains_seen[:3])}"
+
+    def _run():
+        try:
+            findings = wi.investigate_ticker(ticker, context)
+            if findings:
+                logger.info(
+                    "WebInvestigator[octopus]: %d findings for partial %s %s "
+                    "(top=%s relevance=%.2f)",
+                    len(findings), ticker, direction,
+                    findings[0].source, findings[0].relevance,
+                )
+        except Exception:
+            logger.debug(
+                "WebInvestigator[octopus]: investigation failed for %s", ticker,
+                exc_info=True,
+            )
+
+    threading.Thread(target=_run, name=f"web-octopus-{ticker}", daemon=True).start()
 
 
 def _run_raw_analyst(ctx: SimpleNamespace, step: int) -> None:

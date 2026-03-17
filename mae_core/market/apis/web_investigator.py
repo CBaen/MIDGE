@@ -52,12 +52,11 @@ _FINANCIAL_SIGNALS = frozenset(
     "default dividend buyback offering dilution patent approval".split()
 )
 
-_PHRASE_STOPWORDS = frozenset({
-    "the", "and", "for", "with", "this", "that", "from", "have", "been",
-    "will", "they", "said", "its", "their", "which", "about", "more", "also",
-    "into", "over", "some", "than", "when", "what", "other", "after",
-    "market", "stock", "share", "shares", "company", "companies",
-})
+_PHRASE_STOPWORDS = frozenset(
+    "the and for with this that from have been will they said its their "
+    "which about more also into over some than when what other after "
+    "market stock share shares company companies".split()
+)
 
 _TICKER_RE = re.compile(r"\b([A-Z]{1,5})\b")
 
