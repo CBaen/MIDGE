@@ -90,6 +90,10 @@ TIER_ROUTING: Dict[str, str] = {
     "edgar_xbrl": "strategic",
     # News aggregator — free RSS headlines from Reuters, CNBC, MarketWatch, Fed
     "news_headlines": "tactical",
+    # Polymarket — crowd probability prediction markets (free, no key)
+    "polymarket": "strategic",
+    # DefiLlama — DeFi TVL and stablecoin capital flows (free, no key)
+    "defillama": "strategic",
 }
 
 # Source names for rotation — 35 sources, 8 concurrent per cadence tick
@@ -155,6 +159,10 @@ SOURCE_ROTATION: List[str] = [
     "edgar_xbrl",
     # News headlines — free RSS aggregation (no key)
     "news_headlines",
+    # Polymarket — crowd probability prediction markets (free, no key)
+    "polymarket",
+    # DefiLlama — DeFi TVL and stablecoin capital flows (free, no key)
+    "defillama",
 ]
 
 # Map rotation source names → Thompson distribution keys for guided selection.
@@ -200,6 +208,8 @@ _ROTATION_TO_THOMPSON: Dict[str, str] = {
     "crypto_fear_greed": "crypto_fear_greed",
     "edgar_xbrl": "edgar_xbrl",
     "news_headlines": "news_headlines",
+    "polymarket": "polymarket",
+    "defillama": "defillama",
 }
 
 # Map absence source names back to convergence domains
@@ -229,6 +239,8 @@ _ABSENCE_SOURCE_DOMAINS: Dict[str, str] = {
     "crypto_fear_greed": "sentiment",
     "edgar_xbrl": "fundamental",
     "news_headlines": "events",
+    "polymarket": "prediction_market",
+    "defillama": "defi",
 }
 
 

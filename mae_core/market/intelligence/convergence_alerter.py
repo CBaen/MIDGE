@@ -245,6 +245,10 @@ class ConvergenceAlerter(ConvergenceConfidenceMixin, ConvergenceDetectionMixin):
             "cascade": "causal",
             # Options domain — CBOE VIX family + put/call ratio (13th domain)
             "options": "market",
+            # Polymarket crowd probability signals (14th domain)
+            "prediction_market": "crowd_intelligence",
+            # DefiLlama on-chain DeFi capital flows (15th domain)
+            "defi": "on_chain",
         }
 
         self._alert_counter = 0

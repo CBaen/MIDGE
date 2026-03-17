@@ -473,6 +473,7 @@ def _gather_data(date_str: str) -> dict:
         summary["futures_activity"] = []
 
     # ── Developing situations ──────────────────────────────────────
+    # Note: stack_lines are added in a second pass after postmortem loads _combo_stats.
     situation_board = _safe_read_json(_DATA_MIDGE / "situation_board.json")
     if situation_board and isinstance(situation_board, dict):
         findings = situation_board.get("findings", [])
@@ -487,6 +488,8 @@ def _gather_data(date_str: str) -> dict:
                 "confidence": round(float(f.get("confidence", 0)) * 100),
                 "domains": f.get("domains", []),
                 "summary": f.get("summary", ""),
+                "world_model_chain": "",  # filled in second pass
+                "stack_lines": [],        # filled in second pass
             }
             for f in findings_sorted
         ]
@@ -562,6 +565,21 @@ def _gather_data(date_str: str) -> dict:
         }
     else:
         summary["postmortem"] = {}
+
+    # ── Second pass: enrich developing situations with stack_lines ──
+    # Now that _combo_stats is populated from postmortem, build stack narratives.
+    try:
+        for _dev in summary.get("developing", []):
+            _ticker = _dev.get("ticker", "?")
+            _direction = _dev.get("direction", "?")
+            _domains = _dev.get("domains", [])
+            _chain = _dev.get("world_model_chain", "")
+            if _domains:
+                _dev["stack_lines"] = _build_stack_description(
+                    _ticker, _direction, _domains, _chain, _combo_stats
+                )
+    except Exception:
+        logger.debug("Could not enrich developing situations with stack_lines", exc_info=True)
 
     # ── Thompson distributions — notable movers ────────────────────
     thompson = _safe_read_json(_DATA_MARKET / "thompson_distributions.json")
@@ -670,19 +688,27 @@ def _gather_data(date_str: str) -> dict:
                 key=lambda x: float(x.get("score", 0)),
                 reverse=True,
             )[:5]
-        summary["inevitabilities"] = [
-            {
-                "ticker": r.get("ticker", "?"),
-                "direction": r.get("direction", "?"),
+        _inv_list = []
+        for r in inv_records:
+            _ticker = r.get("ticker", "?")
+            _direction = r.get("direction", "?")
+            _domains = r.get("domains", [])
+            _chain = str(r.get("world_model_chain", "") or "")
+            _stack = _build_stack_description(
+                _ticker, _direction, _domains, _chain, _combo_stats
+            )
+            _inv_list.append({
+                "ticker": _ticker,
+                "direction": _direction,
                 "score": round(float(r.get("score", 0)) * 100),
-                "domains": r.get("domains", []),
+                "domains": _domains,
                 "evidence_summary": r.get("evidence_summary", ""),
-                "world_model_chain": r.get("world_model_chain", ""),
+                "world_model_chain": _chain,
                 "expected_window_days": r.get("expected_window_days"),
                 "signal_count": r.get("signal_count", 0),
-            }
-            for r in inv_records
-        ]
+                "stack_lines": _stack,  # pre-built plain-English stack narrative
+            })
+        summary["inevitabilities"] = _inv_list
     except Exception:
         logger.debug("Could not read inevitabilities", exc_info=True)
         summary["inevitabilities"] = []
@@ -1695,55 +1721,74 @@ def _build_llm_prompt(summary: dict) -> str:
 
     lines.append("")
 
-    # Inevitabilities (stock convergence)
+    # Inevitabilities (stock convergence) — SHOW THE STACK
     inevitabilities = summary.get("inevitabilities", [])
     if inevitabilities:
-        lines.append("SITUATIONS I THINK ARE MOST INEVITABLE (stocks/instruments with converging signals):")
-        for inv in inevitabilities:
-            direction_plain = _direction_words(inv["direction"])
-            sources_plain = _domain_plain(inv["domains"])
-            window = inv.get("expected_window_days")
-            chain_raw = inv.get("world_model_chain", "")
-            chain_note = ""
-            if chain_raw and chain_raw != "None":
-                _chain_clean = chain_raw.strip("[]").replace("'", "")
-                chain_note = f" Causal chain: {_chain_clean}"
-            window_note = f" Expected timing: within {window} days." if window else ""
-            lines.append(
-                f"  - {inv['ticker']}: {direction_plain}. "
-                f"Evidence from: {sources_plain}.{window_note}{chain_note}"
-            )
+        lines.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        lines.append("STACK ANALYSIS — THE MOST INEVITABLE SITUATIONS")
+        lines.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        lines.append("")
         lines.append(
-            "  INSTRUCTION: Lead with the WEIRDEST convergence, not the highest confidence. "
-            "Tell the story of WHY it's interesting. "
-            "Example: 'Here's what's strange about [TICKER]: three completely unrelated signals "
-            "all arrived at the same conclusion — insider buying reports, economic data, AND "
-            "government contract data. That combination is unusual.' "
-            "If a causal chain exists, mention it: 'What's interesting is this connects through "
-            "[X] all the way to [Y].' Max 3 stocks. Skip tickers that are just technical signals."
+            "CRITICAL INSTRUCTION FOR STOCKS SECTION: For EVERY ticker you mention, you MUST "
+            "show the STACK of independent patterns — not just 'X sources agree'. "
+            "List each independent signal as a separate bullet. Explain WHY their independence matters. "
+            "Include the historical track record if provided. "
+            "If you can't show at least 3 independent reasons, DON'T mention the ticker. "
+            "The point is not that NVDA looks bearish — it's that 5 UNCONNECTED sources "
+            "are all reaching the same conclusion, which is structurally different from coincidence."
+        )
+        lines.append("")
+        for inv in inevitabilities[:3]:
+            direction_plain = _direction_words(inv["direction"])
+            window = inv.get("expected_window_days")
+            window_note = f" Expected timing: within {window} days." if window else ""
+            confidence_plain = _confidence_words(inv.get("score", 0))
+            lines.append(f"  TICKER: {inv['ticker']} — {direction_plain}.{window_note} I am {confidence_plain}.")
+            # Show the pre-built stack
+            stack_lines = inv.get("stack_lines", [])
+            if stack_lines:
+                for sl in stack_lines:
+                    lines.append(f"    {sl}")
+            else:
+                # Fallback: at least show domain list if stack wasn't built
+                sources_plain = _domain_plain(inv["domains"])
+                lines.append(f"    Evidence from: {sources_plain}.")
+            lines.append("")
+        lines.append(
+            "  HOW TO USE THIS DATA IN THE LETTER:"
+            " Lead with the weirdest combination (most unrelated sources agreeing)."
+            " Say something like: 'Here is what is strange about [TICKER]: it has [N] completely"
+            " independent signals all pointing the same direction. [Source 1] noticed X."
+            " [Source 2], which has nothing to do with [Source 1], noticed Y."
+            " [Source 3] noticed Z. When unconnected sources agree, that's not coincidence —"
+            " that's a stack.' Then say: 'Based on history, this combination has worked [rate].'"
+            " Max 3 tickers. Skip tickers with only chart patterns (technical alone)."
         )
     else:
         lines.append("INEVITABLE SITUATIONS: Nothing stands out strongly in stocks today.")
 
     lines.append("")
 
-    # Developing situations
+    # Developing situations — also show the stack
     devs = summary.get("developing", [])
     if devs:
-        lines.append("DEVELOPING STOCK SITUATIONS (what I'm actively watching):")
+        lines.append("DEVELOPING STOCK SITUATIONS (what I'm actively watching — partial stacks):")
         for d in devs:
             direction_plain = _direction_words(d["direction"])
             confidence_plain = _confidence_words(d["confidence"])
-            sources_plain = _domain_plain(d["domains"])
             lines.append(
-                f"  - {d['ticker']}: {direction_plain}. "
-                f"I am {confidence_plain}. "
-                f"Evidence comes from: {sources_plain}. "
-                f"Note: {d['summary'][:120]}" if d.get("summary") else
-                f"  - {d['ticker']}: {direction_plain}. "
-                f"I am {confidence_plain}. "
-                f"Evidence comes from: {sources_plain}."
+                f"  - {d['ticker']}: {direction_plain}. I am {confidence_plain}."
             )
+            stack_lines = d.get("stack_lines", [])
+            if stack_lines:
+                for sl in stack_lines:
+                    lines.append(f"      {sl}")
+            else:
+                sources_plain = _domain_plain(d["domains"])
+                lines.append(f"      Evidence so far: {sources_plain}.")
+            if d.get("summary"):
+                lines.append(f"      Context: {d['summary'][:120]}")
+            lines.append("")
     else:
         lines.append("DEVELOPING STOCK SITUATIONS: None with strong evidence right now.")
 
