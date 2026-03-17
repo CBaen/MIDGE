@@ -90,6 +90,12 @@ DOMAIN_CORRELATION_PAIRS: List[Tuple[str, str]] = [
     ("positioning","technical"),     # COT positioning vs technicals
     ("government", "contracts"),     # Legislative + contracting correlation
     ("crypto",     "technical"),     # Crypto risk vs equity technicals
+    ("government", "insider"),       # legislative insiders
+    ("events",     "technical"),     # earnings catalyst vs price action
+    ("energy",     "technical"),     # oil shocks vs equity technicals
+    ("macro",      "volatility"),    # FRED rates vs VIX
+    ("fundamentals", "institutional"),  # analyst upgrades vs 13F buys
+    ("defi",       "crypto"),        # DeFi capital vs crypto prices
 ]
 
 # Which domains are "fear" vs "risk-on" for cross-asset divergence detection

@@ -440,6 +440,22 @@ class NarrativeFeedback:
                 "WorldModel narrative edge: %s → %s (lag=%.1fd, strength=%.3f, ema_weight=%.0f%%)",
                 cause_key, effect_key, lag, weighted_strength, _NARRATIVE_EMA_WEIGHT * 100,
             )
+
+            # Also write to lag_correlations.json for convergence alerter sequence scoring
+            try:
+                lag_path = Path("data/market/lag_correlations.json")
+                existing = json.loads(lag_path.read_text()) if lag_path.exists() else []
+                existing.append({
+                    "source_a": cause_key,
+                    "source_b": effect_key,
+                    "lag_days": lag,
+                    "correlation": insight.confidence,
+                    "evidence": "narrative_synthesis",
+                })
+                lag_path.write_text(json.dumps(existing, indent=2))
+            except Exception:
+                pass
+
             return True
 
         # Try lag-bearing patterns first

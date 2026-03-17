@@ -53,7 +53,7 @@ _OUTPUT_PATH = _DATA_DIR / "granger_continuous.json"
 _LOG_PATH = _DATA_DIR / "granger_continuous.log"
 
 # ── Configuration ──────────────────────────────────────────────────────────────
-_SLEEP_SECONDS = 60
+_SLEEP_SECONDS = 30
 _MAX_LAG = 14           # Test lags 1-14 days (market-relevant)
 _MIN_OBS = 40           # Minimum aligned observations per pair
 _SIG_THRESHOLD = 0.05   # p-value significance threshold (pre-correction)

@@ -858,6 +858,39 @@ def _run_slow_cadence_ops(ctx: SimpleNamespace, step: int, _shm, _timer) -> None
                             if _failed_pairs:
                                 _fe.batch_explain(_failed_pairs[-50:])  # cap at 50 per cycle
                                 logger.debug("FailureExplainer: explained %d failures", len(_failed_pairs[-50:]))
+                                # Write learned_correlations.json for convergence alerter independence guard
+                                try:
+                                    import json as _jlc
+                                    from pathlib import Path as _Plc
+                                    _summary_path = _Plc("data/midge/failure_summary.json")
+                                    if _summary_path.exists():
+                                        _summary = _jlc.loads(_summary_path.read_text())
+                                        _corr_count = _summary.get("category_counts", {}).get("correlated_domains", 0)
+                                        if _corr_count >= 5:
+                                            _corr_pairs: list[str] = []
+                                            _expl_path = _Plc("data/midge/failure_explanations.jsonl")
+                                            if _expl_path.exists():
+                                                with open(_expl_path, "r") as _fef:
+                                                    for _feline in _fef:
+                                                        try:
+                                                            _fed = _jlc.loads(_feline)
+                                                            if _fed.get("category") == "correlated_domains":
+                                                                for _ev in _fed.get("evidence", []):
+                                                                    if _ev.startswith("correlated_pairs="):
+                                                                        # Parse bare list repr without eval: e.g. "['macro + technical']"
+                                                                        _raw = _ev.split("=", 1)[1].strip("[] ").replace("'", "")
+                                                                        _corr_pairs.extend([p.strip() for p in _raw.split(",") if p.strip()])
+                                                        except Exception:
+                                                            pass
+                                            if _corr_pairs:
+                                                from collections import Counter as _Counter
+                                                _pair_counts = _Counter(_corr_pairs)
+                                                _lc_path = _Plc("data/market/learned_correlations.json")
+                                                _lc_data = {"domain_pairs": [{"pair": p, "occurrences": c} for p, c in _pair_counts.most_common(20)], "updated_at": datetime.now().isoformat()}
+                                                _lc_path.write_text(_jlc.dumps(_lc_data, indent=2))
+                                                logger.info("FailureExplainer: wrote %d correlated domain pairs to learned_correlations.json", len(_pair_counts))
+                                except Exception:
+                                    logger.debug("learned_correlations write failed", exc_info=True)
                         except Exception:
                             logger.debug("FailureExplainer batch_explain failed", exc_info=True)
                 if _shm:

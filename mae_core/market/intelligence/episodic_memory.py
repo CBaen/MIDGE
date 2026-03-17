@@ -224,6 +224,23 @@ class EpisodicMemory:
             "EpisodicMemory: resolved %s → %s (%.1f%% move)",
             episode_id, outcome, ep.move_pct,
         )
+
+        # Feed resolved episode into Thompson combo distributions via bridge file
+        if ep.outcome in ("correct", "wrong") and ep.domains:
+            try:
+                combo_key = "+".join(sorted(ep.domains))
+                bridge_path = Path("data/market/episodic_thompson_bridge.jsonl")
+                bridge_path.parent.mkdir(parents=True, exist_ok=True)
+                with open(bridge_path, "a", encoding="utf-8") as _bf:
+                    _bf.write(json.dumps({
+                        "combo": combo_key,
+                        "won": ep.outcome == "correct",
+                        "ticker": ep.tickers[0] if ep.tickers else "",
+                        "timestamp": ep.resolved_at,
+                    }) + "\n")
+            except Exception:
+                logger.debug("EpisodicMemory: bridge write failed", exc_info=True)
+
         return ep
 
     # ------------------------------------------------------------------

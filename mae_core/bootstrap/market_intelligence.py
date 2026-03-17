@@ -99,6 +99,7 @@ def _instantiate_hypothesis_loop(ctx: SimpleNamespace) -> None:
                 backtest_analyzer=getattr(ctx, "backtest_analyzer", None),
                 archaeological_analyzer=_arch_adapter,
                 thompson_calibrator=getattr(ctx, "thompson_calibrator", None),
+                generation_cadence=200,
             )
             if (ctx.hypothesis_registry is not None
                 and ctx.hypothesis_generator is not None

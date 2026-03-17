@@ -50,7 +50,7 @@ class ExcavationDaemon:
         excavator: Excavator,
         price_fetcher: Any = None,
         bus: Any = None,
-        batch_size: int = 5,
+        batch_size: int = 20,
         min_move_pct: float = 5.0,
         lookback_days: int = 30,
         price_history_days: int = 2000,

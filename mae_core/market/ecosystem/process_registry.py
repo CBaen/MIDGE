@@ -49,6 +49,22 @@ ECOSYSTEM_PROCESSES: List[ProcessSpec] = [
         "critical": False,
     },
     {
+        "name": "midge-granger-short",
+        "module": "mae_core.market.parallel.continuous_granger",
+        "args": ["--lookback", "90", "--max-lag", "7"],
+        "tier": "analysis",
+        "restart_delay": 10,
+        "critical": False,
+    },
+    {
+        "name": "midge-granger-long",
+        "module": "mae_core.market.parallel.continuous_granger",
+        "args": ["--lookback", "730", "--max-lag", "30"],
+        "tier": "analysis",
+        "restart_delay": 10,
+        "critical": False,
+    },
+    {
         "name": "midge-postmortem",
         "module": "mae_core.market.parallel.continuous_postmortem",
         "args": [],

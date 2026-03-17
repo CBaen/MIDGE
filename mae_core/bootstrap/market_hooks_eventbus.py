@@ -874,6 +874,24 @@ def _register_market_eventbus(ctx: SimpleNamespace) -> None:
                 except Exception:
                     logger.debug("WebInvestigator: SharedAttention update failed", exc_info=True)
 
+                # Feed high-relevance findings back into convergence engine
+                _alerter_wi = getattr(ctx, "convergence_alerter", None)
+                if _alerter_wi is not None:
+                    for _finding in findings:
+                        if _finding.relevance > 0.5:
+                            try:
+                                _alerter_wi.record_signal(
+                                    signal_id=f"web_investigation_{hash(_finding.url) % 100000}",
+                                    strength=_finding.relevance,
+                                    domain="investigation",
+                                    direction=_finding.direction if hasattr(_finding, "direction") else "neutral",
+                                    confidence=_finding.relevance * 0.6,
+                                    metadata={"symbol": ticker, "url": _finding.url, "title": _finding.title[:100]},
+                                    source="web_investigator",
+                                )
+                            except Exception:
+                                logger.debug("WebInvestigator: convergence signal inject failed", exc_info=True)
+
                 logger.info(
                     "WebInvestigator: %d findings for %s %s (top=%s relevance=%.2f)",
                     len(findings), ticker, direction,
