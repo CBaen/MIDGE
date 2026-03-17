@@ -122,17 +122,17 @@ def from_btc_dominance(
     return MarketSignal(
         signal_id=signal_id,
         source="crypto_rotation",
-        symbol="BTC",                   # BTC.D is a BTC structural metric
+        symbol="BTC",
         asset_class="crypto",
-        domain="crypto_structure",      # Independent from "crypto" (price) and "positioning" (funding)
+        domain="crypto_structure",
         direction=direction,
         strength=round(strength, 3),
-        confidence=0.60,                # CoinGecko global data is high quality
-        decay_rate=0.15,                # BTC dominance shifts slowly — long half-life
+        confidence=0.60,
+        decay_rate=0.15,
         timestamp=datetime.now(),
         received_at=datetime.now(),
-        outcome_symbol="ETH-USD",       # Alt season proxy — ETH is the bellwether
-        outcome_window_days=14,         # BTC.D cycles are multi-week
+        outcome_symbol="ETH-USD",
+        outcome_window_days=14,
         raw_id="",
         raw_type="GlobalCryptoData",
         metadata={

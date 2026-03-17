@@ -270,6 +270,17 @@ def fetch_btc_dominance(coingecko_client: Any) -> list:
         sig = from_btc_dominance(global_data, prior_dominance=prior_dominance)
         if sig is not None:
             signals.append(sig)
+            # Fan out to major alts — BTC dominance affects all crypto.
+            _ALT_TICKERS = ["ETH", "SOL", "XRP", "ADA"]
+            _eg = f"btc_dom_{sig.signal_id}"
+            for _alt in _ALT_TICKERS:
+                import copy
+                alt_sig = copy.copy(sig)
+                alt_sig.signal_id = f"{sig.signal_id}:{_alt}"
+                alt_sig.symbol = _alt
+                alt_sig.outcome_symbol = f"{_alt}-USD"
+                alt_sig.metadata = {**sig.metadata, "symbol": _alt, "enrichment_group": _eg}
+                signals.append(alt_sig)
 
     except Exception as e:
         logger.debug("BTC dominance fetch failed: %s", e)

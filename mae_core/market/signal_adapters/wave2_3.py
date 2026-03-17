@@ -129,6 +129,7 @@ def from_crypto_signal(crypto_price) -> MarketSignal:
         raw_id=raw_id,
         raw_type=raw_type,
         metadata={
+            "symbol": symbol.upper(),
             "price_usd": price_usd,
             "volume_24h": volume,
             "change_24h_pct": change_24h,
