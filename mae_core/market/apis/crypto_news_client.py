@@ -139,14 +139,10 @@ class CryptoNewsClient:
         return headlines
 
     def get_recent_headlines(self, hours: int = 24) -> List[CryptoHeadline]:
-        """Fetch both feeds, return headlines published in last `hours` hours."""
+        """Fetch both feeds, return headlines from last `hours` hours."""
         cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
-        all_headlines: List[CryptoHeadline] = []
-        for source, url in FEEDS.items():
-            for h in self._fetch_feed(source, url):
-                if h.published_at >= cutoff:
-                    all_headlines.append(h)
-        return all_headlines
+        return [h for src, url in FEEDS.items()
+                for h in self._fetch_feed(src, url) if h.published_at >= cutoff]
 
     def get_news_signals(self) -> List[dict]:
         """One signal dict per ticker with 5+ headlines in 24h."""
