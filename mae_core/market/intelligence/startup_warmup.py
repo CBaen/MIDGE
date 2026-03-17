@@ -31,6 +31,13 @@ _DOMAIN_WINDOWS: dict[str, timedelta] = {
     "government":  timedelta(days=7),
     "contracts":   timedelta(days=7),
     "energy":      timedelta(days=7),
+    # Crypto — short windows for 24/7 fast-moving market
+    "crypto":           timedelta(hours=6),
+    "derivatives":      timedelta(hours=4),
+    "on_chain":         timedelta(hours=6),
+    "defi":             timedelta(hours=12),
+    "crypto_structure": timedelta(hours=24),
+    "news":             timedelta(hours=6),
 }
 _DEFAULT_WINDOW = timedelta(hours=72)
 
