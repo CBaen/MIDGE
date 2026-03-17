@@ -251,6 +251,8 @@ _ABSENCE_SOURCE_DOMAINS: Dict[str, str] = {
     "news_headlines": "events",
     "polymarket": "prediction_market",
     "defillama": "defi",
+    "crypto_rotation": "crypto_structure",
+    "binance_derivatives": "positioning",
 }
 
 

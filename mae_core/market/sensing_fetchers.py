@@ -63,6 +63,8 @@ from mae_core.market.fetchers_crypto import (
     fetch_economic_calendar,
     fetch_cboe_options,
     fetch_crypto_fear_greed,
+    fetch_btc_dominance,
+    fetch_binance_derivatives,
 )
 
 __all__ = [
@@ -106,4 +108,6 @@ __all__ = [
     "fetch_crypto_fear_greed",
     "fetch_edgar_xbrl",
     "fetch_news_headlines",
+    "fetch_btc_dominance",
+    "fetch_binance_derivatives",
 ]
