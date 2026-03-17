@@ -172,16 +172,17 @@ def _run_paper_trading_gate(ctx: SimpleNamespace, alerts: list, step: int) -> No
         _pt_str = LEARNING_CONFIG.get("paper_trade_min_strength", 0.65)
         _pt_combo = LEARNING_CONFIG.get("paper_trade_min_combo_mean", 0.25)
         for alert in alerts:
-            # Extract ticker early — only ticker-specific alerts are tradeable.
-            # Global convergence alerts (no ticker) are informational only.
-            _alert_ticker = getattr(alert, "ticker", "") or ""
+            # Only ticker-specific alerts (TCKR- prefix) are tradeable.
+            # Global convergence mixes signals from different tickers (e.g. HUYA
+            # earnings contributing to an XLE trade) — that's noise, not signal.
+            _aid = getattr(alert, "alert_id", "") or ""
+            if not _aid.startswith("TCKR-"):
+                continue  # Skip global alerts — only per-ticker convergence trades
+
+            # Extract ticker from alert_id: TCKR-{ticker}-YYYYMMDD-NNNN
+            _alert_ticker = _aid.split("-")[1] if len(_aid.split("-")) > 1 else ""
             if not _alert_ticker:
-                for _sig in getattr(alert, "signals", []):
-                    _alert_ticker = getattr(_sig, "metadata", {}).get("symbol", "") or ""
-                    if _alert_ticker:
-                        break
-            if not _alert_ticker:
-                continue  # Skip untradeable ticker-less alerts
+                continue
 
             if not (
                 hasattr(alert, "confidence")
@@ -302,10 +303,11 @@ def _run_paper_trading_gate(ctx: SimpleNamespace, alerts: list, step: int) -> No
                         _validator_names.append("situation_board")
                 except Exception:
                     pass
-            # Paper trading requires fewer validators to generate trade data.
-            # Convergence alone = 1 validator. Raise to 3 once paper trading
-            # proves convergence signals are profitable on their own.
-            _min_validators = 2
+            # Paper trading: convergence alone is sufficient to generate trades.
+            # The confidence gate (0.45) + strength gate (0.65) + combo filter
+            # already ensure quality. Validator gate exists for LIVE trading.
+            # Raise to 3 when switching from paper to real money.
+            _min_validators = 1
             if _validators < _min_validators:
                 logger.info(
                     "Paper trade DEFERRED — Law 7: %d/%d validators (%s) for %s %s",
