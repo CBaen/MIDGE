@@ -1,6 +1,8 @@
 # MIDGE Handoff
 
-**Last updated:** 2026-03-17 (Session 12 — Ecosystem Evolution, complete)
+**Last updated:** 2026-03-17 (Session 12 — Ecosystem + Research Team)
+**Start ecosystem:** `python -m mae_core.market.ecosystem.supervisor`
+**Check status:** `python -m mae_core.market.ecosystem.supervisor --status`
 **For session history:** `git log --oneline`
 
 ---

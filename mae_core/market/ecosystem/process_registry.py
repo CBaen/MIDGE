@@ -7,6 +7,9 @@ Tiers:
   core     — The organism itself. If it dies, everything is flying blind.
   analysis — Background miners that improve learning over time. Restartable.
   mining   — Data extraction processes. Slow to restart; state is in files.
+  research — Massive historical pattern mining. CPU-intensive, runs forever.
+             Produces the pattern library that the live pipeline matches against.
+             This is the most important background process in the ecosystem.
 """
 
 from __future__ import annotations
@@ -96,7 +99,15 @@ ECOSYSTEM_PROCESSES: List[ProcessSpec] = [
         "restart_delay": 15,
         "critical": True,   # Without grading, Thompson never learns — treat as critical
     },
+    {
+        "name": "midge-research-team",
+        "module": "mae_core.market.parallel.historical_research_team",
+        "args": ["--workers", "4"],
+        "tier": "research",
+        "restart_delay": 15,
+        "critical": True,   # The pattern library is the foundation of everything. Must run.
+    },
 ]
 
 # All valid tier names — used for --only filtering
-ALL_TIERS = {"core", "analysis", "mining"}
+ALL_TIERS = {"core", "analysis", "mining", "research"}
