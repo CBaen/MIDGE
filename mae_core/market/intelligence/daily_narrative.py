@@ -336,8 +336,10 @@ def _gather_data(date_str: str) -> dict:
 
     # ── Layer 0: Macro Indicators from signal buffer ───────────────
     # Parse FRED/macro signals to surface yield curve, VIX, inflation data
+    _buf = {}  # signal buffer — kept for stack detail enrichment later
     try:
-        _buf = _safe_read_json(_DATA_MARKET / "signal_buffer.json")
+        _buf = _safe_read_json(_DATA_MARKET / "signal_buffer.json") or {}
+        summary["_buffer_data"] = _buf  # for stack detail enrichment
         if _buf and isinstance(_buf, dict):
             macro_signals = _buf.get("macro", [])
             energy_signals = _buf.get("energy", [])
@@ -595,7 +597,8 @@ def _gather_data(date_str: str) -> dict:
             _chain = _dev.get("world_model_chain", "")
             if _domains:
                 _dev["stack_lines"] = _build_stack_description(
-                    _ticker, _direction, _domains, _chain, _combo_stats
+                    _ticker, _direction, _domains, _chain, _combo_stats,
+                    buffer_data=_buf,
                 )
     except Exception:
         logger.debug("Could not enrich developing situations with stack_lines", exc_info=True)
@@ -1164,15 +1167,16 @@ def _combo_win_rate(domains: list[str], combo_stats: dict) -> str | None:
 
 
 def _build_stack_description(ticker: str, direction: str, domains: list[str],
-                              world_model_chain: str, combo_stats: dict) -> list[str]:
+                              world_model_chain: str, combo_stats: dict,
+                              buffer_data: dict = None) -> list[str]:
     """Build a list of plain-English lines that narrate the full pattern stack.
 
     Returns a list ready to be joined with newlines.  Each line is a bullet
     explaining one independent pillar of the convergence.
 
-    This is the core of the fix — instead of giving the LLM "evidence from:
-    insider, technical, events", we give it a pre-written explanation of what
-    EACH pillar saw and WHY their agreement matters.
+    When buffer_data is provided, extracts SPECIFIC details from actual signals
+    (e.g. "3 insiders bought $2.5M worth") instead of generic descriptions
+    (e.g. "People inside the company are buying or selling their own stock").
     """
     direction_verb = "pointing up" if "bull" in direction.lower() else ("pointing down" if "bear" in direction.lower() else "neutral")
     n = len(domains)
@@ -1183,8 +1187,16 @@ def _build_stack_description(ticker: str, direction: str, domains: list[str],
     )
 
     for i, domain in enumerate(domains, 1):
-        what_seen = _DOMAIN_WHAT_SEEN.get(domain.lower(),
-                                          f"Signals from the '{domain}' area are aligned")
+        # Try to extract a specific detail from the actual signal data
+        detail = ""
+        if buffer_data:
+            sig = _find_best_signal(buffer_data, ticker, domain)
+            if sig:
+                detail = _extract_signal_detail(sig, direction)
+        # Fall back to generic description if no specific detail
+        what_seen = detail or _DOMAIN_WHAT_SEEN.get(
+            domain.lower(), f"Signals from the '{domain}' area are aligned"
+        )
         result.append(f"  {i}. {what_seen}  [{domain}]")
 
     # Independence note
