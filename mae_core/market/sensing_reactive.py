@@ -326,6 +326,14 @@ class SensingReactiveMixin:
             from mae_core.market.fetchers_crypto import fetch_crypto_news
             signals = fetch_crypto_news(getattr(self, "_crypto_news_client", None))
 
+        elif source_name == "reddit_crypto":
+            _rc = getattr(self, "_reddit_crypto_client", None)
+            if _rc is not None:
+                try:
+                    signals = _rc.get_sentiment_signals()
+                except Exception:
+                    logger.debug("Reddit crypto fetch failed", exc_info=True)
+
         elif source_name == "defillama":
             try:
                 from mae_core.market.apis.defillama_client import DefiLlamaClient

@@ -104,6 +104,8 @@ TIER_ROUTING: Dict[str, str] = {
     "mempool_btc": "strategic",
     # Crypto news RSS — CoinDesk + Cointelegraph headline velocity (free, no key)
     "crypto_news": "tactical",
+    # Reddit crypto sentiment — r/cryptocurrency, r/bitcoin, r/ethereum RSS (free, no key)
+    "reddit_crypto": "tactical",
 }
 
 # Source names for rotation — 35 sources, 8 concurrent per cadence tick
@@ -183,6 +185,8 @@ SOURCE_ROTATION: List[str] = [
     "mempool_btc",
     # Crypto news RSS — headline velocity (free, no key)
     "crypto_news",
+    # Reddit crypto sentiment (free RSS, no key)
+    "reddit_crypto",
 ]
 
 # Map rotation source names → Thompson distribution keys for guided selection.
@@ -235,6 +239,7 @@ _ROTATION_TO_THOMPSON: Dict[str, str] = {
     "kraken_futures": "kraken_futures",
     "mempool_btc": "mempool_btc",
     "crypto_news": "crypto_news",
+    "reddit_crypto": "reddit_crypto",
 }
 
 # Map absence source names back to convergence domains
@@ -271,6 +276,7 @@ _ABSENCE_SOURCE_DOMAINS: Dict[str, str] = {
     "kraken_futures": "derivatives",
     "mempool_btc": "on_chain",
     "crypto_news": "news",
+    "reddit_crypto": "sentiment",
 }
 
 

@@ -44,6 +44,7 @@ def _instantiate_wave2_3_clients(ctx: SimpleNamespace) -> None:
         ("kraken_futures_client", "mae_core.market.apis.kraken_futures_client", "KrakenFuturesClient"),
         ("mempool_client", "mae_core.market.apis.mempool_client", "MempoolClient"),
         ("crypto_news_client", "mae_core.market.apis.crypto_news_client", "CryptoNewsClient"),
+        ("reddit_crypto_client", "mae_core.market.apis.reddit_crypto_client", "RedditCryptoClient"),
     ]:
         try:
             klass = getattr(importlib.import_module(mod_path), cls)
@@ -82,6 +83,7 @@ _MARKET_SOURCE_TRUST = [
     ("kraken_futures", 0.70),
     ("mempool_btc", 0.65),
     ("crypto_news", 0.50),
+    ("reddit_crypto", 0.40),
 ]
 
 

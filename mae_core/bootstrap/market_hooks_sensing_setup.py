@@ -161,6 +161,7 @@ def _build_sensing_infrastructure(ctx: SimpleNamespace):
         hook._kraken_futures_client = getattr(ctx, "kraken_futures_client", None)
         hook._mempool_client = getattr(ctx, "mempool_client", None)
         hook._crypto_news_client = getattr(ctx, "crypto_news_client", None)
+        hook._reddit_crypto_client = getattr(ctx, "reddit_crypto_client", None)
 
     return outcome_collector, memory, form8k_sentiment, market_clock, tiered_alerters, hook
 
