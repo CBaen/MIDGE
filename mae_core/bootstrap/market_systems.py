@@ -41,6 +41,9 @@ def _instantiate_wave2_3_clients(ctx: SimpleNamespace) -> None:
         ("news_aggregator_client", "mae_core.market.apis.news_aggregator_client", "NewsAggregatorClient"),
         ("binance_history_client", "mae_core.market.apis.binance_history_client", "BinanceCryptoHistoryClient"),
         ("binance_derivatives_client", "mae_core.market.apis.binance_derivatives_client", "BinanceDerivativesClient"),
+        ("kraken_futures_client", "mae_core.market.apis.kraken_futures_client", "KrakenFuturesClient"),
+        ("mempool_client", "mae_core.market.apis.mempool_client", "MempoolClient"),
+        ("crypto_news_client", "mae_core.market.apis.crypto_news_client", "CryptoNewsClient"),
     ]:
         try:
             klass = getattr(importlib.import_module(mod_path), cls)
@@ -76,6 +79,9 @@ _MARKET_SOURCE_TRUST = [
     ("kalshi_market", 0.70),
     ("crypto_rotation", 0.65),
     ("binance_derivatives", 0.70),
+    ("kraken_futures", 0.70),
+    ("mempool_btc", 0.65),
+    ("crypto_news", 0.50),
 ]
 
 
