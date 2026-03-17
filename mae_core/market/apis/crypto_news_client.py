@@ -6,7 +6,7 @@ No API key. httpx + stdlib XML. 5+ headlines/24h → convergence signal.
 import logging
 import time
 import xml.etree.ElementTree as ET
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from typing import Dict, List, Optional
@@ -59,22 +59,6 @@ class CryptoHeadline:
     url: str
 
 
-@dataclass
-class CryptoNewsSignal:
-    """Convergence signal derived from news velocity for a crypto ticker."""
-    symbol: str
-    domain: str = "news"
-    direction: str = "neutral"
-    strength: float = 0.3
-    confidence: float = 0.45
-    headline_count: int = 0
-    sample_titles: List[str] = field(default_factory=list)
-    sentiment_keywords_found: List[str] = field(default_factory=list)
-    detected_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    signal_source: str = "crypto_news_rss"
-    decay_rate: float = 0.70
-
-
 def _parse_date(date_str: str) -> Optional[datetime]:
     """Parse RSS pubDate string to timezone-aware datetime."""
     if not date_str:
@@ -112,13 +96,7 @@ def _direction_from_keywords(titles: List[str]) -> tuple:
 
 
 class CryptoNewsClient:
-    """
-    Fetches and analyzes crypto headlines from CoinDesk and Cointelegraph RSS.
-
-    No API key required. Uses httpx for HTTP, stdlib XML for parsing.
-    Both feeds are fetched and merged into a unified headline pool.
-    Cache: 5 minutes per feed source. Two public feeds → ~0.5s cold fetch.
-    """
+    """CoinDesk + Cointelegraph RSS. No key. 5-min cache per feed."""
 
     def __init__(self, raw_store=None):
         self._raw_store = raw_store
@@ -127,7 +105,7 @@ class CryptoNewsClient:
         self._stats = {"fetches": 0, "errors": 0, "headlines_parsed": 0, "signals_emitted": 0}
 
     def _fetch_feed(self, source: str, url: str) -> List[CryptoHeadline]:
-        """Fetch one RSS feed, parse items, return CryptoHeadline list."""
+        """Fetch one RSS feed, return CryptoHeadline list (cached 5 min)."""
         now = time.time()
         if source in self._cache:
             items, fetched_at = self._cache[source]
@@ -176,12 +154,7 @@ class CryptoNewsClient:
         return all_headlines
 
     def get_news_signals(self) -> List[dict]:
-        """
-        Analyze headlines and return convergence signal dicts.
-
-        One signal per ticker that reaches the velocity threshold (5+ headlines
-        in 24h). Direction derived from bullish/bearish keyword majority.
-        """
+        """One signal dict per ticker with 5+ headlines in 24h."""
         headlines = self.get_recent_headlines(hours=VELOCITY_WINDOW_HOURS)
         signals: List[dict] = []
 
@@ -197,28 +170,20 @@ class CryptoNewsClient:
             direction, kw_found = _direction_from_keywords(titles)
             strength = _scale_strength(len(matched))
 
-            sig = CryptoNewsSignal(
-                symbol=ticker,
-                direction=direction,
-                strength=strength,
-                headline_count=len(matched),
-                sample_titles=titles[:3],
-                sentiment_keywords_found=kw_found,
-            )
             self._stats["signals_emitted"] += 1
             signals.append({
-                "symbol": sig.symbol,
-                "domain": sig.domain,
-                "direction": sig.direction,
-                "strength": sig.strength,
-                "confidence": sig.confidence,
-                "signal_source": sig.signal_source,
-                "decay_rate": sig.decay_rate,
-                "detected_at": sig.detected_at,
+                "symbol": ticker,
+                "domain": "news",
+                "direction": direction,
+                "strength": strength,
+                "confidence": 0.45,
+                "signal_source": "crypto_news_rss",
+                "decay_rate": 0.70,
+                "detected_at": datetime.now(timezone.utc).isoformat(),
                 "metadata": {
-                    "headline_count": sig.headline_count,
-                    "sample_titles": sig.sample_titles,
-                    "sentiment_keywords_found": sig.sentiment_keywords_found,
+                    "headline_count": len(matched),
+                    "sample_titles": titles[:3],
+                    "sentiment_keywords_found": kw_found,
                 },
             })
 
@@ -236,17 +201,10 @@ def get_news_signals() -> List[dict]:
 
 
 if __name__ == "__main__":
-    import sys
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
-    client = CryptoNewsClient()
-    headlines = client.get_recent_headlines(hours=24)
-    print(f"Fetched {len(headlines)} headlines in last 24h")
-    signals = client.get_news_signals()
-    if signals:
-        for s in signals:
-            m = s["metadata"]
-            print(f"  {s['symbol']}: {m['headline_count']} headlines → "
-                  f"{s['direction']} {s['strength']:.2f} | {m['sample_titles'][0][:60]}")
-    else:
-        print("  No tickers above velocity threshold")
-    print(f"Stats: {client.get_statistics()}")
+    c = CryptoNewsClient()
+    print(f"{len(c.get_recent_headlines())} headlines last 24h")
+    for s in c.get_news_signals():
+        m = s["metadata"]
+        print(f"  {s['symbol']}: {m['headline_count']} headlines → {s['direction']} {s['strength']:.2f}")
+    print(c.get_statistics())
