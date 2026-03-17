@@ -567,10 +567,11 @@ class PatternStoryBuilder:
             domain_str = ", ".join(parts[:-1]) + f", and {parts[-1]}"
 
         cross_note = ""
-        if template.n_symbols >= 10:
-            cross_note = f" This pattern has appeared on {template.n_symbols} different stocks, making it a broad market signal."
-        elif template.n_symbols >= 3:
-            cross_note = f" Observed on {template.n_symbols} different stocks."
+        n_syms = len(template.unique_symbols)
+        if n_syms >= 10:
+            cross_note = f" This pattern has appeared on {n_syms} different stocks, making it a broad market signal."
+        elif n_syms >= 3:
+            cross_note = f" Observed on {n_syms} different stocks."
 
         stat_note = ""
         if is_significant and n_outcomes >= 5:
