@@ -344,21 +344,28 @@ def _translate_and_log_executable_signal(alert, ctx: SimpleNamespace) -> None:
             logger.debug("_translate_and_log: no ticker resolved -- skipping")
             return
 
+        # Crypto symbols need "-USD" suffix for yfinance (BTC → BTC-USD)
+        _CRYPTO_BASES = {"BTC", "ETH", "SOL", "XRP", "ADA", "DOGE", "AVAX",
+                         "LINK", "LTC", "UNI", "SHIB", "BCH", "AAVE", "DOT"}
+        _yf_ticker = ticker
+        if ticker in _CRYPTO_BASES:
+            _yf_ticker = f"{ticker}-USD"
+
         # --- Current price ---
         price_fetcher = getattr(ctx, "price_fetcher", None)
         if price_fetcher is None:
             logger.debug("_translate_and_log: no price_fetcher on ctx -- skipping")
             return
 
-        price_data = price_fetcher.get_current_price(ticker)
+        price_data = price_fetcher.get_current_price(_yf_ticker)
         if not price_data or not price_data.price:
-            logger.debug("_translate_and_log: could not fetch price for %s", ticker)
+            logger.debug("_translate_and_log: could not fetch price for %s", _yf_ticker)
             return
 
         current_price = float(price_data.price)
 
         # --- ATR from daily history ---
-        history = price_fetcher.get_daily_history(ticker, days=30)
+        history = price_fetcher.get_daily_history(_yf_ticker, days=30)
         atr = 0.0
         if len(history) >= 15:
             highs  = [p.high  for p in history]
@@ -418,20 +425,22 @@ def _submit_to_alpaca(signal, ctx: SimpleNamespace) -> None:
 
         # Skip forex and futures — Alpaca doesn't trade those
         # BUT allow crypto: Alpaca supports BTC/USD, ETH/USD, etc.
-        _ALPACA_CRYPTO = {"BTC/USD", "ETH/USD", "DOGE/USD", "AVAX/USD", "LINK/USD",
-                          "LTC/USD", "UNI/USD", "SHIB/USD", "BCH/USD", "AAVE/USD",
-                          "DOT/USD", "MKR/USD", "CRV/USD", "GRT/USD", "BAT/USD",
-                          "SUSHI/USD", "XTZ/USD", "YFI/USD"}
-        is_crypto = ticker in _ALPACA_CRYPTO or ticker.replace("-", "/") in _ALPACA_CRYPTO
+        _ALPACA_CRYPTO_BASES = {"BTC", "ETH", "SOL", "XRP", "ADA", "DOGE", "AVAX",
+                                "LINK", "LTC", "UNI", "SHIB", "BCH", "AAVE", "DOT",
+                                "MKR", "CRV", "GRT", "BAT", "SUSHI", "XTZ", "YFI"}
+
+        # Normalize: bare "BTC" → "BTC/USD", "BTC-USD" → "BTC/USD"
+        _base = ticker.replace("/USD", "").replace("-USD", "")
+        is_crypto = _base in _ALPACA_CRYPTO_BASES
+        if is_crypto:
+            ticker = f"{_base}/USD"
+
         if any(suffix in ticker for suffix in ("=X", "=F", ".X")):
             logger.debug("Alpaca: skipping forex/futures ticker %s", ticker)
             return
-        if "-USD" in ticker and not is_crypto:
-            logger.debug("Alpaca: skipping unknown -USD ticker %s", ticker)
+        if not is_crypto and "/" in ticker:
+            logger.debug("Alpaca: skipping unknown pair %s", ticker)
             return
-        # Normalize crypto tickers: MIDGE uses BTC/USD, Alpaca wants BTC/USD
-        if is_crypto and "-" in ticker:
-            ticker = ticker.replace("-", "/")
 
         # Dedup — skip if we already have a position in this ticker
         existing = alpaca.get_positions()
@@ -455,18 +464,24 @@ def _submit_to_alpaca(signal, ctx: SimpleNamespace) -> None:
 
         side = "buy" if signal.direction == "long" else "sell"
 
+        # Crypto: Alpaca doesn't support bracket orders for crypto.
+        # Use simple market order with GTC time-in-force.
+        _tp = None if is_crypto else round(signal.take_profit, 2)
+        _sl = None if is_crypto else round(signal.stop_loss, 2)
+
         result = alpaca.submit_market_order(
             symbol=ticker,
             qty=qty,
             side=side,
-            take_profit_price=round(signal.take_profit, 2),
-            stop_loss_price=round(signal.stop_loss, 2),
+            take_profit_price=_tp,
+            stop_loss_price=_sl,
             metadata={
                 "source": "convergence_alert",
                 "confidence": signal.confidence,
                 "domains": signal.domains,
                 "alert_id": signal.source_alert_id,
                 "rr_ratio": signal.rr_ratio,
+                "is_crypto": is_crypto,
             },
         )
 

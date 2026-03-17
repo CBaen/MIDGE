@@ -183,8 +183,13 @@ class AlpacaClient:
         order_side = OrderSide.BUY if side.lower() == "buy" else OrderSide.SELL
 
         try:
-            if take_profit_price and stop_loss_price:
-                # Bracket order — entry + TP + SL
+            # Fractional qty requires DAY time-in-force. Bracket orders
+            # require GTC. Use bracket only when qty is whole shares.
+            _is_fractional = qty != int(qty)
+            _is_crypto = "/" in symbol  # BTC/USD format
+
+            if take_profit_price and stop_loss_price and not _is_fractional and not _is_crypto:
+                # Bracket order — entry + TP + SL (whole shares, non-crypto only)
                 order_data = MarketOrderRequest(
                     symbol=symbol,
                     qty=qty,
