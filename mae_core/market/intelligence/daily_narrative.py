@@ -717,7 +717,8 @@ def _gather_data(date_str: str) -> dict:
             _domains = r.get("domains", [])
             _chain = str(r.get("world_model_chain", "") or "")
             _stack = _build_stack_description(
-                _ticker, _direction, _domains, _chain, _combo_stats
+                _ticker, _direction, _domains, _chain, _combo_stats,
+                buffer_data=_buf,
             )
             _inv_list.append({
                 "ticker": _ticker,
@@ -935,35 +936,53 @@ def _extract_signal_detail(sig: dict, direction: str = "") -> str:
 
     try:
         # Insider trades — WHO and HOW MUCH
-        if "openinsider" in source or "form4" in source or source == "insider_cluster":
+        if "insider" in source or "form4" in source:
             count = meta.get("insider_count", "")
             value = meta.get("total_value", 0)
             company = meta.get("company_name", "")
             filer = meta.get("filer_name", "")
+            price = meta.get("current_price", "")
+            price_ctx = meta.get("price_context", "")
             if count and value:
-                val_str = f"${abs(value):,.0f}" if abs(value) >= 1000 else f"${abs(value):.0f}"
-                who = filer or f"{count} insiders"
-                return f"{who} {d_word} {val_str} worth of stock" + (f" at {company}" if company else "")
+                val_str = f"${abs(float(value)):,.0f}" if abs(float(value)) >= 1000 else f"${abs(float(value)):.0f}"
+                who = filer or f"{count} insider{'s' if int(count) > 1 else ''}"
+                detail = f"{who} {d_word} {val_str} worth"
+                if company:
+                    detail += f" at {company}"
+                if price_ctx == "near_low":
+                    detail += " (stock is near its yearly low)"
+                elif price_ctx == "near_high":
+                    detail += " (stock is near its yearly high)"
+                return detail
             if count:
-                return f"{count} company insiders are {d_word} their own shares"
+                return f"{count} company insider{'s' if int(count) > 1 else ''} {'are' if int(count) > 1 else 'is'} {d_word} their own shares"
 
         # Technical — WHAT indicator and WHAT level
         if "ta_" in source or "session_sweep" in source:
-            indicator = meta.get("indicator", "")
             sweep_type = meta.get("sweep_type", "")
             session = meta.get("session_swept", "")
             level = meta.get("sweep_level", "")
-            quality = meta.get("quality_score", "")
-            rsi_val = meta.get("rsi_value", "")
-            macd_signal = meta.get("macd_signal", "")
+            num_highs = meta.get("num_swing_highs", "")
+            num_lows = meta.get("num_swing_lows", "")
+            lookback = meta.get("lookback", "")
+            rsi_val = meta.get("rsi_value", meta.get("rsi", ""))
+            indicator = meta.get("indicator", "")
             if sweep_type and session:
                 return f"Price swept the {session} session {'high' if 'high' in sweep_type else 'low'}" + (f" at {level}" if level else "")
-            if indicator and rsi_val:
-                return f"RSI dropped to {rsi_val:.0f} (below 30 is extremely low)" if float(rsi_val) < 30 else f"RSI at {rsi_val:.0f}"
+            if rsi_val:
+                rsi_f = float(rsi_val)
+                if rsi_f < 30:
+                    return f"Price dropped sharply and unusually (RSI at {rsi_f:.0f})"
+                elif rsi_f > 70:
+                    return f"Price rose sharply and unusually (RSI at {rsi_f:.0f})"
+            if "structure" in source and num_highs and num_lows:
+                return f"Market structure shows {num_highs} swing highs and {num_lows} swing lows — price pattern is forming"
             if indicator:
-                indicator_plain = {"rsi": "RSI momentum", "macd": "MACD trend", "bollinger": "Bollinger Band",
+                indicator_plain = {"rsi": "momentum", "macd": "trend direction", "bollinger": "price range",
                                    "structure": "market structure", "candle": "candlestick pattern"}.get(indicator, indicator)
                 return f"The {indicator_plain} indicator triggered on the price chart"
+            # Generic fallback for ta_ sources
+            return "Price chart pattern detected"
 
         # Sentiment — WHICH platform and WHAT sentiment
         if "stocktwits" in source:
