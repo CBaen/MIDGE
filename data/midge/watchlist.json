@@ -509,13 +509,28 @@
     "GC=F",
     "CL=F",
     "NQ=F",
-    "ES=F"
+    "ES=F",
+    "BTC/USD",
+    "ETH/USD",
+    "DOGE/USD",
+    "AVAX/USD",
+    "LINK/USD",
+    "LTC/USD",
+    "UNI/USD",
+    "SHIB/USD",
+    "^HSI",
+    "^FTSE",
+    "^N225"
   ],
   "keywords": [
     "cybersecurity",
     "artificial intelligence",
     "defense",
-    "space"
+    "space",
+    "bitcoin",
+    "cryptocurrency",
+    "energy transition",
+    "oil production"
   ],
   "companies": {
     "Lockheed Martin": "LMT",

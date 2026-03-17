@@ -416,10 +416,22 @@ def _submit_to_alpaca(signal, ctx: SimpleNamespace) -> None:
 
         ticker = signal.ticker
 
-        # Only US equities — Alpaca doesn't trade forex/futures/crypto
-        if any(suffix in ticker for suffix in ("=X", "=F", "-USD", ".X")):
-            logger.debug("Alpaca: skipping non-equity ticker %s", ticker)
+        # Skip forex and futures — Alpaca doesn't trade those
+        # BUT allow crypto: Alpaca supports BTC/USD, ETH/USD, etc.
+        _ALPACA_CRYPTO = {"BTC/USD", "ETH/USD", "DOGE/USD", "AVAX/USD", "LINK/USD",
+                          "LTC/USD", "UNI/USD", "SHIB/USD", "BCH/USD", "AAVE/USD",
+                          "DOT/USD", "MKR/USD", "CRV/USD", "GRT/USD", "BAT/USD",
+                          "SUSHI/USD", "XTZ/USD", "YFI/USD"}
+        is_crypto = ticker in _ALPACA_CRYPTO or ticker.replace("-", "/") in _ALPACA_CRYPTO
+        if any(suffix in ticker for suffix in ("=X", "=F", ".X")):
+            logger.debug("Alpaca: skipping forex/futures ticker %s", ticker)
             return
+        if "-USD" in ticker and not is_crypto:
+            logger.debug("Alpaca: skipping unknown -USD ticker %s", ticker)
+            return
+        # Normalize crypto tickers: MIDGE uses BTC/USD, Alpaca wants BTC/USD
+        if is_crypto and "-" in ticker:
+            ticker = ticker.replace("-", "/")
 
         # Dedup — skip if we already have a position in this ticker
         existing = alpaca.get_positions()
