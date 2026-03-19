@@ -286,6 +286,24 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
             if colony is not None:
                 _run_octopus_dispatch(colony, step)
 
+            # Pattern convergence — math-first crypto trading.
+            # Evaluates 25 strategies against crypto watchlist, fires when 3+ agree.
+            _pc = getattr(ctx, "pattern_convergence_engine", None)
+            _cw = getattr(ctx, "_crypto_watchlist", [])
+            if _pc is not None and _cw:
+                try:
+                    from mae_core.bootstrap.market_hooks_sensing import _run_paper_trading_gate
+                    pc_alerts = _pc.evaluate_many(_cw)
+                    if pc_alerts:
+                        conv_alerts = [_pc.to_convergence_alert(a) for a in pc_alerts]
+                        logger.info(
+                            "Pattern convergence: %d crypto alerts → paper trade gate",
+                            len(conv_alerts),
+                        )
+                        _run_paper_trading_gate(ctx, conv_alerts, step)
+                except Exception:
+                    logger.debug("Pattern convergence step failed", exc_info=True)
+
         # Every 500/1000/5000 steps: slow cadence ops
         if step % 200 == 0 or step % 500 == 0 or step % 2000 == 0:
             _run_slow_cadence_ops(ctx, step, _shm, _timer)
