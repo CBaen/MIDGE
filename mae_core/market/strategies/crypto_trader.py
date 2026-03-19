@@ -57,11 +57,12 @@ def load_watchlist() -> list[str]:
     return json.loads(WATCHLIST_PATH.read_text())
 
 
-def evaluate_symbol(symbol: str, registry, all_strategies) -> Optional[dict]:
-    """Run all validated strategies on a symbol. Return trade dict if 3+ agree."""
+def evaluate_symbol(symbol: str, registry, all_strategies,
+                    interval: str = "5m", lookback_days: int = 7) -> Optional[dict]:
+    """Run all validated strategies on a symbol. Return trade dict if 2+ agree."""
     from mae_core.market.strategies.crypto_ohlcv import get_ohlcv
 
-    df = get_ohlcv(symbol, days=90)
+    df = get_ohlcv(symbol, days=lookback_days, interval=interval)
     if df is None or len(df) < 50:
         return None
 
@@ -239,8 +240,10 @@ def run_cycle(registry, all_strategies, dry_run: bool = False) -> int:
 
 def main():
     parser = argparse.ArgumentParser(description="MIDGE Standalone Crypto Trader")
-    parser.add_argument("--interval", type=int, default=300,
-                        help="Seconds between evaluation cycles (default: 300 = 5 min)")
+    parser.add_argument("--interval", type=int, default=60,
+                        help="Seconds between evaluation cycles (default: 60 = 1 min)")
+    parser.add_argument("--timeframe", type=str, default="5m",
+                        help="Bar interval for strategies (default: 5m)")
     parser.add_argument("--dry-run", action="store_true",
                         help="Log trades without submitting to Alpaca")
     parser.add_argument("--once", action="store_true",

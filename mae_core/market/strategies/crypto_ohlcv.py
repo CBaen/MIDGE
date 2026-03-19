@@ -82,31 +82,21 @@ def get_ohlcv(symbol: str, days: int = 90, interval: str = "1d") -> Optional[obj
     if not _PANDAS_AVAILABLE:
         return None
 
-    key = _cache_key(symbol, days)
+    key = _cache_key(symbol, days) + f":{interval}"
     cached = _get_cached(key)
     if cached is not None:
         return cached
 
-    fetcher = PriceFetcher(alpha_vantage_key=None)
-    records = fetcher.get_daily_history(symbol, days=days)
-
-    if len(records) < 15:
-        logger.debug("get_ohlcv(%s, %d): only %d bars — returning None", symbol, days, len(records))
-        return None
-
     try:
-        df = pd.DataFrame(
-            {
-                "Open":   [float(r.open) if r.open is not None else float('nan') for r in records],
-                "High":   [float(r.high) if r.high is not None else float('nan') for r in records],
-                "Low":    [float(r.low) if r.low is not None else float('nan') for r in records],
-                "Close":  [float(r.price) if r.price is not None else float('nan') for r in records],
-                "Volume": [float(r.volume) if r.volume is not None else 0.0 for r in records],
-            },
-            index=pd.to_datetime([r.timestamp for r in records]),
-        )
-        df.index.name = "Date"
-        # Drop rows with NaN in OHLC (incomplete bars from yfinance)
+        import yfinance as yf
+        period = f"{days}d"
+        ticker = yf.Ticker(symbol)
+        df = ticker.history(period=period, interval=interval)
+        if df is None or len(df) < 15:
+            logger.debug("get_ohlcv(%s, %s, %s): only %d bars", symbol, period, interval, len(df) if df is not None else 0)
+            return None
+        # Normalize columns (yfinance returns capitalized + extras)
+        df = df[["Open", "High", "Low", "Close", "Volume"]].copy()
         df = df.dropna(subset=["Open", "High", "Low", "Close"])
         if len(df) < 15:
             return None
