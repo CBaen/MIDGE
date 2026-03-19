@@ -1,9 +1,10 @@
 # MIDGE Handoff
 
-**Last updated:** 2026-03-19 (Session 13 — Math-First Crypto Trading)
-**Current mode:** STANDALONE CRYPTO TRADER RUNNING
-**Start trader:** `python -m mae_core.market.strategies.crypto_trader`
+**Last updated:** 2026-03-19 (Session 13 — Math-First Crypto Trading + Forensic Learning)
+**Current mode:** STANDALONE CRYPTO TRADER RUNNING (5-min bars, 60s cycle, forensic scorer)
+**Start trader:** `python -m mae_core.market.strategies.crypto_trader --timeframe 5m --interval 60`
 **Calibrate:** `python -m mae_core.market.parallel.strategy_calibrator --days 730`
+**CRITICAL DISCOVERY:** 5-minute bars give 25/25 strategies profitable (55-75% WR). Daily bars were 30-47%. The faster the data, the better MIDGE performs.
 **For session history:** `git log --oneline`
 
 ---
