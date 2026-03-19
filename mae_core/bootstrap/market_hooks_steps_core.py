@@ -165,15 +165,20 @@ def _register_market_step_hooks(ctx: SimpleNamespace) -> None:
         # Semantic memory: embed new convergence alerts (non-blocking, fire-and-forget)
         _pm = getattr(ctx, "pattern_memory", None)
         _new_alerts = ctx._cached_alerts[0] or []
-        # Semantic embedding disabled — Ollama timeouts (15s each) bottleneck the step loop.
-        # Pattern convergence and paper trading don't need embeddings to function.
-        # Re-enable when Ollama performance is stable.
-        # if _pm is not None and _pm.is_available and _new_alerts:
-        #     for _alert in _new_alerts:
-        #         try:
-        #             _pm.remember_convergence_alert(_alert)
-        #         except Exception:
-        #             logger.debug("PatternMemory embed failed for alert", exc_info=True)
+        # Fire-and-forget embedding — don't block the trading pipeline.
+        # If Ollama is slow/down, the thread handles the timeout silently.
+        if _pm is not None and _pm.is_available and _new_alerts:
+            import threading
+            def _embed_alerts(_pm_ref, _alerts_ref):
+                for _alert in _alerts_ref:
+                    try:
+                        _pm_ref.remember_convergence_alert(_alert)
+                    except Exception:
+                        pass  # Ollama timeout — don't block
+            threading.Thread(
+                target=_embed_alerts, args=(_pm, list(_new_alerts)),
+                daemon=True,
+            ).start()
 
         # Every 10 steps: Thompson stats (regime-aware)
         if step % 10 == 0:
