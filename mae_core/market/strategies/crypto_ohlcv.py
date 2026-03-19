@@ -106,6 +106,10 @@ def get_ohlcv(symbol: str, days: int = 90) -> Optional[object]:  # returns pd.Da
             index=pd.to_datetime([r.timestamp for r in records]),
         )
         df.index.name = "Date"
+        # Drop rows with NaN in OHLC (incomplete bars from yfinance)
+        df = df.dropna(subset=["Open", "High", "Low", "Close"])
+        if len(df) < 15:
+            return None
         _set_cached(key, df)
         return df
     except Exception as exc:
