@@ -53,18 +53,16 @@ def _set_cached(key: str, df: object) -> None:
 # Public API
 # ---------------------------------------------------------------------------
 
-def get_ohlcv(symbol: str, days: int = 90) -> Optional[object]:  # returns pd.DataFrame
-    """Return a pandas DataFrame of daily OHLCV bars for *symbol*.
+def get_ohlcv(symbol: str, days: int = 90, interval: str = "1d") -> Optional[object]:
+    """Return a pandas DataFrame of OHLCV bars for *symbol*.
 
     Columns: Open, High, Low, Close, Volume (capitalised).
-    Index: pandas DatetimeIndex (UTC-naive, date precision).
+    Index: pandas DatetimeIndex.
 
-    Uses PriceFetcher.get_daily_history() which pulls from yfinance.
-    Works for crypto tickers (BTC-USD, ETH-USD, SOL-USD) and equities.
+    Supports any yfinance interval: 1m, 2m, 5m, 15m, 30m, 1h, 1d, 1wk, 1mo.
+    For intraday intervals (5m, 15m, etc.), yfinance provides up to 60 days.
 
-    Results are cached for 5 minutes per (symbol, days) pair to avoid
-    redundant API calls when multiple strategies evaluate the same symbol
-    in the same daemon step.
+    Results are cached for 2 minutes per (symbol, days, interval) triple.
 
     Parameters
     ----------
@@ -72,6 +70,8 @@ def get_ohlcv(symbol: str, days: int = 90) -> Optional[object]:  # returns pd.Da
         Yahoo Finance ticker, e.g. "BTC-USD".
     days : int
         Calendar days of history to request (default 90).
+    interval : str
+        Bar interval — "5m", "15m", "1h", "1d" etc. (default "1d").
 
     Returns
     -------
