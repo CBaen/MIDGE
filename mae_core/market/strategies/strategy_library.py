@@ -546,3 +546,375 @@ ALL_STRATEGIES: list[tuple[str, Callable]] = [
     ("price_above_200ema", price_above_200ema),
     ("ma_ribbon_expand", ma_ribbon_expand),
 ]
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Family 7: Mathematical / Physics / Chaos
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def _hurst_exponent(series, max_k: int = 20) -> float:
+    """Compute Hurst exponent via rescaled range (R/S) analysis.
+
+    H > 0.5 = trending (persistent), H < 0.5 = mean-reverting, H ≈ 0.5 = random.
+    Uses nolds if available, falls back to a simple R/S implementation.
+    """
+    try:
+        import nolds
+        return float(nolds.hurst_rs(series, nvals=None, fit="poly"))
+    except Exception:
+        pass
+    # Fallback: simple R/S
+    import numpy as np
+    n = len(series)
+    if n < 20:
+        return 0.5
+    max_k = min(max_k, n // 2)
+    rs_list = []
+    for k in range(10, max_k + 1):
+        rs_vals = []
+        for start in range(0, n - k, k):
+            subset = series[start:start + k]
+            mean_s = np.mean(subset)
+            devs = np.cumsum(subset - mean_s)
+            r = np.max(devs) - np.min(devs)
+            s = np.std(subset, ddof=1)
+            if s > 0:
+                rs_vals.append(r / s)
+        if rs_vals:
+            rs_list.append((np.log(k), np.log(np.mean(rs_vals))))
+    if len(rs_list) < 3:
+        return 0.5
+    x = np.array([p[0] for p in rs_list])
+    y = np.array([p[1] for p in rs_list])
+    slope = np.polyfit(x, y, 1)[0]
+    return float(np.clip(slope, 0.0, 1.0))
+
+
+def hurst_regime(symbol: str, df: "pd.DataFrame") -> "Optional[StrategyResult]":
+    """Hurst exponent regime detector — tells MIDGE if price is trending or mean-reverting.
+
+    H < 0.4 → mean-reverting → bullish signal (expect reversion to mean from extremes)
+    H > 0.6 → trending → signal in trend direction
+    0.4-0.6 → random walk → no signal
+    """
+    if len(df) < 100:
+        return None
+    import numpy as np
+    closes = df["Close"].values
+    returns = np.diff(np.log(closes[~np.isnan(closes)]))
+    if len(returns) < 50:
+        return None
+    h = _hurst_exponent(returns)
+    sl, tp = _atr_stops(df, "bullish")
+    if sl == 0:
+        return None
+    if h < 0.4:
+        # Mean-reverting regime — price extended from mean should revert
+        mean_price = float(np.nanmean(closes[-20:]))
+        last = float(closes[-1])
+        if last < mean_price * 0.97:
+            return _make("hurst_regime", symbol, "bullish", 1, sl, tp,
+                         min(1.0, (0.4 - h) / 0.3), metadata={"hurst": round(h, 4), "regime": "mean_reverting"})
+        sl_b, tp_b = _atr_stops(df, "bearish")
+        if last > mean_price * 1.03:
+            return _make("hurst_regime", symbol, "bearish", -1, sl_b, tp_b,
+                         min(1.0, (0.4 - h) / 0.3), metadata={"hurst": round(h, 4), "regime": "mean_reverting"})
+    elif h > 0.6:
+        # Trending regime — go with the trend
+        recent_return = (closes[-1] - closes[-10]) / closes[-10] if closes[-10] != 0 else 0
+        if recent_return > 0.01:
+            return _make("hurst_regime", symbol, "bullish", 1, sl, tp,
+                         min(1.0, (h - 0.6) / 0.3), metadata={"hurst": round(h, 4), "regime": "trending"})
+        elif recent_return < -0.01:
+            sl_b, tp_b = _atr_stops(df, "bearish")
+            return _make("hurst_regime", symbol, "bearish", -1, sl_b, tp_b,
+                         min(1.0, (h - 0.6) / 0.3), metadata={"hurst": round(h, 4), "regime": "trending"})
+    return None
+
+
+def ou_zscore_reversion(symbol: str, df: "pd.DataFrame") -> "Optional[StrategyResult]":
+    """Ornstein-Uhlenbeck Z-score mean reversion — spring physics for price.
+
+    When price is stretched far from its equilibrium (high Z-score), it snaps back.
+    Z > 2.0 → overbought → bearish. Z < -2.0 → oversold → bullish.
+    """
+    if len(df) < 50:
+        return None
+    import numpy as np
+    closes = df["Close"].values
+    clean = closes[~np.isnan(closes)]
+    if len(clean) < 50:
+        return None
+    # Use 20-period rolling mean as the equilibrium
+    window = 20
+    mean = np.mean(clean[-window:])
+    std = np.std(clean[-window:], ddof=1)
+    if std <= 0:
+        return None
+    z = (clean[-1] - mean) / std
+    if abs(z) < 2.0:
+        return None
+    if z < -2.0:
+        sl, tp = _atr_stops(df, "bullish")
+        if sl == 0:
+            return None
+        return _make("ou_zscore_reversion", symbol, "bullish", 1, sl, tp,
+                     min(1.0, (abs(z) - 2.0) / 2.0),
+                     metadata={"z_score": round(float(z), 3), "equilibrium": round(float(mean), 2)})
+    elif z > 2.0:
+        sl, tp = _atr_stops(df, "bearish")
+        if sl == 0:
+            return None
+        return _make("ou_zscore_reversion", symbol, "bearish", -1, sl, tp,
+                     min(1.0, (abs(z) - 2.0) / 2.0),
+                     metadata={"z_score": round(float(z), 3), "equilibrium": round(float(mean), 2)})
+    return None
+
+
+def _permutation_entropy(series, order: int = 3, delay: int = 1) -> float:
+    """Compute permutation entropy — measures chaos/order in a time series.
+
+    Low PE (< 0.7) = ordered, predictable. High PE (> 0.9) = chaotic, noisy.
+    Pure Python, no external dependencies.
+    """
+    import math
+    from itertools import permutations
+    n = len(series)
+    if n < (order - 1) * delay + order:
+        return 1.0  # insufficient data → assume chaotic
+    # Build embedded vectors
+    perms = {}
+    total = 0
+    for i in range(n - (order - 1) * delay):
+        pattern = tuple(sorted(range(order), key=lambda k: series[i + k * delay]))
+        perms[pattern] = perms.get(pattern, 0) + 1
+        total += 1
+    if total == 0:
+        return 1.0
+    # Shannon entropy normalized by maximum
+    max_entropy = math.log(math.factorial(order))
+    if max_entropy == 0:
+        return 1.0
+    entropy = -sum((c / total) * math.log(c / total) for c in perms.values() if c > 0)
+    return entropy / max_entropy
+
+
+def permutation_entropy_gate(symbol: str, df: "pd.DataFrame") -> "Optional[StrategyResult]":
+    """Permutation entropy gate — fires when the market is ordered (predictable).
+
+    Low entropy + price below mean → bullish (ordered reversion expected).
+    Low entropy + price above mean → bearish (ordered reversion expected).
+    High entropy → no signal (chaos = unpredictable).
+    """
+    if len(df) < 50:
+        return None
+    import numpy as np
+    closes = df["Close"].values
+    clean = closes[~np.isnan(closes)]
+    if len(clean) < 50:
+        return None
+    pe = _permutation_entropy(clean[-50:], order=4, delay=1)
+    if pe > 0.85:
+        return None  # Too chaotic — don't trade
+    # Ordered market — check direction
+    mean_20 = float(np.mean(clean[-20:]))
+    last = float(clean[-1])
+    deviation_pct = (last - mean_20) / mean_20 if mean_20 != 0 else 0
+    if abs(deviation_pct) < 0.02:
+        return None  # Not deviated enough
+    if deviation_pct < -0.02:
+        sl, tp = _atr_stops(df, "bullish")
+        if sl == 0:
+            return None
+        return _make("permutation_entropy_gate", symbol, "bullish", 1, sl, tp,
+                     min(1.0, (0.85 - pe) / 0.3),
+                     metadata={"pe": round(pe, 4), "deviation_pct": round(deviation_pct * 100, 2)})
+    elif deviation_pct > 0.02:
+        sl, tp = _atr_stops(df, "bearish")
+        if sl == 0:
+            return None
+        return _make("permutation_entropy_gate", symbol, "bearish", -1, sl, tp,
+                     min(1.0, (0.85 - pe) / 0.3),
+                     metadata={"pe": round(pe, 4), "deviation_pct": round(deviation_pct * 100, 2)})
+    return None
+
+
+def physical_momentum(symbol: str, df: "pd.DataFrame") -> "Optional[StrategyResult]":
+    """Physics-based momentum: volume × return² — like kinetic energy in price.
+
+    High "energy" with positive returns → bullish trend has force behind it.
+    High "energy" with negative returns → bearish trend has force behind it.
+    Low energy → no conviction, no signal.
+    """
+    if len(df) < 50:
+        return None
+    import numpy as np
+    closes = df["Close"].values
+    volumes = df["Volume"].values
+    clean_c = closes[~np.isnan(closes)]
+    clean_v = volumes[~np.isnan(volumes)]
+    n = min(len(clean_c), len(clean_v))
+    if n < 20:
+        return None
+    # Compute 5-bar momentum energy
+    returns_5 = (clean_c[-1] - clean_c[-6]) / clean_c[-6] if clean_c[-6] != 0 else 0
+    avg_vol_5 = float(np.mean(clean_v[-5:]))
+    avg_vol_20 = float(np.mean(clean_v[-20:])) if len(clean_v) >= 20 else avg_vol_5
+    if avg_vol_20 <= 0:
+        return None
+    vol_ratio = avg_vol_5 / avg_vol_20
+    energy = vol_ratio * (returns_5 ** 2)
+    if energy < 0.001:
+        return None  # No conviction
+    if returns_5 > 0.01 and vol_ratio > 1.2:
+        sl, tp = _atr_stops(df, "bullish")
+        if sl == 0:
+            return None
+        return _make("physical_momentum", symbol, "bullish", 1, sl, tp,
+                     min(1.0, energy * 10),
+                     metadata={"energy": round(energy, 6), "vol_ratio": round(vol_ratio, 3),
+                               "return_5bar": round(returns_5 * 100, 2)})
+    elif returns_5 < -0.01 and vol_ratio > 1.2:
+        sl, tp = _atr_stops(df, "bearish")
+        if sl == 0:
+            return None
+        return _make("physical_momentum", symbol, "bearish", -1, sl, tp,
+                     min(1.0, energy * 10),
+                     metadata={"energy": round(energy, 6), "vol_ratio": round(vol_ratio, 3),
+                               "return_5bar": round(returns_5 * 100, 2)})
+    return None
+
+
+def _higuchi_fd(series, kmax: int = 10) -> float:
+    """Compute Higuchi fractal dimension of a time series.
+
+    FD ≈ 1.0 = smooth trend, FD ≈ 1.5 = Brownian noise, FD ≈ 2.0 = very rough/chaotic.
+    Pure numpy implementation.
+    """
+    import numpy as np
+    n = len(series)
+    if n < kmax * 4:
+        return 1.5  # insufficient data → assume Brownian
+    lk = []
+    x = np.array(series, dtype=float)
+    for k in range(1, kmax + 1):
+        lm_k = []
+        for m in range(1, k + 1):
+            indices = np.arange(m - 1, n, k)
+            if len(indices) < 2:
+                continue
+            diffs = np.abs(np.diff(x[indices]))
+            norm = (n - 1) / (k * len(diffs) * k) if len(diffs) > 0 else 0
+            lm_k.append(float(np.sum(diffs) * norm))
+        if lm_k:
+            lk.append((np.log(1.0 / k), np.log(np.mean(lm_k)) if np.mean(lm_k) > 0 else 0))
+    if len(lk) < 3:
+        return 1.5
+    x_fit = np.array([p[0] for p in lk])
+    y_fit = np.array([p[1] for p in lk])
+    slope = np.polyfit(x_fit, y_fit, 1)[0]
+    return float(np.clip(slope, 1.0, 2.0))
+
+
+def higuchi_fractal(symbol: str, df: "pd.DataFrame") -> "Optional[StrategyResult]":
+    """Higuchi fractal dimension — regime detector independent from Hurst.
+
+    FD < 1.3 → smooth/trending → go with the trend direction.
+    FD > 1.7 → rough/chaotic → mean reversion expected.
+    1.3-1.7 → Brownian → no signal.
+    """
+    if len(df) < 100:
+        return None
+    import numpy as np
+    closes = df["Close"].values
+    clean = closes[~np.isnan(closes)]
+    if len(clean) < 80:
+        return None
+    fd = _higuchi_fd(clean[-80:], kmax=10)
+    if 1.3 <= fd <= 1.7:
+        return None  # Brownian — unpredictable
+    recent_return = (clean[-1] - clean[-10]) / clean[-10] if clean[-10] != 0 else 0
+    if fd < 1.3:
+        # Smooth trend — follow it
+        if recent_return > 0.01:
+            sl, tp = _atr_stops(df, "bullish")
+            if sl == 0:
+                return None
+            return _make("higuchi_fractal", symbol, "bullish", 1, sl, tp,
+                         min(1.0, (1.3 - fd) / 0.3),
+                         metadata={"fd": round(fd, 4), "regime": "smooth_trend"})
+        elif recent_return < -0.01:
+            sl, tp = _atr_stops(df, "bearish")
+            if sl == 0:
+                return None
+            return _make("higuchi_fractal", symbol, "bearish", -1, sl, tp,
+                         min(1.0, (1.3 - fd) / 0.3),
+                         metadata={"fd": round(fd, 4), "regime": "smooth_trend"})
+    elif fd > 1.7:
+        # Chaotic — mean reversion
+        mean_20 = float(np.mean(clean[-20:]))
+        last = float(clean[-1])
+        if last < mean_20 * 0.97:
+            sl, tp = _atr_stops(df, "bullish")
+            if sl == 0:
+                return None
+            return _make("higuchi_fractal", symbol, "bullish", 1, sl, tp,
+                         min(1.0, (fd - 1.7) / 0.3),
+                         metadata={"fd": round(fd, 4), "regime": "chaotic_reversion"})
+        elif last > mean_20 * 1.03:
+            sl, tp = _atr_stops(df, "bearish")
+            if sl == 0:
+                return None
+            return _make("higuchi_fractal", symbol, "bearish", -1, sl, tp,
+                         min(1.0, (fd - 1.7) / 0.3),
+                         metadata={"fd": round(fd, 4), "regime": "chaotic_reversion"})
+    return None
+
+
+def fib_618_confluence(symbol: str, df: "pd.DataFrame") -> "Optional[StrategyResult]":
+    """Fibonacci 61.8% retracement confluence — the golden ratio in price.
+
+    When price retraces to the 61.8% Fibonacci level of a significant swing,
+    AND that level coincides with recent support/resistance, it's a high-probability
+    reversal zone. The 61.8% level is watched by millions of traders — self-fulfilling.
+    """
+    if len(df) < 50:
+        return None
+    import numpy as np
+    highs = df["High"].values
+    lows = df["Low"].values
+    closes = df["Close"].values
+    clean_h = highs[~np.isnan(highs)]
+    clean_l = lows[~np.isnan(lows)]
+    clean_c = closes[~np.isnan(closes)]
+    if len(clean_c) < 30:
+        return None
+    # Find the significant swing (highest high and lowest low in last 30 bars)
+    swing_high = float(np.max(clean_h[-30:]))
+    swing_low = float(np.min(clean_l[-30:]))
+    swing_range = swing_high - swing_low
+    if swing_range <= 0:
+        return None
+    last = float(clean_c[-1])
+    # Fibonacci levels from swing low to swing high
+    fib_618 = swing_low + swing_range * 0.618
+    fib_382 = swing_low + swing_range * 0.382
+    # Check proximity to 61.8% level (within 1% of the level)
+    tolerance = swing_range * 0.01
+    # Bullish: price dropped to 38.2% retracement of an upswing (pulling back in uptrend)
+    if abs(last - fib_382) < tolerance and last > swing_low:
+        sl, tp = _atr_stops(df, "bullish")
+        if sl == 0:
+            return None
+        return _make("fib_618_confluence", symbol, "bullish", 1, sl, tp, 0.6,
+                     metadata={"fib_level": "38.2%", "swing_high": round(swing_high, 2),
+                               "swing_low": round(swing_low, 2), "fib_price": round(fib_382, 2)})
+    # Bearish: price rallied to 61.8% retracement of a downswing (relief rally in downtrend)
+    if abs(last - fib_618) < tolerance and last < swing_high:
+        sl, tp = _atr_stops(df, "bearish")
+        if sl == 0:
+            return None
+        return _make("fib_618_confluence", symbol, "bearish", -1, sl, tp, 0.6,
+                     metadata={"fib_level": "61.8%", "swing_high": round(swing_high, 2),
+                               "swing_low": round(swing_low, 2), "fib_price": round(fib_618, 2)})
