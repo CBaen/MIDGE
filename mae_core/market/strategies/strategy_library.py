@@ -1,13 +1,7 @@
-"""
-strategy_library.py - 25 math-first strategies for Crypto Pattern Convergence.
+"""strategy_library.py - 25 math-first strategies for Crypto Pattern Convergence.
 
-Six families: RSI (5), MACD (4), Bollinger (4), Structure (4), Volume (4),
-Moving Average (4). Each function is self-contained, stateless, and returns
-StrategyResult | None.
-
-Minimum data requirement: 50 bars. 200-EMA strategies need 210 bars.
-All computation is vectorized via numpy/pandas — no Python loops over rows.
-confidence=0.55 is the prior; the backtester overwrites it per strategy.
+Six families: RSI (5), MACD (4), Bollinger (4), Structure (4), Volume (4), MA (4).
+Min 50 bars; 200-EMA strategies need 210. confidence=0.55 is prior (backtester overwrites).
 """
 
 from __future__ import annotations
