@@ -156,8 +156,13 @@ def submit_to_alpaca(trade: dict, dry_run: bool = False) -> bool:
         return True
 
     try:
+        import os
         from mae_core.market.apis.alpaca_client import AlpacaClient
-        client = AlpacaClient()
+        client = AlpacaClient(
+            api_key=os.environ.get("ALPACA_API_KEY"),
+            secret_key=os.environ.get("ALPACA_SECRET_KEY"),
+            paper=True,
+        )
         if not client.connected:
             logger.warning("Alpaca not connected — skipping trade")
             return False
