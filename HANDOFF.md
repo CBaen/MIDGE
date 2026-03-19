@@ -34,8 +34,8 @@ Everything needed already exists:
 - `mae_core/market/strategies/strategy_registry.py` — knows which strategies are validated
 - `mae_core/market/strategies/pattern_convergence.py` — fires when 3+ agree
 - `mae_core/market/apis/alpaca_client.py` — places orders on Alpaca (paper mode)
-- `data/market/strategy_registry.json` — 51 records, 47 validated (BTC + ETH + SOL)
-- `data/market/crypto_watchlist.json` — 10 crypto symbols
+- `data/market/strategy_registry.json` — 443 records, 331 validated (28 symbols)
+- `data/market/crypto_watchlist.json` — 27 crypto symbols (all Alpaca USD pairs with yfinance data)
 
 Wire them together in a single script. 8 seconds per cycle. Every 5 minutes. 24/7.
 
