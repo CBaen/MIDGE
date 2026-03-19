@@ -215,14 +215,16 @@ def submit_to_alpaca(trade: dict, dry_run: bool = False) -> bool:
     return False
 
 
-def run_cycle(registry, all_strategies, dry_run: bool = False) -> int:
+def run_cycle(registry, all_strategies, dry_run: bool = False,
+              timeframe: str = "5m") -> int:
     """Run one evaluation cycle across all crypto symbols. Returns trade count."""
     symbols = load_watchlist()
     trades = 0
 
     for symbol in symbols:
         try:
-            trade = evaluate_symbol(symbol, registry, all_strategies)
+            trade = evaluate_symbol(symbol, registry, all_strategies,
+                                    interval=timeframe, lookback_days=7)
             if trade:
                 logger.info(
                     "CONVERGENCE: %s %s — %d strategies agree: %s",
@@ -271,7 +273,8 @@ def main():
         start = time.time()
 
         logger.info("--- Cycle %d ---", cycle)
-        trades = run_cycle(registry, ALL_STRATEGIES, dry_run=args.dry_run)
+        trades = run_cycle(registry, ALL_STRATEGIES, dry_run=args.dry_run,
+                          timeframe=args.timeframe)
         total_trades += trades
         elapsed = time.time() - start
 

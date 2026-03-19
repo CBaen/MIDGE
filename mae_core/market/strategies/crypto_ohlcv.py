@@ -27,7 +27,7 @@ from mae_core.market.apis.price_fetcher import PriceFetcher
 # Module-level TTL cache
 # ---------------------------------------------------------------------------
 _CACHE: dict[str, tuple[object, float]] = {}   # key -> (DataFrame, expires_at)
-_TTL_SECONDS = 300                              # 5 minutes
+_TTL_SECONDS = 120                              # 2 minutes — fast enough for 5m bars
 
 
 def _cache_key(symbol: str, days: int) -> str:
