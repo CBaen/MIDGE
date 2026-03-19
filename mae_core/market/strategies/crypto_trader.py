@@ -58,7 +58,8 @@ def load_watchlist() -> list[str]:
 
 
 def evaluate_symbol(symbol: str, registry, all_strategies,
-                    interval: str = "5m", lookback_days: int = 7) -> Optional[dict]:
+                    interval: str = "5m", lookback_days: int = 7,
+                    scorer=None) -> Optional[dict]:
     """Run all validated strategies on a symbol. Return trade dict if 2+ agree."""
     from mae_core.market.strategies.crypto_ohlcv import get_ohlcv
 
@@ -259,11 +260,17 @@ def main():
     registry = StrategyRegistry()
     stats = registry.get_statistics()
 
+    # Forensic scorer — learns which strategy combos win on recent 5-min data
+    from mae_core.market.strategies.forensic_scorer import ForensicScorer
+    scorer = ForensicScorer()
+
     logger.info("MIDGE Crypto Trader starting")
     logger.info("  Strategies: %d loaded, %d validated", len(ALL_STRATEGIES), stats["validated_records"])
     logger.info("  Symbols: %s", ", ".join(load_watchlist()))
-    logger.info("  Interval: %ds | Dry run: %s", args.interval, args.dry_run)
+    logger.info("  Interval: %ds | Timeframe: %s | Dry run: %s",
+                args.interval, args.timeframe, args.dry_run)
     logger.info("  Alpaca: %s", "DRY RUN" if args.dry_run else "PAPER TRADING")
+    logger.info("  Forensic scorer: %d combos loaded", len(scorer._scorecard))
 
     cycle = 0
     total_trades = 0
@@ -271,6 +278,19 @@ def main():
     while _RUNNING:
         cycle += 1
         start = time.time()
+
+        # Refresh forensic scorecard every 10 minutes
+        if scorer.needs_refresh():
+            logger.info("Forensic refresh starting...")
+            try:
+                scorer.refresh(load_watchlist()[:5], ALL_STRATEGIES)  # Top 5 symbols for speed
+                hot = scorer.get_hot_combos()
+                if hot:
+                    logger.info("HOT combos: %s", ", ".join(
+                        f"{c['combo']} ({c['win_rate']*100:.0f}%)" for c in hot[:5]
+                    ))
+            except Exception:
+                logger.debug("Forensic refresh failed", exc_info=True)
 
         logger.info("--- Cycle %d ---", cycle)
         trades = run_cycle(registry, ALL_STRATEGIES, dry_run=args.dry_run,
