@@ -166,7 +166,47 @@ def _instantiate_archaeology(ctx: SimpleNamespace) -> int:
     return failures
 
 
+def _instantiate_pattern_convergence(ctx: SimpleNamespace) -> None:
+    """Construct StrategyRegistry + PatternConvergenceEngine for crypto trading."""
+    try:
+        from mae_core.market.strategies.strategy_registry import StrategyRegistry
+        ctx.strategy_registry = StrategyRegistry()
+        logger.info("Pattern convergence: StrategyRegistry loaded (%s)",
+                     ctx.strategy_registry.get_statistics())
+    except Exception:
+        logger.debug("StrategyRegistry construction failed", exc_info=True)
+        ctx.strategy_registry = None
+
+    try:
+        from mae_core.market.strategies.pattern_convergence import PatternConvergenceEngine
+        ctx.pattern_convergence_engine = PatternConvergenceEngine(
+            strategy_registry=ctx.strategy_registry,
+            price_fetcher=getattr(ctx, "price_fetcher", None),
+            thompson_sampler=getattr(ctx, "thompson_sampler", None),
+            event_bus=getattr(ctx, "bus", None),
+        ) if ctx.strategy_registry is not None else None
+        if ctx.pattern_convergence_engine is not None:
+            logger.info("Pattern convergence: engine ready")
+    except Exception:
+        logger.debug("PatternConvergenceEngine construction failed", exc_info=True)
+        ctx.pattern_convergence_engine = None
+
+    # Load crypto watchlist
+    try:
+        import json
+        from pathlib import Path
+        _wl_path = Path("data/market/crypto_watchlist.json")
+        if _wl_path.exists():
+            ctx._crypto_watchlist = json.loads(_wl_path.read_text())
+            logger.info("Pattern convergence: %d crypto symbols loaded", len(ctx._crypto_watchlist))
+        else:
+            ctx._crypto_watchlist = []
+    except Exception:
+        ctx._crypto_watchlist = []
+
+
 def _instantiate_intelligence_systems(ctx: SimpleNamespace) -> int:
     """Entry point called by market_systems.py. Returns failure count."""
     _instantiate_hypothesis_loop(ctx)
+    _instantiate_pattern_convergence(ctx)
     return _instantiate_archaeology(ctx)
