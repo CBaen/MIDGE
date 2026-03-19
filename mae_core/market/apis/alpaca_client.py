@@ -200,12 +200,13 @@ class AlpacaClient:
                     stop_loss=StopLossRequest(stop_price=stop_loss_price),
                 )
             else:
-                # Simple market order
+                # Simple market order — crypto requires GTC, equities use DAY
+                _tif = TimeInForce.GTC if _is_crypto else TimeInForce.DAY
                 order_data = MarketOrderRequest(
                     symbol=symbol,
                     qty=qty,
                     side=order_side,
-                    time_in_force=TimeInForce.DAY,
+                    time_in_force=_tif,
                 )
 
             order = self._client.submit_order(order_data=order_data)
