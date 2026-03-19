@@ -1,7 +1,9 @@
 # MIDGE Handoff
 
 **Last updated:** 2026-03-19 (Session 13 — Math-First Crypto Trading)
-**Current mode:** STOPPED — awaiting standalone crypto trader build
+**Current mode:** STANDALONE CRYPTO TRADER RUNNING
+**Start trader:** `python -m mae_core.market.strategies.crypto_trader`
+**Calibrate:** `python -m mae_core.market.parallel.strategy_calibrator --days 730`
 **For session history:** `git log --oneline`
 
 ---
