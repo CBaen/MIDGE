@@ -110,6 +110,14 @@ def evaluate_symbol(symbol: str, registry, all_strategies) -> Optional[dict]:
 
             last_close = float(df["Close"].iloc[-1])
 
+            # Fee filter: skip trades where expected move < 2%
+            if tp > 0 and last_close > 0:
+                expected_move_pct = abs(tp - last_close) / last_close * 100
+                if expected_move_pct < MIN_MOVE_PCT:
+                    logger.debug("%s: expected move %.1f%% < %.1f%% minimum — skipping",
+                                 symbol, expected_move_pct, MIN_MOVE_PCT)
+                    continue
+
             return {
                 "symbol": symbol,
                 "direction": direction,
@@ -135,6 +143,13 @@ def write_trade(trade: dict) -> None:
 
 def submit_to_alpaca(trade: dict, dry_run: bool = False) -> bool:
     """Submit a paper trade to Alpaca. Returns True if successful."""
+    # Load .env for API keys
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+    except ImportError:
+        pass
+
     if dry_run:
         logger.info("DRY RUN: would trade %s %s (%d strategies agree)",
                      trade["side"].upper(), trade["symbol"], trade["strategy_count"])
