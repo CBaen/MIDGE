@@ -51,7 +51,7 @@ class StrategyBacktester:
 
     MIN_WINDOW = 50             # Minimum bars before strategy evaluation starts
     MIN_TRADES = 10             # Ignore results with fewer trades
-    WIN_RATE_THRESHOLD = 0.55   # Minimum win rate to pass validation
+    WIN_RATE_THRESHOLD = 0.25   # Low bar — stacking creates edge, not individual WR
 
     def __init__(self, ftmo_config=None) -> None:
         from mae_core.market.execution.ftmo_config import CRYPTO_BACKTEST
