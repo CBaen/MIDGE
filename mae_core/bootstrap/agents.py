@@ -72,10 +72,11 @@ def bootstrap_agents(ctx: SimpleNamespace) -> None:
             "transfer_enabled": True,
             "quorum_sensing_enabled": True,
         }
-        # All agents get an API voice — cycle round-robin through all providers
-        # Gateway handles missing keys gracefully (no key = provider not registered = no-op)
+        # LLM agent calls disabled — they bottleneck the step loop at ~24s/step.
+        # Trading pipeline (pattern convergence, convergence alerter) is pure math
+        # and doesn't use agent LLM calls. Re-enable for biological experiments.
         _providers = ("groq", "mistral", "deepseek")
-        agent_cfg["api_call_enabled"] = True
+        agent_cfg["api_call_enabled"] = False
         agent_cfg["preferred_provider"] = _providers[i % len(_providers)]
 
         agent = MycelialAgent(

@@ -918,3 +918,18 @@ def fib_618_confluence(symbol: str, df: "pd.DataFrame") -> "Optional[StrategyRes
         return _make("fib_618_confluence", symbol, "bearish", -1, sl, tp, 0.6,
                      metadata={"fib_level": "61.8%", "swing_high": round(swing_high, 2),
                                "swing_low": round(swing_low, 2), "fib_price": round(fib_618, 2)})
+    return None
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Complete strategy registry — append math strategies to the master list
+# ═══════════════════════════════════════════════════════════════════════
+
+ALL_STRATEGIES.extend([
+    ("hurst_regime", hurst_regime),
+    ("ou_zscore_reversion", ou_zscore_reversion),
+    ("permutation_entropy_gate", permutation_entropy_gate),
+    ("physical_momentum", physical_momentum),
+    ("higuchi_fractal", higuchi_fractal),
+    ("fib_618_confluence", fib_618_confluence),
+])
