@@ -87,9 +87,14 @@ def evaluate_symbol(symbol: str, registry, all_strategies) -> Optional[dict]:
         except Exception:
             pass  # Strategy error — skip silently
 
-    # Check for convergence (3+ agree)
+    # Check for convergence (2+ agree — lowered from 3 to generate trades)
+    # Alpaca crypto fees are 0.25% per side (0.5% round trip)
+    # Only trade when expected move > 2% to cover fees with profit margin
+    MIN_STRATEGIES = 2
+    MIN_MOVE_PCT = 2.0  # Minimum expected price move to overcome fees
+
     for direction, results in [("bullish", bullish), ("bearish", bearish)]:
-        if len(results) >= 3:
+        if len(results) >= MIN_STRATEGIES:
             # Aggregate
             names = [r.strategy_name for r in results]
             avg_strength = sum(r.strength for r in results) / len(results)

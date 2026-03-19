@@ -37,7 +37,9 @@ Everything needed already exists:
 - `data/market/strategy_registry.json` — 443 records, 331 validated (28 symbols)
 - `data/market/crypto_watchlist.json` — 27 crypto symbols (all Alpaca USD pairs with yfinance data)
 
-Wire them together in a single script. 8 seconds per cycle. Every 5 minutes. 24/7.
+**BUILT AND RUNNING.** `crypto_trader.py` evaluates 27 symbols every 5 min in ~1.3 seconds.
+Start: `python -m mae_core.market.strategies.crypto_trader`
+Dry run: `python -m mae_core.market.strategies.crypto_trader --dry-run`
 
 ---
 
