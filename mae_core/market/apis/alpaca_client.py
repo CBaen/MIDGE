@@ -57,6 +57,7 @@ class Position:
     symbol: str
     qty: float
     avg_entry_price: float
+    current_price: float
     market_value: float
     unrealized_pl: float
     unrealized_plpc: float
@@ -143,6 +144,7 @@ class AlpacaClient:
                     symbol=p.symbol,
                     qty=float(p.qty),
                     avg_entry_price=float(p.avg_entry_price),
+                    current_price=float(p.current_price),
                     market_value=float(p.market_value),
                     unrealized_pl=float(p.unrealized_pl),
                     unrealized_plpc=float(p.unrealized_plpc),
