@@ -1,7 +1,39 @@
-# Lessons Learned — Project-Specific
+# Lessons Learned — MIDGE Project-Specific
 
 Reviewed by every instance on arrival. Append-only. Keep entries atomic and actionable.
 Universal lessons go in `C:\Users\baenb\.claude\lessons-learned.md` instead.
+
+---
+
+### The Mae organism is too slow for crypto trading
+- **Pattern**: The 33-layer bootstrap + 3 LLM-calling agents + Ollama embedding timeouts = 8+ minutes per evaluation cycle. MIDGE never placed a crypto paper trade through the organism despite having everything built.
+- **Rule**: For crypto trading, use the standalone `crypto_trader.py` script. It runs the same 31 strategies in 0.7 seconds instead of 8 minutes. The Mae organism is valuable for equities (where slower cadence is fine) but structurally wrong for crypto.
+- **Why**: Crypto moves in minutes. 8-minute evaluation cycles miss every opportunity.
+
+### Strategies are timeframe-agnostic — always test multiple timeframes
+- **Pattern**: Built and calibrated all strategies on daily bars. Win rates were 30-47%. Nobody questioned whether faster timeframes were available. Guiding Light asked "why daily?" and the answer was "no reason." 5-minute bars showed 55-75% WR. 1-minute bars showed even more data density.
+- **Rule**: When building or calibrating strategies, ALWAYS test on 1m, 5m, 15m, 1h, and 1d. yfinance supports all of them. The optimal timeframe depends on the market and fees, not on developer convenience.
+- **Why**: The difference between daily and 5-minute bars was the difference between 0 trades fired and 25/25 strategies profitable.
+
+### The convergence threshold must match the timeframe and data density
+- **Pattern**: Required 3+ strategies to agree (Law 7 triadic). On daily bars this was too strict — convergence never fired. On 5-minute bars with 7,700+ bars, 2+ strategies is more appropriate because the data is richer and opportunities are more frequent.
+- **Rule**: Convergence threshold should be calibrated per timeframe. More data density = lower threshold is safe. Less data = higher threshold needed. Run the forensic scorer to determine the right threshold empirically.
+- **Why**: A threshold that's mathematically correct in theory can be practically useless if it never fires.
+
+### Alpaca crypto fees are 0.5% round trip — only trade moves > 2%
+- **Pattern**: First batch of crypto trades included BONK-USD at $0.00 entry (bad price data) and other micro-cap coins. The 0.5% fee ate profits on small moves.
+- **Rule**: Add a minimum expected move filter (MIN_MOVE_PCT = 2.0) that checks the ATR-based take profit implies at least 2% movement before placing a trade. This is already implemented in crypto_trader.py.
+- **Why**: Trading with 0.5% fees requires larger moves to be profitable. Small moves generate activity but not income.
+
+### MIDGE has never made a dollar — the learning loop was never closed
+- **Pattern**: After a year of development, 13 sessions, 31 strategies, 443 backtest records — zero revenue from live (or paper) trading that was tracked and measured. Thompson distributions show 0 samples learned.
+- **Rule**: The FIRST priority for any new work on MIDGE is: close the loop. Trade → track outcome → learn → trade better. Without this loop, everything else is infrastructure that doesn't produce income. The forensic scorer (forensic_scorer.py) is the closest we have to a real-time learning loop.
+- **Why**: Guiding Light needs income. Every session that builds infrastructure without closing the trading loop is a session that didn't serve the goal.
+
+### Guiding Light's vision: discover → validate → stack → trade
+- **Pattern**: Multiple instances built data-source convergence systems (insider + technical + news = trade). Guiding Light said: "I don't want 3 sources agreeing. I want 3 mathematical PATTERNS agreeing." The shift from data-source diversity to mathematical pattern stacking changed everything.
+- **Rule**: MIDGE's core loop is: find patterns (from history or internet) → backtest them → if validated, add to strategy library → when 3+ validated patterns agree simultaneously → trade. Confidence comes from BACKTESTING, not from live trade outcomes.
+- **Why**: Crypto has no insiders, no SEC filings, no congressional trades. Data-source diversity doesn't exist. Mathematical diversity does.
 
 ## How to Use
 
