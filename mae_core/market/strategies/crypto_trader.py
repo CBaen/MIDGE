@@ -156,8 +156,8 @@ def check_exits(client, tracked: dict, registry, all_strategies,
             }
             entry = tracked[pos.symbol]
 
-        # Current price from Alpaca position data
-        current_price = pos.market_value / pos.qty if pos.qty > 0 else 0
+        # Current price directly from Alpaca
+        current_price = pos.current_price
         if current_price <= 0:
             continue
 

@@ -1,6 +1,7 @@
 # MIDGE Queue
 
 **Purpose:** Active tasks only. Git history preserves completed work.
+**When an item is DONE: delete it from this file.** Git tracks completion history. Queues are for current work only. Never accumulate completed items.
 **Last updated:** 2026-03-19 (Session 13)
 
 ## Critical — Do These First
