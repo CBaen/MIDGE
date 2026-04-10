@@ -356,6 +356,159 @@ class WorldModel:
         # (these are company-specific, not macro events)
         return None
 
+    # ------------------------------------------------------------------
+    # Pattern node / edge methods — Phase 3 Deep Pattern Intelligence
+    # ------------------------------------------------------------------
+
+    def add_pattern_node(
+        self,
+        template_id: str,
+        domain_signature: str,
+        win_rate: float = 0.0,
+    ) -> None:
+        """Add a PatternTemplate node to the causal graph.
+
+        Pattern nodes live alongside event/ticker nodes and participate in
+        find_pattern_chain() traversal.  They are prefixed with "pattern:"
+        so _is_ticker() correctly identifies them as non-tradeable.
+
+        Args:
+            template_id: The template identifier from PatternLibrary.
+            domain_signature: e.g. "bullish:insider+macro+technical"
+            win_rate: Historical win rate (0-1).
+        """
+        if self._graph is None:
+            return
+        node_id = f"pattern:{template_id}"
+        self._graph.add_node(
+            node_id,
+            node_type="pattern_template",
+            template_id=template_id,
+            domain_signature=domain_signature,
+            win_rate=win_rate,
+        )
+
+    def add_pattern_edge(
+        self,
+        template_a: str,
+        template_b: str,
+        lag_days: float,
+        win_rate: float = 0.0,
+        n_obs: int = 0,
+    ) -> None:
+        """Add a directed edge from pattern A to pattern B.
+
+        Represents "Pattern A is typically followed by Pattern B after
+        lag_days days."  Strength is derived from win_rate * observation
+        confidence (clamped to 0.1–1.0).
+
+        Args:
+            template_a: Preceding template ID.
+            template_b: Following template ID.
+            lag_days: Average observed lag in days.
+            win_rate: Combined sequence win rate (0-1).
+            n_obs: Number of observations supporting this edge.
+        """
+        if self._graph is None:
+            return
+        node_a = f"pattern:{template_a}"
+        node_b = f"pattern:{template_b}"
+        # Ensure nodes exist
+        if node_a not in self._graph:
+            self.add_pattern_node(template_a, "", win_rate)
+        if node_b not in self._graph:
+            self.add_pattern_node(template_b, "", win_rate)
+
+        # Strength scales with win_rate and observation confidence
+        obs_confidence = min(1.0, n_obs / 10.0)  # Saturates at 10 observations
+        strength = max(0.1, win_rate * obs_confidence)
+
+        self._graph.add_edge(
+            node_a,
+            node_b,
+            strength=strength,
+            lag_days=float(lag_days),
+            direction="bullish",  # Pattern sequences are directionally inherited
+            evidence="pattern_sequence",
+            win_rate=win_rate,
+            n_observations=n_obs,
+            hit_count=0,
+            miss_count=0,
+        )
+        logger.debug(
+            "WorldModel pattern edge added: %s → %s (lag=%.1f, wr=%.2f, n=%d)",
+            template_a, template_b, lag_days, win_rate, n_obs,
+        )
+
+    def find_pattern_chain(
+        self,
+        template_id: str,
+        max_depth: int = 5,
+        min_strength: float = 0.1,
+    ) -> List[dict]:
+        """Return the cascading chain of downstream patterns following template_id.
+
+        Performs BFS forward from the pattern node, accumulating strength
+        and lag at each step.
+
+        Args:
+            template_id: Starting template.
+            max_depth: Maximum BFS depth.
+            min_strength: Prune paths below this cumulative strength.
+
+        Returns:
+            List of dicts, sorted by cumulative strength descending:
+              {template_id, depth, cumulative_lag_days, cumulative_strength,
+               path, win_rate, n_observations}
+        """
+        if self._graph is None:
+            return []
+
+        start_node = f"pattern:{template_id}"
+        if start_node not in self._graph:
+            return []
+
+        results = []
+        visited: set = set()
+        # queue: (node, depth, path, cum_strength, cum_lag)
+        queue = [(start_node, 0, [template_id], 1.0, 0.0)]
+
+        while queue:
+            current, depth, path, cum_strength, cum_lag = queue.pop(0)
+
+            if current in visited:
+                continue
+            visited.add(current)
+
+            for successor in self._graph.successors(current):
+                edge = self._graph.edges[current, successor]
+                if edge.get("evidence") != "pattern_sequence":
+                    continue  # Only follow pattern sequence edges
+
+                new_strength = cum_strength * edge.get("strength", 0.5)
+                if new_strength < min_strength:
+                    continue
+
+                new_lag = cum_lag + edge.get("lag_days", 0.0)
+                # Strip "pattern:" prefix for display
+                succ_tid = successor.replace("pattern:", "", 1)
+                new_path = path + [succ_tid]
+
+                if depth + 1 <= max_depth:
+                    results.append({
+                        "template_id": succ_tid,
+                        "depth": depth + 1,
+                        "cumulative_lag_days": round(new_lag, 1),
+                        "cumulative_strength": round(new_strength, 4),
+                        "path": list(new_path),
+                        "win_rate": edge.get("win_rate", 0.0),
+                        "n_observations": edge.get("n_observations", 0),
+                    })
+                    queue.append((successor, depth + 1, new_path, new_strength, new_lag))
+
+        results.sort(key=lambda x: x["cumulative_strength"], reverse=True)
+        return results
+
     def get_statistics(self) -> dict:
         """Return graph statistics."""
         if self._graph is None:

@@ -1348,6 +1348,249 @@ def _flush_stack_profiles(stack_stats: dict[str, dict]) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Worker 5: Pattern Sequence Miner
+# ---------------------------------------------------------------------------
+
+# Path for Worker 5 output
+PATTERN_SEQUENCES_PATH = DATA_MARKET / "pattern_sequences.jsonl"
+
+# Stack profiles path (produced by Worker 4, read by Worker 5)
+_W5_STACK_PROFILES_PATH = STACK_PROFILES_PATH  # same path, read-only
+
+
+def _worker5_pattern_sequence_miner(dry_run: bool = False) -> None:
+    """Discover template-to-template temporal sequences from the archive.
+
+    For each pair of templates (A, B):
+      - Find dates where Template A was active on a symbol
+      - Check if Template B became active on the SAME symbol within 30 days
+      - Record the observed lag between activations
+
+    This builds "Pattern A often precedes Pattern B by N days" knowledge —
+    the temporal chain that makes a cascade predictable.
+
+    Data sources (in preference order):
+      1. data/midge/stack_profiles.jsonl — pre-computed active templates per outcome
+      2. data/market/pattern_templates.jsonl — all templates (fallback: scan archive)
+
+    Output: data/market/pattern_sequences.jsonl
+    """
+    log = _setup_logging("w5-sequence-miner")
+    log.info("Worker 5 starting — Pattern Sequence Miner")
+
+    state_file = DATA_MIDGE / "research_team_w5_state.json"
+    state: dict[str, Any] = {}
+    if state_file.exists():
+        try:
+            state = json.loads(state_file.read_text())
+        except Exception:
+            state = {}
+
+    cycle = int(state.get("cycle", 0))
+
+    while True:
+        templates = _load_all_templates()
+        if not templates:
+            log.warning("No templates found — sleeping 60s")
+            time.sleep(60)
+            continue
+
+        template_list = list(templates.items())  # [(tid, tdict), ...]
+        log.info(
+            "Cycle %d — mining sequences across %d templates",
+            cycle + 1, len(template_list),
+        )
+
+        # Load or build a symbol→[(template_id, activation_date)] mapping
+        # We build this from two sources:
+        #   (a) stack_profiles.jsonl entries carry "examples" with symbol + predicted_at
+        #       AND which templates were active at that point
+        #   (b) fallback: scan archive dates for each symbol per template's domains
+
+        # Build from stack profiles where available
+        # symbol_template_dates: {symbol: [(template_id, date_str)]}
+        symbol_template_dates: dict[str, list[tuple[str, str]]] = collections.defaultdict(list)
+
+        # Source (a): stack_profiles examples
+        if _W5_STACK_PROFILES_PATH.exists():
+            try:
+                with open(_W5_STACK_PROFILES_PATH, encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            rec = json.loads(line)
+                        except json.JSONDecodeError:
+                            continue
+                        stack_template_ids: list[str] = rec.get("template_ids", [])
+                        for ex in rec.get("examples", []):
+                            sym = ex.get("symbol", "")
+                            pred_at = ex.get("predicted_at", "")[:10]
+                            if sym and pred_at:
+                                for tid in stack_template_ids:
+                                    symbol_template_dates[sym].append((tid, pred_at))
+            except OSError:
+                pass
+
+        # Source (b): fallback from archive — for each template, scan archive
+        #             for dates where >= 60% of its domains appear for a symbol
+        if not symbol_template_dates:
+            log.info("No stack profiles — falling back to archive scan")
+            for tid, tmpl in template_list:
+                tmpl_domains = set(tmpl.get("domains", []))
+                if not tmpl_domains:
+                    continue
+                dr = tmpl.get("direction", "")
+
+                # Scan the last 180 days of the archive
+                end_dt = date.today()
+                start_dt = end_dt - timedelta(days=180)
+
+                # Collect domain appearances by date and symbol
+                cur = start_dt
+                while cur <= end_dt:
+                    day_file = SIGNALS_DIR / f"{cur.isoformat()}.jsonl"
+                    if day_file.exists():
+                        try:
+                            # Group signals by symbol
+                            sym_signals: dict[str, set] = collections.defaultdict(set)
+                            with open(day_file, encoding="utf-8") as f:
+                                for line in f:
+                                    line = line.strip()
+                                    if not line:
+                                        continue
+                                    try:
+                                        sig = json.loads(line)
+                                    except json.JSONDecodeError:
+                                        continue
+                                    if sig.get("direction", dr) != dr:
+                                        continue
+                                    sym_signals[sig.get("symbol", "")].add(
+                                        _source_to_domain(sig.get("source", ""))
+                                    )
+                            for sym, active_domains in sym_signals.items():
+                                if not sym:
+                                    continue
+                                coverage = len(active_domains & tmpl_domains) / len(tmpl_domains)
+                                if coverage >= 0.60:
+                                    symbol_template_dates[sym].append((tid, cur.isoformat()))
+                        except OSError:
+                            pass
+                    cur += timedelta(days=1)
+
+        if not symbol_template_dates:
+            log.warning("No activation data found — sleeping 120s")
+            time.sleep(120)
+            continue
+
+        # Now find sequences: for each symbol, sort activations by date and
+        # detect pairs (A before B) within 30 days
+        # {(tid_a, tid_b): {"lags": [], "n": 0}}
+        raw_sequences: dict[tuple[str, str], dict] = {}
+
+        for sym, activations in symbol_template_dates.items():
+            # Sort by date
+            try:
+                sorted_acts = sorted(activations, key=lambda x: x[1])
+            except Exception:
+                continue
+
+            for i, (tid_a, date_a_str) in enumerate(sorted_acts):
+                try:
+                    date_a = date.fromisoformat(date_a_str)
+                except ValueError:
+                    continue
+
+                for j in range(i + 1, len(sorted_acts)):
+                    tid_b, date_b_str = sorted_acts[j]
+                    if tid_b == tid_a:
+                        continue
+                    try:
+                        date_b = date.fromisoformat(date_b_str)
+                    except ValueError:
+                        continue
+
+                    lag = (date_b - date_a).days
+                    if lag <= 0:
+                        continue
+                    if lag > 30:
+                        break  # Sorted by date — no point continuing
+
+                    key = (tid_a, tid_b)
+                    if key not in raw_sequences:
+                        raw_sequences[key] = {
+                            "template_a": tid_a,
+                            "template_b": tid_b,
+                            "observed_lags": [],
+                            "examples": [],
+                            "n": 0,
+                        }
+                    raw_sequences[key]["observed_lags"].append(lag)
+                    raw_sequences[key]["n"] += 1
+                    if len(raw_sequences[key]["examples"]) < 5:
+                        raw_sequences[key]["examples"].append({
+                            "symbol": sym,
+                            "template_a_date": date_a_str,
+                            "template_b_date": date_b_str,
+                            "lag_days": lag,
+                        })
+
+        # Filter: only emit sequences with >= 3 observations
+        qualifying = {
+            k: v for k, v in raw_sequences.items()
+            if v["n"] >= 3
+        }
+
+        if not dry_run and qualifying:
+            _flush_pattern_sequences(qualifying)
+
+        cycle += 1
+        new_seqs = len(qualifying)
+        total_obs = sum(v["n"] for v in qualifying.values())
+        log.info(
+            "Cycle %d complete — %d qualifying sequences, %d total observations",
+            cycle, new_seqs, total_obs,
+        )
+
+        state = {
+            "cycle": cycle,
+            "last_cycle_at": datetime.now().isoformat(),
+            "qualifying_sequences": new_seqs,
+            "total_observations": total_obs,
+        }
+        try:
+            state_file.write_text(json.dumps(state, indent=2))
+        except Exception:
+            pass
+
+        time.sleep(CYCLE_REST_SECONDS * 2)  # Pattern sequences are expensive — rest longer
+
+
+def _flush_pattern_sequences(sequences: dict[tuple[str, str], dict]) -> None:
+    """Rewrite the pattern sequences file with current findings."""
+    PATTERN_SEQUENCES_PATH.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with open(PATTERN_SEQUENCES_PATH, "w", encoding="utf-8") as f:
+            for (tid_a, tid_b), rec in sequences.items():
+                lags = rec.get("observed_lags", [])
+                avg_lag = round(sum(lags) / len(lags), 1) if lags else 0.0
+                record = {
+                    "type": "sequence",
+                    "template_a": tid_a,
+                    "template_b": tid_b,
+                    "avg_lag_days": avg_lag,
+                    "observed_lags": lags,
+                    "n_observations": rec.get("n", 0),
+                    "examples": rec.get("examples", []),
+                    "discovered_at": datetime.now().isoformat(),
+                }
+                f.write(json.dumps(record, default=str) + "\n")
+    except OSError:
+        pass
+
+
+# ---------------------------------------------------------------------------
 # Status reporting and state management
 # ---------------------------------------------------------------------------
 
@@ -1402,6 +1645,8 @@ def _run_worker(worker_id: int, dry_run: bool = False) -> None:
         _worker3_temporal_sequence_miner(dry_run=dry_run)
     elif worker_id == 4:
         _worker4_template_stacker(dry_run=dry_run)
+    elif worker_id == 5:
+        _worker5_pattern_sequence_miner(dry_run=dry_run)
     else:
         raise ValueError(f"Unknown worker_id: {worker_id}")
 
@@ -1411,7 +1656,7 @@ def _run_worker(worker_id: int, dry_run: bool = False) -> None:
 # ---------------------------------------------------------------------------
 
 def run_forever(
-    workers: int = 4,
+    workers: int = 5,
     dry_run: bool = False,
 ) -> None:
     """Start all research workers in parallel and supervise them.
@@ -1498,8 +1743,8 @@ def main() -> None:
         description="MIDGE Historical Research Team — parallel pattern mining",
     )
     parser.add_argument(
-        "--workers", type=int, default=4,
-        help="Number of research workers (1-4, default: 4)",
+        "--workers", type=int, default=5,
+        help="Number of research workers (1-5, default: 5)",
     )
     parser.add_argument(
         "--dry-run", action="store_true",
@@ -1507,7 +1752,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--worker", type=int, default=None,
-        choices=[1, 2, 3, 4],
+        choices=[1, 2, 3, 4, 5],
         help="Run a single specific worker (for debugging)",
     )
     args = parser.parse_args()
@@ -1517,7 +1762,7 @@ def main() -> None:
         print(f"Running single worker {args.worker} in foreground...", file=sys.stderr)
         _run_worker(args.worker, dry_run=args.dry_run)
     else:
-        workers = max(1, min(4, args.workers))
+        workers = max(1, min(5, args.workers))
         run_forever(workers=workers, dry_run=args.dry_run)
 
 
